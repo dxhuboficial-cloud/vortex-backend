@@ -10233,6 +10233,11 @@ export function openVipPaymentModal() {
     modal.classList.add('active');
     playSound(clickSound);
     if (window.lucide) lucide.createIcons();
+
+    // Acorda o servidor no Render em segundo plano (evita espera quando o usuário clicar em pagar)
+    try {
+        fetch(`${VORTEX_API_BASE}/api/config`).catch(() => {});
+    } catch (_) {}
 }
 
 export function closeVipPaymentModal() {
@@ -10273,11 +10278,11 @@ export function switchPaymentTab(tabName) {
     if (window.lucide) lucide.createIcons();
 }
 
-// URL base fixa apontando para o servidor Node.js local na porta 3000
-const VORTEX_API_BASE = 'http://localhost:3000';
+// URL base da API do servidor de pagamentos VORTEX VIP (Hospedado 24/7 na nuvem Render)
+const VORTEX_API_BASE = 'https://vortex-backend-qnl9.onrender.com';
 
 async function fetchApi(endpoint, options = {}) {
-    // Aponta prioritariamente para o servidor Node.js rodando em http://localhost:3000
+    // Aponta prioritariamente para o servidor na nuvem Render (24h online sem depender do PC)
     const primaryUrl = `${VORTEX_API_BASE}${endpoint}`;
 
     try {
@@ -10290,7 +10295,19 @@ async function fetchApi(endpoint, options = {}) {
         console.warn(`[VORTEX API] Falha ao conectar em ${primaryUrl}:`, err);
     }
 
-    // Fallback: tenta URL relativa se o site estiver sendo servido pelo próprio Node na porta 3000
+    // Fallback secundário: tenta localhost se o desenvolvedor estiver testando localmente
+    try {
+        const localUrl = `http://localhost:3000${endpoint}`;
+        const res = await fetch(localUrl, options);
+        const contentType = res.headers.get('content-type') || '';
+        if (contentType.includes('application/json') || res.ok) {
+            return res;
+        }
+    } catch (errLocal) {
+        // Silencia erro do localhost
+    }
+
+    // Fallback relativo se o site estiver sendo servido pelo próprio Node
     try {
         const res = await fetch(endpoint, options);
         const contentType = res.headers.get('content-type') || '';
@@ -10301,7 +10318,7 @@ async function fetchApi(endpoint, options = {}) {
         console.warn(`[VORTEX API] Falha no fallback relativo:`, fallbackErr);
     }
 
-    throw new Error('Servidor de pagamento indisponível. Certifique-se de que o servidor Node.js está rodando (npm start) em http://localhost:3000.');
+    throw new Error('Servidor de pagamento temporariamente indisponível. Tente novamente em instantes.');
 }
 
 export async function generatePixPayment() {
