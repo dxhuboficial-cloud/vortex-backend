@@ -1,0 +1,16 @@
+{
+  "name": "menssagem-vortex-vip",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test tests/app.test.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "firebase": "^12.18.0",
+    "firebase-admin": "^13.1.0"
+  }
+}

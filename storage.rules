@@ -1,0 +1,28 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Permitir posts de usuários autenticados
+    match /posts/{userId}/{allPaths=**} {
+      allow read: if true;
+      allow create, write, delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Permitir upload de avatares
+    match /avatars/{userId}/{allPaths=**} {
+      allow read: if true;
+      allow create, write, delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Permitir stories
+    match /stories/{userId}/{allPaths=**} {
+      allow read: if true;
+      allow create, write, delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Permitir chat files
+    match /chat/{conversationId}/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow create, write, delete: if request.auth != null;
+    }
+  }
+}

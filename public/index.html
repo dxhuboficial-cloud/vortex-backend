@@ -1,0 +1,1823 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>VORTEX VIP - Mensagens em Tempo Real</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E⚡%3C/text%3E%3C/svg%3E">
+    <link rel="stylesheet" href="style.css?v=1.0.49">
+    <!-- SDK Oficial do Mercado Pago v2 -->
+    <script src="https://sdk.mercadopago.com/js/v2"></script>
+    <!-- Ícones Lucide -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+
+    <div class="app-container">
+        <!-- Animação de Raio Neon ao Desbloquear -->
+        <svg id="neon-unlock-anim" class="neon-line-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <path id="neon-path" d="M 1,1 H 99 V 99 H 1 Z" fill="none" stroke="var(--accent-color)" />
+        </svg>
+
+        <!-- Container de Notificações Toast -->
+        <div id="toast-container"></div>
+
+        <!-- Tela de Autenticação / Login Google Obrigatório -->
+        <div id="auth-screen" class="lock-screen">
+            <div class="auth-card">
+                <div class="auth-logo-badge">
+                    <i data-lucide="shield-alert" class="auth-shield-icon"></i>
+                </div>
+                <h2 class="auth-title">VORTEX <span>VIP</span></h2>
+                <p class="auth-subtitle">Rede segura de comunicação em tempo real com criptografia quântica.</p>
+                
+                <button id="google-login-main-btn" class="google-login-btn danger-btn" title="Fazer login com o Google" aria-label="Fazer login com o Google">
+                    <svg width="20" height="20" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2045c0-.6382-.0573-1.2518-.1636-1.8409H9.18v3.4818h4.7918c-.2045 1.125-.8227 2.0782-1.7955 2.7218v2.2582h2.9091c1.7018-1.5664 2.6845-3.8736 2.6845-6.6218z"></path><path fill="#34A853" d="M9.18 18c2.43 0 4.4673-.8045 5.9564-2.1818l-2.9091-2.2582c-.8045.5455-1.8364.8727-2.9927.8727-2.3 0-4.2545-1.5664-4.95-3.6682H1.27v2.3318C2.7255 15.6 5.67 18 9.18 18z"></path><path fill="#FBBC05" d="M4.23 10.7318c-.1636-.4882-.2591-1.0018-.2591-1.5318s.0955-1.0436.2591-1.5318V5.3364H1.27C.4636 6.9318 0 8.4909 0 10.2c0 1.7091.4636 3.2682 1.27 4.8636l2.96-2.3318z"></path><path fill="#EA4335" d="M9.18 3.9818c1.3227 0 2.5091.4545 3.4409 1.3455l2.5818-2.5818C13.6473 1.1 11.61.0001 9.18.0001 5.67.0001 2.7255 2.4 1.27 5.3364L4.23 7.6682c.6955-2.1018 2.65-3.6864 4.95-3.6864z"></path></svg>
+                    <span>Entrar com o Google</span>
+                </button>
+                <div id="auth-loading-msg" class="auth-loading-msg">Conectando ao VORTEX Core...</div>
+            </div>
+        </div>
+
+        <!-- Tela de Bloqueio por PIN -->
+        <div id="lock-screen" class="lock-screen unlocked">
+            <h2 class="lock-title">VORTEX SECURE</h2>
+            <p class="lock-subtitle">Insira seu PIN de acesso</p>
+            
+            <div class="pin-dots" id="pin-dots">
+                <div class="pin-dot"></div>
+                <div class="pin-dot"></div>
+                <div class="pin-dot"></div>
+                <div class="pin-dot"></div>
+            </div>
+
+            <div class="keypad" data-context="main">
+                <div class="key" data-key="1">1</div>
+                <div class="key" data-key="2">2</div>
+                <div class="key" data-key="3">3</div>
+                <div class="key" data-key="4">4</div>
+                <div class="key" data-key="5">5</div>
+                <div class="key" data-key="6">6</div>
+                <div class="key" data-key="7">7</div>
+                <div class="key" data-key="8">8</div>
+                <div class="key" data-key="9">9</div>
+                <div class="key" id="biometric-btn" title="Desbloquear com Biometria" aria-label="Desbloquear com Biometria"><i data-lucide="fingerprint"></i></div>
+                <div class="key" data-key="0">0</div>
+                <div class="key" data-key="clear" title="Apagar dígito" aria-label="Apagar dígito"><i data-lucide="delete"></i></div>
+            </div>
+        </div>
+
+        <!-- Overlay para Alterar PIN -->
+        <div id="set-pin-overlay" class="lock-screen unlocked">
+            <h2 class="lock-title">NOVO PIN</h2>
+            <p class="lock-subtitle">Defina sua nova senha de 4 dígitos</p>
+            
+            <div class="pin-dots" id="set-pin-dots">
+                <div class="pin-dot"></div>
+                <div class="pin-dot"></div>
+                <div class="pin-dot"></div>
+                <div class="pin-dot"></div>
+            </div>
+
+            <div class="keypad" data-context="set">
+                <div class="key" data-key="1">1</div>
+                <div class="key" data-key="2">2</div>
+                <div class="key" data-key="3">3</div>
+                <div class="key" data-key="4">4</div>
+                <div class="key" data-key="5">5</div>
+                <div class="key" data-key="6">6</div>
+                <div class="key" data-key="7">7</div>
+                <div class="key" data-key="8">8</div>
+                <div class="key" data-key="9">9</div>
+                <div class="key dummy-key"></div>
+                <div class="key" data-key="0">0</div>
+                <div class="key" data-key="clear" title="Apagar" aria-label="Apagar"><i data-lucide="delete"></i></div>
+            </div>
+            <button id="close-set-pin-btn" class="close-btn set-pin-cancel-btn" title="Cancelar" aria-label="Cancelar" onclick="window.closeSetPin()">Cancelar</button>
+        </div>
+
+        <!-- Overlay de Visualização Única -->
+        <div id="view-once-overlay" class="lock-screen view-once-screen unlocked" style="display: none;">
+            <img id="view-once-img" class="view-once-img-el" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E" alt="Foto de Visualização Única">
+            <div class="view-once-hint">Toque em qualquer lugar para fechar</div>
+        </div>
+
+        <!-- Header VIP com Botões Interativos -->
+        <header>
+            <h1>VORTEX <span>VIP</span></h1>
+            <div class="header-icons">
+                <div class="header-icon-btn" id="search-trigger" title="Buscar Usuários por @" aria-label="Buscar Usuários por @">
+                    <i data-lucide="search"></i>
+                </div>
+                <div class="header-icon-btn requests-icon-wrapper" id="requests-btn" title="Solicitações de Amizade" aria-label="Solicitações">
+                    <i data-lucide="users"></i>
+                    <span id="requests-badge" class="requests-badge">0</span>
+                </div>
+                <div class="header-icon-btn requests-icon-wrapper" id="notifications-bell-btn" title="Notificações, Avisos e Alertas" aria-label="Notificações">
+                    <i data-lucide="bell"></i>
+                    <span id="notifications-bell-badge" class="requests-badge" style="display: none;">0</span>
+                </div>
+                <div class="header-icon-btn" id="profile-btn" title="Meu Perfil" aria-label="Meu Perfil">
+                    <i data-lucide="user"></i>
+                </div>
+                <div class="header-icon-btn admin-badge-btn" id="admin-panel-btn" title="Painel de Moderação ADM" aria-label="Painel ADM" style="display: none;">
+                    <i data-lucide="shield-alert"></i>
+                    <span id="admin-pending-badge" class="admin-pending-badge" style="display:none;">0</span>
+                </div>
+                <div class="header-icon-btn" id="settings-btn" title="Configurações VIP" aria-label="Configurações VIP">
+                    <i data-lucide="settings"></i>
+                </div>
+            </div>
+        </header>
+
+        <!-- Banner Flutuante de Banimento Temporário (3 Horas) -->
+        <div id="temp-ban-banner" class="temp-ban-banner" style="display: none;">
+            <div class="temp-ban-icon"><i data-lucide="shield-alert"></i></div>
+            <div class="temp-ban-info">
+                <div class="temp-ban-headline">Sua conta foi banida temporalmente você não vai conseguir enviar mensagem curtir ou comentar.</div>
+                <div class="temp-ban-subheadline">Ainda é possível enviar story e publicar post além disso nada mais...</div>
+            </div>
+            <div class="temp-ban-timer-box">
+                <span class="temp-ban-timer-label">Liberada em:</span>
+                <span id="temp-ban-countdown" class="temp-ban-timer-val">03:00:00</span>
+            </div>
+        </div>
+
+        <!-- Banner de Tolerância / Cobrança VIP (7 Dias) -->
+        <div id="vip-grace-banner" class="vip-grace-banner" style="display: none;">
+            <div class="vip-grace-icon"><i data-lucide="alert-triangle"></i></div>
+            <div class="vip-grace-info">
+                <div class="vip-grace-headline">Sua Assinatura VIP Venceu!</div>
+                <div class="vip-grace-subheadline">Período de tolerância: restam <strong id="vip-grace-days-left">7 dias</strong>. Renove por R$ 30,00 para não perder seu Selo de Verificado!</div>
+            </div>
+            <button type="button" id="vip-grace-renew-btn" class="danger-btn vip-grace-renew-btn">Renovar (R$ 30,00)</button>
+        </div>
+
+        <!-- Stories Estilo Instagram VIP -->
+        <div class="stories-container" id="stories-container-list">
+            <div id="user-story-card" class="story-item" data-name="Seu Status" data-status="Online" title="Criar ou ver meu status">
+                <div class="story-ring">
+                    <div id="user-avatar-display" class="avatar" role="img" aria-label="Sua foto de perfil"></div>
+                    <div class="add-story-btn" id="open-post-status" title="Novo Status (24h)" aria-label="Novo Status"><i data-lucide="plus"></i></div>
+                </div>
+                <div class="story-author-tag">
+                    <span id="user-display-name">Seu Status</span>
+                    <i data-lucide="badge-check" id="user-verified-badge" class="verified-badge story-badge-icon" style="display: none;"></i>
+                </div>
+            </div>
+            <div id="dynamic-stories-list"></div>
+        </div>
+
+        <!-- Filtros Rápidos -->
+        <div class="filters">
+            <span class="filter-pill active" data-filter="todos">Todos</span>
+            <span class="filter-pill" data-filter="nao-lidas">Não lidas</span>
+            <span class="filter-pill" data-filter="grupos">Grupos</span>
+            <span class="filter-pill" data-filter="vips">VIPs</span>
+        </div>
+
+        <!-- Lista de Conversas em Tempo Real -->
+        <main class="chat-list" id="chat-conversations-list">
+            <div id="empty-chat-state" class="gallery-empty-state">
+                <i data-lucide="message-square-dashed" class="empty-state-icon"></i>
+                <p>Nenhuma conversa ainda.</p>
+                <small>Toque na lupa para buscar amigos digitando @ e enviar uma solicitação!</small>
+            </div>
+        </main>
+
+        <nav class="bottom-nav" aria-label="Navegação principal">
+            <button type="button" class="bottom-nav-item" id="gallery-btn" title="Galeria de Capturas" aria-label="Galeria de Capturas">
+                <i data-lucide="image"></i>
+                <span>Galeria</span>
+            </button>
+            <button type="button" class="bottom-nav-item" id="feed-btn" title="Feed Reels" aria-label="Feed Reels">
+                <i data-lucide="clapperboard"></i>
+                <span>Feed</span>
+            </button>
+        </nav>
+
+        <!-- Botão Flutuante (Criar Grupo) -->
+        <button class="fab" id="main-fab-btn" aria-label="Criar novo grupo" title="Criar Novo Grupo">
+            <i data-lucide="plus"></i>
+        </button>
+
+        <!-- Story Viewer Overlay Fullscreen -->
+        <div id="story-viewer" class="story-viewer">
+            <div id="story-progress-container" class="story-progress-container"></div>
+            
+            <div class="story-header-overlay">
+                <div class="story-user-info">
+                    <div id="story-viewer-avatar" class="avatar sm"></div>
+                    <div class="story-user-details">
+                        <div class="story-author-tag">
+                            <span id="story-username">Nome</span>
+                            <i data-lucide="badge-check" id="story-verified-badge" class="verified-badge" style="display: none;"></i>
+                        </div>
+                        <span id="story-user-status" class="story-user-status"></span>
+                    </div>
+                </div>
+                <div class="story-header-actions">
+                    <div class="story-action-btn" id="download-story-btn" title="Baixar Mídia do Status" aria-label="Baixar Mídia">
+                        <i data-lucide="download"></i>
+                    </div>
+                    <div class="story-action-btn warning" id="report-story-btn" title="Denunciar Story" aria-label="Denunciar Story" style="display: none;">
+                        <i data-lucide="flag"></i>
+                    </div>
+                    <div class="story-action-btn danger story-delete-btn-hide" id="delete-story-btn" title="Apagar Status" aria-label="Apagar Status">
+                        <i data-lucide="trash-2"></i>
+                    </div>
+                    <div class="story-action-btn" id="close-story" title="Fechar Story" aria-label="Fechar Story">
+                        <i data-lucide="x"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Badge de Música no Story (Instagram/TikTok style) -->
+            <div id="story-music-badge" class="story-music-badge" style="display: none;">
+                <div class="story-music-icon-wrap">
+                    <i data-lucide="disc-3" class="story-music-spinning-disc"></i>
+                </div>
+                <div class="story-music-text-wrap">
+                    <span id="story-music-title" class="story-music-title-text">Música</span>
+                    <span id="story-music-artist" class="story-music-artist-text">Artista</span>
+                </div>
+                <button type="button" id="story-music-mute-btn" class="story-music-mute-btn" title="Mutar/Desmutar som" aria-label="Mutar/Desmutar som">
+                    <i data-lucide="volume-2" id="story-music-mute-icon"></i>
+                </button>
+            </div>
+
+            <div class="story-cube-container">
+                <div id="story-cube" class="story-cube">
+                    <div id="story-caption" class="story-caption"></div>
+                    <div id="story-current-face" class="story-face face-front">
+                        <div class="story-content"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="story-nav">
+                <div id="story-prev" class="nav-area" title="Anterior" aria-label="Story Anterior"></div>
+                <div id="story-next" class="nav-area" title="Próximo" aria-label="Próximo Story"></div>
+            </div>
+
+            <!-- Rodapé do Story -->
+            <div class="story-footer">
+                <!-- Rodapé para o Story do PRÓPRIO usuário (Estilo WhatsApp) -->
+                <div id="own-story-footer" class="own-story-footer">
+                    <div id="story-views-pill-btn" class="story-views-pill" title="Ver quem visualizou em tempo real">
+                        <i data-lucide="chevron-up" class="views-chevron-icon"></i>
+                        <div class="views-pill-info">
+                            <i data-lucide="eye" class="views-eye-icon"></i>
+                            <span id="story-views-count-text">0 visualizações</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rodapé para o Story de OUTROS contatos -->
+                <div id="other-story-footer" class="other-story-footer">
+                    <div class="story-quick-emojis">
+                        <span class="story-emoji-btn" data-emoji="❤️">❤️</span>
+                        <span class="story-emoji-btn" data-emoji="😂">😂</span>
+                        <span class="story-emoji-btn" data-emoji="😮">😮</span>
+                        <span class="story-emoji-btn" data-emoji="😢">😢</span>
+                        <span class="story-emoji-btn" data-emoji="👏">👏</span>
+                        <span class="story-emoji-btn" data-emoji="🔥">🔥</span>
+                    </div>
+                    <div class="reply-area">
+                        <label for="story-reply-input" class="sr-only">Responder ao status</label>
+                        <input type="text" id="story-reply-input" placeholder="Responder (máx 20 letras)..." maxlength="20" title="Responder ao status" aria-label="Responder ao status">
+                        <button id="send-reply-btn" class="icon-btn" aria-label="Enviar resposta" title="Enviar resposta">
+                            <i data-lucide="send"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Janela Deslizante de Visualizações em Tempo Real (Estilo WhatsApp) -->
+            <div id="story-viewers-sheet" class="story-viewers-sheet">
+                <div class="sheet-drag-handle"></div>
+                <div class="sheet-top-header">
+                    <div class="sheet-title-info">
+                        <h3>Visualizações do Status</h3>
+                        <span id="sheet-total-views-badge" class="views-total-badge">
+                            <span class="live-dot-pulse"></span>
+                            <span id="sheet-total-views-text">0 visualizações</span>
+                        </span>
+                    </div>
+                    <div class="sheet-header-actions">
+                        <div class="header-icon-btn danger" id="sheet-delete-story-btn" title="Apagar este Status">
+                            <i data-lucide="trash-2"></i>
+                        </div>
+                        <div class="header-icon-btn" id="close-viewers-sheet-btn" title="Fechar Janela">
+                            <i data-lucide="x"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="viewers-tab-pills">
+                    <button type="button" class="tab-pill-btn active" data-tab="views">
+                        <i data-lucide="eye"></i>
+                        <span>Vistos (<b id="pill-views-count">0</b>)</span>
+                    </button>
+                    <button type="button" class="tab-pill-btn" data-tab="reactions">
+                        <i data-lucide="smile"></i>
+                        <span>Reações (<b id="pill-reactions-count">0</b>)</span>
+                    </button>
+                    <button type="button" class="tab-pill-btn" data-tab="replies">
+                        <i data-lucide="message-square"></i>
+                        <span>Mensagens (<b id="pill-replies-count">0</b>)</span>
+                    </button>
+                </div>
+
+                <div id="viewers-sheet-list" class="viewers-sheet-list"></div>
+            </div>
+        </div>
+
+        <!-- Janela de Chat em Tempo Real -->
+        <div id="chat-window" class="chat-window">
+            <header class="chat-window-header" id="chat-normal-header">
+                <div class="chat-header-left">
+                    <div class="header-icon-btn" id="close-chat" title="Voltar" aria-label="Voltar">
+                        <i data-lucide="arrow-left"></i>
+                    </div>
+                    <div id="chat-window-avatar" class="avatar sm">
+                        <span class="avatar-initial" id="chat-window-avatar-initial"></span>
+                        <span class="online-dot-badge" id="chat-window-online-dot" style="display:none;"></span>
+                    </div>
+                    <div class="chat-window-info">
+                        <span id="chat-window-name">Nome</span>
+                        <span id="chat-window-status" class="status-animated">Online</span>
+                    </div>
+                </div>
+                <div class="header-icons">
+                    <div class="header-icon-btn" id="chat-audio-call-btn" title="Iniciar Chamada de Vídeo VIP" aria-label="Chamada de Vídeo">
+                        <i data-lucide="video"></i>
+                    </div>
+                    <div class="header-icon-btn" id="chat-options-menu-btn" title="Opções da Conversa" aria-label="Opções">
+                        <i data-lucide="more-vertical"></i>
+                    </div>
+                </div>
+
+                <div id="chat-dropdown-menu" class="chat-dropdown-menu">
+                    <div class="dropdown-item" id="enable-multiselect-trigger">
+                        <i data-lucide="check-square"></i>
+                        <span>Selecionar Mensagens</span>
+                    </div>
+                    <div class="dropdown-item" id="chat-pin-trigger">
+                        <i data-lucide="pin" id="chat-pin-icon"></i>
+                        <span id="chat-pin-text">Fixar Conversa</span>
+                    </div>
+                    <div class="dropdown-item" id="clear-chat-trigger">
+                        <i data-lucide="trash"></i>
+                        <span>Limpar Conversa</span>
+                    </div>
+                    <div class="dropdown-item" id="block-contact-trigger">
+                        <i data-lucide="ban" id="block-contact-icon"></i>
+                        <span id="block-contact-text">Bloquear Contato</span>
+                    </div>
+                    <div class="dropdown-item danger-text" id="report-contact-trigger">
+                        <i data-lucide="flag"></i>
+                        <span id="report-contact-text">Denunciar Contato</span>
+                    </div>
+                    <div class="dropdown-item danger-text" id="chat-leave-group-trigger" style="display: none;">
+                        <i data-lucide="log-out"></i>
+                        <span>Sair do Grupo</span>
+                    </div>
+                </div>
+            </header>
+
+            <header class="chat-window-header chat-selection-header" id="chat-selection-header">
+                <div class="chat-header-left">
+                    <div class="header-icon-btn" id="cancel-selection-btn" title="Cancelar Seleção" aria-label="Cancelar Seleção">
+                        <i data-lucide="x"></i>
+                    </div>
+                    <span id="selection-count-text" class="selection-count-title">0 selecionada(s)</span>
+                </div>
+                <div class="header-icons">
+                    <div class="header-icon-btn danger" id="delete-selected-btn" title="Apagar Selecionadas" aria-label="Apagar Selecionadas">
+                        <i data-lucide="trash-2"></i>
+                    </div>
+                </div>
+            </header>
+
+            <div id="chat-blocked-banner" class="chat-blocked-banner" style="display:none;">
+                <div class="chat-blocked-banner-info">
+                    <i data-lucide="shield-alert"></i>
+                    <span id="chat-blocked-banner-text">Você bloqueou este contato.</span>
+                </div>
+                <button type="button" id="unblock-banner-btn" class="unblock-banner-btn">Desbloquear</button>
+            </div>
+
+            <!-- Banner Flutuante de Banimento Temporário no Chat -->
+            <div id="chat-temp-ban-banner" class="temp-ban-banner" style="display:none;">
+                <div class="temp-ban-icon"><i data-lucide="shield-alert"></i></div>
+                <div class="temp-ban-info">
+                    <div class="temp-ban-headline">Sua conta foi banida temporalmente você não vai conseguir enviar mensagem curtir ou comentar.</div>
+                    <div class="temp-ban-subheadline">Ainda é possível enviar story e publicar post além disso nada mais...</div>
+                </div>
+                <div class="temp-ban-timer-box">
+                    <span class="temp-ban-timer-label">Liberada em:</span>
+                    <span id="chat-temp-ban-countdown" class="temp-ban-timer-val">03:00:00</span>
+                </div>
+            </div>
+
+            <div id="message-container" class="message-container"></div>
+
+            <div id="reply-preview-bar" class="reply-preview-bar">
+                <div class="reply-preview-content">
+                    <span id="reply-to-author" class="reply-author">Respondendo...</span>
+                    <p id="reply-to-text" class="reply-snippet">Texto da mensagem...</p>
+                </div>
+                <div class="header-icon-btn" id="cancel-reply-btn" title="Cancelar Resposta" aria-label="Cancelar Resposta">
+                    <i data-lucide="x" class="reply-close-icon"></i>
+                </div>
+            </div>
+
+            <!-- Barra de Prévia de Edição de Mensagem -->
+            <div id="edit-preview-bar" class="reply-preview-bar edit-preview-bar" style="display: none;">
+                <div class="reply-preview-content">
+                    <span id="edit-preview-author" class="reply-author" style="display: flex; align-items: center; gap: 4px;">
+                        <i data-lucide="pencil" style="width: 12px; height: 12px;"></i> Editando mensagem
+                    </span>
+                    <p id="edit-preview-text" class="reply-snippet">Texto da mensagem...</p>
+                </div>
+                <div class="header-icon-btn" id="cancel-edit-btn" title="Cancelar Edição" aria-label="Cancelar Edição">
+                    <i data-lucide="x" class="reply-close-icon"></i>
+                </div>
+            </div>
+
+            <footer class="chat-window-footer">
+                <div class="header-icon-btn" id="attach-btn" title="Anexar Fotos, Vídeos, Músicas ou Arquivos" aria-label="Anexar Arquivo">
+                    <i data-lucide="paperclip"></i>
+                </div>
+                <div class="input-wrapper">
+                    <div id="recording-ui-main" class="recording-ui">
+                        <div class="recording-dot"></div>
+                        <span id="recording-timer-main">00:00</span>
+                        <div id="recording-slide-cancel" class="recording-slide-cancel" title="Arraste para a esquerda para cancelar" aria-label="Deslize para cancelar gravação">
+                            <i data-lucide="chevron-left" class="slide-cancel-arrow"></i>
+                            <span>Deslize para cancelar</span>
+                        </div>
+                    </div>
+                    <label for="chat-input-main" class="sr-only">Digite uma mensagem</label>
+                    <input type="text" id="chat-input-main" placeholder="Digite uma mensagem..." title="Digite uma mensagem" aria-label="Digite uma mensagem">
+                </div>
+                <button id="chat-send-btn-main" class="icon-btn" aria-label="Enviar mensagem ou gravar áudio" title="Enviar / Gravar">
+                    <i data-lucide="mic" id="chat-send-icon"></i>
+                </button>
+            </footer>
+        </div>
+
+        <!-- Barra Flutuante de Reações com Emojis Compacta -->
+        <div id="floating-reaction-bar" class="floating-reaction-bar">
+            <div class="emoji-reaction-pill">
+                <span class="reaction-emoji" data-emoji="👍">👍</span>
+                <span class="reaction-emoji" data-emoji="❤️">❤️</span>
+                <span class="reaction-emoji" data-emoji="😂">😂</span>
+                <span class="reaction-emoji" data-emoji="😮">😮</span>
+                <span class="reaction-emoji" data-emoji="😢">😢</span>
+                <span class="reaction-emoji" data-emoji="🙏">🙏</span>
+                <span class="reaction-emoji" data-emoji="🔥">🔥</span>
+                <span class="reaction-emoji" data-emoji="⚡">⚡</span>
+            </div>
+            <div class="msg-action-divider"></div>
+            <div class="msg-action-icons">
+                <div class="msg-action-item" id="action-copy-btn" title="Copiar Mensagem" aria-label="Copiar" style="display: none;">
+                    <i data-lucide="copy"></i>
+                </div>
+                <div class="msg-action-item" id="action-edit-btn" title="Editar Mensagem" aria-label="Editar" style="display: none;">
+                    <i data-lucide="pencil"></i>
+                </div>
+                <div class="msg-action-item" id="action-info-btn" title="Dados da Mensagem" aria-label="Dados">
+                    <i data-lucide="info"></i>
+                </div>
+                <div class="msg-action-item" id="action-reply-btn" title="Responder">
+                    <i data-lucide="reply"></i>
+                </div>
+                <div class="msg-action-item" id="action-forward-btn" title="Encaminhar">
+                    <i data-lucide="forward"></i>
+                </div>
+                <div class="msg-action-item danger" id="action-delete-btn" title="Apagar">
+                    <i data-lucide="trash-2"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Encaminhar Mensagem -->
+        <div id="forward-modal" class="custom-modal-overlay">
+            <div class="custom-modal-card">
+                <div class="panel-top-bar">
+                    <h2>Encaminhar Mensagem</h2>
+                    <div class="header-icon-btn" id="close-forward-modal" title="Fechar" aria-label="Fechar">
+                        <i data-lucide="x"></i>
+                    </div>
+                </div>
+                <p class="modal-instruction-text">Selecione o contato para quem deseja encaminhar:</p>
+                <div id="forward-contacts-list" class="contacts-selection-list forward-list-height"></div>
+            </div>
+        </div>
+
+        <!-- Modal de Apagar Mensagem -->
+        <div id="delete-message-modal" class="custom-modal-overlay">
+            <div class="custom-modal-card modal-center-align">
+                <h3 class="modal-title">Apagar Mensagem?</h3>
+                <p class="modal-subtitle">Escolha como deseja remover esta mensagem:</p>
+                <div class="modal-actions-col">
+                    <button id="delete-for-everyone-btn" class="danger-btn btn-delete-everyone">Apagar para Todos</button>
+                    <button id="delete-for-me-btn" class="danger-btn btn-delete-me">Apagar para Mim</button>
+                    <button id="cancel-delete-modal-btn" class="close-btn modal-cancel-btn">Cancelar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Confirmação: Limpar Conversa -->
+        <div id="clear-chat-modal" class="custom-modal-overlay">
+            <div class="custom-modal-card modal-center-align">
+                <h3 class="modal-title danger-text">Limpar Conversa?</h3>
+                <p class="modal-subtitle">Isso limpará as mensagens apenas para você. O outro usuário continuará com o histórico dele intacto.</p>
+                <div class="modal-actions-col">
+                    <button id="confirm-clear-chat-btn" class="danger-btn btn-delete-everyone">Limpar Conversa Para Mim</button>
+                    <button id="cancel-clear-chat-btn" class="close-btn modal-cancel-btn">Cancelar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Dados da Mensagem (Quem Visualizou) -->
+        <div id="message-info-modal" class="custom-modal-overlay">
+            <div class="custom-modal-card msg-info-modal-card">
+                <div class="panel-top-bar">
+                    <div class="msg-info-title-box">
+                        <i data-lucide="info" class="msg-info-icon"></i>
+                        <h2>Dados da Mensagem</h2>
+                    </div>
+                    <div class="header-icon-btn" id="close-message-info-modal" title="Fechar" aria-label="Fechar">
+                        <i data-lucide="x"></i>
+                    </div>
+                </div>
+
+                <!-- Prévia da Mensagem -->
+                <div id="message-info-preview" class="msg-info-preview-box">
+                    <div id="msg-info-text" class="msg-info-text">Mensagem</div>
+                    <div id="msg-info-meta" class="msg-info-meta">Enviada</div>
+                </div>
+
+                <!-- Seção: Visualizada por -->
+                <div class="msg-info-section">
+                    <div class="msg-info-section-header">
+                        <div class="msg-info-section-title">
+                            <i data-lucide="check-check" class="seen-icon active" style="color:#00f3ff;"></i>
+                            <span>Lida por</span>
+                        </div>
+                        <span id="msg-info-seen-count" class="msg-info-count-badge">0</span>
+                    </div>
+                    <div id="msg-info-readers-list" class="contacts-selection-list msg-info-list">
+                        <!-- Renderizado dinamicamente -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Confirmação: Bloquear Contato -->
+        <div id="block-contact-modal" class="custom-modal-overlay">
+            <div class="custom-modal-card modal-center-align">
+                <div class="modal-icon-badge danger" id="block-modal-icon-box">
+                    <i data-lucide="shield-alert"></i>
+                </div>
+                <h3 class="modal-title danger-text" id="block-modal-title">Bloquear Contato?</h3>
+                <p class="modal-subtitle" id="block-modal-desc">Contatos bloqueados não poderão lhe enviar mensagens e nem visualizar seus stories no VORTEX.</p>
+                <div class="modal-actions-col">
+                    <button id="confirm-block-contact-btn" class="danger-btn btn-delete-everyone">Bloquear</button>
+                    <button id="cancel-block-contact-btn" class="close-btn modal-cancel-btn">Cancelar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Denúncia de Contato -->
+        <div id="report-contact-modal" class="custom-modal-overlay">
+            <div class="custom-modal-card">
+                <div class="custom-modal-header">
+                    <h3 class="custom-modal-title"><i data-lucide="flag" class="report-header-flag"></i> <span id="report-modal-header-title">Denunciar Contato</span></h3>
+                    <div class="header-icon-btn" id="close-report-modal" title="Fechar" aria-label="Fechar">
+                        <i data-lucide="x"></i>
+                    </div>
+                </div>
+                <p class="modal-instruction-text" id="report-modal-subtitle">Selecione o motivo da denúncia:</p>
+                <div class="report-reasons-list">
+                    <label class="report-reason-item">
+                        <input type="radio" name="report-reason" value="spam" checked>
+                        <span>Spam ou mensagens repetitivas em massa</span>
+                    </label>
+                    <label class="report-reason-item">
+                        <input type="radio" name="report-reason" value="assedio">
+                        <span>Assédio, ofensa ou ameaça</span>
+                    </label>
+                    <label class="report-reason-item">
+                        <input type="radio" name="report-reason" value="inapropriado">
+                        <span>Conteúdo impróprio, explícito ou violência</span>
+                    </label>
+                    <label class="report-reason-item">
+                        <input type="radio" name="report-reason" value="golpe">
+                        <span>Tentativa de golpe, fraude ou conta falsa</span>
+                    </label>
+                    <label class="report-reason-item">
+                        <input type="radio" name="report-reason" value="outro">
+                        <span>Outro motivo</span>
+                    </label>
+                </div>
+                <div class="report-details-box">
+                    <textarea id="report-contact-details" placeholder="Escreva detalhes adicionais (opcional)..." rows="3" maxlength="300"></textarea>
+                </div>
+                <div class="report-block-checkbox-box" id="report-block-option-box">
+                    <label class="report-reason-item checkbox-style">
+                        <input type="checkbox" id="report-also-block-checkbox" checked>
+                        <span>Bloquear este contato também</span>
+                    </label>
+                </div>
+                <div class="modal-actions-col">
+                    <button id="submit-report-contact-btn" class="danger-btn btn-delete-everyone">Enviar Denúncia</button>
+                    <button id="cancel-report-modal-btn" class="close-btn modal-cancel-btn">Cancelar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Seleção de Música (API) -->
+        <div id="music-picker-modal" class="custom-modal-overlay">
+            <div class="custom-modal-card music-picker-card">
+                <div class="custom-modal-header">
+                    <h3 class="custom-modal-title"><i data-lucide="music" style="color: var(--accent-color);"></i> <span>Escolher Música</span></h3>
+                    <div class="header-icon-btn" id="close-music-picker-btn" title="Fechar" aria-label="Fechar">
+                        <i data-lucide="x"></i>
+                    </div>
+                </div>
+
+                <!-- Campo de Busca com Ícone -->
+                <div class="music-search-box">
+                    <i data-lucide="search" class="music-search-icon"></i>
+                    <input type="text" id="music-search-input" class="music-search-input" placeholder="Buscar músicas, artistas ou estilos..." autocomplete="off">
+                    <button type="button" id="music-clear-search-btn" class="music-clear-btn" style="display: none;" title="Limpar busca">
+                        <i data-lucide="x"></i>
+                    </button>
+                </div>
+
+                <!-- Chips Rápidos de Categorias/Gêneros -->
+                <div class="music-genre-chips" id="music-genre-chips">
+                    <button type="button" class="music-chip active" data-genre="trending">🔥 Em Alta</button>
+                    <button type="button" class="music-chip" data-genre="pop">Pop</button>
+                    <button type="button" class="music-chip" data-genre="sertanejo">Sertanejo</button>
+                    <button type="button" class="music-chip" data-genre="funk">Funk</button>
+                    <button type="button" class="music-chip" data-genre="electronic">Eletrônica</button>
+                    <button type="button" class="music-chip" data-genre="rock">Rock</button>
+                    <button type="button" class="music-chip" data-genre="lofi">Lo-Fi</button>
+                    <button type="button" class="music-chip" data-genre="gospel">Gospel</button>
+                    <button type="button" class="music-chip" data-genre="acoustic">Acústico</button>
+                </div>
+
+                <!-- Lista de Resultados de Músicas -->
+                <div id="music-results-container" class="music-results-container">
+                    <div id="music-loading-state" class="music-state-msg" style="display: none;">
+                        <div class="music-spinner"></div>
+                        <span>Buscando trilhas sonoras...</span>
+                    </div>
+                    <div id="music-empty-state" class="music-state-msg" style="display: none;">
+                        <i data-lucide="music-4" style="width: 32px; height: 32px; color: var(--text-dim);"></i>
+                        <span>Nenhuma música encontrada. Tente outra busca!</span>
+                    </div>
+                    <div id="music-tracks-list" class="music-tracks-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Overlay de Chamada de Vídeo WebRTC -->
+        <div id="video-call-overlay" class="video-call-overlay">
+            <video id="remote-webcam-feed" autoplay playsinline class="remote-video"></video>
+            
+            <div class="local-video-pip" id="local-video-wrapper">
+                <video id="local-webcam-feed" autoplay playsinline muted class="local-video"></video>
+            </div>
+
+            <div class="call-header">
+                <span><i data-lucide="lock" class="call-lock-icon"></i> Criptografia Quântica VIP P2P</span>
+            </div>
+
+            <div class="call-user-info" id="call-user-info-box">
+                <div id="call-avatar" class="avatar lg call-pulse-avatar"></div>
+                <h2 id="call-name">Contato</h2>
+                <span id="call-status">Chamando...</span>
+                <span id="call-timer" class="call-timer">00:00</span>
+            </div>
+
+            <div class="call-footer">
+                <div class="call-action-btn" id="mute-mic-btn" title="Silenciar Microfone"><i data-lucide="mic"></i></div>
+                <div class="call-action-btn" id="switch-camera-btn" title="Alternar Câmera"><i data-lucide="refresh-cw"></i></div>
+                <div class="call-action-btn end-call" id="end-call-btn" title="Desligar Chamada"><i data-lucide="phone-off"></i></div>
+            </div>
+        </div>
+
+        <!-- Overlay de Chamada Recebida -->
+        <div id="incoming-call-overlay" class="incoming-call-overlay">
+            <div class="incoming-call-card">
+                <div class="incoming-badge"><i data-lucide="phone-incoming"></i> CHAMADA VIP RECEBIDA</div>
+                <div id="incoming-caller-avatar" class="avatar lg call-pulse-avatar incoming-caller-border"></div>
+                <h2 id="incoming-caller-name" class="incoming-caller-title">Nome</h2>
+                <span id="incoming-caller-username" class="incoming-caller-handle">@username</span>
+                <p class="incoming-caller-desc">Chamada de Vídeo e Áudio P2P Criptografada</p>
+
+                <div class="incoming-actions">
+                    <button id="decline-call-btn" class="call-action-btn end-call" title="Recusar Chamada">
+                        <i data-lucide="phone-off"></i>
+                        <span>Recusar</span>
+                    </button>
+                    <button id="accept-call-btn" class="call-action-btn accept-call" title="Atender Chamada">
+                        <i data-lucide="video"></i>
+                        <span>Atender</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Painel de Anexos -->
+        <div id="attachment-panel" class="attachment-drawer">
+            <div class="attachment-content">
+                <input type="file" id="chat-file-image" accept="image/*" class="hidden-file-input" title="Selecionar imagem" aria-label="Selecionar imagem">
+                <input type="file" id="chat-file-viewonce" accept="image/*" class="hidden-file-input" title="Selecionar foto de visualização única" aria-label="Selecionar foto de visualização única">
+                <input type="file" id="chat-file-video" accept="video/*" class="hidden-file-input" title="Selecionar vídeo" aria-label="Selecionar vídeo">
+                <input type="file" id="chat-file-audio" accept="audio/*,.mp3,.wav,.ogg,.m4a" class="hidden-file-input" title="Selecionar áudio" aria-label="Selecionar áudio">
+                <input type="file" id="chat-file-doc" accept=".pdf,.doc,.docx,.txt,.zip,.apk,.rar,.7z,.xls,.xlsx" class="hidden-file-input" title="Selecionar documento" aria-label="Selecionar documento">
+
+                <div class="attachment-grid">
+                    <label for="chat-file-image" class="attach-item" title="Enviar Foto">
+                        <div class="attach-icon-circle blue"><i data-lucide="image"></i></div>
+                        <span>Foto</span>
+                    </label>
+                    <label for="chat-file-viewonce" class="attach-item" title="Enviar Foto de Visualização Única">
+                        <div class="attach-icon-circle orange"><i data-lucide="eye"></i></div>
+                        <span>Única</span>
+                    </label>
+                    <label for="chat-file-video" class="attach-item" title="Enviar Vídeo">
+                        <div class="attach-icon-circle pink"><i data-lucide="video"></i></div>
+                        <span>Vídeo</span>
+                    </label>
+                    <label for="chat-file-audio" class="attach-item" title="Enviar Música">
+                        <div class="attach-icon-circle yellow"><i data-lucide="music"></i></div>
+                        <span>Música</span>
+                    </label>
+                    <label for="chat-file-doc" class="attach-item" title="Enviar Documento">
+                        <div class="attach-icon-circle purple"><i data-lucide="folder-archive"></i></div>
+                        <span>PDF / APK</span>
+                    </label>
+                    <div class="attach-item" id="chat-attach-poll-btn" title="Criar Enquete" role="button" tabindex="0">
+                        <div class="attach-icon-circle green"><i data-lucide="bar-chart-2"></i></div>
+                        <span>Enquete</span>
+                    </div>
+                </div>
+                <button id="close-attachment-panel" class="close-btn drawer-cancel-btn">Cancelar</button>
+            </div>
+        </div>
+
+        <!-- Painel de Busca de Usuários com @username -->
+        <div id="search-user-panel" class="settings-panel">
+            <div class="panel-top-bar">
+                <div class="header-icon-btn" id="close-search-panel" title="Voltar" aria-label="Voltar">
+                    <i data-lucide="arrow-left"></i>
+                </div>
+                <h2>Buscar no VORTEX</h2>
+            </div>
+            <div class="search-bar-box">
+                <i data-lucide="search" class="search-box-icon"></i>
+                <input type="text" id="search-user-input" placeholder="Buscar por @username ou nome..." title="Buscar por @username" aria-label="Buscar por @username">
+            </div>
+            <div class="settings-content">
+                <div id="search-results-container"></div>
+            </div>
+        </div>
+
+        <!-- Painel de Solicitações de Amizade em Tempo Real -->
+        <div id="requests-panel" class="settings-panel">
+            <div class="panel-top-bar">
+                <div class="header-icon-btn" id="close-requests-panel" title="Voltar" aria-label="Voltar">
+                    <i data-lucide="arrow-left"></i>
+                </div>
+                <h2>Solicitações de Contato</h2>
+            </div>
+            <div class="settings-content">
+                <div id="requests-list-container"></div>
+            </div>
+        </div>
+
+        <!-- Painel de Edição de Perfil Completo -->
+        <div id="profile-edit-panel" class="settings-panel">
+            <div class="panel-top-bar">
+                <div class="header-icon-btn" id="close-profile-edit" title="Voltar" aria-label="Voltar">
+                    <i data-lucide="arrow-left"></i>
+                </div>
+                <h2>Editar Perfil VIP</h2>
+            </div>
+            <div class="settings-content">
+                <div class="profile-avatar-edit-box">
+                    <div id="profile-edit-avatar-preview" class="avatar lg profile-avatar-border profile-clickable-avatar" title="Toque para alterar a foto" role="button" tabindex="0" aria-label="Alterar foto de perfil">
+                        <div class="avatar-camera-badge"><i data-lucide="camera"></i></div>
+                    </div>
+                    <input type="file" id="profile-file-input" accept="image/*" class="hidden-file-input" title="Foto de Perfil Arquivo" aria-label="Foto de Perfil Arquivo">
+                    <label for="profile-file-input" class="danger-btn change-avatar-btn" id="change-avatar-btn-label"><i data-lucide="camera" style="width:16px;height:16px;margin-right:6px;"></i> Alterar Foto</label>
+                </div>
+
+                <div class="setting-item">
+                    <label for="profile-name-input" class="setting-info"><span>Nome</span></label>
+                    <input type="text" id="profile-name-input" placeholder="Seu Nome" title="Nome">
+                </div>
+
+                <div class="setting-item">
+                    <label for="profile-lastname-input" class="setting-info"><span>Sobrenome</span></label>
+                    <input type="text" id="profile-lastname-input" placeholder="Sobrenome" title="Sobrenome">
+                </div>
+
+                <div class="setting-item">
+                    <label for="profile-username-input" class="setting-info"><span>Nome de Usuário (@)</span><small>Exclusivo para buscas</small></label>
+                    <input type="text" id="profile-username-input" placeholder="username" title="Use apenas letras, números, ponto e sublinhado" aria-describedby="profile-username-help" required minlength="3" maxlength="30" pattern="[A-Za-z0-9_.]+" autocomplete="username">
+                </div>
+
+                <div class="setting-item">
+                    <label for="profile-status-input" class="setting-info"><span>Recado / Bio</span></label>
+                    <input type="text" id="profile-status-input" placeholder="Online no VORTEX" title="Bio">
+                </div>
+
+                <button id="save-profile-btn" class="danger-btn save-profile-action-btn">Salvar Perfil</button>
+            </div>
+        </div>
+
+        <!-- Painel de Postar Status (24h) -->
+        <div id="post-status-overlay" class="settings-panel">
+            <div class="panel-top-bar">
+                <div class="header-icon-btn" id="close-post-status" title="Voltar" aria-label="Voltar">
+                    <i data-lucide="arrow-left"></i>
+                </div>
+                <h2>Postar Status VIP (24h)</h2>
+            </div>
+            <div class="settings-content">
+                <div class="setting-item">
+                    <label for="status-caption-input" class="setting-info"><span>Legenda</span></label>
+                    <input type="text" id="status-caption-input" placeholder="O que está acontecendo?" title="Legenda do Status">
+                </div>
+                <div class="setting-item">
+                    <label class="setting-info"><span>Foto ou Vídeo (até 15s)</span></label>
+                    <input type="file" id="status-file-input" accept="image/*,video/*" class="hidden-file-input" title="Selecionar mídia" aria-label="Selecionar mídia">
+                    <label for="status-file-input" class="danger-btn choose-media-btn" id="choose-status-media-label">Escolher Mídia</label>
+                </div>
+                <div class="setting-item music-setting-item">
+                    <label class="setting-info"><span>Trilha Sonora (Música)</span></label>
+                    <button type="button" id="status-add-music-btn" class="choose-music-trigger-btn">
+                        <i data-lucide="music"></i> <span>Adicionar Música</span>
+                    </button>
+                    <div id="status-selected-music-card" class="composer-selected-music-card" style="display: none;">
+                        <img id="status-selected-music-cover" src="" alt="Capa" class="music-card-cover">
+                        <div class="music-card-details">
+                            <div id="status-selected-music-title" class="music-card-title">Título</div>
+                            <div id="status-selected-music-artist" class="music-card-artist">Artista</div>
+                        </div>
+                        <div class="music-card-actions">
+                            <button type="button" id="status-preview-music-btn" class="music-preview-toggle-btn" title="Ouvir prévia">
+                                <i data-lucide="play" id="status-preview-music-icon"></i>
+                            </button>
+                            <button type="button" id="status-remove-music-btn" class="music-remove-btn" title="Remover música">
+                                <i data-lucide="x"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <button id="publish-status-btn" class="danger-btn publish-status-action-btn">Publicar Status</button>
+            </div>
+        </div>
+
+        <!-- Painel de Criar Grupo -->
+        <div id="create-group-panel" class="settings-panel">
+            <div class="panel-top-bar">
+                <div class="header-icon-btn" id="close-create-group" title="Voltar" aria-label="Voltar">
+                    <i data-lucide="arrow-left"></i>
+                </div>
+                <h2>Criar Novo Grupo</h2>
+            </div>
+            <div class="settings-content">
+                <div class="setting-item">
+                    <label for="group-name-input" class="setting-info"><span>Nome do Grupo</span></label>
+                    <input type="text" id="group-name-input" placeholder="Ex: Projeto VORTEX">
+                </div>
+                <div class="setting-item">
+                    <label for="group-desc-input" class="setting-info"><span>Descrição</span></label>
+                    <input type="text" id="group-desc-input" placeholder="Finalidade do grupo">
+                </div>
+                <div class="setting-item group-members-wrapper">
+                    <label class="setting-info"><span>Adicionar Membros</span><small>Selecione dos seus contatos</small></label>
+                    <div id="contacts-selection-list" class="contacts-selection-list"></div>
+                </div>
+                <button id="confirm-create-group" class="danger-btn confirm-group-action-btn">Criar Grupo</button>
+            </div>
+        </div>
+
+        <div id="group-profile-panel" class="settings-panel">
+            <div class="panel-top-bar">
+                <div class="header-icon-btn" id="close-group-profile" title="Voltar" aria-label="Voltar">
+                    <i data-lucide="arrow-left"></i>
+                </div>
+                <h2>Perfil do Grupo</h2>
+            </div>
+            <div class="settings-content group-profile-content">
+                <div id="group-profile-avatar" class="avatar lg group-profile-avatar"></div>
+                <input type="file" id="group-avatar-input" accept="image/*" class="hidden-file-input" title="Escolher imagem do grupo" aria-label="Escolher imagem do grupo">
+                <label for="group-avatar-input" id="group-avatar-input-label" class="danger-btn group-avatar-change-btn">Alterar imagem</label>
+                <h3 id="group-profile-title">Grupo</h3>
+                <p id="group-profile-member-count" class="group-profile-member-count"></p>
+
+                <div id="group-admin-fields" class="group-admin-fields">
+                    <div class="setting-item">
+                        <label for="group-profile-name" class="setting-info"><span>Nome do grupo</span></label>
+                        <input type="text" id="group-profile-name" maxlength="60">
+                    </div>
+                    <div class="setting-item">
+                        <label for="group-profile-description" class="setting-info"><span>Descrição</span></label>
+                        <input type="text" id="group-profile-description" maxlength="120">
+                    </div>
+                    <button id="save-group-profile" class="danger-btn">Salvar alterações</button>
+                    <button id="toggle-group-pause" class="group-action-btn" type="button" title="Pausar ou despausar grupo">Pausar grupo</button>
+                    <div class="group-add-member-box">
+                        <label for="group-add-member-select" class="setting-info"><span>Adicionar membro</span><small>Escolha um contato para entrar no grupo</small></label>
+                        <select id="group-add-member-select" title="Selecionar contato para adicionar">
+                            <option value="">Selecione um contato</option>
+                        </select>
+                        <button id="add-group-member-btn" class="group-action-btn" type="button" title="Adicionar membro">Adicionar membro</button>
+                    </div>
+                </div>
+
+                <div class="group-members-section">
+                    <h3>Membros selecionados</h3>
+                    <div id="group-profile-members" class="contacts-selection-list"></div>
+                </div>
+
+                <button id="report-group-btn" class="group-action-btn" type="button">
+                    <i data-lucide="flag"></i><span>Denunciar grupo</span>
+                </button>
+                <button id="leave-group-btn" class="group-action-btn group-danger-action" type="button">
+                    <i data-lucide="log-out"></i><span>Sair do grupo</span>
+                </button>
+                <button id="delete-group-profile-btn" class="group-action-btn group-danger-action" type="button">
+                    <i data-lucide="trash-2"></i><span>Apagar grupo</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Painel de Configurações VIP -->
+        <div id="settings-panel" class="settings-panel">
+            <h3 class="settings-title-header">Configurações VIP</h3>
+            
+            <div class="settings-content">
+                <div class="setting-item vip-card-highlight">
+                    <div class="setting-info">
+                        <span class="vip-highlight-text">Selo de Verificado VIP</span>
+                        <small id="vip-setting-desc">R$ 30,00 / mês • Selo verificado ⭐ e recursos exclusivos</small>
+                    </div>
+                    <button id="subscribe-btn" class="danger-btn vip-action-btn">Assinar</button>
+                </div>
+
+                <div class="setting-item admin-setting-row" id="admin-settings-item" style="display: none;">
+                    <div class="setting-info">
+                        <span class="admin-setting-label"><i data-lucide="shield-alert" class="admin-inline-shield"></i> Painel de Administração ADM</span>
+                        <small>Gerenciar denúncias, banir usuários e moderar conteúdo</small>
+                    </div>
+                    <button id="open-admin-from-settings-btn" type="button" class="danger-btn admin-open-btn">Abrir ADM</button>
+                </div>
+
+                <div class="setting-item">
+                    <label for="sound-toggle" class="setting-info">
+                        <span>Sons da Interface</span>
+                        <small>Feedback sonoro em tempo real</small>
+                    </label>
+                    <label class="switch">
+                        <input type="checkbox" id="sound-toggle" checked title="Sons">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="setting-item">
+                    <label for="ghost-toggle" class="setting-info">
+                        <span>Modo Fantasma</span>
+                        <small>Esconder presença online</small>
+                    </label>
+                    <label class="switch">
+                        <input type="checkbox" id="ghost-toggle" title="Modo Fantasma">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="setting-item">
+                    <label for="privacy-toggle" class="setting-info">
+                        <span>Privacidade Máxima</span>
+                        <small>Borrar mensagens até passar o mouse</small>
+                    </label>
+                    <label class="switch">
+                        <input type="checkbox" id="privacy-toggle" title="Privacidade">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="setting-item">
+                    <label for="pin-toggle" class="setting-info">
+                        <span>Bloqueio por PIN</span>
+                        <small>Exigir senha de 4 dígitos</small>
+                    </label>
+                    <div class="pin-setting-actions">
+                        <button id="change-pin-btn" type="button" class="danger-btn pin-alter-btn">Alterar</button>
+                        <label class="switch">
+                            <input type="checkbox" id="pin-toggle" title="PIN">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <label for="theme-toggle" class="setting-info">
+                        <span>Tema Glassmorphism</span>
+                        <small>Translúcido Futurista vs Total Black</small>
+                    </label>
+                    <label class="switch">
+                        <input type="checkbox" id="theme-toggle" checked title="Tema">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <span>Cor Neon do App</span>
+                        <small>Sincronizada em tempo real</small>
+                    </div>
+                    <div class="color-picker">
+                        <div class="color-option color-cyan" data-color="#00f5ff" title="Ciano"></div>
+                        <div class="color-option color-green" data-color="#39ff14" title="Verde"></div>
+                        <div class="color-option color-magenta" data-color="#ff00ff" title="Magenta"></div>
+                        <div class="color-option color-yellow active" data-color="#fff01f" title="Amarelo"></div>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <span>Encerrar Sessão</span>
+                        <small>Sair da sua conta Google</small>
+                    </div>
+                    <button id="signout-btn" class="danger-btn signout-action-btn">Sair</button>
+                </div>
+
+                <button id="close-settings" class="close-btn drawer-cancel-btn">Voltar</button>
+            </div>
+        </div>
+
+        <!-- Painel de Notificações, Avisos e Alertas VIP -->
+        <div id="notifications-panel" class="settings-panel">
+            <div class="notifications-panel-header">
+                <div class="notifications-header-title">
+                    <div class="notifications-bell-icon-wrap"><i data-lucide="bell"></i></div>
+                    <div>
+                        <h3 class="notif-panel-title">Notificações & Alertas</h3>
+                        <span class="notif-panel-subtitle">Avisos oficiais da plataforma VORTEX VIP</span>
+                    </div>
+                </div>
+                <div class="notifications-header-actions">
+                    <button type="button" id="clear-all-notifications-btn" class="notif-clear-btn" title="Limpar todas as notificações">Limpar</button>
+                    <button type="button" id="close-notifications-btn" class="close-btn drawer-cancel-btn notif-close-icon" title="Fechar">&times;</button>
+                </div>
+            </div>
+
+            <!-- Filtros Rápidos -->
+            <div class="notifications-filter-tabs">
+                <button type="button" class="notif-filter-pill active" data-notif-filter="all">Todas</button>
+                <button type="button" class="notif-filter-pill" data-notif-filter="vip">Selo VIP ⭐</button>
+                <button type="button" class="notif-filter-pill" data-notif-filter="warning">Avisos ⚠️</button>
+                <button type="button" class="notif-filter-pill" data-notif-filter="alert">Alertas 🔴</button>
+            </div>
+
+            <div id="notifications-list" class="notifications-list">
+                <div class="admin-empty-state">
+                    <i data-lucide="bell-off" class="empty-state-icon"></i>
+                    <p>Nenhuma notificação no momento.</p>
+                    <small>Você receberá aqui avisos ⚠️, alertas da plataforma 🔴 e a aprovação do seu Selo VIP ⭐.</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Painel de Administração e Moderação VIP -->
+        <div id="admin-panel" class="settings-panel admin-panel-fullscreen">
+            <div class="admin-panel-header">
+                <div class="admin-header-title-box">
+                    <div class="admin-shield-icon"><i data-lucide="shield-alert"></i></div>
+                    <div>
+                        <h2 class="admin-panel-title">Painel de Moderação ADM</h2>
+                        <span class="admin-panel-subtitle">VORTEX VIP Security & Moderation Console</span>
+                    </div>
+                </div>
+                <button type="button" id="close-admin-panel" class="admin-close-icon" title="Fechar Painel ADM" aria-label="Fechar Painel ADM">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Abas de Navegação do Painel ADM -->
+            <div class="admin-tabs-bar">
+                <button type="button" class="admin-tab-btn active" data-tab="reports" id="admin-tab-reports-btn">
+                    <i data-lucide="flag"></i>
+                    <span>Denúncias</span>
+                    <span id="admin-reports-badge" class="admin-tab-badge">0</span>
+                </button>
+                <button type="button" class="admin-tab-btn" data-tab="users" id="admin-tab-users-btn">
+                    <i data-lucide="users"></i>
+                    <span>Usuários</span>
+                </button>
+                <button type="button" class="admin-tab-btn" data-tab="posts" id="admin-tab-posts-btn">
+                    <i data-lucide="film"></i>
+                    <span>Posts & Feed</span>
+                </button>
+                <button type="button" class="admin-tab-btn" data-tab="groups" id="admin-tab-groups-btn">
+                    <i data-lucide="message-square"></i>
+                    <span>Grupos</span>
+                </button>
+                <button type="button" class="admin-tab-btn" data-tab="vip-requests" id="admin-tab-vip-requests-btn">
+                    <i data-lucide="badge-check"></i>
+                    <span>Solicitações VIP</span>
+                    <span id="admin-vip-badge" class="admin-tab-badge" style="display: none;">0</span>
+                </button>
+                <button type="button" class="admin-tab-btn" data-tab="broadcast" id="admin-tab-broadcast-btn">
+                    <i data-lucide="megaphone"></i>
+                    <span>Enviar Alertas</span>
+                </button>
+            </div>
+
+            <!-- Conteúdo das Abas -->
+            <div class="admin-views-container">
+                <!-- 1. Aba de Denúncias -->
+                <div id="admin-view-reports" class="admin-view active">
+                    <div class="admin-filter-bar">
+                        <div class="admin-search-wrapper">
+                            <i data-lucide="search"></i>
+                            <input type="text" id="admin-reports-search-input" placeholder="Buscar denúncia por usuário ou motivo..." aria-label="Buscar denúncias">
+                        </div>
+                        <div class="admin-status-filters">
+                            <button type="button" class="admin-pill active" data-filter="all">Todas</button>
+                            <button type="button" class="admin-pill" data-filter="pending">Pendentes</button>
+                            <button type="button" class="admin-pill" data-filter="resolved">Resolvidas</button>
+                        </div>
+                    </div>
+                    <div id="admin-reports-list" class="admin-cards-list">
+                        <div class="admin-empty-state">
+                            <i data-lucide="shield-check" class="empty-state-icon"></i>
+                            <p>Nenhuma denúncia encontrada.</p>
+                            <small>Todas as denúncias enviadas pelos usuários aparecerão aqui em tempo real.</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Aba de Usuários -->
+                <div id="admin-view-users" class="admin-view">
+                    <div class="admin-filter-bar">
+                        <div class="admin-search-wrapper">
+                            <i data-lucide="search"></i>
+                            <input type="text" id="admin-users-search-input" placeholder="Buscar usuário por nome, @username ou UID..." aria-label="Buscar usuários">
+                        </div>
+                    </div>
+                    <div id="admin-users-list" class="admin-cards-list">
+                        <div class="admin-empty-state">
+                            <i data-lucide="users" class="empty-state-icon"></i>
+                            <p>Carregando usuários...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Aba de Publicações / Posts -->
+                <div id="admin-view-posts" class="admin-view">
+                    <div class="admin-filter-bar">
+                        <div class="admin-search-wrapper">
+                            <i data-lucide="search"></i>
+                            <input type="text" id="admin-posts-search-input" placeholder="Buscar posts por autor ou legenda..." aria-label="Buscar posts">
+                        </div>
+                    </div>
+                    <div id="admin-posts-list" class="admin-cards-list">
+                        <div class="admin-empty-state">
+                            <i data-lucide="film" class="empty-state-icon"></i>
+                            <p>Nenhuma publicação encontrada.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. Aba de Grupos -->
+                <div id="admin-view-groups" class="admin-view">
+                    <div class="admin-filter-bar">
+                        <div class="admin-search-wrapper">
+                            <i data-lucide="search"></i>
+                            <input type="text" id="admin-groups-search-input" placeholder="Buscar grupo por nome ou criador..." aria-label="Buscar grupos">
+                        </div>
+                    </div>
+                    <div id="admin-groups-list" class="admin-cards-list">
+                        <div class="admin-empty-state">
+                            <i data-lucide="message-square" class="empty-state-icon"></i>
+                            <p>Nenhum grupo encontrado.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. Aba de Solicitações VIP -->
+                <div id="admin-view-vip-requests" class="admin-view">
+                    <div class="admin-filter-bar">
+                        <div class="admin-search-wrapper">
+                            <i data-lucide="search"></i>
+                            <input type="text" id="admin-vip-search-input" placeholder="Buscar solicitação por usuário ou e-mail..." aria-label="Buscar solicitações VIP">
+                        </div>
+                        <div class="admin-status-filters">
+                            <button type="button" class="admin-vip-pill active" data-vip-filter="all">Todas</button>
+                            <button type="button" class="admin-vip-pill" data-vip-filter="pending">Em Análise</button>
+                            <button type="button" class="admin-vip-pill" data-vip-filter="approved">Aprovadas</button>
+                            <button type="button" class="admin-vip-pill" data-vip-filter="rejected">Rejeitadas</button>
+                        </div>
+                    </div>
+                    <div id="admin-vip-requests-list" class="admin-cards-list">
+                        <div class="admin-empty-state">
+                            <i data-lucide="badge-check" class="empty-state-icon"></i>
+                            <p>Nenhuma solicitação VIP encontrada.</p>
+                            <small>Quando os usuários clicarem em "Assinar", as solicitações aparecerão aqui para aprovação.</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 6. Aba de Envio de Avisos e Alertas da Plataforma -->
+                <div id="admin-view-broadcast" class="admin-view">
+                    <div class="admin-broadcast-container">
+                        <div class="admin-broadcast-card">
+                            <div class="admin-broadcast-header">
+                                <div class="admin-broadcast-icon-box">
+                                    <i data-lucide="megaphone" class="broadcast-icon"></i>
+                                </div>
+                                <div>
+                                    <h4 class="broadcast-title">Emitir Novo Aviso ou Alerta da Plataforma</h4>
+                                    <p class="broadcast-subtitle">Envie avisos ⚠️ e alertas 🔴 diretamente para o sino de notificações dos usuários.</p>
+                                </div>
+                            </div>
+
+                            <div class="broadcast-form">
+                                <div class="broadcast-field-row">
+                                    <label class="broadcast-label">Tipo de Notificação:</label>
+                                    <div class="broadcast-type-selector">
+                                        <label class="broadcast-type-opt warning-opt">
+                                            <input type="radio" name="broadcast-type" value="warning" checked>
+                                            <span class="broadcast-type-badge warning-badge">⚠️ Aviso da Plataforma</span>
+                                        </label>
+                                        <label class="broadcast-type-opt alert-opt">
+                                            <input type="radio" name="broadcast-type" value="alert">
+                                            <span class="broadcast-type-badge alert-badge">🔴 Alerta Urgente</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div class="broadcast-field-row">
+                                    <label for="broadcast-recipient-select" class="broadcast-label">Destinatário:</label>
+                                    <select id="broadcast-recipient-select" class="broadcast-select">
+                                        <option value="all">📢 Todos os Usuários (Transmissão Geral)</option>
+                                    </select>
+                                </div>
+
+                                <div class="broadcast-field-row">
+                                    <label for="broadcast-title-input" class="broadcast-label">Título do Comunicado:</label>
+                                    <input type="text" id="broadcast-title-input" class="broadcast-input" placeholder="Ex: Aviso de Manutenção ou Alerta Importante" maxlength="80">
+                                </div>
+
+                                <div class="broadcast-field-row">
+                                    <label for="broadcast-message-input" class="broadcast-label">Mensagem:</label>
+                                    <textarea id="broadcast-message-input" class="broadcast-textarea" placeholder="Digite aqui o comunicado oficial que aparecerá no sino de notificações dos usuários..." rows="4" maxlength="500"></textarea>
+                                </div>
+
+                                <div class="broadcast-actions">
+                                    <button type="button" id="admin-send-broadcast-btn" class="danger-btn broadcast-submit-btn">
+                                        <i data-lucide="send"></i> Disparar Comunicado
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Histórico de Avisos e Alertas Enviados -->
+                        <div class="admin-broadcast-history">
+                            <h4 class="broadcast-history-title"><i data-lucide="history"></i> Comunicados Recentes da Plataforma</h4>
+                            <div id="admin-broadcast-history-list" class="broadcast-history-list">
+                                <div class="admin-empty-state">
+                                    <i data-lucide="inbox" class="empty-state-icon"></i>
+                                    <p>Nenhum comunicado enviado recentemente.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Confirmação: Banir Usuário (Bloqueio Total) -->
+        <div id="admin-ban-modal" class="custom-modal-overlay">
+            <div class="custom-modal-card modal-center-align">
+                <div class="modal-icon-badge danger">
+                    <i data-lucide="user-x"></i>
+                </div>
+                <h3 class="modal-title danger-text" id="admin-ban-modal-title">Banir Usuário?</h3>
+                <p class="modal-subtitle" id="admin-ban-modal-desc">Este usuário será desconectado e impedido de usar a plataforma VORTEX VIP.</p>
+                <div class="report-details-box">
+                    <input type="text" id="admin-ban-reason-input" placeholder="Motivo do banimento (ex: Violação dos Termos, Spam, etc.)" style="width: 100%; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 10px; color: #fff; box-sizing: border-box; font-size: 0.82rem; outline: none; margin-bottom: 12px;">
+                </div>
+                <div class="modal-actions-col">
+                    <button id="admin-confirm-ban-btn" class="danger-btn btn-delete-everyone">Confirmar Banimento</button>
+                    <button id="admin-cancel-ban-btn" class="close-btn modal-cancel-btn">Cancelar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Confirmação: Restringir Usuário (Botão de Restrição - 3 Horas) -->
+        <div id="admin-restrict-modal" class="custom-modal-overlay">
+            <div class="custom-modal-card modal-center-align">
+                <div class="modal-icon-badge danger">
+                    <i data-lucide="clock"></i>
+                </div>
+                <h3 class="modal-title danger-text" id="admin-restrict-modal-title">Restringir Usuário (3 Horas)?</h3>
+                <p class="modal-subtitle" id="admin-restrict-modal-desc">O usuário receberá uma restrição temporal de 3:00 horas: não vai conseguir enviar mensagem, curtir ou comentar. Ainda é possível enviar story e publicar post.</p>
+                <div class="report-details-box">
+                    <input type="text" id="admin-restrict-reason-input" value="Sua conta foi banida temporalmente você não vai conseguir enviar mensagem curtir ou comentar. Ainda é possível enviar story e publicar post além disso nada mais..." placeholder="Motivo da restrição temporal" style="width: 100%; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 10px; color: #fff; box-sizing: border-box; font-size: 0.82rem; outline: none; margin-bottom: 12px;">
+                </div>
+                <div class="modal-actions-col">
+                    <button id="admin-confirm-restrict-btn" class="danger-btn btn-delete-everyone">Confirmar Restrição (3 Horas)</button>
+                    <button id="admin-cancel-restrict-btn" class="close-btn modal-cancel-btn">Cancelar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Confirmação: Excluir Tudo da Conta do Infrator (Purge) -->
+        <div id="admin-purge-modal" class="custom-modal-overlay">
+            <div class="custom-modal-card modal-center-align">
+                <div class="modal-icon-badge danger">
+                    <i data-lucide="trash-2"></i>
+                </div>
+                <h3 class="modal-title danger-text" id="admin-purge-modal-title">Excluir Tudo da Conta?</h3>
+                <p class="modal-subtitle" id="admin-purge-modal-desc" style="color: #ff6b6b; font-weight:600;">Esta ação é IRREVERSÍVEL. Todas as postagens no feed, stories e grupos criados por este usuário serão apagados imediatamente do sistema.</p>
+                <div class="modal-actions-col">
+                    <button id="admin-confirm-purge-btn" class="danger-btn btn-delete-everyone">Sim, Excluir Todo Conteúdo</button>
+                    <button id="admin-cancel-purge-btn" class="close-btn modal-cancel-btn">Cancelar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Informativo: Aviso de Restrição Temporária (3 Horas) -->
+        <div id="temp-ban-notice-modal" class="custom-modal-overlay">
+            <div class="custom-modal-card modal-center-align">
+                <div class="modal-icon-badge danger">
+                    <i data-lucide="shield-alert"></i>
+                </div>
+                <h3 class="modal-title danger-text">Aviso de Restrição</h3>
+                <p class="modal-subtitle" style="color: #ffcccc; font-weight: 500; font-size: 0.88rem; line-height: 1.4;">
+                    Sua conta foi banida temporalmente você não vai conseguir enviar mensagem curtir ou comentar.
+                    <br><br>
+                    <strong>Ainda é possível enviar story e publicar post além disso nada mais...</strong>
+                </p>
+                <div class="temp-ban-timer-box" style="margin: 14px 0; width: 100%;">
+                    <span class="temp-ban-timer-label">Prazo restante:</span>
+                    <span id="modal-temp-ban-countdown" class="temp-ban-timer-val" style="font-size: 1.25rem;">03:00:00</span>
+                </div>
+                <div class="modal-actions-col">
+                    <button id="close-temp-ban-notice-btn" type="button" class="danger-btn btn-delete-everyone">Entendi (Usar Stories/Feed)</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tela de Bloqueio: Conta Banida (Bloqueio Total) -->
+        <div id="banned-account-overlay" class="banned-account-overlay" style="display: none;">
+            <div class="banned-card-content">
+                <div class="banned-icon-box">
+                    <i data-lucide="shield-ban"></i>
+                </div>
+                <h2 class="banned-title">Acesso Bloqueado</h2>
+                <p class="banned-message" id="banned-account-reason">Sua conta foi suspensa por violar as regras da comunidade VORTEX VIP.</p>
+                <p class="banned-submessage">Se você acredita que isso foi um engano, entre em contato com a administração da plataforma.</p>
+                <button type="button" id="banned-logout-btn" class="danger-btn banned-exit-btn">Encerrar Sessão</button>
+            </div>
+        </div>
+
+        <!-- Tela de Publicação -->
+        <div id="screenshot-gallery-overlay" class="screenshot-gallery-overlay">
+            <div class="gallery-header">
+                <button type="button" id="close-gallery-btn" class="gallery-back-icon" title="Voltar" aria-label="Voltar">
+                    <i data-lucide="arrow-left"></i>
+                </button>
+                <h3 class="post-creator-title">Nova Postagem</h3>
+                <button id="publish-post-btn" class="post-publish-btn" type="button">Publicar</button>
+            </div>
+
+            <div class="post-composer">
+                <div class="post-media-box">
+                    <input type="file" id="post-media-input" accept="image/*,video/*" class="hidden-file-input" aria-label="Escolher foto ou vídeo">
+                    <label for="post-media-input" class="post-media-trigger">
+                        <i data-lucide="image-plus"></i>
+                        <span>Escolher foto ou vídeo</span>
+                    </label>
+
+                    <div id="post-preview-box" class="post-preview-box hidden">
+                        <button id="remove-post-media-btn" class="post-remove-btn" type="button" title="Remover mídia">
+                            <i data-lucide="x"></i>
+                        </button>
+                        <div id="post-preview" class="post-preview"></div>
+                    </div>
+                </div>
+
+                <div class="post-music-section">
+                    <button type="button" id="post-add-music-btn" class="choose-music-trigger-btn">
+                        <i data-lucide="music"></i> <span>Adicionar Música ao Post</span>
+                    </button>
+                    <div id="post-selected-music-card" class="composer-selected-music-card" style="display: none;">
+                        <img id="post-selected-music-cover" src="" alt="Capa" class="music-card-cover">
+                        <div class="music-card-details">
+                            <div id="post-selected-music-title" class="music-card-title">Título</div>
+                            <div id="post-selected-music-artist" class="music-card-artist">Artista</div>
+                        </div>
+                        <div class="music-card-actions">
+                            <button type="button" id="post-preview-music-btn" class="music-preview-toggle-btn" title="Ouvir prévia">
+                                <i data-lucide="play" id="post-preview-music-icon"></i>
+                            </button>
+                            <button type="button" id="post-remove-music-btn" class="music-remove-btn" title="Remover música">
+                                <i data-lucide="x"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="post-caption-wrap">
+                    <label for="post-caption-input" class="post-caption-label">Legenda</label>
+                    <textarea id="post-caption-input" rows="4" placeholder="Escreva algo incrível..."></textarea>
+                </div>
+            </div>
+
+            <div class="posts-feed-section">
+                <div class="posts-feed-header">
+                    <span>Publicações Recentes</span>
+                </div>
+                <div id="posts-feed-list" class="posts-feed-list"></div>
+            </div>
+
+        </div>
+
+        <!-- Feed Social em Tela Própria -->
+        <div id="feed-overlay" class="feed-overlay">
+            <div class="gallery-header">
+                <button type="button" id="close-feed-btn" class="gallery-back-icon" title="Voltar" aria-label="Voltar">
+                    <i data-lucide="arrow-left"></i>
+                </button>
+                <div style="display:flex; flex-direction:column; align-items:center;">
+                    <h3 class="post-creator-title">Feed Reels</h3>
+                    <span id="posts-count-label" class="posts-count-label"></span>
+                </div>
+                <button id="open-post-from-feed-btn" class="post-publish-btn" type="button">+ Postar</button>
+            </div>
+            <div id="feed-list" class="feed-list"></div>
+        </div>
+
+        <div id="post-comment-modal" class="post-comment-modal" aria-hidden="true">
+            <div class="post-comment-card">
+                <div class="post-comment-header">
+                    <h4>Comentários</h4>
+                    <button type="button" id="close-comment-modal" class="comment-close-btn" aria-label="Fechar comentários">
+                        <i data-lucide="x"></i>
+                    </button>
+                </div>
+                <div id="comment-modal-post-meta" class="comment-modal-post-meta"></div>
+                <div id="comment-modal-list" class="comment-modal-list"></div>
+                <div class="comment-input-row">
+                    <input id="comment-modal-input" type="text" maxlength="220" placeholder="Escreva um comentário..." aria-label="Escreva um comentário">
+                    <button id="comment-modal-send" type="button" class="comment-send-btn">Enviar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Compartilhar Publicação -->
+        <div id="post-share-modal" class="custom-modal-overlay" aria-hidden="true" style="display: none;">
+            <div class="custom-modal-card share-modal-card">
+                <div class="panel-top-bar share-modal-top-bar">
+                    <div class="share-modal-title-wrap">
+                        <i data-lucide="share-2" class="neon-icon"></i>
+                        <h2>Compartilhar Publicação</h2>
+                    </div>
+                    <div class="header-icon-btn" id="close-post-share-modal" title="Fechar" aria-label="Fechar">
+                        <i data-lucide="x"></i>
+                    </div>
+                </div>
+
+                <!-- Prévia do Post Compartilhado -->
+                <div class="share-post-preview" id="share-post-preview">
+                    <div class="share-post-avatar" id="share-post-avatar"></div>
+                    <div class="share-post-meta">
+                        <div class="share-post-author" id="share-post-author">Usuário</div>
+                        <div class="share-post-caption" id="share-post-caption">Legenda da publicação...</div>
+                    </div>
+                </div>
+
+                <!-- Grade de Redes Sociais e Destinos -->
+                <div class="share-networks-grid">
+                    <!-- WhatsApp -->
+                    <button type="button" class="share-network-btn share-whatsapp" id="share-whatsapp-btn" title="Compartilhar no WhatsApp">
+                        <div class="share-network-icon-wrap">
+                            <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+                        </div>
+                        <span>WhatsApp</span>
+                    </button>
+
+                    <!-- Instagram -->
+                    <button type="button" class="share-network-btn share-instagram" id="share-instagram-btn" title="Compartilhar no Instagram">
+                        <div class="share-network-icon-wrap">
+                            <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+                        </div>
+                        <span>Instagram</span>
+                    </button>
+
+                    <!-- Facebook -->
+                    <button type="button" class="share-network-btn share-facebook" id="share-facebook-btn" title="Compartilhar no Facebook">
+                        <div class="share-network-icon-wrap">
+                            <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                        </div>
+                        <span>Facebook</span>
+                    </button>
+
+                    <!-- TikTok -->
+                    <button type="button" class="share-network-btn share-tiktok" id="share-tiktok-btn" title="Compartilhar no TikTok">
+                        <div class="share-network-icon-wrap">
+                            <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.24 1.07-.14 1.61.24 1.64 1.82 2.89 3.5 2.73 1.25-.04 2.42-.76 2.98-1.85.34-.64.44-1.38.43-2.11V.02Z"/></svg>
+                        </div>
+                        <span>TikTok</span>
+                    </button>
+
+                    <!-- Telegram -->
+                    <button type="button" class="share-network-btn share-telegram" id="share-telegram-btn" title="Compartilhar no Telegram">
+                        <div class="share-network-icon-wrap">
+                            <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0Zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.121l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.46c.538-.196 1.006.128.832.94Z"/></svg>
+                        </div>
+                        <span>Telegram</span>
+                    </button>
+
+                    <!-- X / Twitter -->
+                    <button type="button" class="share-network-btn share-x" id="share-x-btn" title="Compartilhar no X">
+                        <div class="share-network-icon-wrap">
+                            <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                        </div>
+                        <span>X (Twitter)</span>
+                    </button>
+
+                    <!-- Dispositivo / Mais opções (Web Share API) -->
+                    <button type="button" class="share-network-btn share-more" id="share-native-more-btn" title="Mais Opções de Compartilhamento">
+                        <div class="share-network-icon-wrap">
+                            <i data-lucide="more-horizontal"></i>
+                        </div>
+                        <span>Mais opções</span>
+                    </button>
+                </div>
+
+                <!-- Barra de Copiar Link -->
+                <div class="share-link-copy-box">
+                    <span class="share-link-input-label">Link da Publicação:</span>
+                    <div class="share-link-input-row">
+                        <input type="text" id="share-link-input" readonly aria-label="Link da publicação">
+                        <button type="button" id="share-copy-link-btn" class="share-copy-btn" title="Copiar link">
+                            <i data-lucide="copy" id="share-copy-icon"></i>
+                            <span id="share-copy-text">Copiar</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Criação de Enquete -->
+        <div id="poll-creator-modal" class="custom-modal-overlay poll-creator-overlay" aria-hidden="true" style="display: none;">
+            <div class="custom-modal-card poll-creator-card">
+                <div class="panel-top-bar poll-modal-top-bar">
+                    <div class="share-modal-title-wrap">
+                        <i data-lucide="bar-chart-2" class="neon-icon"></i>
+                        <h2>Criar Enquete</h2>
+                    </div>
+                    <div class="header-icon-btn" id="close-poll-creator-btn" title="Fechar" aria-label="Fechar">
+                        <i data-lucide="x"></i>
+                    </div>
+                </div>
+
+                <div class="poll-creator-body">
+                    <div class="poll-field-group">
+                        <label for="poll-question-input" class="poll-field-label">Pergunta</label>
+                        <input type="text" id="poll-question-input" class="poll-text-input" placeholder="Faça uma pergunta..." maxlength="250" autocomplete="off">
+                    </div>
+
+                    <div class="poll-field-group">
+                        <label class="poll-field-label">Opções</label>
+                        <div id="poll-options-container" class="poll-options-list">
+                            <!-- Opções dinâmicas renderizadas via JS -->
+                        </div>
+                        <button type="button" id="poll-add-option-btn" class="poll-add-option-btn">
+                            <i data-lucide="plus"></i> <span>Adicionar opção</span>
+                        </button>
+                    </div>
+
+                    <div class="poll-setting-row">
+                        <div class="poll-setting-info">
+                            <span class="poll-setting-title">Permitir múltiplas respostas</span>
+                            <small class="poll-setting-desc">Os participantes podem selecionar mais de uma opção</small>
+                        </div>
+                        <label class="poll-switch" for="poll-allow-multiple-toggle">
+                            <input type="checkbox" id="poll-allow-multiple-toggle">
+                            <span class="poll-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="poll-creator-footer">
+                    <button type="button" id="poll-cancel-btn" class="poll-btn poll-btn-cancel">Cancelar</button>
+                    <button type="button" id="poll-submit-btn" class="poll-btn poll-btn-submit" disabled>Enviar Enquete</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Detalhes dos Votos da Enquete -->
+        <div id="poll-votes-modal" class="custom-modal-overlay poll-votes-overlay" aria-hidden="true" style="display: none;">
+            <div class="custom-modal-card poll-votes-card">
+                <div class="panel-top-bar poll-modal-top-bar">
+                    <div class="share-modal-title-wrap">
+                        <i data-lucide="list-checks" class="neon-icon"></i>
+                        <h2>Dados da Enquete</h2>
+                    </div>
+                    <div class="header-icon-btn" id="close-poll-votes-btn" title="Fechar" aria-label="Fechar">
+                        <i data-lucide="x"></i>
+                    </div>
+                </div>
+
+                <div class="poll-votes-body">
+                    <h3 id="poll-votes-question" class="poll-votes-question-title">Pergunta</h3>
+                    <div id="poll-votes-breakdown" class="poll-votes-breakdown-list">
+                        <!-- Renderizado via JS -->
+                    </div>
+                </div>
+
+                <div class="poll-creator-footer">
+                    <button type="button" id="poll-votes-close-bottom-btn" class="poll-btn poll-btn-cancel" style="width: 100%;">Fechar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Pagamento Mercado Pago (Selo VIP R$ 30,00) -->
+        <div id="vip-payment-modal" class="settings-panel vip-payment-modal" style="display: none;">
+            <div class="panel-top-bar">
+                <div class="header-icon-btn" id="close-vip-payment-modal" title="Voltar" aria-label="Voltar">
+                    <i data-lucide="arrow-left"></i>
+                </div>
+                <h2>Assinatura VIP • Mercado Pago</h2>
+            </div>
+
+            <div class="vip-payment-content">
+                <!-- Cabeçalho do Plano -->
+                <div class="vip-plan-card">
+                    <div class="vip-plan-badge">
+                        <i data-lucide="award"></i> SELO OFICIAL
+                    </div>
+                    <div class="vip-plan-info">
+                        <h3>Selo de Verificado VIP</h3>
+                        <p>Destaque seu perfil com a estrela de verificado ⭐, ganhe prioridade em conversas e grupos, e acesse recursos exclusivos VORTEX VIP.</p>
+                        <div class="vip-price-tag">
+                            <span class="vip-price-currency">R$</span>
+                            <span class="vip-price-amount">30,00</span>
+                            <span class="vip-price-period">/mês</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Seletor de Método de Pagamento -->
+                <div class="payment-methods-tabs">
+                    <button type="button" class="payment-tab-btn active" data-tab="pix" id="tab-btn-pix">
+                        <i data-lucide="zap"></i>
+                        <span>Pix (Imediato)</span>
+                    </button>
+                    <button type="button" class="payment-tab-btn" data-tab="card" id="tab-btn-card">
+                        <i data-lucide="credit-card"></i>
+                        <span>Cartão (Crédito/Débito)</span>
+                    </button>
+                </div>
+
+                <!-- Painel Método 1: PIX -->
+                <div id="payment-panel-pix" class="payment-subpanel active">
+                    <div id="pix-step-form" class="pix-step-view">
+                        <p class="payment-instruction">Preencha seus dados para gerar o QR Code Pix com liberação automática em segundos:</p>
+                        <div class="vip-form-group">
+                            <label for="pix-payer-name">Nome Completo</label>
+                            <input type="text" id="pix-payer-name" placeholder="Ex: João da Silva">
+                        </div>
+                        <div class="vip-form-group">
+                            <label for="pix-payer-cpf">CPF do Pagador</label>
+                            <input type="text" id="pix-payer-cpf" placeholder="000.000.000-00" maxlength="14">
+                        </div>
+                        <div class="vip-form-group">
+                            <label for="pix-payer-email">E-mail para Comprovante</label>
+                            <input type="email" id="pix-payer-email" placeholder="seu-email@exemplo.com">
+                        </div>
+                        <button type="button" id="generate-pix-btn" class="danger-btn vip-pay-action-btn">
+                            <i data-lucide="qr-code"></i> Gerar Pix de R$ 30,00
+                        </button>
+                    </div>
+
+                    <!-- Visualizador do QR Code Pix após geração -->
+                    <div id="pix-step-qrcode" class="pix-step-view" style="display: none;">
+                        <div class="pix-qr-container">
+                            <div class="pix-qr-box">
+                                <img id="pix-qr-image" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E" alt="QR Code Pix" class="pix-qr-img">
+                            </div>
+                            <div class="pix-status-badge">
+                                <span class="pix-pulse-dot"></span>
+                                <span id="pix-status-text">Aguardando pagamento via Pix...</span>
+                            </div>
+                        </div>
+
+                        <div class="pix-copy-section">
+                            <label for="pix-copy-paste-input">Pix Copia e Cola:</label>
+                            <div class="pix-copy-row">
+                                <input type="text" id="pix-copy-paste-input" readonly value="">
+                                <button type="button" id="copy-pix-btn" class="danger-btn copy-pix-action-btn" title="Copiar código Pix">
+                                    <i data-lucide="copy" id="copy-pix-icon"></i>
+                                    <span id="copy-pix-text">Copiar</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="pix-helper-text">
+                            <p>1. Abra o app do seu banco e escolha <strong>Pix</strong> &gt; <strong>Pagar com QR Code</strong> ou <strong>Copia e Cola</strong>.</p>
+                            <p>2. Assim que o pagamento for concluído, o sistema reconhecerá automaticamente e ativará seu Selo VIP!</p>
+                        </div>
+
+                        <button type="button" id="pix-back-form-btn" class="close-btn drawer-cancel-btn" style="margin-top: 15px;">Gerar Novo Código</button>
+                    </div>
+                </div>
+
+                <!-- Painel Método 2: Cartão de Crédito ou Débito -->
+                <div id="payment-panel-card" class="payment-subpanel" style="display: none;">
+                    <div class="card-type-toggle">
+                        <button type="button" class="card-type-btn active" id="card-type-credit" data-type="credit">
+                            <i data-lucide="credit-card"></i> Cartão de Crédito
+                        </button>
+                        <button type="button" class="card-type-btn" id="card-type-debit" data-type="debit">
+                            <i data-lucide="wallet"></i> Cartão de Débito
+                        </button>
+                    </div>
+
+                    <form id="card-payment-form" class="card-form-container" onsubmit="return false;">
+                        <div class="vip-form-group">
+                            <label for="card-holder-name">Nome Impresso no Cartão</label>
+                            <input type="text" id="card-holder-name" placeholder="Ex: JOAO SILVA" required>
+                        </div>
+                        <div class="vip-form-group">
+                            <label for="card-number">Número do Cartão</label>
+                            <div class="card-input-with-brand">
+                                <input type="text" id="card-number" placeholder="0000 0000 0000 0000" maxlength="19" required>
+                                <span id="card-brand-icon" class="card-brand-icon">💳</span>
+                            </div>
+                        </div>
+                        <div class="form-row-dual">
+                            <div class="vip-form-group">
+                                <label for="card-expiry">Validade (MM/AA)</label>
+                                <input type="text" id="card-expiry" placeholder="MM/AA" maxlength="5" required>
+                            </div>
+                            <div class="vip-form-group">
+                                <label for="card-cvv">Código (CVV)</label>
+                                <input type="text" id="card-cvv" placeholder="123" maxlength="4" required>
+                            </div>
+                        </div>
+                        <div class="vip-form-group">
+                            <label for="card-doc-number">CPF do Titular</label>
+                            <input type="text" id="card-doc-number" placeholder="000.000.000-00" maxlength="14" required>
+                        </div>
+                        <div class="vip-form-group" id="card-installments-group">
+                            <label for="card-installments">Parcelas</label>
+                            <select id="card-installments">
+                                <option value="1">1x de R$ 30,00 (Sem juros)</option>
+                            </select>
+                        </div>
+                        <button type="submit" id="pay-card-btn" class="danger-btn vip-pay-action-btn">
+                            <i data-lucide="shield-check"></i> Pagar R$ 30,00
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Painel de Sucesso (VIP Ativado!) -->
+                <div id="payment-success-view" class="payment-subpanel" style="display: none;">
+                    <div class="vip-success-box">
+                        <div class="vip-success-icon-wrap">
+                            <i data-lucide="badge-check" class="vip-success-icon"></i>
+                        </div>
+                        <h3 class="vip-success-title">Selo VIP Ativado! ⭐</h3>
+                        <p class="vip-success-msg">Seu pagamento de R$ 30,00 foi confirmado. Seu Selo de Verificado e acesso aos recursos VIP estão ativos pelos próximos 30 dias!</p>
+                        <button type="button" id="close-vip-success-btn" class="danger-btn vip-pay-action-btn">Concluir</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div> <!-- Fim do app-container -->
+
+    <script type="module" src="script.js?v=1.0.49" defer></script>
+</body>
+</html>
