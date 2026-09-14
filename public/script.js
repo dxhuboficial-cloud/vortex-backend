@@ -2127,13 +2127,14 @@ function listenToContacts() {
             const chatId = [currentUser.uid, contactUid].sort().join('_');
 
             const isPinned = isChatPinned(contactUid);
+            const initialBio = (contact.status && contact.status.trim()) ? `💬 Recado: "${contact.status.trim()}"` : 'Toque para abrir a conversa...';
             const card = document.createElement('div');
             card.className = `chat-card ${isPinned ? 'is-pinned' : ''}`;
             card.dataset.uid = contactUid;
             card.dataset.isGroup = 'false';
             card.dataset.isPinned = isPinned ? 'true' : 'false';
             card.innerHTML = `
-                <div class="avatar" id="contact-avatar-${contactUid}" style="background-image: url('${contact.avatar || ''}');" role="img">
+                <div class="avatar" id="contact-avatar-${contactUid}" style="background-image: url('${contact.avatar || ''}');" role="button" tabindex="0" title="Ver dados de ${contact.name || 'Contato'}">
                     <span class="avatar-initial" id="avatar-initial-${contactUid}">${!contact.avatar ? (contact.name || 'C').charAt(0).toUpperCase() : ''}</span>
                     <span class="online-dot-badge" id="online-dot-${contactUid}" style="display:none;"></span>
                     <span class="unread-badge" id="unread-badge-${contactUid}" style="display:none;" title="Mensagem não lida">
@@ -2156,7 +2157,7 @@ function listenToContacts() {
                             </span>
                         </div>
                     </div>
-                    <p class="last-msg" id="last-msg-${chatId}">Toque para abrir a conversa...</p>
+                    <p class="last-msg" id="last-msg-${chatId}" data-fallback="${initialBio}">${initialBio}</p>
                     <span class="tag tag-vip" id="vip-tag-${contactUid}" style="display:none;">VIP</span>
                 </div>
                 <button class="chat-card-pin-btn" id="pin-btn-${contactUid}" type="button" title="${isPinned ? 'Desafixar conversa' : 'Fixar conversa'}" aria-label="Fixar conversa">
@@ -2165,6 +2166,13 @@ function listenToContacts() {
             `;
 
             card.onclick = () => openDirectChat(contact);
+            const contactAvatar = card.querySelector('.avatar');
+            if (contactAvatar) {
+                contactAvatar.onclick = (event) => {
+                    event.stopPropagation();
+                    openContactProfile(contact);
+                };
+            }
             const pinBtn = card.querySelector('.chat-card-pin-btn');
             if (pinBtn) {
                 pinBtn.onclick = (event) => {
@@ -2198,9 +2206,19 @@ function listenToContacts() {
                 const tagEl = document.getElementById(`vip-tag-${contactUid}`);
                 if (userSnap.exists()) {
                     const uData = userSnap.data();
+                    contact.status = uData.status || contact.status;
                     const isVip = checkIsVipUser(uData);
                     if (tagEl) tagEl.style.display = isVip ? 'inline-block' : 'none';
                     card.dataset.isVip = isVip ? 'true' : 'false';
+
+                    const lastMsgEl = document.getElementById(`last-msg-${chatId}`);
+                    if (lastMsgEl && (!lastMsgEl.dataset.fallback || lastMsgEl.dataset.fallback.startsWith('💬 Recado:') || lastMsgEl.dataset.fallback === 'Toque para abrir a conversa...')) {
+                        const newBioText = (uData.status && uData.status.trim()) ? `💬 Recado: "${uData.status.trim()}"` : 'Toque para abrir a conversa...';
+                        lastMsgEl.dataset.fallback = newBioText;
+                        if (!card.classList.contains('typing')) {
+                            lastMsgEl.innerText = newBioText;
+                        }
+                    }
                 } else {
                     if (tagEl) tagEl.style.display = 'none';
                     card.dataset.isVip = 'false';
@@ -2584,6 +2602,139 @@ async function deleteGroup(group) {
         console.error('Erro ao apagar grupo:', error);
         showToast('Erro', 'Não foi possível apagar o grupo.', 'red');
     }
+}
+
+/* ==========================================================================
+   PERFIL E DADOS DO CONTATO (EXIBIÇÃO DE RECADO / BIO)
+   ========================================================================== */
+let activeContactProfileData = null;
+let activeContactProfileUnsubscribe = null;
+
+export function closeContactProfile() {
+    const panel = document.getElementById('contact-profile-panel');
+    if (panel) {
+        panel.classList.remove('active');
+    }
+    if (activeContactProfileUnsubscribe) {
+        activeContactProfileUnsubscribe();
+        activeContactProfileUnsubscribe = null;
+    }
+    activeContactProfileData = null;
+    playSound(clickSound);
+}
+
+export async function openContactProfile(contact) {
+    if (!currentUser || !contact) return;
+    if (contact.isGroup) {
+        return openGroupProfile(contact);
+    }
+
+    const contactUid = contact.uid || contact.id;
+    if (!contactUid) return;
+
+    if (activeContactProfileUnsubscribe) {
+        activeContactProfileUnsubscribe();
+        activeContactProfileUnsubscribe = null;
+    }
+
+    const panel = document.getElementById('contact-profile-panel');
+    const avatarEl = document.getElementById('contact-profile-avatar');
+    const nameEl = document.getElementById('contact-profile-name');
+    const usernameEl = document.getElementById('contact-profile-username');
+    const badgeEl = document.getElementById('contact-profile-verified-badge');
+    const presenceEl = document.getElementById('contact-profile-presence');
+    const onlineDotEl = document.getElementById('contact-profile-online-dot');
+    const bioTextEl = document.getElementById('contact-profile-bio-text');
+    const bioDateEl = document.getElementById('contact-profile-bio-date');
+    const blockBtn = document.getElementById('contact-profile-block-btn');
+    const blockText = document.getElementById('contact-profile-block-text');
+    const reportBtn = document.getElementById('contact-profile-report-btn');
+    const chatBtn = document.getElementById('contact-profile-chat-btn');
+    const callBtn = document.getElementById('contact-profile-call-btn');
+
+    // Preenchimento inicial imediato
+    const initName = contact.name || 'Contato';
+    const initUsername = contact.username || '@usuario';
+    const initBio = (contact.status && contact.status.trim()) ? contact.status.trim() : 'Disponível no VORTEX ⚡';
+
+    if (nameEl) nameEl.innerText = initName;
+    if (usernameEl) usernameEl.innerText = initUsername;
+    if (bioTextEl) bioTextEl.innerText = `"${initBio}"`;
+    if (bioDateEl) bioDateEl.innerText = 'Recado do perfil no VORTEX';
+    if (avatarEl) {
+        setAvatarContent(avatarEl, contact.avatar, initName, 'contact-profile-avatar-initial');
+    }
+
+    const isBlocked = blockedContactsSet.has(contactUid);
+    if (blockText) blockText.innerText = isBlocked ? 'Desbloquear Contato' : 'Bloquear Contato';
+    if (presenceEl) presenceEl.innerText = contact.online ? 'Online agora' : 'Visto recentemente';
+    if (onlineDotEl) onlineDotEl.style.display = contact.online ? 'block' : 'none';
+
+    // Listener em tempo real dos dados do contato (sincroniza Recado / Bio instantaneamente)
+    activeContactProfileUnsubscribe = onSnapshot(doc(db, 'users', contactUid), (snap) => {
+        if (!snap.exists()) return;
+        const uData = snap.data();
+        activeContactProfileData = uData;
+
+        const liveName = uData.name || contact.name || 'Contato';
+        const liveUsername = uData.username || '@usuario';
+        const liveAvatar = uData.avatar || '';
+        const liveBio = (uData.status && uData.status.trim()) ? uData.status.trim() : 'Disponível no VORTEX ⚡';
+        const isVip = checkIsVipUser(uData);
+        const isOnline = !!(uData.online && !uData.ghostMode && !blockedContactsSet.has(contactUid));
+
+        if (nameEl) nameEl.innerText = liveName;
+        if (usernameEl) usernameEl.innerText = liveUsername;
+        if (badgeEl) badgeEl.style.display = isVip ? 'inline-flex' : 'none';
+        if (bioTextEl) bioTextEl.innerText = `"${liveBio}"`;
+        if (avatarEl) {
+            setAvatarContent(avatarEl, liveAvatar, liveName, 'contact-profile-avatar-initial');
+        }
+        if (onlineDotEl) onlineDotEl.style.display = isOnline ? 'block' : 'none';
+        if (presenceEl) {
+            presenceEl.innerText = isOnline ? 'Online agora' : (uData.lastSeen ? `Visto por último: ${formatLastSeen(uData.lastSeen)}` : 'Visto recentemente');
+        }
+    }, (error) => console.error('Erro ao ouvir perfil do contato:', error));
+
+    // Ações dos botões
+    if (chatBtn) {
+        chatBtn.onclick = () => {
+            closeContactProfile();
+            openDirectChat(contact);
+        };
+    }
+
+    if (callBtn) {
+        callBtn.onclick = () => {
+            closeContactProfile();
+            const callTrigger = document.getElementById('chat-audio-call-btn');
+            if (callTrigger) callTrigger.click();
+            else if (typeof startAudioCall === 'function') startAudioCall();
+        };
+    }
+
+    if (blockBtn) {
+        blockBtn.onclick = () => {
+            closeContactProfile();
+            openBlockContactModal();
+        };
+    }
+
+    if (reportBtn) {
+        reportBtn.onclick = () => {
+            closeContactProfile();
+            openReportContactModal();
+        };
+    }
+
+    const closeBtn = document.getElementById('close-contact-profile');
+    if (closeBtn) {
+        closeBtn.onclick = () => closeContactProfile();
+    }
+
+    if (panel) panel.classList.add('active');
+    playSound(clickSound);
+    if (window.lucide) lucide.createIcons();
 }
 
 async function openGroupProfile(group) {
@@ -3148,7 +3299,32 @@ function getActiveChatId() {
 function refreshDirectChatStatus() {
     const statusEl = document.getElementById('chat-window-status');
     const chatDot = document.getElementById('chat-window-online-dot');
-    if (!statusEl || !activeChatContact || activeChatContact.isGroup) return;
+    const bioEl = document.getElementById('chat-window-bio');
+    const sepEl = document.getElementById('chat-header-sep');
+    const badgeEl = document.getElementById('chat-window-verified-badge');
+    if (!statusEl || !activeChatContact || activeChatContact.isGroup) {
+        if (bioEl) bioEl.style.display = 'none';
+        if (sepEl) sepEl.style.display = 'none';
+        return;
+    }
+
+    const contactBio = (activeContactUserData && activeContactUserData.status) ? activeContactUserData.status.trim() : (activeChatContact && activeChatContact.status ? activeChatContact.status.trim() : '');
+    if (bioEl) {
+        if (contactBio) {
+            bioEl.innerText = `"${contactBio}"`;
+            bioEl.title = `Recado: ${contactBio}`;
+            bioEl.style.display = 'inline-block';
+            if (sepEl) sepEl.style.display = 'inline-block';
+        } else {
+            bioEl.style.display = 'none';
+            if (sepEl) sepEl.style.display = 'none';
+        }
+    }
+
+    if (badgeEl) {
+        const isVip = activeContactUserData ? checkIsVipUser(activeContactUserData) : (activeChatContact.isVip || false);
+        badgeEl.style.display = isVip ? 'inline-flex' : 'none';
+    }
 
     if (blockedContactsSet.has(activeChatContact.uid)) {
         statusEl.className = 'status-animated status-offline';
@@ -3230,6 +3406,16 @@ function openDirectChat(contact) {
         openChatDot.style.display = (contact.online && !contact.ghostMode) ? 'block' : 'none';
     }
     if (typeof updateChatPinUI === 'function') updateChatPinUI();
+    refreshDirectChatStatus();
+
+    // Tocar no cabeçalho do contato abre os Dados do Contato
+    const headerUserInfo = document.getElementById('chat-header-user-info');
+    if (headerUserInfo) {
+        headerUserInfo.onclick = (e) => {
+            if (e.target.closest('#close-chat')) return;
+            openContactProfile(activeChatContact || contact);
+        };
+    }
     
     if (contactStatusUnsubscribe) contactStatusUnsubscribe();
     if (activeChatActivityUnsubscribe) activeChatActivityUnsubscribe();
@@ -3290,14 +3476,17 @@ function openDirectChat(contact) {
 
             const liveAvatar = activeContactUserData.avatar || '';
             const liveName = activeContactUserData.name || contact.name || 'Contato';
+            const liveBio = (activeContactUserData.status && activeContactUserData.status.trim()) ? activeContactUserData.status.trim() : 'Disponível no VORTEX ⚡';
 
             if (activeChatContact && activeChatContact.uid === contact.uid) {
                 activeChatContact.avatar = liveAvatar;
                 activeChatContact.name = liveName;
+                activeChatContact.status = liveBio;
             }
 
             contact.avatar = liveAvatar;
             contact.name = liveName;
+            contact.status = liveBio;
 
             const curAvatarEl = document.getElementById('chat-window-avatar');
             const curNameEl = document.getElementById('chat-window-name');
@@ -3328,10 +3517,17 @@ function openDirectChat(contact) {
                 if (cardName && liveName) cardName.innerText = liveName;
             }
 
+            // Atualiza card intro no chat se visível
+            const introBioText = document.querySelector(`#chat-intro-${contact.uid} .intro-bio-text`);
+            if (introBioText) {
+                introBioText.innerText = `"${liveBio}"`;
+            }
+
             if (currentUser && currentUser.uid) {
                 updateDoc(doc(db, 'users', currentUser.uid, 'contacts', contact.uid), {
                     avatar: liveAvatar,
-                    name: liveName
+                    name: liveName,
+                    status: liveBio
                 }).catch(() => {});
             }
         }
@@ -3392,6 +3588,39 @@ function loadRealtimeMessages() {
                 cardEl.dataset.unreadCount = '0';
             }
             if (typeof applyChatFilter === 'function') applyChatFilter();
+        }
+
+        // Card de Apresentação do Contato com Recado / Bio no topo da conversa
+        if (!activeChatContact.isGroup) {
+            const introCard = document.createElement('div');
+            introCard.className = 'chat-contact-intro-card';
+            introCard.id = `chat-intro-${activeChatContact.uid}`;
+            const contactBio = (activeContactUserData && activeContactUserData.status) ? activeContactUserData.status.trim() : (activeChatContact.status ? activeChatContact.status.trim() : 'Disponível no VORTEX ⚡');
+            const contactUsername = (activeContactUserData && activeContactUserData.username) || activeChatContact.username || '@usuario';
+            const isVip = activeContactUserData ? checkIsVipUser(activeContactUserData) : !!activeChatContact.isVip;
+            const contactName = activeChatContact.name || 'Contato';
+            const contactAvatar = activeChatContact.avatar || '';
+
+            introCard.innerHTML = `
+                <div class="intro-avatar" style="background-image: url('${contactAvatar}');" role="button" tabindex="0" title="Ver dados do contato">
+                    ${!contactAvatar ? contactName.charAt(0).toUpperCase() : ''}
+                </div>
+                <h3 class="intro-name" role="button" tabindex="0" title="Ver dados do contato">
+                    <span>${contactName}</span>
+                    <i data-lucide="badge-check" class="verified-badge" style="display:${isVip ? 'inline-flex' : 'none'};"></i>
+                </h3>
+                <span class="intro-username">${contactUsername}</span>
+                <div class="intro-bio-box" role="button" tabindex="0" title="Toque para ver os dados do contato">
+                    <i data-lucide="quote" class="intro-bio-icon"></i>
+                    <div>
+                        <span class="intro-bio-label">Recado / Bio:</span>
+                        <span class="intro-bio-text">"${contactBio}"</span>
+                    </div>
+                </div>
+                <small class="intro-privacy-notice"><i data-lucide="lock"></i> As mensagens desta conversa são protegidas e privadas.</small>
+            `;
+            introCard.onclick = () => openContactProfile(activeChatContact);
+            container.appendChild(introCard);
         }
 
         snapshot.forEach(docSnap => {
@@ -8087,7 +8316,7 @@ async function loadUsersForSearch(qText = '') {
                 if (existingReq.status === 'pending') {
                     btnHTML = `<button class="danger-btn cancel-req-btn" data-reqid="${existingReq.reqId}" style="background:#262626; color:#aaa; border:1px solid #444; padding:6px 12px; font-size:0.75rem; border-radius:8px;">Cancelar</button>`;
                 } else if (existingReq.status === 'accepted') {
-                    btnHTML = `<button class="danger-btn open-chat-direct-btn" data-uid="${u.id}" data-name="${u.name}" data-avatar="${u.avatar || ''}" style="background:var(--accent-color); color:#000; font-weight:bold; padding:6px 12px; font-size:0.75rem; border-radius:8px;">Conversar</button>`;
+                    btnHTML = `<button class="danger-btn open-chat-direct-btn" data-uid="${u.id}" data-name="${u.name}" data-avatar="${u.avatar || ''}" style="background:var(--accent-color); color:#000; font-weight:bold; padding:6px 12px; font-size:0.75rem; border:none; border-radius:8px;">Conversar</button>`;
                 } else {
                     btnHTML = `<button class="danger-btn send-req-btn" data-to="${u.id}" style="background:#ff3b30; color:#fff; border:none; padding:6px 12px; font-size:0.75rem; border-radius:8px;">Solicitar de novo</button>`;
                 }
@@ -8095,13 +8324,17 @@ async function loadUsersForSearch(qText = '') {
                 btnHTML = `<button class="danger-btn send-req-btn" data-to="${u.id}" style="background:var(--accent-color); color:#000; font-weight:bold; padding:6px 12px; font-size:0.75rem; border:none; border-radius:8px;">Solicitar</button>`;
             }
 
+            const userBio = (u.status && u.status.trim()) ? u.status.trim() : 'Disponível no VORTEX ⚡';
             return `
                 <div class="member-list-item">
                     <div style="display:flex; align-items:center; gap:10px;">
-                        <div class="avatar sm" style="background-image: url('${u.avatar || ''}');"></div>
+                        <div class="avatar sm" style="background-image: url('${u.avatar || ''}');">
+                            ${!u.avatar ? (u.name || 'U').charAt(0).toUpperCase() : ''}
+                        </div>
                         <div>
                             <div style="font-size:0.88rem; font-weight:600; color:#fff;">${u.name} ${u.surname || ''}</div>
                             <div style="font-size:0.72rem; color:var(--accent-color);">${u.username || '@usuario'}</div>
+                            <div class="search-user-bio">💬 "${userBio}"</div>
                         </div>
                     </div>
                     ${btnHTML}
@@ -8122,6 +8355,7 @@ async function loadUsersForSearch(qText = '') {
                     fromName: currentProfile.name,
                     fromUsername: currentProfile.username,
                     fromAvatar: currentProfile.avatar,
+                    fromBio: currentProfile.status || 'Disponível no VORTEX ⚡',
                     toUid: toUid,
                     status: 'pending',
                     createdAt: Date.now()
@@ -8141,7 +8375,7 @@ async function loadUsersForSearch(qText = '') {
 
         container.querySelectorAll('.open-chat-direct-btn').forEach(btn => {
             btn.onclick = () => {
-                document.getElementById('search-user-panel')?.classList.remove('active');
+                document.getElementById('close-search-panel')?.click();
                 openDirectChat({
                     uid: btn.dataset.uid,
                     name: btn.dataset.name,
@@ -8150,8 +8384,9 @@ async function loadUsersForSearch(qText = '') {
             };
         });
 
-    } catch (err) {
-        console.error("Erro na busca de usuários:", err);
+    } catch (e) {
+        console.error("Erro ao carregar usuários:", e);
+        container.innerHTML = '<p style="color:var(--text-dim); text-align:center; padding: 20px;">Erro ao buscar usuários.</p>';
     }
 }
 
@@ -8185,21 +8420,27 @@ function listenToRequests() {
                 return;
             }
 
-            listContainer.innerHTML = reqs.map(r => `
-                <div class="member-list-item">
-                    <div style="display:flex; align-items:center; gap:8px;">
-                        <div class="avatar sm" style="background-image: url('${r.fromAvatar || ''}');"></div>
-                        <div>
-                            <div style="font-size:0.88rem; font-weight:600;">${r.fromName}</div>
-                            <div style="font-size:0.7rem; color:var(--accent-color);">${r.fromUsername || '@usuario'}</div>
+            listContainer.innerHTML = reqs.map(r => {
+                const reqBio = (r.fromBio && r.fromBio.trim()) ? r.fromBio.trim() : 'Disponível no VORTEX ⚡';
+                return `
+                    <div class="member-list-item">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <div class="avatar sm" style="background-image: url('${r.fromAvatar || ''}');">
+                                ${!r.fromAvatar ? (r.fromName || 'U').charAt(0).toUpperCase() : ''}
+                            </div>
+                            <div>
+                                <div style="font-size:0.88rem; font-weight:600;">${r.fromName}</div>
+                                <div style="font-size:0.7rem; color:var(--accent-color);">${r.fromUsername || '@usuario'}</div>
+                                <div class="search-user-bio">💬 "${reqBio}"</div>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:6px;">
+                            <button class="danger-btn accept-req-action" data-id="${r.id}" data-fromuid="${r.fromUid}" data-fromname="${r.fromName}" data-fromavatar="${r.fromAvatar || ''}" data-frombio="${reqBio}" style="background:var(--accent-color); color:#000; border:none; padding:4px 10px; font-size:0.75rem; font-weight:bold;">Aceitar</button>
+                            <button class="danger-btn reject-req-action" data-id="${r.id}" style="padding:4px 10px; font-size:0.75rem;">Recusar</button>
                         </div>
                     </div>
-                    <div style="display:flex; gap:6px;">
-                        <button class="danger-btn accept-req-action" data-id="${r.id}" data-fromuid="${r.fromUid}" data-fromname="${r.fromName}" data-fromavatar="${r.fromAvatar || ''}" style="background:var(--accent-color); color:#000; border:none; padding:4px 10px; font-size:0.75rem; font-weight:bold;">Aceitar</button>
-                        <button class="danger-btn reject-req-action" data-id="${r.id}" style="padding:4px 10px; font-size:0.75rem;">Recusar</button>
-                    </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
 
             listContainer.querySelectorAll('.accept-req-action').forEach(b => {
                 b.onclick = async () => {
@@ -8207,6 +8448,7 @@ function listenToRequests() {
                     const senderUid = b.dataset.fromuid;
                     const senderName = b.dataset.fromname;
                     const senderAvatar = b.dataset.fromavatar;
+                    const senderBio = b.dataset.frombio || 'Disponível no VORTEX ⚡';
 
                     await updateDoc(doc(db, 'requests', reqId), { status: 'accepted' });
 
@@ -8214,6 +8456,7 @@ function listenToRequests() {
                         uid: senderUid,
                         name: senderName,
                         avatar: senderAvatar,
+                        status: senderBio,
                         addedAt: Date.now()
                     });
 
@@ -8221,6 +8464,7 @@ function listenToRequests() {
                         uid: currentUser.uid,
                         name: currentProfile.name,
                         avatar: currentProfile.avatar,
+                        status: currentProfile.status || 'Disponível no VORTEX ⚡',
                         addedAt: Date.now()
                     });
 
@@ -11903,6 +12147,18 @@ export function closeTopmostActiveLayer() {
         return true;
     }
 
+    const contactProfilePanel = document.getElementById('contact-profile-panel');
+    if (contactProfilePanel && contactProfilePanel.classList && contactProfilePanel.classList.contains('active')) {
+        if (typeof closeContactProfile === 'function') {
+            closeContactProfile();
+        } else {
+            const closeBtn = document.getElementById('close-contact-profile');
+            if (closeBtn) closeBtn.click();
+            contactProfilePanel.classList.remove('active');
+        }
+        return true;
+    }
+
     const profileEditPanel = document.getElementById('profile-edit-panel');
     if (profileEditPanel && profileEditPanel.classList && profileEditPanel.classList.contains('active')) {
         const closeBtn = document.getElementById('close-profile-edit');
@@ -12106,6 +12362,8 @@ if (typeof window !== 'undefined') {
     window.openPollVotesModal = openPollVotesModal;
     window.closePollVotesModal = closePollVotesModal;
     window.getPollCreatorOptions = () => pollCreatorOptions;
+    window.openContactProfile = openContactProfile;
+    window.closeContactProfile = closeContactProfile;
     window.initBackNavigation = initBackNavigation;
     window.closeTopmostActiveLayer = closeTopmostActiveLayer;
     window.handleSystemBackPress = handleSystemBackPress;

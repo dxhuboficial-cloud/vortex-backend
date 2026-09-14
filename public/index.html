@@ -336,7 +336,7 @@
         <!-- Janela de Chat em Tempo Real -->
         <div id="chat-window" class="chat-window">
             <header class="chat-window-header" id="chat-normal-header">
-                <div class="chat-header-left">
+                <div class="chat-header-left" id="chat-header-user-info" role="button" tabindex="0" title="Toque para ver os dados do contato" aria-label="Ver dados do contato">
                     <div class="header-icon-btn" id="close-chat" title="Voltar" aria-label="Voltar">
                         <i data-lucide="arrow-left"></i>
                     </div>
@@ -345,8 +345,15 @@
                         <span class="online-dot-badge" id="chat-window-online-dot" style="display:none;"></span>
                     </div>
                     <div class="chat-window-info">
-                        <span id="chat-window-name">Nome</span>
-                        <span id="chat-window-status" class="status-animated">Online</span>
+                        <div class="chat-name-row">
+                            <span id="chat-window-name">Nome</span>
+                            <i data-lucide="badge-check" id="chat-window-verified-badge" class="verified-badge" style="display: none;"></i>
+                        </div>
+                        <div class="chat-subinfo-row">
+                            <span id="chat-window-status" class="status-animated">Online</span>
+                            <span class="chat-header-sep" id="chat-header-sep" style="display:none;">•</span>
+                            <span id="chat-window-bio" class="chat-header-bio" style="display:none;" title="Recado / Bio do contato"></span>
+                        </div>
                     </div>
                 </div>
                 <div class="header-icons">
@@ -961,6 +968,63 @@
                 <button id="delete-group-profile-btn" class="group-action-btn group-danger-action" type="button">
                     <i data-lucide="trash-2"></i><span>Apagar grupo</span>
                 </button>
+            </div>
+        </div>
+
+        <!-- Painel de Dados do Contato / Perfil do Usuário com Recado / Bio -->
+        <div id="contact-profile-panel" class="settings-panel contact-profile-panel">
+            <div class="panel-top-bar">
+                <div class="header-icon-btn" id="close-contact-profile" title="Voltar" aria-label="Voltar">
+                    <i data-lucide="arrow-left"></i>
+                </div>
+                <h2>Dados do Contato</h2>
+            </div>
+            <div class="settings-content contact-profile-content">
+                <div class="contact-profile-hero">
+                    <div id="contact-profile-avatar" class="avatar lg contact-profile-avatar" role="img" aria-label="Foto do contato">
+                        <span class="avatar-initial" id="contact-profile-avatar-initial"></span>
+                        <span class="online-dot-badge" id="contact-profile-online-dot" style="display:none;"></span>
+                    </div>
+                    <div class="contact-profile-name-row">
+                        <h3 id="contact-profile-name">Nome do Contato</h3>
+                        <i data-lucide="badge-check" id="contact-profile-verified-badge" class="verified-badge" style="display: none;"></i>
+                    </div>
+                    <p id="contact-profile-username" class="contact-profile-username">@usuario</p>
+                    <span id="contact-profile-presence" class="contact-profile-presence">Online</span>
+                </div>
+
+                <!-- Seção de Recado / Bio em Destaque -->
+                <div class="contact-profile-bio-card" id="contact-profile-bio-card">
+                    <div class="contact-bio-header">
+                        <i data-lucide="quote" class="contact-bio-icon"></i>
+                        <span class="contact-bio-title">Recado / Bio</span>
+                    </div>
+                    <p id="contact-profile-bio-text" class="contact-bio-text">"Online no VORTEX"</p>
+                    <span id="contact-profile-bio-date" class="contact-bio-date">Recado do perfil</span>
+                </div>
+
+                <!-- Ações Rápidas do Contato -->
+                <div class="contact-profile-actions">
+                    <button id="contact-profile-chat-btn" class="contact-action-btn" type="button" title="Enviar mensagem">
+                        <i data-lucide="message-square"></i>
+                        <span>Mensagem</span>
+                    </button>
+                    <button id="contact-profile-call-btn" class="contact-action-btn" type="button" title="Iniciar chamada de vídeo">
+                        <i data-lucide="video"></i>
+                        <span>Chamada VIP</span>
+                    </button>
+                </div>
+
+                <div class="contact-profile-danger-actions">
+                    <button id="contact-profile-block-btn" class="contact-danger-btn" type="button">
+                        <i data-lucide="ban" id="contact-profile-block-icon"></i>
+                        <span id="contact-profile-block-text">Bloquear Contato</span>
+                    </button>
+                    <button id="contact-profile-report-btn" class="contact-danger-btn" type="button">
+                        <i data-lucide="flag"></i>
+                        <span>Denunciar Contato</span>
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -1818,6 +1882,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.50" defer></script>
+    <script type="module" src="script.js?v=1.0.51" defer></script>
 </body>
 </html>

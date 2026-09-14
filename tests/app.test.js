@@ -3704,15 +3704,92 @@ test('Enquetes (Polls) e Barra Rolável de Anexos: criação, validação, vota�
   assert.strictEqual(env.elements['poll-creator-modal'].classList.contains('active'), false, 'Botão voltar deve fechar o modal de criação de enquete');
 });
 
+test('Recado / Bio do Contato: Exibição no cabeçalho do chat, cartão de introdução, painel Dados do Contato, busca e sincronização em tempo real', async () => {
+  const env = createTestEnvironment();
 
+  // 1. Verificação de Integridade dos Elementos no DOM (HTML)
+  assert.ok(env.elements['contact-profile-panel'], '#contact-profile-panel deve existir no DOM');
+  assert.ok(env.elements['contact-profile-avatar'], '#contact-profile-avatar deve existir no DOM');
+  assert.ok(env.elements['contact-profile-name'], '#contact-profile-name deve existir no DOM');
+  assert.ok(env.elements['contact-profile-username'], '#contact-profile-username deve existir no DOM');
+  assert.ok(env.elements['contact-profile-bio-card'], '#contact-profile-bio-card deve existir no DOM');
+  assert.ok(env.elements['contact-profile-bio-text'], '#contact-profile-bio-text deve existir no DOM');
+  assert.ok(env.elements['close-contact-profile'], '#close-contact-profile deve existir no DOM');
+  assert.ok(env.elements['chat-window-bio'], '#chat-window-bio deve existir no cabeçalho do chat');
+  assert.ok(env.elements['chat-header-user-info'], '#chat-header-user-info deve existir no cabeçalho do chat');
 
+  // CSS Integrity
+  assert.ok(cssContent.includes('.contact-profile-panel'), 'CSS deve definir .contact-profile-panel');
+  assert.ok(cssContent.includes('.contact-profile-bio-card'), 'CSS deve definir .contact-profile-bio-card');
+  assert.ok(cssContent.includes('.chat-contact-intro-card'), 'CSS deve definir .chat-contact-intro-card');
+  assert.ok(cssContent.includes('.search-user-bio'), 'CSS deve definir .search-user-bio');
 
+  // Funções
+  const openContactProfile = env.sandbox.openContactProfile || env.sandbox.window.openContactProfile;
+  const closeContactProfile = env.sandbox.closeContactProfile || env.sandbox.window.closeContactProfile;
+  const openDirectChat = env.sandbox.openDirectChat || env.sandbox.window.openDirectChat;
+  const handleSystemBackPress = env.sandbox.handleSystemBackPress || env.sandbox.window.handleSystemBackPress;
 
+  assert.ok(typeof openContactProfile === 'function', 'openContactProfile deve ser uma função');
+  assert.ok(typeof closeContactProfile === 'function', 'closeContactProfile deve ser uma função');
 
+  const currentUser = { uid: 'user_me_bio', name: 'Eu', username: 'eumesmo' };
+  env.sandbox.window.setCurrentUser(currentUser);
+  env.sandbox.window.setCurrentProfile(currentUser);
 
+  // 2. Abertura e Preenchimento do Painel "Dados do Contato"
+  const contactMock = {
+    uid: 'contato_recado_123',
+    name: 'Mariana Souza',
+    username: '@marianas',
+    avatar: 'https://cdn.test/mariana.jpg',
+    status: 'Vivendo e aprendendo todo dia! 🚀✨',
+    isVerified: true
+  };
 
+  // Inicializar documento do contato no Firestore
+  env.firestoreDocs[`users/${contactMock.uid}`] = {
+    uid: contactMock.uid,
+    name: contactMock.name,
+    username: contactMock.username,
+    avatar: contactMock.avatar,
+    status: contactMock.status
+  };
 
+  await openContactProfile(contactMock);
+  assert.strictEqual(env.elements['contact-profile-panel'].classList.contains('active'), true, 'Painel Dados do Contato deve abrir com classe active');
+  assert.strictEqual(env.elements['contact-profile-name'].innerText, 'Mariana Souza', 'Nome do contato deve estar correto');
+  assert.ok(env.elements['contact-profile-username'].innerText.includes('marianas'), 'Username do contato deve conter marianas');
+  assert.ok(env.elements['contact-profile-bio-text'].innerText.includes('Vivendo e aprendendo todo dia!'), 'Recado/Bio deve estar preenchido no painel');
+  assert.ok(env.elements['contact-profile-avatar'].style.backgroundImage.includes('mariana.jpg'), 'Avatar deve exibir imagem do contato');
 
+  // Fechamento manual
+  closeContactProfile();
+  assert.strictEqual(env.elements['contact-profile-panel'].classList.contains('active'), false, 'Painel Dados do Contato deve fechar');
 
+  // 3. Integração com Botão Voltar do Sistema (Android Back Button)
+  await openContactProfile(contactMock);
+  assert.strictEqual(env.elements['contact-profile-panel'].classList.contains('active'), true);
+  const backResult = handleSystemBackPress();
+  assert.strictEqual(backResult, true, 'handleSystemBackPress deve interceptar e retornar true');
+  assert.strictEqual(env.elements['contact-profile-panel'].classList.contains('active'), false, 'Botão voltar deve fechar o painel Dados do Contato');
 
+  // 4. Exibição e Sincronização em Tempo Real no Cabeçalho do Chat
+  openDirectChat({
+    uid: contactMock.uid,
+    name: contactMock.name,
+    username: contactMock.username,
+    avatar: contactMock.avatar,
+    status: 'Focado nos projetos 💻'
+  });
 
+  assert.strictEqual(env.elements['chat-window'].classList.contains('active'), true, 'Chat deve estar aberto');
+  assert.ok(env.elements['chat-window-bio'].innerText.includes('Vivendo e aprendendo todo dia!'), 'Bio deve ser exibida no cabeçalho do chat');
+
+  // Atualização em tempo real do status/recado do contato
+  await env.sandbox.updateDoc({ path: `users/${contactMock.uid}` }, {
+    status: 'Disponível para novas ideias 💡'
+  });
+
+  assert.ok(env.elements['chat-window-bio'].innerText.includes('Disponível para novas ideias 💡'), 'Bio no cabeçalho deve atualizar instantaneamente com listener');
+});
