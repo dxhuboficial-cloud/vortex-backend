@@ -523,9 +523,11 @@ onAuthStateChanged(auth, async (user) => {
         listenToIncomingCalls();
         listenToNotifications();
         listenToAdminReports();
+        loadUserFavoriteTracks();
         showToast("Conectado", `Bem-vindo, ${currentProfile.name}!`, "green");
     } else {
         currentUser = null;
+        loadUserFavoriteTracks();
         if (authScreen) authScreen.classList.remove('unlocked');
         detachListeners();
         updateAdminUIVisibility();
@@ -11755,9 +11757,152 @@ const DEFAULT_TRENDING_TRACKS = [
     }
 ];
 
+export let userFavoriteTracks = [];
+let userFavoriteTracksUnsubscribe = null;
+
+export function isTrackFavorited(trackId) {
+    if (!trackId) return false;
+    return userFavoriteTracks.some(t => String(t.id) === String(trackId));
+}
+
+export function getUserFavoriteTracks() {
+    return userFavoriteTracks;
+}
+
+export function setUserFavoriteTracks(tracks = []) {
+    userFavoriteTracks = Array.isArray(tracks) ? tracks : [];
+}
+
+export async function loadUserFavoriteTracks() {
+    if (userFavoriteTracksUnsubscribe) {
+        userFavoriteTracksUnsubscribe();
+        userFavoriteTracksUnsubscribe = null;
+    }
+
+    if (!currentUser) {
+        userFavoriteTracks = [];
+        return;
+    }
+
+    try {
+        const local = localStorage.getItem(`vortex_fav_tracks_${currentUser.uid}`);
+        if (local) {
+            const parsed = JSON.parse(local);
+            if (Array.isArray(parsed)) {
+                userFavoriteTracks = parsed;
+            }
+        }
+    } catch (e) {}
+
+    try {
+        if (typeof collection === 'function' && typeof onSnapshot === 'function' && typeof db !== 'undefined') {
+            const favColRef = collection(db, 'users', currentUser.uid, 'favorite_tracks');
+            userFavoriteTracksUnsubscribe = onSnapshot(favColRef, (snapshot) => {
+                if (snapshot && Array.isArray(snapshot.docs)) {
+                    const tracks = snapshot.docs.map(docSnap => ({
+                        id: docSnap.id,
+                        ...docSnap.data()
+                    })).sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
+                    userFavoriteTracks = tracks;
+                    try {
+                        localStorage.setItem(`vortex_fav_tracks_${currentUser.uid}`, JSON.stringify(tracks));
+                    } catch (e) {}
+                    updateFavoriteIconsUI();
+                }
+            }, (error) => {
+                console.warn('Erro ao sincronizar favoritas do Firestore:', error);
+            });
+        }
+    } catch (err) {
+        console.warn('Erro ao configurar listener de favoritas:', err);
+    }
+}
+
+export async function toggleFavoriteTrack(track) {
+    if (!track || !track.id) return;
+    if (!currentUser) {
+        showToast('Login necessário', 'Entre na sua conta para salvar músicas favoritas.', 'red');
+        return;
+    }
+
+    const trackId = String(track.id);
+    const existingIndex = userFavoriteTracks.findIndex(t => String(t.id) === trackId);
+    const isAdding = existingIndex === -1;
+
+    if (isAdding) {
+        const newFav = {
+            id: trackId,
+            title: track.title || 'Música',
+            artist: track.artist || 'Artista',
+            cover: track.cover || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&h=300&fit=crop',
+            audioUrl: track.audioUrl || '',
+            duration: track.duration || 30,
+            savedAt: Date.now()
+        };
+        userFavoriteTracks.unshift(newFav);
+        try {
+            localStorage.setItem(`vortex_fav_tracks_${currentUser.uid}`, JSON.stringify(userFavoriteTracks));
+        } catch (e) {}
+        showToast('Favoritos ❤️', `"${newFav.title}" salva nas suas favoritas!`, 'green');
+
+        try {
+            if (typeof setDoc === 'function' && typeof doc === 'function' && typeof db !== 'undefined') {
+                await setDoc(doc(db, 'users', currentUser.uid, 'favorite_tracks', trackId), newFav);
+            }
+        } catch (err) {
+            console.warn('Erro ao salvar favorita no Firestore:', err);
+        }
+    } else {
+        const removed = userFavoriteTracks.splice(existingIndex, 1)[0];
+        try {
+            localStorage.setItem(`vortex_fav_tracks_${currentUser.uid}`, JSON.stringify(userFavoriteTracks));
+        } catch (e) {}
+        showToast('Favoritos', `"${removed?.title || 'Música'}" removida dos favoritos.`, 'yellow');
+
+        try {
+            if (typeof deleteDoc === 'function' && typeof doc === 'function' && typeof db !== 'undefined') {
+                await deleteDoc(doc(db, 'users', currentUser.uid, 'favorite_tracks', trackId));
+            }
+        } catch (err) {
+            console.warn('Erro ao excluir favorita no Firestore:', err);
+        }
+    }
+
+    updateFavoriteIconsUI();
+
+    if (activeMusicGenre === 'favorites') {
+        const searchInput = document.getElementById('music-search-input');
+        loadMusicPickerResults(searchInput?.value || '', 'favorites');
+    }
+}
+
+export function updateFavoriteIconsUI() {
+    document.querySelectorAll('.track-fav-btn').forEach(btn => {
+        const tid = btn.dataset.trackId;
+        const isFav = isTrackFavorited(tid);
+        btn.classList.toggle('favorited', isFav);
+        btn.title = isFav ? 'Remover dos favoritos' : 'Salvar nos favoritos';
+        const icon = btn.querySelector('i, svg');
+        if (icon) {
+            icon.classList.toggle('filled', isFav);
+        }
+    });
+}
+
 export async function searchMusicTracks(query = '', genre = '') {
-    const q = (query || '').trim();
+    const q = (query || '').trim().toLowerCase();
     const g = (genre || '').trim();
+
+    if (g === 'favorites') {
+        if (q) {
+            return userFavoriteTracks.filter(t =>
+                (t.title && t.title.toLowerCase().includes(q)) ||
+                (t.artist && t.artist.toLowerCase().includes(q))
+            );
+        }
+        return [...userFavoriteTracks];
+    }
+
     const searchTerm = q || (g && g !== 'trending' ? `${g} hits` : 'top hits');
 
     try {
@@ -11785,8 +11930,8 @@ export async function searchMusicTracks(query = '', genre = '') {
 
     if (q) {
         const filtered = DEFAULT_TRENDING_TRACKS.filter(t => 
-            t.title.toLowerCase().includes(q.toLowerCase()) || 
-            t.artist.toLowerCase().includes(q.toLowerCase())
+            t.title.toLowerCase().includes(q) || 
+            t.artist.toLowerCase().includes(q)
         );
         return filtered.length ? filtered : DEFAULT_TRENDING_TRACKS;
     }
@@ -11798,6 +11943,8 @@ export function openMusicPicker(target = 'status') {
     const modal = document.getElementById('music-picker-modal');
     if (modal) modal.classList.add('active');
     
+    loadUserFavoriteTracks();
+
     const searchInput = document.getElementById('music-search-input');
     if (searchInput) {
         searchInput.value = '';
@@ -11890,13 +12037,30 @@ async function loadMusicPickerResults(query = '', genre = '') {
     if (loading) loading.style.display = 'none';
 
     if (!tracks || tracks.length === 0) {
-        if (empty) empty.style.display = 'flex';
+        if (empty) {
+            if (genre === 'favorites') {
+                empty.innerHTML = `
+                    <div class="music-empty-favorites">
+                        <i data-lucide="heart" style="width:38px;height:38px;color:#ff4d67;"></i>
+                        <span>Nenhuma música favoritada ainda.<br>Toque no coração ❤️ ao lado de qualquer música para salvar aqui!</span>
+                    </div>
+                `;
+            } else {
+                empty.innerHTML = `
+                    <i data-lucide="music-4" style="width: 32px; height: 32px; color: var(--text-dim);"></i>
+                    <span>Nenhuma música encontrada. Tente outra busca!</span>
+                `;
+            }
+            empty.style.display = 'flex';
+            if (window.lucide) lucide.createIcons();
+        }
         return;
     }
 
     if (list) {
         list.innerHTML = tracks.map(track => {
             const isCurrentPlaying = currentlyPlayingPreviewTrackId === track.id;
+            const isFav = isTrackFavorited(track.id);
             return `
                 <div class="music-track-card ${isCurrentPlaying ? 'playing' : ''}" data-track-id="${escapeHTML(track.id)}">
                     <div class="track-cover-wrap">
@@ -11910,9 +12074,14 @@ async function loadMusicPickerResults(query = '', genre = '') {
                         <span class="track-artist">${escapeHTML(track.artist)}</span>
                         <span class="track-meta-tag"><i data-lucide="music-2" style="width:11px;height:11px;"></i> 0:${track.duration < 10 ? '0' + track.duration : track.duration}</span>
                     </div>
-                    <button type="button" class="track-select-btn" data-action="select-track" data-track-id="${escapeHTML(track.id)}">
-                        Usar
-                    </button>
+                    <div class="track-actions-wrap">
+                        <button type="button" class="track-fav-btn ${isFav ? 'favorited' : ''}" data-action="toggle-fav-track" data-track-id="${escapeHTML(track.id)}" title="${isFav ? 'Remover dos favoritos' : 'Salvar nos favoritos'}" aria-label="Favoritar">
+                            <i data-lucide="heart" class="${isFav ? 'filled' : ''}"></i>
+                        </button>
+                        <button type="button" class="track-select-btn" data-action="select-track" data-track-id="${escapeHTML(track.id)}">
+                            Usar
+                        </button>
+                    </div>
                 </div>
             `;
         }).join('');
@@ -11923,8 +12092,17 @@ async function loadMusicPickerResults(query = '', genre = '') {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const tid = btn.dataset.trackId;
-                const track = lastFetchedTracks.find(t => t.id === tid);
+                const track = lastFetchedTracks.find(t => String(t.id) === String(tid)) || userFavoriteTracks.find(t => String(t.id) === String(tid));
                 if (track) toggleTrackPreview(track);
+            });
+        });
+
+        list.querySelectorAll('[data-action="toggle-fav-track"]').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const tid = btn.dataset.trackId;
+                const track = lastFetchedTracks.find(t => String(t.id) === String(tid)) || userFavoriteTracks.find(t => String(t.id) === String(tid));
+                if (track) await toggleFavoriteTrack(track);
             });
         });
 
@@ -11932,7 +12110,7 @@ async function loadMusicPickerResults(query = '', genre = '') {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const tid = btn.dataset.trackId;
-                const track = lastFetchedTracks.find(t => t.id === tid);
+                const track = lastFetchedTracks.find(t => String(t.id) === String(tid)) || userFavoriteTracks.find(t => String(t.id) === String(tid));
                 if (track) selectMusicTrack(track);
             });
         });
@@ -12194,20 +12372,20 @@ function initMusicFeatureListeners() {
         }, 320);
     });
 
-    clearBtn?.addEventListener('click', () => {
+    clearBtn?.addEventListener('click', async () => {
         if (searchInput) searchInput.value = '';
         clearBtn.style.display = 'none';
-        loadMusicPickerResults('', activeMusicGenre);
+        await loadMusicPickerResults('', activeMusicGenre);
     });
 
     document.querySelectorAll('.music-chip').forEach(chip => {
-        chip.addEventListener('click', () => {
+        chip.addEventListener('click', async () => {
             playSound(clickSound);
             document.querySelectorAll('.music-chip').forEach(c => c.classList.remove('active'));
             chip.classList.add('active');
             activeMusicGenre = chip.dataset.genre || 'trending';
             const currentQuery = searchInput?.value || '';
-            loadMusicPickerResults(currentQuery, activeMusicGenre);
+            await loadMusicPickerResults(currentQuery, activeMusicGenre);
         });
     });
 }
@@ -12760,6 +12938,12 @@ if (typeof window !== 'undefined') {
     window.handleSystemBackPress = handleSystemBackPress;
     window.isAuthorVipUser = isAuthorVipUser;
     window.authorVipCache = authorVipCache;
+    window.toggleFavoriteTrack = toggleFavoriteTrack;
+    window.isTrackFavorited = isTrackFavorited;
+    window.getUserFavoriteTracks = getUserFavoriteTracks;
+    window.setUserFavoriteTracks = setUserFavoriteTracks;
+    window.loadUserFavoriteTracks = loadUserFavoriteTracks;
+    window.loadMusicPickerResults = loadMusicPickerResults;
 }
 
 if (typeof window !== 'undefined') {

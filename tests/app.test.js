@@ -148,6 +148,11 @@ function createTestEnvironment() {
     elements['lock-screen'].classList.remove('unlocked');
   }
 
+  if (elements['music-chip-favorites']) {
+    elements['music-chip-favorites'].classList.add('music-chip');
+    elements['music-chip-favorites'].dataset.genre = 'favorites';
+  }
+
   const firestoreDocs = {};
   const firestoreUpdates = [];
   const firestoreListeners = [];
@@ -335,6 +340,14 @@ function createTestEnvironment() {
   let vibrationPattern = null;
   const rtdbDocs = {};
 
+  const storageStore = {};
+  const mockLocalStorage = {
+    getItem: (key) => (key in storageStore ? storageStore[key] : null),
+    setItem: (key, val) => { storageStore[key] = String(val); },
+    removeItem: (key) => { delete storageStore[key]; },
+    clear: () => { Object.keys(storageStore).forEach(k => delete storageStore[k]); }
+  };
+
   let currentHistoryState = null;
   const windowListeners = {};
   const mockHistory = {
@@ -372,7 +385,7 @@ function createTestEnvironment() {
         }
         return Promise.resolve();
       },
-      localStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {} },
+      localStorage: mockLocalStorage,
       location: { origin: 'https://menssagem-dx.web.app', pathname: '/', href: 'https://menssagem-dx.web.app/', search: '', reload: () => {} },
       open: (url, target) => {
         if (!sandbox._openedUrls) sandbox._openedUrls = [];
@@ -466,7 +479,7 @@ function createTestEnvironment() {
       this.addEventListener = (evt, cb) => { this['on' + evt] = cb; };
       this.removeEventListener = () => {};
     },
-    localStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {} },
+    localStorage: mockLocalStorage,
     requestAnimationFrame: (cb) => setTimeout(cb, 16),
     cancelAnimationFrame: (id) => clearTimeout(id),
     setInterval,
@@ -679,6 +692,7 @@ function createTestEnvironment() {
     sandbox,
     firestoreDocs,
     firestoreUpdates,
+    storageStore,
     rtdbDocs,
     soundPlayed,
     makeMockElement,
@@ -736,7 +750,8 @@ test('HTML DOM Integrity: All required elements and modal IDs exist in index.htm
     'close-message-info-modal',
     'msg-info-text',
     'msg-info-readers-list',
-    'msg-info-seen-count'
+    'msg-info-seen-count',
+    'music-chip-favorites'
   ];
 
   for (const id of requiredIds) {
@@ -766,7 +781,10 @@ test('CSS Integrity: Braces match and classes are defined', () => {
     '.comment-delete-btn',
     '.comment-send-btn',
     '.attach-icon-circle.orange',
-    '.posts-count-label'
+    '.posts-count-label',
+    '.track-actions-wrap',
+    '.track-fav-btn',
+    '.music-empty-favorites'
   ];
 
   for (const cls of requiredClasses) {
@@ -3898,4 +3916,147 @@ test('Recado / Bio do Contato: Exibição no cabeçalho do chat, cartão de intr
   assert.strictEqual(env.elements['report-contact-modal'].classList.contains('active'), false, 'Modal de denúncia deve fechar');
   const reportDocs = Object.keys(env.firestoreDocs).filter(k => k.startsWith('reports/'));
   assert.ok(reportDocs.length > 0, 'Denúncia deve ter sido salva na coleção reports');
+
+  const bioTimer = (env.sandbox.getBioBubbleTimer || env.sandbox.window.getBioBubbleTimer)?.();
+  if (bioTimer) clearTimeout(bioTimer);
 });
+
+test('Músicas Favoritas: Salvar/favoritar músicas (❤️), aba ⭐ Favoritas, persistência no Firestore e localStorage, remoção e uso em status/posts', async () => {
+  const env = createTestEnvironment();
+
+  const user = {
+    uid: 'user_music_fan_1',
+    name: 'Music Lover',
+    email: 'fan@vortex.app',
+    avatar: 'https://example.com/avatar.jpg'
+  };
+  env.sandbox.window.setCurrentUser(user);
+  env.firestoreDocs[`users/${user.uid}`] = user;
+
+  const toggleFavoriteTrack = env.sandbox.toggleFavoriteTrack || env.sandbox.window.toggleFavoriteTrack;
+  const isTrackFavorited = env.sandbox.isTrackFavorited || env.sandbox.window.isTrackFavorited;
+  const getUserFavoriteTracks = env.sandbox.getUserFavoriteTracks || env.sandbox.window.getUserFavoriteTracks;
+  const setUserFavoriteTracks = env.sandbox.setUserFavoriteTracks || env.sandbox.window.setUserFavoriteTracks;
+  const loadUserFavoriteTracks = env.sandbox.loadUserFavoriteTracks || env.sandbox.window.loadUserFavoriteTracks;
+  const searchMusicTracks = env.sandbox.searchMusicTracks || env.sandbox.window.searchMusicTracks;
+  const openMusicPicker = env.sandbox.openMusicPicker || env.sandbox.window.openMusicPicker;
+  const selectMusicTrack = env.sandbox.selectMusicTrack || env.sandbox.window.selectMusicTrack;
+  const getPendingStatusMusic = env.sandbox.getPendingStatusMusic || env.sandbox.window.getPendingStatusMusic;
+  const getPendingPostMusic = env.sandbox.getPendingPostMusic || env.sandbox.window.getPendingPostMusic;
+
+  assert.ok(typeof toggleFavoriteTrack === 'function', 'toggleFavoriteTrack deve estar disponível');
+  assert.ok(typeof isTrackFavorited === 'function', 'isTrackFavorited deve estar disponível');
+  assert.ok(typeof getUserFavoriteTracks === 'function', 'getUserFavoriteTracks deve estar disponível');
+
+  // 1. Estado inicial sem favoritas
+  assert.strictEqual(getUserFavoriteTracks().length, 0, 'Inicialmente a lista de favoritas deve estar vazia');
+  assert.strictEqual(isTrackFavorited('fav_track_01'), false, 'Faixa não deve estar favoritada inicialmente');
+
+  // 2. Favoritar uma faixa
+  const sampleTrack1 = {
+    id: 'fav_track_01',
+    title: 'Neon Skyline Night',
+    artist: 'Cyber Dreamers',
+    cover: 'https://example.com/cover1.jpg',
+    audioUrl: 'https://example.com/audio1.mp3',
+    duration: 30
+  };
+
+  await toggleFavoriteTrack(sampleTrack1);
+
+  // Verificações em memória
+  assert.strictEqual(isTrackFavorited('fav_track_01'), true, 'Faixa deve estar marcada como favorita');
+  assert.strictEqual(getUserFavoriteTracks().length, 1, 'Lista deve ter 1 faixa favorita');
+  assert.strictEqual(getUserFavoriteTracks()[0].id, 'fav_track_01');
+
+  // Verificação de persistência no Firestore (users/{uid}/favorite_tracks/{trackId})
+  const firestoreDocPath = `users/${user.uid}/favorite_tracks/fav_track_01`;
+  assert.ok(env.firestoreDocs[firestoreDocPath], 'Faixa deve ser salva na subcoleção users/{uid}/favorite_tracks');
+  assert.strictEqual(env.firestoreDocs[firestoreDocPath].title, 'Neon Skyline Night');
+
+  // Verificação de persistência no localStorage cache
+  const localCache = env.sandbox.localStorage.getItem(`vortex_fav_tracks_${user.uid}`);
+  assert.ok(localCache, 'Músicas favoritas devem ser cacheadas no localStorage');
+  const parsedCache = JSON.parse(localCache);
+  assert.strictEqual(parsedCache.length, 1);
+  assert.strictEqual(parsedCache[0].id, 'fav_track_01');
+
+  // 3. Adicionar uma segunda faixa favorita
+  const sampleTrack2 = {
+    id: 'fav_track_02',
+    title: 'Amanhecer no Sertão',
+    artist: 'Viola Elétrica',
+    cover: 'https://example.com/cover2.jpg',
+    audioUrl: 'https://example.com/audio2.mp3',
+    duration: 30
+  };
+
+  await toggleFavoriteTrack(sampleTrack2);
+  assert.strictEqual(isTrackFavorited('fav_track_02'), true);
+  assert.strictEqual(getUserFavoriteTracks().length, 2, 'Lista agora deve ter 2 faixas');
+
+  // 4. Filtragem por categoria "favorites" via searchMusicTracks
+  const favResults = await searchMusicTracks('', 'favorites');
+  assert.strictEqual(favResults.length, 2, 'searchMusicTracks com categoria favorites deve listar as 2 favoritas');
+  assert.ok(favResults.some(t => t.id === 'fav_track_01'));
+  assert.ok(favResults.some(t => t.id === 'fav_track_02'));
+
+  // Busca textual dentro das favoritas
+  const filterQuery = await searchMusicTracks('Sertão', 'favorites');
+  assert.strictEqual(filterQuery.length, 1, 'Busca por Sertão deve filtrar apenas a faixa correspondente');
+  assert.strictEqual(filterQuery[0].id, 'fav_track_02');
+
+  // 5. Teste da Aba "⭐ Favoritas" no Modal de Escolha de Música
+  await openMusicPicker('status');
+  assert.strictEqual(env.elements['music-picker-modal'].classList.contains('active'), true, 'Modal de música deve abrir');
+
+  const favoritesChip = env.elements['music-chip-favorites'];
+  assert.ok(favoritesChip, 'Chip ⭐ Favoritas deve existir');
+  assert.strictEqual(favoritesChip.dataset.genre, 'favorites');
+
+  // Simular clique no chip Favoritas
+  await favoritesChip.click();
+  assert.strictEqual(favoritesChip.classList.contains('active'), true, 'Chip Favoritas deve se tornar ativo');
+
+  const resultsContainer = env.elements['music-tracks-list'];
+  assert.ok(resultsContainer, 'music-tracks-list deve existir no DOM');
+  assert.ok(resultsContainer.innerHTML.includes('Neon Skyline Night'), 'Resultados devem conter a faixa favoritada Neon Skyline Night');
+  assert.ok(resultsContainer.innerHTML.includes('Amanhecer no Sertão'), 'Resultados devem conter a faixa favoritada Amanhecer no Sertão');
+  assert.ok(resultsContainer.innerHTML.includes('data-action="toggle-fav-track"'), 'Card deve renderizar o botão de favoritar');
+
+  // 6. Selecionar música favorita para Story
+  selectMusicTrack(sampleTrack1);
+  assert.strictEqual(env.elements['music-picker-modal'].classList.contains('active'), false, 'Modal deve fechar após selecionar');
+  assert.deepStrictEqual(getPendingStatusMusic(), sampleTrack1, 'Faixa favorita deve ser anexada ao status pendente');
+  assert.strictEqual(env.elements['status-selected-music-title'].innerText, 'Neon Skyline Night');
+
+  // 7. Selecionar música favorita para Post
+  await openMusicPicker('post');
+  selectMusicTrack(sampleTrack2);
+  assert.deepStrictEqual(getPendingPostMusic(), sampleTrack2, 'Faixa favorita deve ser anexada ao post pendente');
+  assert.strictEqual(env.elements['post-selected-music-title'].innerText, 'Amanhecer no Sertão');
+
+  // 8. Desfavoritar / Remover faixa dos favoritos (toggle)
+  await toggleFavoriteTrack(sampleTrack1);
+  assert.strictEqual(isTrackFavorited('fav_track_01'), false, 'Faixa fav_track_01 deve ser desmarcada');
+  assert.strictEqual(getUserFavoriteTracks().length, 1, 'Lista agora deve ter 1 faixa');
+  assert.strictEqual(!!env.firestoreDocs[firestoreDocPath], false, 'Documento deve ser removido do Firestore');
+
+  // Remover a segunda faixa para testar o Empty State da aba Favoritas
+  await toggleFavoriteTrack(sampleTrack2);
+  assert.strictEqual(getUserFavoriteTracks().length, 0, 'Lista deve estar vazia');
+
+  // Abrir picker na aba Favoritas e verificar empty state
+  await openMusicPicker('status');
+  await favoritesChip.click();
+  const emptyEl = env.elements['music-empty-state'];
+  assert.strictEqual(emptyEl.style.display, 'flex', 'Deve exibir empty state de músicas');
+  assert.ok(emptyEl.innerHTML.includes('music-empty-favorites'), 'Deve exibir empty state customizado de favoritas');
+  assert.ok(emptyEl.innerHTML.includes('Nenhuma música favoritada ainda'), 'Texto de empty state deve orientar o usuário');
+
+  // 9. Sincronização e Logout
+  env.sandbox.window.setCurrentUser(null);
+  await loadUserFavoriteTracks();
+  assert.strictEqual(getUserFavoriteTracks().length, 0, 'Favoritas devem ser limpas no logout');
+});
+

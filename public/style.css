@@ -4753,6 +4753,57 @@ input:checked + .slider:before { transform: translateX(22px); }
     gap: 4px;
 }
 
+.track-actions-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.track-fav-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: var(--text-dim, #9aa5b5);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.22s ease;
+    padding: 0;
+    flex-shrink: 0;
+}
+
+.track-fav-btn:hover {
+    border-color: #ff4d67;
+    color: #ff4d67;
+    background: rgba(255, 77, 103, 0.12);
+    transform: scale(1.06);
+}
+
+.track-fav-btn.favorited,
+.track-fav-btn.active {
+    color: #ff4d67;
+    border-color: #ff4d67;
+    background: rgba(255, 77, 103, 0.2);
+    box-shadow: 0 0 10px rgba(255, 77, 103, 0.35);
+}
+
+.track-fav-btn i,
+.track-fav-btn svg {
+    width: 16px;
+    height: 16px;
+    transition: all 0.2s ease;
+}
+
+.track-fav-btn.favorited i,
+.track-fav-btn.favorited svg {
+    fill: #ff4d67;
+    transform: scale(1.08);
+}
+
 .track-select-btn {
     padding: 6px 14px;
     border-radius: 8px;
@@ -4770,6 +4821,27 @@ input:checked + .slider:before { transform: translateX(22px); }
     background: #33f7ff;
     box-shadow: 0 0 12px rgba(0, 243, 255, 0.5);
     transform: scale(1.04);
+}
+
+.music-empty-favorites {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 36px 16px;
+    color: var(--text-dim, #9aa5b5);
+    gap: 12px;
+    font-size: 0.85rem;
+    line-height: 1.45;
+}
+
+.music-empty-favorites i,
+.music-empty-favorites svg {
+    width: 38px;
+    height: 38px;
+    color: #ff4d67;
+    opacity: 0.85;
 }
 
 /* Botão de Disparo para Escolher Música nos Compositores */
