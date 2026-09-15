@@ -400,13 +400,30 @@ header h1 span {
 }
 
 .verified-badge {
-    color: var(--accent-color);
+    color: var(--accent-color, #00ff88);
     display: none;
     flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    vertical-align: middle;
 }
 
 .verified-badge.active {
-    display: inline-block;
+    display: inline-flex !important;
+}
+
+.chat-card .verified-badge,
+.chat-name-row .verified-badge,
+.post-author .verified-badge,
+.feed-comment-author-line .verified-badge,
+.group-sender-name .verified-badge,
+.member-list-item .verified-badge {
+    color: var(--accent-color, #00ff88);
+    width: 16px;
+    height: 16px;
+    margin-left: 4px;
+    flex-shrink: 0;
+    vertical-align: middle;
 }
 
 .story-item span {

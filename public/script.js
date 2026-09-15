@@ -777,17 +777,33 @@ export function getVipSubscriptionState(user) {
     if (email === 'dxhub.oficial@gmail.com' || username === 'dxhuboficial' || user.role === 'admin' || name.includes('DX Hub')) {
         return { status: 'active', isVip: true, daysRemaining: 9999, graceDaysRemaining: 0 };
     }
-    if (user.isVip === false && user.isVerified === false && !user.vipExpiresAt) {
+
+    // Suporte flexível a diferentes formatos de data de expiração (Timestamp Firestore, Date, ISO string, número)
+    let expiresAt = 0;
+    if (user.vipExpiresAt) {
+        if (typeof user.vipExpiresAt.toMillis === 'function') {
+            expiresAt = user.vipExpiresAt.toMillis();
+        } else if (typeof user.vipExpiresAt.toDate === 'function') {
+            expiresAt = user.vipExpiresAt.toDate().getTime();
+        } else if (user.vipExpiresAt.seconds) {
+            expiresAt = user.vipExpiresAt.seconds * 1000;
+        } else if (typeof user.vipExpiresAt === 'string') {
+            expiresAt = isNaN(Number(user.vipExpiresAt)) ? new Date(user.vipExpiresAt).getTime() : Number(user.vipExpiresAt);
+        } else {
+            expiresAt = Number(user.vipExpiresAt) || 0;
+        }
+    }
+
+    if (user.isVip === false && user.isVerified === false && !expiresAt) {
         return { status: 'none', isVip: false, daysRemaining: 0, graceDaysRemaining: 0 };
     }
 
-    // Se for VIP manual/admin sem prazo de validade definido (vitalício/teste)
-    if ((user.isVip || user.isVerified) && !user.vipExpiresAt) {
+    // Se for VIP manual/admin ou assinatura sem prazo de validade definido (vitalício/teste/aprovado)
+    if ((user.isVip || user.isVerified || user.vipStatus === 'active' || user.vipRequestStatus === 'approved') && !expiresAt) {
         return { status: 'active', isVip: true, daysRemaining: 9999, graceDaysRemaining: 0 };
     }
 
     const now = Date.now();
-    const expiresAt = Number(user.vipExpiresAt) || 0;
     const graceMs = 7 * 24 * 60 * 60 * 1000; // 7 dias de tolerância
     const graceExpiresAt = expiresAt + graceMs;
 
@@ -907,6 +923,7 @@ function updateProfileDOM() {
         userBadge.style.display = isVip ? 'inline-block' : 'none';
         userBadge.classList.toggle('active', isVip);
     }
+    if (window.lucide) lucide.createIcons();
     if (subscribeBtn) {
         if (sub.status === 'active') {
             subscribeBtn.innerText = sub.daysRemaining < 9000 ? `Assinado (${sub.daysRemaining}d) ⭐` : 'Assinado ⭐';
@@ -2151,6 +2168,7 @@ function listenToContacts() {
                     <div class="chat-header">
                         <span class="name">
                             <span class="name-text">${contact.name || 'Contato'}</span>
+                            <i data-lucide="badge-check" class="verified-badge chat-card-verified-badge" id="chat-card-verified-badge-${contactUid}" style="display:${(contact.isVip || contact.isVerified || checkIsVipUser(contact)) ? 'inline-flex' : 'none'};"></i>
                             <span class="pinned-chat-badge" id="pinned-badge-${contactUid}" style="display:${isPinned ? 'inline-flex' : 'none'};" title="Conversa fixada">
                                 <i data-lucide="pin"></i>
                             </span>
@@ -2207,15 +2225,24 @@ function listenToContacts() {
             });
 
             chatListEl.appendChild(card);
+            if (window.lucide) lucide.createIcons();
 
             const contactUserUnsubscribe = onSnapshot(doc(db, 'users', contactUid), (userSnap) => {
                 const tagEl = document.getElementById(`vip-tag-${contactUid}`);
+                const badgeEl = document.getElementById(`chat-card-verified-badge-${contactUid}`);
                 if (userSnap.exists()) {
                     const uData = userSnap.data();
                     contact.status = uData.status || contact.status;
+                    contact.isVip = uData.isVip;
+                    contact.isVerified = uData.isVerified;
                     const isVip = checkIsVipUser(uData);
                     if (tagEl) tagEl.style.display = isVip ? 'inline-block' : 'none';
+                    if (badgeEl) {
+                        badgeEl.style.display = isVip ? 'inline-flex' : 'none';
+                        badgeEl.classList.toggle('active', isVip);
+                    }
                     card.dataset.isVip = isVip ? 'true' : 'false';
+                    if (window.lucide) lucide.createIcons();
 
                     const lastMsgEl = document.getElementById(`last-msg-${chatId}`);
                     if (lastMsgEl && (!lastMsgEl.dataset.fallback || lastMsgEl.dataset.fallback.startsWith('💬 Recado:') || lastMsgEl.dataset.fallback === 'Toque para abrir a conversa...')) {
@@ -3432,6 +3459,7 @@ function refreshDirectChatStatus() {
         );
         badgeEl.style.display = isVip ? 'inline-flex' : 'none';
         badgeEl.classList.toggle('active', !!isVip);
+        if (window.lucide) lucide.createIcons();
     }
 
     if (blockedContactsSet.has(activeChatContact.uid)) {
@@ -3938,16 +3966,20 @@ function loadRealtimeMessages() {
                 }
                 const resolvedName = (rawName && rawName !== 'Membro') ? rawName : (groupMemberNamesCache.get(msg.senderUid) || 'Membro');
                 if (isMe) {
+                    const isMyVip = checkIsVipUser(currentProfile);
                     groupSenderHTML = `
                         <div class="group-sender-name group-sender-me" title="Enviado por você">
                             <span class="group-sender-name-text">${escapeHTML(resolvedName)} (Você)</span>
+                            <i data-lucide="badge-check" class="verified-badge" style="display:${isMyVip ? 'inline-flex' : 'none'};"></i>
                         </div>
                     `;
                 } else {
                     const color = getGroupSenderColor(msg.senderUid);
+                    const isSenderVip = !!(msg.isVip || msg.isVerified || (msg.senderEmail === 'dxhub.oficial@gmail.com') || (msg.senderUsername === 'dxhuboficial'));
                     groupSenderHTML = `
                         <div class="group-sender-name" style="color: ${color};" title="Enviado por ${escapeHTML(resolvedName)}">
                             <span class="group-sender-name-text">${escapeHTML(resolvedName)}</span>
+                            <i data-lucide="badge-check" class="verified-badge" style="display:${isSenderVip ? 'inline-flex' : 'none'};"></i>
                         </div>
                     `;
                 }
@@ -8514,7 +8546,10 @@ async function loadUsersForSearch(qText = '') {
                             ${!u.avatar ? (u.name || 'U').charAt(0).toUpperCase() : ''}
                         </div>
                         <div>
-                            <div style="font-size:0.88rem; font-weight:600; color:#fff;">${u.name} ${u.surname || ''}</div>
+                            <div style="display:flex; align-items:center; gap:4px;">
+                                <span style="font-size:0.88rem; font-weight:600; color:#fff;">${u.name} ${u.surname || ''}</span>
+                                <i data-lucide="badge-check" class="verified-badge" style="display:${(u.isVip || u.isVerified || checkIsVipUser(u)) ? 'inline-flex' : 'none'};"></i>
+                            </div>
                             <div style="font-size:0.72rem; color:var(--accent-color);">${u.username || '@usuario'}</div>
                             <div class="search-user-bio">💬 "${userBio}"</div>
                         </div>
@@ -8532,12 +8567,15 @@ async function loadUsersForSearch(qText = '') {
                 const toUid = btn.dataset.to;
                 btn.innerText = 'Solicitando...';
                 btn.disabled = true;
+                const isMyVip = checkIsVipUser(currentProfile);
                 await addDoc(collection(db, 'requests'), {
                     fromUid: currentUser.uid,
                     fromName: currentProfile.name,
                     fromUsername: currentProfile.username,
                     fromAvatar: currentProfile.avatar,
                     fromBio: currentProfile.status || 'Disponível no VORTEX ⚡',
+                    fromIsVip: isMyVip,
+                    fromIsVerified: isMyVip,
                     toUid: toUid,
                     status: 'pending',
                     createdAt: Date.now()
@@ -8611,18 +8649,23 @@ function listenToRequests() {
                                 ${!r.fromAvatar ? (r.fromName || 'U').charAt(0).toUpperCase() : ''}
                             </div>
                             <div>
-                                <div style="font-size:0.88rem; font-weight:600;">${r.fromName}</div>
+                                <div style="display:flex; align-items:center; gap:4px;">
+                                    <span style="font-size:0.88rem; font-weight:600;">${r.fromName}</span>
+                                    <i data-lucide="badge-check" class="verified-badge" style="display:${(r.fromIsVip || r.fromIsVerified) ? 'inline-flex' : 'none'};"></i>
+                                </div>
                                 <div style="font-size:0.7rem; color:var(--accent-color);">${r.fromUsername || '@usuario'}</div>
                                 <div class="search-user-bio">💬 "${reqBio}"</div>
                             </div>
                         </div>
                         <div style="display:flex; gap:6px;">
-                            <button class="danger-btn accept-req-action" data-id="${r.id}" data-fromuid="${r.fromUid}" data-fromname="${r.fromName}" data-fromavatar="${r.fromAvatar || ''}" data-frombio="${reqBio}" style="background:var(--accent-color); color:#000; border:none; padding:4px 10px; font-size:0.75rem; font-weight:bold;">Aceitar</button>
+                            <button class="danger-btn accept-req-action" data-id="${r.id}" data-fromuid="${r.fromUid}" data-fromname="${r.fromName}" data-fromavatar="${r.fromAvatar || ''}" data-frombio="${reqBio}" data-fromvip="${Boolean(r.fromIsVip || r.fromIsVerified)}" style="background:var(--accent-color); color:#000; border:none; padding:4px 10px; font-size:0.75rem; font-weight:bold;">Aceitar</button>
                             <button class="danger-btn reject-req-action" data-id="${r.id}" style="padding:4px 10px; font-size:0.75rem;">Recusar</button>
                         </div>
                     </div>
                 `;
             }).join('');
+
+            if (window.lucide) lucide.createIcons();
 
             listContainer.querySelectorAll('.accept-req-action').forEach(b => {
                 b.onclick = async () => {
@@ -8631,6 +8674,7 @@ function listenToRequests() {
                     const senderName = b.dataset.fromname;
                     const senderAvatar = b.dataset.fromavatar;
                     const senderBio = b.dataset.frombio || 'Disponível no VORTEX ⚡';
+                    const senderIsVip = b.dataset.fromvip === 'true';
 
                     await updateDoc(doc(db, 'requests', reqId), { status: 'accepted' });
 
@@ -8639,14 +8683,19 @@ function listenToRequests() {
                         name: senderName,
                         avatar: senderAvatar,
                         status: senderBio,
+                        isVip: senderIsVip,
+                        isVerified: senderIsVip,
                         addedAt: Date.now()
                     });
 
+                    const myVip = checkIsVipUser(currentProfile);
                     await setDoc(doc(db, 'users', senderUid, 'contacts', currentUser.uid), {
                         uid: currentUser.uid,
                         name: currentProfile.name,
                         avatar: currentProfile.avatar,
                         status: currentProfile.status || 'Disponível no VORTEX ⚡',
+                        isVip: myVip,
+                        isVerified: myVip,
                         addedAt: Date.now()
                     });
 
@@ -8930,13 +8979,18 @@ export async function submitInlineComment(postId, text) {
         const postData = postSnap.data();
         const comments = Array.isArray(postData.comments) ? [...postData.comments] : [];
         const commentId = 'comm_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+        const isMyVip = checkIsVipUser(currentProfile);
         comments.push({
             id: commentId,
             author: currentProfile?.name || currentUser.displayName || 'Usuário',
             authorUid: currentUser.uid,
+            authorUsername: currentProfile?.username || '',
+            authorEmail: currentProfile?.email || currentUser?.email || '',
             text: cleanText,
             createdAt: Date.now(),
             isPinned: false,
+            isVip: isMyVip,
+            isVerified: isMyVip,
             likes: []
         });
         openPostCommentCards.add(postId);
@@ -9181,7 +9235,10 @@ function renderPostsFeed(posts = []) {
                             <div class="post-author">
                                 <div class="post-author-avatar" ${avatar}></div>
                                 <div>
-                                    <div class="post-author-name">${escapeHTML(authorName)}</div>
+                                    <div class="post-author-name">
+                                        <span>${escapeHTML(authorName)}</span>
+                                        <i data-lucide="badge-check" class="verified-badge" style="display:${(post.isVip || post.isVerified || (currentUser && post.authorUid === currentUser.uid && checkIsVipUser(currentProfile)) || (post.authorUsername === 'dxhuboficial') || (post.authorEmail === 'dxhub.oficial@gmail.com')) ? 'inline-flex' : 'none'};"></i>
+                                    </div>
                                     <div class="post-time">${timeLabel}</div>
                                 </div>
                             </div>
@@ -9331,7 +9388,9 @@ function renderPostsFeed(posts = []) {
                                         ` : ''}
                                         <div class="feed-comment-text-wrap">
                                             <div class="feed-comment-author-line">
-                                                <strong>${escapeHTML(comment.author || 'Usuário')}:</strong>
+                                                <strong>${escapeHTML(comment.author || 'Usuário')}</strong>
+                                                <i data-lucide="badge-check" class="verified-badge" style="display:${(comment.isVip || comment.isVerified || (currentUser && comment.authorUid === currentUser.uid && checkIsVipUser(currentProfile)) || (comment.authorUsername === 'dxhuboficial') || (comment.authorEmail === 'dxhub.oficial@gmail.com')) ? 'inline-flex' : 'none'};"></i>
+                                                <span>:</span>
                                                 ${isEdited ? `<span class="comment-edited-badge">(editado)</span>` : ''}
                                             </div>
                                             ${isEditingThisComment ? `
@@ -10279,6 +10338,9 @@ document.getElementById('publish-post-btn')?.addEventListener('click', async () 
                 authorName: currentProfile.name,
                 authorAvatar: currentProfile.avatar,
                 authorUsername: currentProfile.username || '@' + currentProfile.name,
+                authorEmail: currentProfile.email || currentUser.email || '',
+                isVip: checkIsVipUser(currentProfile),
+                isVerified: checkIsVipUser(currentProfile),
                 type: file.type.startsWith('video') ? 'video' : 'image',
                 mediaData: reader.result,
                 caption: postCaptionInput?.value?.trim() || '',
