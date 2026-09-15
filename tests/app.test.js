@@ -3797,4 +3797,42 @@ test('Recado / Bio do Contato: Exibição no cabeçalho do chat, cartão de intr
   await env.elements['close-chat'].click();
   assert.strictEqual(env.elements['chat-window'].classList.contains('active'), false, 'Chat deve fechar ao clicar na seta de voltar');
   assert.strictEqual(env.elements['contact-profile-panel'].classList.contains('active'), false, 'Painel Dados do Contato NUNCA deve abrir ao clicar na seta de voltar');
+
+  // 6. Botões Bloquear e Denunciar no Painel Dados do Contato
+  await openContactProfile(contactMock);
+  assert.strictEqual(env.elements['contact-profile-panel'].classList.contains('active'), true);
+  assert.strictEqual(env.elements['contact-profile-block-text'].innerText, 'Bloquear Contato');
+
+  // Clicar no botão Bloquear abre o modal de confirmação
+  await env.elements['contact-profile-block-btn'].click();
+  assert.strictEqual(env.elements['block-contact-modal'].classList.contains('active'), true, 'Modal de bloqueio deve abrir');
+  assert.ok(env.elements['block-modal-title'].innerText.includes('Bloquear'), 'Título deve indicar Bloquear');
+
+  // Confirmar bloqueio
+  await env.elements['confirm-block-contact-btn'].click();
+  assert.strictEqual(env.elements['block-contact-modal'].classList.contains('active'), false, 'Modal de bloqueio deve fechar');
+  assert.ok(env.firestoreDocs[`users/${currentUser.uid}/blocked/${contactMock.uid}`], 'Documento de bloqueio deve ser criado');
+  assert.strictEqual(env.elements['contact-profile-block-text'].innerText, 'Desbloquear Contato', 'Texto deve mudar para Desbloquear Contato');
+
+  // Clicar novamente no botão Bloquear abre modal para Desbloquear
+  await env.elements['contact-profile-block-btn'].click();
+  assert.strictEqual(env.elements['block-contact-modal'].classList.contains('active'), true, 'Modal deve abrir para desbloquear');
+  assert.ok(env.elements['block-modal-title'].innerText.includes('Desbloquear'), 'Título deve indicar Desbloquear');
+
+  // Confirmar desbloqueio
+  await env.elements['confirm-block-contact-btn'].click();
+  assert.strictEqual(env.elements['block-contact-modal'].classList.contains('active'), false, 'Modal deve fechar');
+  assert.strictEqual(!!env.firestoreDocs[`users/${currentUser.uid}/blocked/${contactMock.uid}`], false, 'Documento de bloqueio deve ser removido');
+  assert.strictEqual(env.elements['contact-profile-block-text'].innerText, 'Bloquear Contato', 'Texto deve retornar para Bloquear Contato');
+
+  // Clicar no botão Denunciar abre o modal de denúncia
+  await env.elements['contact-profile-report-btn'].click();
+  assert.strictEqual(env.elements['report-contact-modal'].classList.contains('active'), true, 'Modal de denúncia deve abrir');
+  assert.strictEqual(env.elements['report-modal-header-title'].innerText, 'Denunciar Contato', 'Título do modal de denúncia deve ser Denunciar Contato');
+
+  // Enviar denúncia
+  await env.elements['submit-report-contact-btn'].click();
+  assert.strictEqual(env.elements['report-contact-modal'].classList.contains('active'), false, 'Modal de denúncia deve fechar');
+  const reportDocs = Object.keys(env.firestoreDocs).filter(k => k.startsWith('reports/'));
+  assert.ok(reportDocs.length > 0, 'Denúncia deve ter sido salva na coleção reports');
 });

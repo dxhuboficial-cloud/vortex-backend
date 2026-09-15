@@ -2665,10 +2665,7 @@ export async function openContactProfile(contact) {
         setAvatarContent(avatarEl, contact.avatar, initName, 'contact-profile-avatar-initial');
     }
 
-    const isBlocked = blockedContactsSet.has(contactUid);
-    if (blockText) blockText.innerText = isBlocked ? 'Desbloquear Contato' : 'Bloquear Contato';
-    if (presenceEl) presenceEl.innerText = contact.online ? 'Online agora' : 'Visto recentemente';
-    if (onlineDotEl) onlineDotEl.style.display = contact.online ? 'block' : 'none';
+    updateContactProfileBlockedUI(contactUid);
 
     // Listener em tempo real dos dados do contato (sincroniza Recado / Bio instantaneamente)
     activeContactProfileUnsubscribe = onSnapshot(doc(db, 'users', contactUid), (snap) => {
@@ -2692,8 +2689,13 @@ export async function openContactProfile(contact) {
         }
         if (onlineDotEl) onlineDotEl.style.display = isOnline ? 'block' : 'none';
         if (presenceEl) {
-            presenceEl.innerText = isOnline ? 'Online agora' : (uData.lastSeen ? `Visto por último: ${formatLastSeen(uData.lastSeen)}` : 'Visto recentemente');
+            if (blockedContactsSet.has(contactUid)) {
+                presenceEl.innerText = 'Bloqueado';
+            } else {
+                presenceEl.innerText = isOnline ? 'Online agora' : (uData.lastSeen ? `Visto por último: ${formatLastSeen(uData.lastSeen)}` : 'Visto recentemente');
+            }
         }
+        updateContactProfileBlockedUI(contactUid);
     }, (error) => console.error('Erro ao ouvir perfil do contato:', error));
 
     // Ações dos botões
@@ -2715,15 +2717,18 @@ export async function openContactProfile(contact) {
 
     if (blockBtn) {
         blockBtn.onclick = () => {
-            closeContactProfile();
-            openBlockContactModal();
+            openBlockContactConfirmation(contact);
         };
     }
 
     if (reportBtn) {
         reportBtn.onclick = () => {
-            closeContactProfile();
-            openReportContactModal();
+            openReportModal({
+                type: 'user',
+                targetUid: contactUid,
+                targetName: contact.name || 'Contato',
+                isGroup: false
+            });
         };
     }
 
@@ -4803,9 +4808,89 @@ export function updateActiveChatBlockedUI() {
     if (window.lucide) lucide.createIcons();
 }
 
+export let activeBlockTargetContact = null;
+
+export function updateContactProfileBlockedUI(contactUid) {
+    const blockText = document.getElementById('contact-profile-block-text');
+    const blockIcon = document.getElementById('contact-profile-block-icon');
+    const presenceEl = document.getElementById('contact-profile-presence');
+    const onlineDotEl = document.getElementById('contact-profile-online-dot');
+    if (!blockText) return;
+
+    const isBlocked = blockedContactsSet.has(contactUid);
+    blockText.innerText = isBlocked ? 'Desbloquear Contato' : 'Bloquear Contato';
+    if (blockIcon) {
+        blockIcon.setAttribute('data-lucide', isBlocked ? 'shield-check' : 'ban');
+    }
+    if (isBlocked) {
+        if (presenceEl) presenceEl.innerText = 'Bloqueado';
+        if (onlineDotEl) onlineDotEl.style.display = 'none';
+    } else {
+        if (presenceEl) {
+            presenceEl.innerText = (activeContactProfileData && activeContactProfileData.online) ? 'Online agora' : 'Visto recentemente';
+        }
+    }
+    if (window.lucide) lucide.createIcons();
+}
+
+export function openBlockContactConfirmation(contact) {
+    if (!currentUser || !contact || contact.isGroup) return;
+    activeBlockTargetContact = contact;
+    const contactUid = contact.uid || contact.id;
+    const isBlocked = blockedContactsSet.has(contactUid);
+    const titleEl = document.getElementById('block-modal-title');
+    const descEl = document.getElementById('block-modal-desc');
+    const confirmBtn = document.getElementById('confirm-block-contact-btn');
+    const iconBox = document.getElementById('block-modal-icon-box');
+
+    const contactName = contact.name || 'Contato';
+
+    if (isBlocked) {
+        if (titleEl) {
+            titleEl.innerText = `Desbloquear ${contactName}?`;
+            titleEl.className = 'modal-title';
+        }
+        if (descEl) descEl.innerText = `Você voltará a receber mensagens e chamadas deste contato.`;
+        if (confirmBtn) {
+            confirmBtn.innerText = 'Desbloquear Contato';
+            confirmBtn.className = 'danger-btn btn-delete-everyone';
+            confirmBtn.style.background = 'var(--accent-color)';
+            confirmBtn.style.color = '#000';
+        }
+        if (iconBox) {
+            iconBox.innerHTML = '<i data-lucide="shield-check"></i>';
+            iconBox.className = 'modal-icon-badge';
+            iconBox.style.background = 'rgba(0, 243, 255, 0.15)';
+            iconBox.style.color = 'var(--accent-color)';
+            iconBox.style.borderColor = 'var(--accent-color)';
+        }
+    } else {
+        if (titleEl) {
+            titleEl.innerText = `Bloquear ${contactName}?`;
+            titleEl.className = 'modal-title danger-text';
+        }
+        if (descEl) descEl.innerText = `Contatos bloqueados não poderão lhe enviar mensagens e nem visualizar seus stories no VORTEX.`;
+        if (confirmBtn) {
+            confirmBtn.innerText = 'Bloquear Contato';
+            confirmBtn.className = 'danger-btn btn-delete-everyone';
+            confirmBtn.style.background = '#ff3b30';
+            confirmBtn.style.color = '#fff';
+        }
+        if (iconBox) {
+            iconBox.innerHTML = '<i data-lucide="shield-alert"></i>';
+            iconBox.className = 'modal-icon-badge danger';
+            iconBox.style.background = '';
+            iconBox.style.color = '';
+            iconBox.style.borderColor = '';
+        }
+    }
+    if (window.lucide) lucide.createIcons();
+    document.getElementById('block-contact-modal')?.classList.add('active');
+}
+
 export async function toggleBlockContact(targetContact = activeChatContact) {
     if (!currentUser || !targetContact || targetContact.isGroup) return;
-    const targetUid = targetContact.uid;
+    const targetUid = targetContact.uid || targetContact.id;
     const targetName = targetContact.name || 'Contato';
     const isBlocked = blockedContactsSet.has(targetUid);
 
@@ -4813,6 +4898,7 @@ export async function toggleBlockContact(targetContact = activeChatContact) {
         try {
             await deleteDoc(doc(db, 'users', currentUser.uid, 'blocked', targetUid));
             blockedContactsSet.delete(targetUid);
+            updateContactProfileBlockedUI(targetUid);
             updateActiveChatBlockedUI();
             refreshDirectChatStatus();
             if (typeof loadRealtimeMessages === 'function' && activeChatContact && activeChatContact.uid === targetUid) {
@@ -4833,6 +4919,7 @@ export async function toggleBlockContact(targetContact = activeChatContact) {
                 blockedAt: Date.now()
             });
             blockedContactsSet.add(targetUid);
+            updateContactProfileBlockedUI(targetUid);
             updateActiveChatBlockedUI();
             refreshDirectChatStatus();
             if (typeof loadRealtimeMessages === 'function' && activeChatContact && activeChatContact.uid === targetUid) {
@@ -4978,6 +5065,8 @@ export async function submitContactReport(targetContact = activeChatContact, rea
 if (typeof window !== 'undefined') {
     window.listenToBlockedContacts = listenToBlockedContacts;
     window.updateActiveChatBlockedUI = updateActiveChatBlockedUI;
+    window.updateContactProfileBlockedUI = updateContactProfileBlockedUI;
+    window.openBlockContactConfirmation = openBlockContactConfirmation;
     window.toggleBlockContact = toggleBlockContact;
     window.submitContactReport = submitContactReport;
     window.submitGeneralReport = submitGeneralReport;
@@ -4988,65 +5077,21 @@ if (typeof window !== 'undefined') {
 document.getElementById('block-contact-trigger')?.addEventListener('click', () => {
     document.getElementById('chat-dropdown-menu')?.classList.remove('active');
     if (!activeChatContact || activeChatContact.isGroup) return;
-
-    const isBlocked = blockedContactsSet.has(activeChatContact.uid);
-    const titleEl = document.getElementById('block-modal-title');
-    const descEl = document.getElementById('block-modal-desc');
-    const confirmBtn = document.getElementById('confirm-block-contact-btn');
-    const iconBox = document.getElementById('block-modal-icon-box');
-
-    if (isBlocked) {
-        if (titleEl) {
-            titleEl.innerText = `Desbloquear ${activeChatContact.name}?`;
-            titleEl.className = 'modal-title';
-        }
-        if (descEl) descEl.innerText = `Você voltará a receber mensagens e chamadas deste contato.`;
-        if (confirmBtn) {
-            confirmBtn.innerText = 'Desbloquear Contato';
-            confirmBtn.className = 'danger-btn btn-delete-everyone';
-            confirmBtn.style.background = 'var(--accent-color)';
-            confirmBtn.style.color = '#000';
-        }
-        if (iconBox) {
-            iconBox.innerHTML = '<i data-lucide="shield-check"></i>';
-            iconBox.className = 'modal-icon-badge';
-            iconBox.style.background = 'rgba(0, 243, 255, 0.15)';
-            iconBox.style.color = 'var(--accent-color)';
-            iconBox.style.borderColor = 'var(--accent-color)';
-        }
-    } else {
-        if (titleEl) {
-            titleEl.innerText = `Bloquear ${activeChatContact.name}?`;
-            titleEl.className = 'modal-title danger-text';
-        }
-        if (descEl) descEl.innerText = `Contatos bloqueados não poderão lhe enviar mensagens e nem visualizar seus stories no VORTEX.`;
-        if (confirmBtn) {
-            confirmBtn.innerText = 'Bloquear Contato';
-            confirmBtn.className = 'danger-btn btn-delete-everyone';
-            confirmBtn.style.background = '#ff3b30';
-            confirmBtn.style.color = '#fff';
-        }
-        if (iconBox) {
-            iconBox.innerHTML = '<i data-lucide="shield-alert"></i>';
-            iconBox.className = 'modal-icon-badge danger';
-            iconBox.style.background = '';
-            iconBox.style.color = '';
-            iconBox.style.borderColor = '';
-        }
-    }
-    if (window.lucide) lucide.createIcons();
-    document.getElementById('block-contact-modal')?.classList.add('active');
+    openBlockContactConfirmation(activeChatContact);
 });
 
 document.getElementById('confirm-block-contact-btn')?.addEventListener('click', async () => {
     document.getElementById('block-contact-modal')?.classList.remove('active');
-    if (activeChatContact) {
-        await toggleBlockContact(activeChatContact);
+    const target = activeBlockTargetContact || activeChatContact;
+    if (target) {
+        await toggleBlockContact(target);
+        activeBlockTargetContact = null;
     }
 });
 
 document.getElementById('cancel-block-contact-btn')?.addEventListener('click', () => {
     document.getElementById('block-contact-modal')?.classList.remove('active');
+    activeBlockTargetContact = null;
 });
 
 document.getElementById('unblock-banner-btn')?.addEventListener('click', async () => {
