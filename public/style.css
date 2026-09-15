@@ -6566,6 +6566,20 @@ input:checked + .slider:before { transform: translateX(22px); }
     margin: 0;
 }
 
+.contact-profile-name-row .verified-badge,
+#contact-profile-verified-badge {
+    color: var(--accent-color, #00ff88);
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+    vertical-align: middle;
+}
+
+.contact-profile-name-row .verified-badge.active,
+#contact-profile-verified-badge.active {
+    display: inline-flex !important;
+}
+
 .contact-profile-username {
     color: var(--accent-color, #00ff88);
     font-size: 0.88rem;
@@ -6811,4 +6825,105 @@ input:checked + .slider:before { transform: translateX(22px); }
     overflow: hidden;
     text-overflow: ellipsis;
     max-width: 180px;
+}
+
+/* Balãozinho Flutuante de Recado / Bio no Chat (Estilo WhatsApp) */
+.chat-bio-bubble {
+    position: absolute;
+    top: 60px;
+    left: 48px;
+    z-index: 520;
+    display: none;
+    align-items: center;
+    background: rgba(31, 44, 52, 0.96);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 20px;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.5);
+    cursor: pointer;
+    user-select: none;
+    max-width: calc(100% - 64px);
+    transition: opacity 0.22s ease, transform 0.22s ease, visibility 0.22s ease;
+    animation: bioBubbleFadeIn 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes bioBubbleFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-6px) scale(0.96);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.chat-bio-bubble.scrolled-hide {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-8px) scale(0.95);
+    visibility: hidden;
+}
+
+.chat-bio-bubble:hover {
+    background: rgba(40, 54, 62, 0.98);
+    border-color: rgba(255, 255, 255, 0.22);
+}
+
+.chat-bio-bubble:active {
+    transform: scale(0.97);
+}
+
+.bio-bubble-beak {
+    position: absolute;
+    top: -6px;
+    left: 22px;
+    width: 0;
+    height: 0;
+    border-left: 7px solid transparent;
+    border-right: 7px solid transparent;
+    border-bottom: 7px solid rgba(31, 44, 52, 0.96);
+    filter: drop-shadow(0 -1px 1px rgba(255, 255, 255, 0.08));
+}
+
+.bio-bubble-inner {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 13px 6px 10px;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.bio-bubble-dot {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: inline-block;
+    border: 2.2px solid #00ff88;
+    background-color: rgba(0, 255, 136, 0.15);
+    box-sizing: border-box;
+}
+
+.bio-bubble-dot.dot-busy {
+    border-color: #ff3b30;
+    background-color: rgba(255, 59, 48, 0.18);
+}
+
+.bio-bubble-dot.dot-available {
+    border-color: #00ff88;
+    background-color: rgba(0, 255, 136, 0.18);
+}
+
+.bio-bubble-text {
+    font-size: 0.81rem;
+    font-weight: 500;
+    color: #e9edef;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 250px;
+    line-height: 1.25;
 }

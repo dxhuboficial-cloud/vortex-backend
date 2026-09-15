@@ -3753,12 +3753,14 @@ test('Recado / Bio do Contato: Exibição no cabeçalho do chat, cartão de intr
     name: contactMock.name,
     username: contactMock.username,
     avatar: contactMock.avatar,
-    status: contactMock.status
+    status: contactMock.status,
+    isVerified: contactMock.isVerified
   };
 
   await openContactProfile(contactMock);
   assert.strictEqual(env.elements['contact-profile-panel'].classList.contains('active'), true, 'Painel Dados do Contato deve abrir com classe active');
   assert.strictEqual(env.elements['contact-profile-name'].innerText, 'Mariana Souza', 'Nome do contato deve estar correto');
+  assert.strictEqual(env.elements['contact-profile-verified-badge'].style.display, 'inline-flex', 'Selo de verificado deve estar visível no painel Dados do Contato');
   assert.ok(env.elements['contact-profile-username'].innerText.includes('marianas'), 'Username do contato deve conter marianas');
   assert.ok(env.elements['contact-profile-bio-text'].innerText.includes('Vivendo e aprendendo todo dia!'), 'Recado/Bio deve estar preenchido no painel');
   assert.ok(env.elements['contact-profile-avatar'].style.backgroundImage.includes('mariana.jpg'), 'Avatar deve exibir imagem do contato');
@@ -3767,6 +3769,19 @@ test('Recado / Bio do Contato: Exibição no cabeçalho do chat, cartão de intr
   closeContactProfile();
   assert.strictEqual(env.elements['contact-profile-panel'].classList.contains('active'), false, 'Painel Dados do Contato deve fechar');
 
+  // Testar selo de verificado para conta DX Hub Digital (@dxhuboficial)
+  const dxHubMock = {
+    uid: 'dxhub_admin_uid',
+    name: 'DX Hub Digital',
+    username: '@dxhuboficial',
+    email: 'dxhub.oficial@gmail.com',
+    status: 'Atendimento Oficial DX Hub Digital ⚡'
+  };
+  env.firestoreDocs[`users/${dxHubMock.uid}`] = dxHubMock;
+  await openContactProfile(dxHubMock);
+  assert.strictEqual(env.elements['contact-profile-verified-badge'].style.display, 'inline-flex', 'Selo de verificado deve aparecer para DX Hub Digital no perfil');
+  closeContactProfile();
+
   // 3. Integração com Botão Voltar do Sistema (Android Back Button)
   await openContactProfile(contactMock);
   assert.strictEqual(env.elements['contact-profile-panel'].classList.contains('active'), true);
@@ -3774,7 +3789,7 @@ test('Recado / Bio do Contato: Exibição no cabeçalho do chat, cartão de intr
   assert.strictEqual(backResult, true, 'handleSystemBackPress deve interceptar e retornar true');
   assert.strictEqual(env.elements['contact-profile-panel'].classList.contains('active'), false, 'Botão voltar deve fechar o painel Dados do Contato');
 
-  // 4. Exibição e Sincronização em Tempo Real no Cabeçalho do Chat
+  // 4. Exibição e Sincronização em Tempo Real no Cabeçalho do Chat & Balãozinho WhatsApp
   openDirectChat({
     uid: contactMock.uid,
     name: contactMock.name,
@@ -3785,6 +3800,13 @@ test('Recado / Bio do Contato: Exibição no cabeçalho do chat, cartão de intr
 
   assert.strictEqual(env.elements['chat-window'].classList.contains('active'), true, 'Chat deve estar aberto');
   assert.ok(env.elements['chat-window-bio'].innerText.includes('Vivendo e aprendendo todo dia!'), 'Bio deve ser exibida no cabeçalho do chat');
+  assert.strictEqual(env.elements['chat-bio-bubble'].style.display, 'inline-flex', 'Balãozinho de recado estilo WhatsApp deve estar visível');
+  assert.ok(env.elements['chat-bio-bubble-text'].innerText.includes('Vivendo e aprendendo todo dia!'), 'Balãozinho deve exibir o texto do recado');
+
+  // Clicar no balãozinho abre os dados do contato
+  await env.elements['chat-bio-bubble'].click();
+  assert.strictEqual(env.elements['contact-profile-panel'].classList.contains('active'), true, 'Clicar no balãozinho deve abrir os Dados do Contato');
+  closeContactProfile();
 
   // Atualização em tempo real do status/recado do contato
   await env.sandbox.updateDoc({ path: `users/${contactMock.uid}` }, {
@@ -3792,11 +3814,13 @@ test('Recado / Bio do Contato: Exibição no cabeçalho do chat, cartão de intr
   });
 
   assert.ok(env.elements['chat-window-bio'].innerText.includes('Disponível para novas ideias 💡'), 'Bio no cabeçalho deve atualizar instantaneamente com listener');
+  assert.ok(env.elements['chat-bio-bubble-text'].innerText.includes('Disponível para novas ideias 💡'), 'Texto do balãozinho deve atualizar instantaneamente com listener');
 
-  // 5. Clicar na seta de voltar do chat (#close-chat) fecha o chat e NUNCA abre o painel Dados do Contato
+  // 5. Clicar na seta de voltar do chat (#close-chat) fecha o chat e oculta o balãozinho
   await env.elements['close-chat'].click();
   assert.strictEqual(env.elements['chat-window'].classList.contains('active'), false, 'Chat deve fechar ao clicar na seta de voltar');
   assert.strictEqual(env.elements['contact-profile-panel'].classList.contains('active'), false, 'Painel Dados do Contato NUNCA deve abrir ao clicar na seta de voltar');
+  assert.strictEqual(env.elements['chat-bio-bubble'].style.display, 'none', 'Balãozinho deve ser ocultado ao fechar conversa');
 
   // 6. Botões Bloquear e Denunciar no Painel Dados do Contato
   await openContactProfile(contactMock);

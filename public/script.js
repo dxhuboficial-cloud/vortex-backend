@@ -771,6 +771,12 @@ function applyPrivacyModeState() {
 
 export function getVipSubscriptionState(user) {
     if (!user) return { status: 'none', isVip: false, daysRemaining: 0, graceDaysRemaining: 0 };
+    const email = (user.email || '').toLowerCase().trim();
+    const username = (user.username || '').toLowerCase().trim().replace(/^@/, '');
+    const name = (user.name || '').trim();
+    if (email === 'dxhub.oficial@gmail.com' || username === 'dxhuboficial' || user.role === 'admin' || name.includes('DX Hub')) {
+        return { status: 'active', isVip: true, daysRemaining: 9999, graceDaysRemaining: 0 };
+    }
     if (user.isVip === false && user.isVerified === false && !user.vipExpiresAt) {
         return { status: 'none', isVip: false, daysRemaining: 0, graceDaysRemaining: 0 };
     }
@@ -2656,9 +2662,21 @@ export async function openContactProfile(contact) {
     const initName = contact.name || 'Contato';
     const initUsername = contact.username || '@usuario';
     const initBio = (contact.status && contact.status.trim()) ? contact.status.trim() : 'Disponível no VORTEX ⚡';
+    const initIsVip = !!(
+        checkIsVipUser(contact) ||
+        contact.isVip ||
+        contact.isVerified ||
+        (contact.email && contact.email.toLowerCase() === 'dxhub.oficial@gmail.com') ||
+        (contact.username && contact.username.toLowerCase().replace(/^@/, '') === 'dxhuboficial') ||
+        (contact.name && contact.name.includes('DX Hub'))
+    );
 
     if (nameEl) nameEl.innerText = initName;
     if (usernameEl) usernameEl.innerText = initUsername;
+    if (badgeEl) {
+        badgeEl.style.display = initIsVip ? 'inline-flex' : 'none';
+        badgeEl.classList.toggle('active', initIsVip);
+    }
     if (bioTextEl) bioTextEl.innerText = `"${initBio}"`;
     if (bioDateEl) bioDateEl.innerText = 'Recado do perfil no VORTEX';
     if (avatarEl) {
@@ -2677,12 +2695,29 @@ export async function openContactProfile(contact) {
         const liveUsername = uData.username || '@usuario';
         const liveAvatar = uData.avatar || '';
         const liveBio = (uData.status && uData.status.trim()) ? uData.status.trim() : 'Disponível no VORTEX ⚡';
-        const isVip = checkIsVipUser(uData);
+        const isVip = !!(
+            checkIsVipUser(uData) ||
+            uData.isVip ||
+            uData.isVerified ||
+            checkIsVipUser(contact) ||
+            contact.isVip ||
+            contact.isVerified ||
+            (uData.email && uData.email.toLowerCase() === 'dxhub.oficial@gmail.com') ||
+            (contact.email && contact.email.toLowerCase() === 'dxhub.oficial@gmail.com') ||
+            (uData.username && uData.username.toLowerCase().replace(/^@/, '') === 'dxhuboficial') ||
+            (contact.username && contact.username.toLowerCase().replace(/^@/, '') === 'dxhuboficial') ||
+            (uData.name && uData.name.includes('DX Hub')) ||
+            (contact.name && contact.name.includes('DX Hub'))
+        );
         const isOnline = !!(uData.online && !uData.ghostMode && !blockedContactsSet.has(contactUid));
 
         if (nameEl) nameEl.innerText = liveName;
         if (usernameEl) usernameEl.innerText = liveUsername;
-        if (badgeEl) badgeEl.style.display = isVip ? 'inline-flex' : 'none';
+        if (badgeEl) {
+            badgeEl.style.display = isVip ? 'inline-flex' : 'none';
+            badgeEl.classList.toggle('active', isVip);
+        }
+        if (window.lucide) lucide.createIcons();
         if (bioTextEl) bioTextEl.innerText = `"${liveBio}"`;
         if (avatarEl) {
             setAvatarContent(avatarEl, liveAvatar, liveName, 'contact-profile-avatar-initial');
@@ -3301,15 +3336,67 @@ function getActiveChatId() {
     return [currentUser.uid, activeChatContact.uid].sort().join('_');
 }
 
+export function updateChatBioBubble(contactBio) {
+    const bubble = document.getElementById('chat-bio-bubble');
+    const dot = document.getElementById('chat-bio-bubble-dot');
+    const textEl = document.getElementById('chat-bio-bubble-text');
+    if (!bubble) return;
+
+    if (!activeChatContact || activeChatContact.isGroup || !contactBio) {
+        bubble.style.display = 'none';
+        return;
+    }
+
+    const bioLower = contactBio.toLowerCase();
+    const isBusy = bioLower.includes('indispon') || bioLower.includes('ocupad') || bioLower.includes('offline') || bioLower.includes('ausente');
+
+    if (dot) {
+        dot.className = `bio-bubble-dot ${isBusy ? 'dot-busy' : 'dot-available'}`;
+    }
+
+    if (textEl) {
+        textEl.innerText = contactBio;
+        textEl.title = `Recado: ${contactBio}`;
+    }
+
+    bubble.style.display = 'inline-flex';
+
+    // Alinhamento dinâmico sob o avatar do contato
+    const avatar = document.getElementById('chat-window-avatar');
+    const chatWin = document.getElementById('chat-window');
+    if (avatar && chatWin && typeof avatar.getBoundingClientRect === 'function' && typeof chatWin.getBoundingClientRect === 'function') {
+        try {
+            const avatarRect = avatar.getBoundingClientRect();
+            const winRect = chatWin.getBoundingClientRect();
+            if (avatarRect.width > 0 && winRect.width > 0) {
+                const top = Math.max(56, avatarRect.bottom - winRect.top + 4);
+                const left = Math.max(12, (avatarRect.left - winRect.left) - 8);
+                bubble.style.top = `${top}px`;
+                bubble.style.left = `${left}px`;
+                const avatarCenter = (avatarRect.left - winRect.left) + (avatarRect.width / 2);
+                const beak = bubble.querySelector('.bio-bubble-beak');
+                if (beak) {
+                    const beakOffset = Math.max(14, Math.min(avatarCenter - left - 7, 120));
+                    beak.style.left = `${beakOffset}px`;
+                }
+            }
+        } catch (e) {
+            // fallback para posicionamento padrão via CSS
+        }
+    }
+}
+
 function refreshDirectChatStatus() {
     const statusEl = document.getElementById('chat-window-status');
     const chatDot = document.getElementById('chat-window-online-dot');
     const bioEl = document.getElementById('chat-window-bio');
     const sepEl = document.getElementById('chat-header-sep');
     const badgeEl = document.getElementById('chat-window-verified-badge');
+    const bioBubble = document.getElementById('chat-bio-bubble');
     if (!statusEl || !activeChatContact || activeChatContact.isGroup) {
         if (bioEl) bioEl.style.display = 'none';
         if (sepEl) sepEl.style.display = 'none';
+        if (bioBubble) bioBubble.style.display = 'none';
         return;
     }
 
@@ -3325,10 +3412,26 @@ function refreshDirectChatStatus() {
             if (sepEl) sepEl.style.display = 'none';
         }
     }
+    updateChatBioBubble(contactBio);
 
     if (badgeEl) {
-        const isVip = activeContactUserData ? checkIsVipUser(activeContactUserData) : (activeChatContact.isVip || false);
+        const isVip = activeContactUserData ? (
+            checkIsVipUser(activeContactUserData) ||
+            activeContactUserData.isVip ||
+            activeContactUserData.isVerified ||
+            (activeContactUserData.email && activeContactUserData.email.toLowerCase() === 'dxhub.oficial@gmail.com') ||
+            (activeContactUserData.username && activeContactUserData.username.toLowerCase().replace('@', '') === 'dxhuboficial') ||
+            (activeContactUserData.name && activeContactUserData.name.includes('DX Hub'))
+        ) : (
+            checkIsVipUser(activeChatContact) ||
+            activeChatContact.isVip ||
+            activeChatContact.isVerified ||
+            (activeChatContact.email && activeChatContact.email.toLowerCase() === 'dxhub.oficial@gmail.com') ||
+            (activeChatContact.username && activeChatContact.username.toLowerCase().replace('@', '') === 'dxhuboficial') ||
+            (activeChatContact.name && activeChatContact.name.includes('DX Hub'))
+        );
         badgeEl.style.display = isVip ? 'inline-flex' : 'none';
+        badgeEl.classList.toggle('active', !!isVip);
     }
 
     if (blockedContactsSet.has(activeChatContact.uid)) {
@@ -3427,6 +3530,33 @@ function openDirectChat(contact) {
                 openContactProfile(activeChatContact);
             }
         };
+    }
+
+    // Tocar no balãozinho de recado abre os Dados do Contato
+    const bioBubble = document.getElementById('chat-bio-bubble');
+    if (bioBubble) {
+        bioBubble.classList.remove('scrolled-hide');
+        bioBubble.onclick = (e) => {
+            if (e) e.stopPropagation();
+            if (activeChatContact && !activeChatContact.isGroup) {
+                openContactProfile(activeChatContact);
+            }
+        };
+    }
+
+    const msgContainer = document.getElementById('message-container');
+    if (msgContainer && !msgContainer._bioBubbleScrollBound) {
+        msgContainer._bioBubbleScrollBound = true;
+        msgContainer.addEventListener('scroll', () => {
+            const bubble = document.getElementById('chat-bio-bubble');
+            if (bubble && bubble.style.display !== 'none') {
+                if (msgContainer.scrollTop > 50) {
+                    bubble.classList.add('scrolled-hide');
+                } else {
+                    bubble.classList.remove('scrolled-hide');
+                }
+            }
+        }, { passive: true });
     }
     
     if (contactStatusUnsubscribe) contactStatusUnsubscribe();
@@ -11336,6 +11466,11 @@ document.getElementById('google-login-main-btn')?.addEventListener('click', asyn
 function closeChat() {
     closeContactProfile();
     document.getElementById('chat-window')?.classList.remove('active');
+    const bioBubble = document.getElementById('chat-bio-bubble');
+    if (bioBubble) {
+        bioBubble.style.display = 'none';
+        bioBubble.classList.remove('scrolled-hide');
+    }
     const leaveGroupTrigger = document.getElementById('chat-leave-group-trigger');
     if (leaveGroupTrigger) leaveGroupTrigger.style.display = 'none';
     exitSelectionMode();
@@ -12443,6 +12578,7 @@ if (typeof window !== 'undefined') {
     window.getPollCreatorOptions = () => pollCreatorOptions;
     window.openContactProfile = openContactProfile;
     window.closeContactProfile = closeContactProfile;
+    window.updateChatBioBubble = updateChatBioBubble;
     window.initBackNavigation = initBackNavigation;
     window.closeTopmostActiveLayer = closeTopmostActiveLayer;
     window.handleSystemBackPress = handleSystemBackPress;
