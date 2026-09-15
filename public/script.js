@@ -1214,7 +1214,7 @@ function listenToStories() {
     });
 }
 
-function openStoryViewer(stories, author) {
+function openStoryViewer(stories, author, options = {}) {
     if (currentFeedMusicAudio) {
         try { currentFeedMusicAudio.pause(); } catch (e) {}
         if (currentFeedMusicPostId) updateFeedMusicUI(currentFeedMusicPostId, false);
@@ -1222,9 +1222,14 @@ function openStoryViewer(stories, author) {
         currentFeedMusicPostId = null;
     }
 
-    const authorUid = author.authorUid || author.uid || '';
-    const isMyStory = currentUser && authorUid === currentUser.uid;
-    const allowedStories = isMyStory ? stories : stories.filter(s => canUserViewStory(s, currentUser?.uid, userContactsSet));
+    const isPreview = !!(options && options.isPreview);
+    isStoryPreviewMode = isPreview;
+
+    const authorUid = author ? (author.authorUid || author.uid || '') : '';
+    const isMyStory = !isPreview && currentUser && authorUid === currentUser.uid;
+    const allowedStories = isPreview 
+        ? (Array.isArray(stories) ? stories : [stories]) 
+        : (isMyStory ? stories : (Array.isArray(stories) ? stories.filter(s => canUserViewStory(s, currentUser?.uid, userContactsSet)) : []));
     if (!allowedStories.length) {
         showToast("Privado", "Este status é visível apenas para contatos aceitos.", "red");
         return;
@@ -1238,16 +1243,24 @@ function openStoryViewer(stories, author) {
     const usernameEl = document.getElementById('story-username');
     const avatarEl = document.getElementById('story-viewer-avatar');
     const deleteBtn = document.getElementById('delete-story-btn');
+    const reportStoryBtn = document.getElementById('report-story-btn');
+    const downloadStoryBtn = document.getElementById('download-story-btn');
+    const previewIndicator = document.getElementById('story-preview-indicator');
+    const ownFooter = document.getElementById('own-story-footer');
+    const otherFooter = document.getElementById('other-story-footer');
+    const previewFooter = document.getElementById('story-preview-footer');
 
-    if (usernameEl) usernameEl.innerText = author.authorName;
-    if (avatarEl) avatarEl.style.backgroundImage = author.authorAvatar ? `url('${author.authorAvatar}')` : '';
+    if (usernameEl) usernameEl.innerText = author?.authorName || currentProfile?.name || 'Você';
+    if (avatarEl) avatarEl.style.backgroundImage = (author?.authorAvatar || currentProfile?.avatar) ? `url('${author?.authorAvatar || currentProfile?.avatar}')` : '';
 
     const storyBadge = document.getElementById('story-verified-badge');
     if (storyBadge) {
-        const isAuthorVip = isMyStory ? checkIsVipUser(currentProfile) : checkIsVipUser(author);
+        const isAuthorVip = isPreview 
+            ? checkIsVipUser(currentProfile) 
+            : (isMyStory ? checkIsVipUser(currentProfile) : checkIsVipUser(author));
         storyBadge.style.display = isAuthorVip ? 'inline-block' : 'none';
         storyBadge.classList.toggle('active', isAuthorVip);
-        if (!isMyStory && author.authorUid) {
+        if (!isPreview && !isMyStory && author?.authorUid) {
             getDoc(doc(db, 'users', author.authorUid)).then(snap => {
                 if (snap.exists()) {
                     const freshVip = checkIsVipUser(snap.data());
@@ -1260,19 +1273,31 @@ function openStoryViewer(stories, author) {
         }
     }
     
-    if (deleteBtn) deleteBtn.style.display = isMyStory ? 'flex' : 'none';
-    const reportStoryBtn = document.getElementById('report-story-btn');
-    if (reportStoryBtn) reportStoryBtn.style.display = isMyStory ? 'none' : 'flex';
-
-    const ownFooter = document.getElementById('own-story-footer');
-    const otherFooter = document.getElementById('other-story-footer');
-    if (ownFooter) ownFooter.style.display = isMyStory ? 'flex' : 'none';
-    if (otherFooter) otherFooter.style.display = isMyStory ? 'none' : 'flex';
+    if (isPreview) {
+        if (previewIndicator) previewIndicator.style.display = 'inline-flex';
+        if (previewFooter) previewFooter.style.display = 'flex';
+        if (deleteBtn) deleteBtn.style.display = 'none';
+        if (reportStoryBtn) reportStoryBtn.style.display = 'none';
+        if (downloadStoryBtn) downloadStoryBtn.style.display = 'none';
+        if (ownFooter) ownFooter.style.display = 'none';
+        if (otherFooter) otherFooter.style.display = 'none';
+    } else {
+        if (previewIndicator) previewIndicator.style.display = 'none';
+        if (previewFooter) previewFooter.style.display = 'none';
+        if (deleteBtn) deleteBtn.style.display = isMyStory ? 'flex' : 'none';
+        if (reportStoryBtn) reportStoryBtn.style.display = isMyStory ? 'none' : 'flex';
+        if (downloadStoryBtn) downloadStoryBtn.style.display = 'flex';
+        if (ownFooter) ownFooter.style.display = isMyStory ? 'flex' : 'none';
+        if (otherFooter) otherFooter.style.display = isMyStory ? 'none' : 'flex';
+    }
 
     closeViewersSheet();
     renderStoryProgressSegments();
     displayCurrentStory();
     if (viewer) viewer.classList.add('active');
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+    }
 }
 
 function closeStoryViewer() {
@@ -1305,6 +1330,11 @@ function closeStoryViewer() {
     document.getElementById('story-viewer')?.classList.remove('active', 'story-paused', 'story-holding');
     const replyInput = document.getElementById('story-reply-input');
     if (replyInput) replyInput.value = '';
+    const previewIndicator = document.getElementById('story-preview-indicator');
+    if (previewIndicator) previewIndicator.style.display = 'none';
+    const previewFooter = document.getElementById('story-preview-footer');
+    if (previewFooter) previewFooter.style.display = 'none';
+    isStoryPreviewMode = false;
 }
 
 function renderStoryProgressSegments() {
@@ -1336,8 +1366,8 @@ async function displayCurrentStory() {
         return;
     }
 
-    // Registra visualização imediata no documento do Story (Firestore)
-    if (currentUser) {
+    // Registra visualização imediata no documento do Story (Firestore) - exceto em modo prévia
+    if (currentUser && !story.isPreview && story.id) {
         const storyRef = doc(db, 'stories', story.id);
         const viewData = {
             uid: currentUser.uid,
@@ -1354,15 +1384,17 @@ async function displayCurrentStory() {
         }, { merge: true }).catch((err) => console.error("Erro ao registrar visualização:", err));
     }
 
-    // Escuta em tempo real este Story específico
-    const storyDocRef = doc(db, 'stories', story.id);
-    currentStoryDocUnsubscribe = onSnapshot(storyDocRef, (snap) => {
-        if (snap.exists()) {
-            const updatedData = { id: snap.id, ...snap.data() };
-            activeStoryList[currentStoryIndex] = updatedData;
-            updateStoryViewersUI(updatedData);
-        }
-    });
+    // Escuta em tempo real este Story específico - exceto em modo prévia
+    if (!story.isPreview && story.id) {
+        const storyDocRef = doc(db, 'stories', story.id);
+        currentStoryDocUnsubscribe = onSnapshot(storyDocRef, (snap) => {
+            if (snap.exists()) {
+                const updatedData = { id: snap.id, ...snap.data() };
+                activeStoryList[currentStoryIndex] = updatedData;
+                updateStoryViewersUI(updatedData);
+            }
+        });
+    }
 
     const contentDiv = document.querySelector('#story-current-face .story-content');
     const captionEl = document.getElementById('story-caption');
@@ -1518,7 +1550,7 @@ export function resumeCurrentStory() {
 
 function handleStoryPointerDown(e) {
     if (e && e.button && e.button !== 0) return;
-    if (e && e.target && e.target.closest && e.target.closest('#close-story, #download-story-btn, #report-story-btn, #delete-story-btn, #story-views-pill-btn, .story-emoji-btn, #send-reply-btn, #story-reply-input, #story-music-mute-btn')) {
+    if (e && e.target && e.target.closest && e.target.closest('#close-story, #download-story-btn, #report-story-btn, #delete-story-btn, #story-views-pill-btn, .story-emoji-btn, #send-reply-btn, #story-reply-input, #story-music-mute-btn, #story-preview-footer, #story-preview-back-btn, #story-preview-publish-now-btn')) {
         return;
     }
 
@@ -1948,33 +1980,230 @@ document.getElementById('close-post-status')?.addEventListener('click', () => {
 
 const statusFileInput = document.getElementById('status-file-input');
 let pendingStatusFile = null;
+let pendingStatusFileSrc = null;
+let isStoryPreviewMode = false;
+
+function setPendingStatusMedia(file, type) {
+    if (!file) {
+        removeSelectedStatusMedia();
+        return;
+    }
+    pendingStatusFile = file;
+    const isVideo = (type === 'video') || (file.type && file.type.startsWith('video'));
+    
+    // Libera URL anterior se for blob
+    try {
+        const urlObj = (typeof window !== 'undefined' && window.URL) ? window.URL : (typeof URL !== 'undefined' ? URL : null);
+        if (pendingStatusFileSrc && typeof pendingStatusFileSrc === 'string' && pendingStatusFileSrc.startsWith('blob:')) {
+            if (urlObj && typeof urlObj.revokeObjectURL === 'function') {
+                urlObj.revokeObjectURL(pendingStatusFileSrc);
+            }
+        }
+        if (urlObj && typeof urlObj.createObjectURL === 'function') {
+            pendingStatusFileSrc = urlObj.createObjectURL(file);
+        }
+    } catch (e) {
+        pendingStatusFileSrc = null;
+    }
+
+    if (!pendingStatusFileSrc) {
+        const FR = (typeof window !== 'undefined' && window.FileReader) ? window.FileReader : (typeof FileReader !== 'undefined' ? FileReader : null);
+        if (FR) {
+            try {
+                const reader = new FR();
+                reader.onload = (ev) => {
+                    pendingStatusFileSrc = ev?.target?.result || reader.result || 'data:image/jpeg;base64,mockpreview';
+                    updateStatusPreviewDOM(file, isVideo, pendingStatusFileSrc);
+                };
+                reader.readAsDataURL(file);
+                return;
+            } catch (err) {
+                pendingStatusFileSrc = 'data:image/jpeg;base64,mockpreview';
+            }
+        } else {
+            pendingStatusFileSrc = 'data:image/jpeg;base64,mockpreview';
+        }
+    }
+    updateStatusPreviewDOM(file, isVideo, pendingStatusFileSrc);
+}
+
+function updateStatusPreviewDOM(file, isVideo, src) {
+    const previewBox = document.getElementById('status-media-preview-box');
+    const previewImg = document.getElementById('status-preview-img');
+    const previewVideo = document.getElementById('status-preview-video');
+    const previewFilename = document.getElementById('status-preview-filename');
+    const previewTag = document.getElementById('status-preview-tag');
+    const chooseLabel = document.getElementById('choose-status-media-label');
+
+    if (previewBox) previewBox.style.display = 'flex';
+    if (previewFilename) previewFilename.textContent = file.name || (isVideo ? 'video.mp4' : 'foto.jpg');
+    if (previewTag) {
+        previewTag.innerHTML = isVideo 
+            ? '<i data-lucide="video"></i> <span>Vídeo selecionado</span>' 
+            : '<i data-lucide="image"></i> <span>Foto selecionada</span>';
+    }
+
+    if (isVideo) {
+        if (previewImg) {
+            previewImg.style.display = 'none';
+            previewImg.src = '';
+        }
+        if (previewVideo) {
+            previewVideo.style.display = 'block';
+            previewVideo.src = src;
+        }
+    } else {
+        if (previewVideo) {
+            previewVideo.style.display = 'none';
+            previewVideo.src = '';
+        }
+        if (previewImg) {
+            previewImg.style.display = 'block';
+            previewImg.src = src;
+        }
+    }
+
+    if (chooseLabel) chooseLabel.textContent = 'Trocar Mídia';
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+    }
+}
+
+function removeSelectedStatusMedia() {
+    const statusInput = document.getElementById('status-file-input');
+    if (statusInput) statusInput.value = '';
+    if (pendingStatusFileSrc && typeof pendingStatusFileSrc === 'string' && pendingStatusFileSrc.startsWith('blob:')) {
+        try { URL.revokeObjectURL(pendingStatusFileSrc); } catch (e) {}
+    }
+    pendingStatusFile = null;
+    pendingStatusFileSrc = null;
+
+    const previewBox = document.getElementById('status-media-preview-box');
+    const previewImg = document.getElementById('status-preview-img');
+    const previewVideo = document.getElementById('status-preview-video');
+    const chooseLabel = document.getElementById('choose-status-media-label');
+
+    if (previewBox) previewBox.style.display = 'none';
+    if (previewImg) {
+        previewImg.style.display = 'none';
+        previewImg.src = '';
+    }
+    if (previewVideo) {
+        previewVideo.style.display = 'none';
+        previewVideo.src = '';
+    }
+    if (chooseLabel) chooseLabel.textContent = 'Escolher Mídia';
+}
+
+function openStoryPreview() {
+    playSound(clickSound);
+    if (!pendingStatusFile || !pendingStatusFileSrc) {
+        showToast("Aviso", "Selecione uma foto ou vídeo antes de pré-visualizar.", "yellow");
+        return;
+    }
+
+    if (composerPreviewAudio) {
+        try { composerPreviewAudio.pause(); } catch(e) {}
+        composerPreviewAudio = null;
+        const icon = document.getElementById('status-preview-music-icon');
+        if (icon) {
+            icon.setAttribute('data-lucide', 'play');
+            if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+        }
+    }
+
+    const captionVal = document.getElementById('status-caption-input')?.value?.trim() || '';
+    const isVideo = pendingStatusFile.type ? pendingStatusFile.type.startsWith('video') : false;
+
+    const previewStory = {
+        id: 'preview-' + Date.now(),
+        isPreview: true,
+        type: isVideo ? 'video' : 'image',
+        src: pendingStatusFileSrc,
+        caption: captionVal,
+        views: {},
+        reactions: {},
+        replies: [],
+        createdAt: Date.now(),
+        music: pendingStatusMusic ? {
+            id: pendingStatusMusic.id,
+            title: pendingStatusMusic.title,
+            artist: pendingStatusMusic.artist,
+            cover: pendingStatusMusic.cover,
+            audioUrl: pendingStatusMusic.audioUrl,
+            duration: pendingStatusMusic.duration || 30
+        } : null
+    };
+
+    const author = {
+        authorUid: currentUser ? currentUser.uid : 'preview_user',
+        uid: currentUser ? currentUser.uid : 'preview_user',
+        authorName: currentProfile ? currentProfile.name : 'Você',
+        authorUsername: currentProfile ? currentProfile.username : '@voce',
+        authorAvatar: currentProfile ? currentProfile.avatar : '',
+        isVip: checkIsVipUser(currentProfile),
+        role: currentProfile ? currentProfile.role : 'user'
+    };
+
+    openStoryViewer([previewStory], author, { isPreview: true });
+}
 
 if (statusFileInput) {
     statusFileInput.addEventListener('change', (e) => {
-        const file = e.target.files[0];
+        const file = e.target.files && e.target.files[0];
         if (!file) return;
 
-        if (file.type.startsWith('video')) {
+        if (file.type && file.type.startsWith('video')) {
             const video = document.createElement('video');
             video.preload = 'metadata';
             video.onloadedmetadata = function() {
-                window.URL.revokeObjectURL(video.src);
+                try { window.URL.revokeObjectURL(video.src); } catch (err) {}
                 if (video.duration > 15.5) {
                     showToast("Limite de 15s", "Vídeos para status devem ter no máximo 15 segundos.", "red");
-                    statusFileInput.value = '';
-                    pendingStatusFile = null;
+                    removeSelectedStatusMedia();
                 } else {
-                    pendingStatusFile = file;
+                    setPendingStatusMedia(file, 'video');
                     showToast("Vídeo Aceito", "Vídeo pronto para publicação.", "green");
                 }
             };
-            video.src = URL.createObjectURL(file);
+            try {
+                video.src = URL.createObjectURL(file);
+            } catch (err) {
+                setPendingStatusMedia(file, 'video');
+            }
         } else {
-            pendingStatusFile = file;
+            setPendingStatusMedia(file, 'image');
             showToast("Imagem Aceita", "Foto pronta para publicação.", "green");
         }
     });
 }
+
+document.getElementById('remove-status-media-btn')?.addEventListener('click', (e) => {
+    if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+    playSound(clickSound);
+    removeSelectedStatusMedia();
+    showToast("Mídia Removida", "A seleção de mídia foi limpa.", "yellow");
+});
+
+document.getElementById('preview-status-btn')?.addEventListener('click', () => {
+    openStoryPreview();
+});
+
+document.getElementById('status-preview-media-trigger')?.addEventListener('click', () => {
+    openStoryPreview();
+});
+
+document.getElementById('story-preview-back-btn')?.addEventListener('click', () => {
+    playSound(clickSound);
+    closeStoryViewer();
+});
+
+document.getElementById('story-preview-publish-now-btn')?.addEventListener('click', () => {
+    playSound(clickSound);
+    closeStoryViewer();
+    const publishBtn = document.getElementById('publish-status-btn');
+    if (publishBtn) publishBtn.click();
+});
 
 document.getElementById('publish-status-btn')?.addEventListener('click', async () => {
     if (!pendingStatusFile) {
@@ -1994,39 +2223,46 @@ document.getElementById('publish-status-btn')?.addEventListener('click', async (
 
     const reader = new FileReader();
     reader.onload = async () => {
-        await addDoc(collection(db, 'stories'), {
-            authorUid: currentUser.uid,
-            authorName: currentProfile.name,
-            authorUsername: currentProfile.username,
-            authorAvatar: currentProfile.avatar,
-            type: pendingStatusFile.type.startsWith('video') ? 'video' : 'image',
-            src: reader.result,
-            caption: document.getElementById('status-caption-input')?.value || '',
-            views: {},
-            reactions: {},
-            replies: [],
-            allowedUids: allowedContacts,
-            music: pendingStatusMusic ? {
-                id: pendingStatusMusic.id,
-                title: pendingStatusMusic.title,
-                artist: pendingStatusMusic.artist,
-                cover: pendingStatusMusic.cover,
-                audioUrl: pendingStatusMusic.audioUrl,
-                duration: pendingStatusMusic.duration || 30
-            } : null,
-            createdAt: Date.now()
-        });
-        showToast("Status Publicado", "Seu status de 24 horas está visível para seus contatos aceitos!", "green");
-        document.getElementById('post-status-overlay')?.classList.remove('active');
-        pendingStatusFile = null;
-        pendingStatusMusic = null;
-        const card = document.getElementById('status-selected-music-card');
-        if (card) card.style.display = 'none';
-        const addBtn = document.getElementById('status-add-music-btn');
-        if (addBtn) addBtn.style.display = 'inline-flex';
-        if (composerPreviewAudio) {
-            try { composerPreviewAudio.pause(); } catch(e) {}
-            composerPreviewAudio = null;
+        try {
+            await addDoc(collection(db, 'stories'), {
+                authorUid: currentUser.uid,
+                authorName: currentProfile.name,
+                authorUsername: currentProfile.username,
+                authorAvatar: currentProfile.avatar,
+                type: pendingStatusFile.type.startsWith('video') ? 'video' : 'image',
+                src: reader.result,
+                caption: document.getElementById('status-caption-input')?.value || '',
+                views: {},
+                reactions: {},
+                replies: [],
+                allowedUids: allowedContacts,
+                music: pendingStatusMusic ? {
+                    id: pendingStatusMusic.id,
+                    title: pendingStatusMusic.title,
+                    artist: pendingStatusMusic.artist,
+                    cover: pendingStatusMusic.cover,
+                    audioUrl: pendingStatusMusic.audioUrl,
+                    duration: pendingStatusMusic.duration || 30
+                } : null,
+                createdAt: Date.now()
+            });
+            showToast("Status Publicado", "Seu status de 24 horas está visível para seus contatos aceitos!", "green");
+            document.getElementById('post-status-overlay')?.classList.remove('active');
+            removeSelectedStatusMedia();
+            pendingStatusMusic = null;
+            const card = document.getElementById('status-selected-music-card');
+            if (card) card.style.display = 'none';
+            const addBtn = document.getElementById('status-add-music-btn');
+            if (addBtn) addBtn.style.display = 'inline-flex';
+            const captionInput = document.getElementById('status-caption-input');
+            if (captionInput) captionInput.value = '';
+            if (composerPreviewAudio) {
+                try { composerPreviewAudio.pause(); } catch(e) {}
+                composerPreviewAudio = null;
+            }
+        } catch (pubErr) {
+            console.error('Erro ao publicar status:', pubErr);
+            showToast("Erro", "Não foi possível publicar o status.", "red");
         }
     };
     reader.readAsDataURL(pendingStatusFile);
@@ -12970,6 +13206,12 @@ if (typeof window !== 'undefined') {
     window.loadUserFavoriteTracks = loadUserFavoriteTracks;
     window.loadMusicPickerResults = loadMusicPickerResults;
     window.formatMusicDuration = formatMusicDuration;
+    window.openStoryPreview = openStoryPreview;
+    window.removeSelectedStatusMedia = removeSelectedStatusMedia;
+    window.setPendingStatusMedia = setPendingStatusMedia;
+    window.getPendingStatusFile = () => pendingStatusFile;
+    window.getPendingStatusFileSrc = () => pendingStatusFileSrc;
+    window.isStoryPreviewMode = () => isStoryPreviewMode;
 }
 
 if (typeof window !== 'undefined') {

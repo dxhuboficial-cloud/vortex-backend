@@ -436,8 +436,25 @@ function createTestEnvironment() {
         this.onstop = null;
       },
       RTCSessionDescription: function() {},
-      RTCIceCandidate: function() {}
+      RTCIceCandidate: function() {},
+      FileReader: function() {
+        this.readAsDataURL = function(file) {
+          setTimeout(() => {
+            this.result = 'data:image/jpeg;base64,mockpreviewdata';
+            if (typeof this.onload === 'function') this.onload({ target: { result: this.result } });
+          }, 0);
+        };
+      }
     },
+    FileReader: function() {
+      this.readAsDataURL = function(file) {
+        setTimeout(() => {
+          this.result = 'data:image/jpeg;base64,mockpreviewdata';
+          if (typeof this.onload === 'function') this.onload({ target: { result: this.result } });
+        }, 0);
+      };
+    },
+    URL: { createObjectURL: () => 'blob:mock', revokeObjectURL: () => {} },
     MediaRecorder: function(stream) {
       this.stream = stream;
       this.state = 'inactive';
@@ -751,7 +768,13 @@ test('HTML DOM Integrity: All required elements and modal IDs exist in index.htm
     'msg-info-text',
     'msg-info-readers-list',
     'msg-info-seen-count',
-    'music-chip-favorites'
+    'music-chip-favorites',
+    'status-media-preview-box',
+    'preview-status-btn',
+    'story-preview-indicator',
+    'story-preview-footer',
+    'story-preview-back-btn',
+    'story-preview-publish-now-btn'
   ];
 
   for (const id of requiredIds) {
@@ -784,7 +807,11 @@ test('CSS Integrity: Braces match and classes are defined', () => {
     '.posts-count-label',
     '.track-actions-wrap',
     '.track-fav-btn',
-    '.music-empty-favorites'
+    '.music-empty-favorites',
+    '.status-media-preview-box',
+    '.preview-status-action-btn',
+    '.story-preview-badge',
+    '.story-preview-footer'
   ];
 
   for (const cls of requiredClasses) {
@@ -4068,5 +4095,172 @@ test('Músicas Favoritas: Salvar/favoritar músicas (❤️), aba ⭐ Favoritas,
   env.sandbox.window.setCurrentUser(null);
   await loadUserFavoriteTracks();
   assert.strictEqual(getUserFavoriteTracks().length, 0, 'Favoritas devem ser limpas no logout');
+});
+
+test('Pré-visualização de Story: Renderização do card inline com foto/vídeo, remoção de mídia, validação, abertura no Story Viewer em modo prévia (com música e legenda) e publicação direta', async () => {
+  const env = createTestEnvironment();
+
+  const openStoryPreview = env.sandbox.openStoryPreview || env.sandbox.window.openStoryPreview;
+  const removeSelectedStatusMedia = env.sandbox.removeSelectedStatusMedia || env.sandbox.window.removeSelectedStatusMedia;
+  const setPendingStatusMedia = env.sandbox.setPendingStatusMedia || env.sandbox.window.setPendingStatusMedia;
+  const getPendingStatusFile = env.sandbox.getPendingStatusFile || env.sandbox.window.getPendingStatusFile;
+  const getPendingStatusFileSrc = env.sandbox.getPendingStatusFileSrc || env.sandbox.window.getPendingStatusFileSrc;
+  const isStoryPreviewMode = env.sandbox.isStoryPreviewMode || env.sandbox.window.isStoryPreviewMode;
+  const setPendingStatusMusic = env.sandbox.setPendingStatusMusic || env.sandbox.window.setPendingStatusMusic;
+
+  assert.ok(typeof openStoryPreview === 'function', 'openStoryPreview deve ser uma função');
+  assert.ok(typeof removeSelectedStatusMedia === 'function', 'removeSelectedStatusMedia deve ser uma função');
+  assert.ok(typeof setPendingStatusMedia === 'function', 'setPendingStatusMedia deve ser uma função');
+
+  // 1. Integridade dos Elementos no DOM
+  const previewBox = env.elements['status-media-preview-box'];
+  const previewImg = env.elements['status-preview-img'];
+  const previewVideo = env.elements['status-preview-video'];
+  const previewFilename = env.elements['status-preview-filename'];
+  const previewTag = env.elements['status-preview-tag'];
+  const removeMediaBtn = env.elements['remove-status-media-btn'];
+  const chooseMediaLabel = env.elements['choose-status-media-label'];
+  const previewStatusBtn = env.elements['preview-status-btn'];
+  const publishStatusBtn = env.elements['publish-status-btn'];
+  const previewIndicator = env.elements['story-preview-indicator'];
+  const previewFooter = env.elements['story-preview-footer'];
+  const previewBackBtn = env.elements['story-preview-back-btn'];
+  const previewPublishNowBtn = env.elements['story-preview-publish-now-btn'];
+  const storyViewer = env.elements['story-viewer'];
+
+  assert.ok(previewBox, 'Elemento #status-media-preview-box deve existir');
+  assert.ok(previewImg, 'Elemento #status-preview-img deve existir');
+  assert.ok(previewVideo, 'Elemento #status-preview-video deve existir');
+  assert.ok(previewFilename, 'Elemento #status-preview-filename deve existir');
+  assert.ok(previewTag, 'Elemento #status-preview-tag deve existir');
+  assert.ok(removeMediaBtn, 'Elemento #remove-status-media-btn deve existir');
+  assert.ok(chooseMediaLabel, 'Elemento #choose-status-media-label deve existir');
+  assert.ok(previewStatusBtn, 'Elemento #preview-status-btn deve existir');
+  assert.ok(publishStatusBtn, 'Elemento #publish-status-btn deve existir');
+  assert.ok(previewIndicator, 'Elemento #story-preview-indicator deve existir');
+  assert.ok(previewFooter, 'Elemento #story-preview-footer deve existir');
+  assert.ok(previewBackBtn, 'Elemento #story-preview-back-btn deve existir');
+  assert.ok(previewPublishNowBtn, 'Elemento #story-preview-publish-now-btn deve existir');
+
+  // 2. Validação: Tentar abrir prévia sem selecionar mídia
+  openStoryPreview();
+  assert.strictEqual(storyViewer.classList.contains('active'), false, 'Não deve abrir prévia sem mídia selecionada');
+
+  // 3. Selecionar Imagem (Foto) e Verificar Card Inline
+  const mockImageFile = { name: 'passeio_praia.jpg', type: 'image/jpeg', size: 204800 };
+  setPendingStatusMedia(mockImageFile, 'image');
+
+  assert.strictEqual(getPendingStatusFile()?.name, 'passeio_praia.jpg', 'Arquivo pendente deve ser a foto');
+  assert.ok(getPendingStatusFileSrc(), 'Src da mídia deve ser gerada');
+  assert.strictEqual(previewBox.style.display, 'flex', 'Card inline de mídia deve ficar visível');
+  assert.strictEqual(previewImg.style.display, 'block', 'Prévia de imagem deve estar visível');
+  assert.strictEqual(previewVideo.style.display, 'none', 'Prévia de vídeo deve estar oculta para imagens');
+  assert.strictEqual(previewFilename.textContent, 'passeio_praia.jpg', 'Nome do arquivo deve ser exibido');
+  assert.ok(previewTag.innerHTML.includes('Foto selecionada'), 'Tag de foto deve ser exibida');
+  assert.strictEqual(chooseMediaLabel.textContent, 'Trocar Mídia', 'Label do botão deve mudar para Trocar Mídia');
+
+  // 4. Remover Mídia Selecionada via Botão de Exclusão (Lixeira)
+  await removeMediaBtn.click();
+  assert.strictEqual(getPendingStatusFile(), null, 'pendingStatusFile deve ser limpo');
+  assert.strictEqual(getPendingStatusFileSrc(), null, 'pendingStatusFileSrc deve ser limpo');
+  assert.strictEqual(previewBox.style.display, 'none', 'Card inline deve ser ocultado');
+  assert.strictEqual(previewImg.style.display, 'none', 'Prévia de imagem deve ser ocultada');
+  assert.strictEqual(chooseMediaLabel.textContent, 'Escolher Mídia', 'Label deve voltar para Escolher Mídia');
+
+  // 5. Selecionar Vídeo (<= 15s) e Verificar Card Inline
+  const mockVideoFile = { name: 'momento_especial.mp4', type: 'video/mp4', size: 1048576 };
+  setPendingStatusMedia(mockVideoFile, 'video');
+
+  assert.strictEqual(getPendingStatusFile()?.name, 'momento_especial.mp4', 'Arquivo pendente deve ser o vídeo');
+  assert.strictEqual(previewBox.style.display, 'flex', 'Card inline de mídia deve ficar visível');
+  assert.strictEqual(previewVideo.style.display, 'block', 'Prévia de vídeo deve estar visível');
+  assert.strictEqual(previewImg.style.display, 'none', 'Prévia de foto deve estar oculta');
+  assert.ok(previewTag.innerHTML.includes('Vídeo selecionado'), 'Tag de vídeo deve ser exibida');
+  assert.strictEqual(chooseMediaLabel.textContent, 'Trocar Mídia');
+
+  // 6. Configurar Legenda, Música e Usuário VIP para Testar Modo Prévia Completo
+  const captionInput = env.elements['status-caption-input'];
+  if (captionInput) captionInput.value = 'Curtindo o pôr do sol incrível 🌅';
+
+  const mockTrack = {
+    id: 'track_preview_vip',
+    title: 'Sunset Beats',
+    artist: 'Chillout DJ',
+    audioUrl: 'https://cdn.pixabay.com/audio/sunset.mp3',
+    duration: 30
+  };
+  setPendingStatusMusic(mockTrack);
+
+  env.sandbox.window.setCurrentUser({ uid: 'vip-user-preview', email: 'preview@vortex.com' });
+  env.sandbox.window.setCurrentProfile({
+    name: 'Mariana VIP',
+    username: '@marianavip',
+    avatar: 'https://example.com/mariana.jpg',
+    isVip: true
+  });
+
+  // Abrir Prévia via botão "Pré-visualizar Story"
+  env.elements['post-status-overlay'].classList.add('active');
+  await previewStatusBtn.click();
+
+  assert.strictEqual(storyViewer.classList.contains('active'), true, 'Story Viewer deve abrir');
+  assert.strictEqual(isStoryPreviewMode(), true, 'Deve estar em modo de pré-visualização');
+  assert.strictEqual(previewIndicator.style.display, 'inline-flex', 'Badge de PRÉVIA deve estar visível');
+  assert.strictEqual(previewFooter.style.display, 'flex', 'Footer de prévia deve estar visível');
+
+  // Botões de interação normal do story devem estar ocultos
+  assert.strictEqual(env.elements['delete-story-btn'].style.display, 'none', 'delete-story-btn deve estar oculto na prévia');
+  assert.strictEqual(env.elements['report-story-btn'].style.display, 'none', 'report-story-btn deve estar oculto na prévia');
+  assert.strictEqual(env.elements['download-story-btn'].style.display, 'none', 'download-story-btn deve estar oculto na prévia');
+  assert.strictEqual(env.elements['own-story-footer'].style.display, 'none', 'own-story-footer deve estar oculto na prévia');
+  assert.strictEqual(env.elements['other-story-footer'].style.display, 'none', 'other-story-footer deve estar oculto na prévia');
+
+  // Elementos do header e conteúdo na prévia
+  assert.strictEqual(env.elements['story-username'].innerText, 'Mariana VIP', 'Nome do autor deve ser exibido');
+  assert.strictEqual(env.elements['story-caption'].innerText, 'Curtindo o pôr do sol incrível 🌅', 'Legenda deve ser exibida no Story');
+  assert.strictEqual(env.elements['story-music-badge'].style.display, 'flex', 'Badge de trilha sonora deve ser exibida');
+  assert.strictEqual(env.elements['story-music-title'].innerText, 'Sunset Beats', 'Título da música deve ser exibido');
+  assert.strictEqual(env.elements['story-verified-badge'].style.display, 'inline-block', 'Selo VIP deve ser exibido para usuário VIP');
+
+  // Não deve gravar visualizações no Firestore durante a prévia
+  const storyDocsCountBefore = Object.keys(env.firestoreDocs).filter(k => k.startsWith('stories/')).length;
+  assert.strictEqual(storyDocsCountBefore, 0, 'Nenhum documento de story/view deve ter sido criado na prévia');
+
+  // 7. Botão "Voltar ao Editor" na Prévia
+  await previewBackBtn.click();
+  assert.strictEqual(storyViewer.classList.contains('active'), false, 'Story Viewer deve fechar ao clicar em Voltar');
+  assert.strictEqual(previewIndicator.style.display, 'none', 'Badge de prévia deve ser ocultada');
+  assert.strictEqual(previewFooter.style.display, 'none', 'Footer de prévia deve ser ocultado');
+  assert.strictEqual(isStoryPreviewMode(), false, 'Modo de prévia deve ser desativado');
+  assert.strictEqual(env.elements['post-status-overlay'].classList.contains('active'), true, 'Modal post-status-overlay deve continuar aberto');
+  assert.strictEqual(captionInput.value, 'Curtindo o pôr do sol incrível 🌅', 'Legenda deve permanecer intacta ao voltar');
+  assert.strictEqual(getPendingStatusFile()?.name, 'momento_especial.mp4', 'Mídia selecionada deve permanecer intacta ao voltar');
+
+  // 8. Botão "Publicar Agora" a partir da Prévia
+  await previewStatusBtn.click(); // Reabrir prévia
+  assert.strictEqual(storyViewer.classList.contains('active'), true);
+  assert.strictEqual(isStoryPreviewMode(), true);
+
+  await previewPublishNowBtn.click(); // Clicar em Publicar Agora direto da prévia
+  assert.strictEqual(storyViewer.classList.contains('active'), false, 'Story Viewer deve fechar ao publicar');
+
+  // Aguardar ciclo assíncrono do FileReader.onload e addDoc
+  await new Promise(r => setTimeout(r, 30));
+
+  // Verificar publicação no Firestore
+  const publishedStoryKey = Object.keys(env.firestoreDocs).find(k => k.startsWith('stories/'));
+  assert.ok(publishedStoryKey, 'Novo story deve ter sido criado no Firestore');
+  const publishedStory = env.firestoreDocs[publishedStoryKey];
+  assert.strictEqual(publishedStory.authorUid, 'vip-user-preview');
+  assert.strictEqual(publishedStory.authorName, 'Mariana VIP');
+  assert.strictEqual(publishedStory.caption, 'Curtindo o pôr do sol incrível 🌅');
+  assert.strictEqual(publishedStory.type, 'video');
+  assert.strictEqual(publishedStory.music.title, 'Sunset Beats');
+
+  // Estado do compositor deve ser resetado após publicação
+  assert.strictEqual(env.elements['post-status-overlay'].classList.contains('active'), false, 'post-status-overlay deve fechar após publicação');
+  assert.strictEqual(getPendingStatusFile(), null, 'pendingStatusFile deve ser limpo após publicação');
+  assert.strictEqual(previewBox.style.display, 'none', 'Card inline de mídia deve ser ocultado após publicação');
+  assert.strictEqual(chooseMediaLabel.textContent, 'Escolher Mídia', 'Botão deve voltar para Escolher Mídia após publicação');
 });
 

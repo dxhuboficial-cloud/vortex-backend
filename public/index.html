@@ -215,6 +215,9 @@
                         </div>
                         <span id="story-user-status" class="story-user-status"></span>
                     </div>
+                    <div id="story-preview-indicator" class="story-preview-indicator" style="display: none;">
+                        <i data-lucide="eye"></i> <span>PRÉVIA</span>
+                    </div>
                 </div>
                 <div class="story-header-actions">
                     <div class="story-action-btn" id="download-story-btn" title="Baixar Mídia do Status" aria-label="Baixar Mídia">
@@ -262,6 +265,16 @@
 
             <!-- Rodapé do Story -->
             <div class="story-footer">
+                <!-- Rodapé para Modo Prévia (antes de postar) -->
+                <div id="story-preview-footer" class="story-preview-footer" style="display: none;">
+                    <button type="button" id="story-preview-back-btn" class="story-preview-btn secondary" title="Voltar para o editor de status">
+                        <i data-lucide="arrow-left"></i> <span>Voltar ao Editor</span>
+                    </button>
+                    <button type="button" id="story-preview-publish-now-btn" class="story-preview-btn primary" title="Publicar este status agora">
+                        <i data-lucide="send"></i> <span>Publicar Agora</span>
+                    </button>
+                </div>
+
                 <!-- Rodapé para o Story do PRÓPRIO usuário (Estilo WhatsApp) -->
                 <div id="own-story-footer" class="own-story-footer">
                     <div id="story-views-pill-btn" class="story-views-pill" title="Ver quem visualizou em tempo real">
@@ -881,6 +894,23 @@
                     <label class="setting-info"><span>Foto ou Vídeo (até 15s)</span></label>
                     <input type="file" id="status-file-input" accept="image/*,video/*" class="hidden-file-input" title="Selecionar mídia" aria-label="Selecionar mídia">
                     <label for="status-file-input" class="danger-btn choose-media-btn" id="choose-status-media-label">Escolher Mídia</label>
+                    
+                    <div id="status-media-preview-box" class="status-media-preview-box" style="display: none;">
+                        <div class="status-preview-media-wrapper" id="status-preview-media-trigger" title="Pré-visualizar Story">
+                            <img id="status-preview-img" class="status-preview-media" alt="Prévia da foto" style="display: none;">
+                            <video id="status-preview-video" class="status-preview-media" playsinline muted loop style="display: none;"></video>
+                            <div class="status-preview-play-trigger">
+                                <i data-lucide="eye"></i>
+                            </div>
+                        </div>
+                        <div class="status-preview-details">
+                            <div class="status-preview-filename" id="status-preview-filename">mídia.jpg</div>
+                            <div class="status-preview-tag" id="status-preview-tag"><i data-lucide="image"></i> <span>Foto selecionada</span></div>
+                        </div>
+                        <button type="button" id="remove-status-media-btn" class="status-remove-media-btn" title="Remover mídia selecionada" aria-label="Remover mídia">
+                            <i data-lucide="x"></i>
+                        </button>
+                    </div>
                 </div>
                 <div class="setting-item music-setting-item">
                     <label class="setting-info"><span>Trilha Sonora (Música)</span></label>
@@ -903,7 +933,12 @@
                         </div>
                     </div>
                 </div>
-                <button id="publish-status-btn" class="danger-btn publish-status-action-btn">Publicar Status</button>
+                <div class="status-form-actions">
+                    <button type="button" id="preview-status-btn" class="secondary-btn preview-status-action-btn" title="Ver como seu story vai ficar antes de publicar">
+                        <i data-lucide="eye"></i> <span>Pré-visualizar Story</span>
+                    </button>
+                    <button id="publish-status-btn" class="danger-btn publish-status-action-btn">Publicar Status</button>
+                </div>
             </div>
         </div>
 
@@ -1894,6 +1929,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.59" defer></script>
+    <script type="module" src="script.js?v=1.0.60" defer></script>
 </body>
 </html>
