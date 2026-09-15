@@ -4435,3 +4435,103 @@ test('Compressão de Mídia para KB e Corte Automático de Vídeos: Fotos em KB,
   assert.ok(postDoc.mediaSizeKB.includes('KB'), 'Post deve registrar tamanho em KB no Firestore');
 });
 
+test('Particionamento de Mídia em Chunks no Firestore: Publicação de vídeos grandes (ex: 2164 KB / 2.8 MB Base64) sem estourar limite de 1MB, remontagem transparente e corte rigoroso', async () => {
+  const env = createTestEnvironment();
+  const saveMediaWithChunks = env.sandbox.window.saveMediaWithChunks;
+  const loadMediaWithChunks = env.sandbox.window.loadMediaWithChunks;
+  const mediaChunkCache = env.sandbox.window.mediaChunkCache;
+  const setPendingStatusMedia = env.sandbox.window.setPendingStatusMedia;
+  const handlePostMediaSelection = env.sandbox.window.handlePostMediaSelection;
+
+  assert.ok(typeof saveMediaWithChunks === 'function', 'saveMediaWithChunks deve ser exportada');
+  assert.ok(typeof loadMediaWithChunks === 'function', 'loadMediaWithChunks deve ser exportada');
+  assert.ok(mediaChunkCache && typeof mediaChunkCache.get === 'function', 'mediaChunkCache deve ter métodos de Map');
+
+  // 1. Testar salvamento de payload pequeno (<= 700 KB) - deve salvar direto
+  const smallPayload = 'data:image/jpeg;base64,' + 'A'.repeat(10000);
+  const smallDocRef = await saveMediaWithChunks('stories', {
+    authorUid: 'user_small',
+    type: 'image',
+    caption: 'Foto pequena'
+  }, 'src', smallPayload);
+
+  assert.ok(smallDocRef && smallDocRef.id, 'Deve retornar docRef');
+  const savedSmallDoc = env.firestoreDocs[`stories/${smallDocRef.id}`];
+  assert.strictEqual(savedSmallDoc.hasChunks, false, 'Payload pequeno não deve ter chunks');
+  assert.strictEqual(savedSmallDoc.src, smallPayload, 'Payload pequeno deve ser salvo diretamente no campo src');
+
+  // 2. Testar salvamento de payload grande (> 700 KB, simulando vídeo de 2164 KB que gera ~2.88 MB de Base64)
+  // Criamos uma string de 2.800.000 caracteres
+  const largePayload = 'data:video/mp4;base64,' + 'V'.repeat(2800000);
+  const largeDocRef = await saveMediaWithChunks('stories', {
+    authorUid: 'user_large',
+    type: 'video',
+    caption: 'Status vídeo 2164 KB',
+    isTrimmed: true,
+    mediaSizeKB: '2164 KB'
+  }, 'src', largePayload);
+
+  assert.ok(largeDocRef && largeDocRef.id, 'Deve retornar docRef para mídia particionada');
+  const savedLargeDoc = env.firestoreDocs[`stories/${largeDocRef.id}`];
+  
+  // Documento principal NÃO deve ter a string de 2.8 MB (que quebraria o Firestore com > 1048487 bytes)
+  assert.strictEqual(savedLargeDoc.src, null, 'O campo src no documento principal deve ser null para evitar estourar 1MB');
+  assert.strictEqual(savedLargeDoc.hasChunks, true, 'O documento principal deve ser marcado com hasChunks: true');
+  assert.strictEqual(savedLargeDoc.totalChunks, 6, '2.800.022 caracteres divididos em blocos de 500.000 resultam em 6 chunks');
+
+  // Verificar chunks salvos na subcoleção stories/{id}/chunks/{0..5}
+  const chunkKeys = Object.keys(env.firestoreDocs).filter(k => k.startsWith(`stories/${largeDocRef.id}/chunks/`));
+  assert.strictEqual(chunkKeys.length, 6, 'Devem existir exatamente 6 documentos de chunks na subcoleção');
+
+  // Nenhum chunk individual pode exceder 500.000 caracteres
+  chunkKeys.forEach(k => {
+    const chunkDoc = env.firestoreDocs[k];
+    assert.ok(chunkDoc.part.length <= 500000, 'Nenhum chunk pode exceder 500.000 caracteres');
+    assert.ok(typeof chunkDoc.index === 'number', 'Cada chunk deve ter índice numérico');
+  });
+
+  // 3. Testar remontagem transparente via loadMediaWithChunks
+  // Primeiro, limpamos o cache em memória para forçar leitura real da subcoleção Firestore
+  mediaChunkCache.delete(`stories_${largeDocRef.id}`);
+
+  const reassembledPayload = await loadMediaWithChunks('stories', largeDocRef.id, '');
+  assert.strictEqual(reassembledPayload.length, largePayload.length, 'Payload remontado deve ter o tamanho exato original');
+  assert.strictEqual(reassembledPayload, largePayload, 'Payload remontado deve ser idêntico byte a byte ao original');
+  assert.strictEqual(mediaChunkCache.get(`stories_${largeDocRef.id}`), largePayload, 'Deve gravar no cache em memória após leitura');
+
+  // 4. Testar detecção de corte de 15s para vídeo de Stories no statusFileInput
+  const storyLongVideo = {
+    name: 'whats_app_video_2164kb.mp4',
+    type: 'video/mp4',
+    size: 2215936, // 2164 KB
+    duration: 45 // 45 segundos (> 15s)
+  };
+  setPendingStatusMedia(storyLongVideo, 'video');
+  await new Promise(r => setTimeout(r, 20));
+
+  const trimmedBadge = env.elements['status-preview-trimmed-badge'];
+  const previewSize = env.elements['status-preview-size'];
+  assert.ok(trimmedBadge, '#status-preview-trimmed-badge deve existir');
+  assert.strictEqual(trimmedBadge.style.display, 'inline-flex', 'Badge de corte deve ser exibida imediatamente para vídeo > 15s');
+  assert.ok(trimmedBadge.innerHTML.includes('Cortado (15s)'), 'Badge deve exibir Cortado (15s)');
+  assert.ok(previewSize.innerHTML.includes('KB'), 'Tamanho deve estar em KB');
+
+  // 5. Testar detecção de corte de 2 min (120s) para vídeo de Posts no handlePostMediaSelection
+  const postLongVideo = {
+    name: 'podcast_4min.mp4',
+    type: 'video/mp4',
+    size: 45000000,
+    duration: 240 // 4 minutos (> 180s)
+  };
+  handlePostMediaSelection(postLongVideo);
+  await new Promise(r => setTimeout(r, 20));
+
+  const postTrimBadge = env.elements['post-preview-trimmed-badge'];
+  const postDuration = env.elements['post-preview-duration'];
+  assert.ok(postTrimBadge, '#post-preview-trimmed-badge deve existir');
+  assert.strictEqual(postTrimBadge.style.display, 'inline-flex', 'Badge de corte deve ser exibida para vídeo de post > 3 min');
+  assert.ok(postTrimBadge.innerHTML.includes('Cortado (2 min)'), 'Badge deve exibir Cortado (2 min)');
+  assert.ok(postDuration.innerHTML.includes('2:00'), 'Duração deve ser formatada como 2:00');
+});
+
+

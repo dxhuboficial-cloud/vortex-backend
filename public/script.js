@@ -1423,16 +1423,42 @@ async function displayCurrentStory() {
     storyStartTime = Date.now();
     storyDuration = 5000;
 
+    let mediaSrc = story.src;
+    if ((story.hasChunks || !mediaSrc) && story.id && !story.isPreview) {
+        if (!mediaSrc) {
+            contentDiv.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:#fff;font-size:14px;"><i data-lucide="loader-2" class="spin" style="width:32px;height:32px;margin-bottom:8px;"></i><span>Carregando mídia...</span></div>';
+            if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+        }
+        mediaSrc = await loadMediaWithChunks('stories', story.id, story.src);
+        story.src = mediaSrc;
+    }
+
+    if (story.type === 'video' && story.isTrimmed && mediaSrc && typeof mediaSrc === 'string' && !mediaSrc.includes('#t=')) {
+        mediaSrc = `${mediaSrc}#t=0,15`;
+    }
+
+    // Prefetch próximo story se houver
+    const nextStory = activeStoryList[currentStoryIndex + 1];
+    if (nextStory && (nextStory.hasChunks || !nextStory.src) && nextStory.id && !nextStory.isPreview) {
+        loadMediaWithChunks('stories', nextStory.id, nextStory.src).then(res => { if (res) nextStory.src = res; }).catch(() => {});
+    }
+
     if (story.type === 'video') {
-        contentDiv.innerHTML = `<video src="${story.src}" autoplay playsinline style="width:100%;height:100%;object-fit:contain;"></video>`;
+        contentDiv.innerHTML = `<video src="${mediaSrc}" autoplay playsinline style="width:100%;height:100%;object-fit:contain;"></video>`;
         const video = contentDiv.querySelector('video');
         video.onloadedmetadata = () => {
-            storyDuration = (video.duration && !isNaN(video.duration)) ? video.duration * 1000 : 5000;
+            const rawDur = (video.duration && !isNaN(video.duration)) ? video.duration * 1000 : 5000;
+            storyDuration = story.isTrimmed ? Math.min(rawDur, 15000) : rawDur;
             startProgressBarAnimation();
+        };
+        video.ontimeupdate = () => {
+            if (story.isTrimmed && video.currentTime >= 15.0) {
+                goToNextStory();
+            }
         };
         video.onended = () => goToNextStory();
     } else {
-        contentDiv.innerHTML = `<img src="${story.src}" alt="Story" style="width:100%;height:100%;object-fit:contain;">`;
+        contentDiv.innerHTML = `<img src="${mediaSrc}" alt="Story" style="width:100%;height:100%;object-fit:contain;">`;
         startProgressBarAnimation();
     }
 
@@ -1748,6 +1774,10 @@ async function deleteCurrentStory() {
 
     if (confirm("Deseja realmente apagar este status?")) {
         await deleteDoc(doc(db, 'stories', story.id));
+        getDocs(collection(db, 'stories', story.id, 'chunks')).then(snap => {
+            if (snap && snap.docs) snap.docs.forEach(d => deleteDoc(d.ref).catch(() => {}));
+        }).catch(() => {});
+        mediaChunkCache.delete(`stories_${story.id}`);
         showToast("Status", "Status excluído com sucesso.", "blue");
         closeStoryViewer();
     }
@@ -1985,6 +2015,102 @@ let pendingStatusMediaInfo = null;
 let pendingStatusCompressedData = null;
 let isStoryPreviewMode = false;
 
+/* ==========================================================================
+   SISTEMA DE ARMAZENAMENTO E PARTICIONAMENTO DE MÍDIA (FIRESTORE CHUNKS)
+   Evita o erro estrito do Firestore: "The value of property is longer than 1048487 bytes"
+   Mídias > 700KB são divididas em chunks de 500KB salvos em subcoleção "chunks"
+   ========================================================================== */
+export const mediaChunkCache = new Map();
+export const MAX_DIRECT_PAYLOAD_CHARS = 700000;
+export const MEDIA_CHUNK_SIZE = 500000;
+
+export async function saveMediaWithChunks(collectionName, docData, mediaFieldName, mediaPayload) {
+    if (!mediaPayload || typeof mediaPayload !== 'string' || mediaPayload.length <= MAX_DIRECT_PAYLOAD_CHARS) {
+        const fullDoc = {
+            ...docData,
+            [mediaFieldName]: mediaPayload || null,
+            hasChunks: false
+        };
+        const docRef = await addDoc(collection(db, collectionName), fullDoc);
+        if (mediaPayload && docRef && docRef.id) {
+            mediaChunkCache.set(`${collectionName}_${docRef.id}`, mediaPayload);
+        }
+        return docRef;
+    }
+
+    // O payload excede o limite do documento Firestore (~1 MB).
+    // Fatiar em pedaços de 500.000 caracteres gravados na subcoleção 'chunks'.
+    const chunks = [];
+    for (let i = 0; i < mediaPayload.length; i += MEDIA_CHUNK_SIZE) {
+        chunks.push(mediaPayload.slice(i, i + MEDIA_CHUNK_SIZE));
+    }
+
+    const mainDoc = {
+        ...docData,
+        [mediaFieldName]: null,
+        hasChunks: true,
+        totalChunks: chunks.length,
+        chunkSize: MEDIA_CHUNK_SIZE
+    };
+
+    const docRef = await addDoc(collection(db, collectionName), mainDoc);
+
+    // Gravar os chunks na subcoleção em lotes de até 400
+    const BATCH_LIMIT = 400;
+    for (let b = 0; b < chunks.length; b += BATCH_LIMIT) {
+        const batch = writeBatch(db);
+        const chunkBatch = chunks.slice(b, b + BATCH_LIMIT);
+        for (let i = 0; i < chunkBatch.length; i++) {
+            const index = b + i;
+            const chunkDocRef = doc(db, collectionName, docRef.id, 'chunks', String(index));
+            batch.set(chunkDocRef, {
+                index: index,
+                part: chunkBatch[i],
+                createdAt: Date.now()
+            });
+        }
+        await batch.commit();
+    }
+
+    mediaChunkCache.set(`${collectionName}_${docRef.id}`, mediaPayload);
+    return docRef;
+}
+
+export async function loadMediaWithChunks(collectionName, docId, fallbackSrc = '') {
+    if (!docId) return fallbackSrc || '';
+    const cacheKey = `${collectionName}_${docId}`;
+    if (mediaChunkCache.has(cacheKey)) {
+        return mediaChunkCache.get(cacheKey);
+    }
+    if (fallbackSrc && typeof fallbackSrc === 'string' && fallbackSrc.length > 50 && !fallbackSrc.startsWith('blob:mock')) {
+        return fallbackSrc;
+    }
+
+    try {
+        const chunksSnap = await getDocs(collection(db, collectionName, docId, 'chunks'));
+        if (chunksSnap && !chunksSnap.empty) {
+            const list = [];
+            chunksSnap.forEach(d => {
+                const data = typeof d.data === 'function' ? d.data() : (d || {});
+                list.push({
+                    index: typeof data.index === 'number' ? data.index : 0,
+                    part: data.part || ''
+                });
+            });
+            list.sort((a, b) => a.index - b.index);
+            const fullPayload = list.map(item => item.part).join('');
+            if (fullPayload) {
+                mediaChunkCache.set(cacheKey, fullPayload);
+                return fullPayload;
+            }
+        }
+    } catch (err) {
+        console.warn(`[loadMediaWithChunks] Erro ao carregar chunks para ${collectionName}/${docId}:`, err);
+    }
+
+    return fallbackSrc || '';
+}
+
 export function formatBytesToKB(bytes) {
     if (!bytes || isNaN(bytes) || bytes <= 0) return '0 KB';
     const kb = Math.round(bytes / 1024);
@@ -2161,19 +2287,19 @@ export async function trimAndCompressVideoToKB(file, options = {}) {
         } catch (e) {}
 
         const finalizeWithDuration = (rawDuration) => {
-            const originalDuration = Number(rawDuration) || 0;
+            const originalDuration = Number(file.originalDuration || rawDuration) || 0;
             let finalDuration = originalDuration;
-            let isTrimmed = false;
+            let isTrimmed = !!file.isTrimmed;
 
             if (isStory) {
-                if (originalDuration > 15.0) {
+                if (originalDuration > 15.0 || isTrimmed) {
                     finalDuration = 15;
                     isTrimmed = true;
                 } else if (originalDuration <= 0) {
                     finalDuration = 15;
                 }
             } else {
-                if (originalDuration > cutThreshold) {
+                if (originalDuration > cutThreshold || isTrimmed) {
                     finalDuration = maxDuration; // 120s
                     isTrimmed = true;
                 }
@@ -2207,6 +2333,10 @@ export async function trimAndCompressVideoToKB(file, options = {}) {
             });
         };
 
+        if (typeof file.originalDuration === 'number' && file.originalDuration > 0) {
+            return finalizeWithDuration(file.originalDuration);
+        }
+
         if (typeof file.duration === 'number' && file.duration > 0) {
             return finalizeWithDuration(file.duration);
         }
@@ -2235,24 +2365,24 @@ export async function trimAndCompressVideoToKB(file, options = {}) {
                     if (resolved) return;
                     resolved = true;
                     cleanup();
-                    finalizeWithDuration(file.duration || (isStory ? 15 : 60));
+                    finalizeWithDuration(file.originalDuration || file.duration || (isStory ? 15 : 60));
                 };
 
                 setTimeout(() => {
                     if (resolved) return;
                     resolved = true;
                     cleanup();
-                    finalizeWithDuration(file.duration || (isStory ? 15 : 60));
+                    finalizeWithDuration(file.originalDuration || file.duration || (isStory ? 15 : 60));
                 }, 1500);
 
                 videoEl.src = objectUrl;
                 return;
             } catch (err) {
-                return finalizeWithDuration(file.duration || (isStory ? 15 : 60));
+                return finalizeWithDuration(file.originalDuration || file.duration || (isStory ? 15 : 60));
             }
         }
 
-        finalizeWithDuration(file.duration || (isStory ? 15 : 60));
+        finalizeWithDuration(file.originalDuration || file.duration || (isStory ? 15 : 60));
     });
 }
 
@@ -2281,7 +2411,11 @@ function setPendingStatusMedia(file, type) {
 
     // Informação de mídia síncrona inicial
     const rawBytes = file.size || 102400;
-    const isVideoTrimmed = isVideo && (typeof file.duration === 'number' && file.duration > 15.0);
+    const isVideoTrimmed = isVideo && (
+        file.isTrimmed === true ||
+        (typeof file.originalDuration === 'number' && file.originalDuration > 15.0) ||
+        (typeof file.duration === 'number' && file.duration > 15.0)
+    );
     const initialSizeKB = formatBytesToKB(rawBytes);
     pendingStatusMediaInfo = {
         type: isVideo ? 'video' : 'image',
@@ -2455,6 +2589,7 @@ function openStoryPreview() {
         isPreview: true,
         type: isVideo ? 'video' : 'image',
         src: pendingStatusFileSrc,
+        isTrimmed: !!(pendingStatusMediaInfo && pendingStatusMediaInfo.isTrimmed) || !!pendingStatusFile.isTrimmed,
         caption: captionVal,
         views: {},
         reactions: {},
@@ -2493,11 +2628,17 @@ if (statusFileInput) {
             video.preload = 'metadata';
             video.onloadedmetadata = function() {
                 try { window.URL.revokeObjectURL(video.src); } catch (err) {}
-                if (video.duration > 15.0) {
+                const dur = Number(video.duration) || 0;
+                file.originalDuration = dur;
+                file.duration = dur;
+                if (dur > 15.0) {
                     file.duration = 15;
+                    file.isTrimmed = true;
                     setPendingStatusMedia(file, 'video');
                     showToast("Vídeo Cortado", "Vídeo com mais de 15s foi ajustado automaticamente para 15 segundos.", "blue");
                 } else {
+                    file.duration = dur;
+                    file.isTrimmed = false;
                     setPendingStatusMedia(file, 'video');
                     showToast("Vídeo Aceito", "Vídeo pronto para publicação.", "green");
                 }
@@ -2548,6 +2689,13 @@ document.getElementById('publish-status-btn')?.addEventListener('click', async (
     }
     if (!currentUser) return;
 
+    const publishBtn = document.getElementById('publish-status-btn');
+    if (publishBtn) {
+        publishBtn.disabled = true;
+        publishBtn.innerHTML = '<i data-lucide="loader-2" class="spin"></i> <span>Publicando...</span>';
+        if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+    }
+
     // Buscar lista de contatos aceitos pelo usuário para registrar em allowedUids
     let allowedContacts = [];
     try {
@@ -2559,15 +2707,15 @@ document.getElementById('publish-status-btn')?.addEventListener('click', async (
 
     const saveStoryWithSrc = async (mediaSrc) => {
         try {
-            await addDoc(collection(db, 'stories'), {
+            const isVideo = pendingStatusFile.type ? pendingStatusFile.type.startsWith('video') : false;
+            const storyData = {
                 authorUid: currentUser.uid,
                 authorName: currentProfile.name,
                 authorUsername: currentProfile.username,
                 authorAvatar: currentProfile.avatar,
-                type: pendingStatusFile.type.startsWith('video') ? 'video' : 'image',
-                src: mediaSrc,
-                isTrimmed: !!(pendingStatusMediaInfo && pendingStatusMediaInfo.isTrimmed),
-                mediaSizeKB: pendingStatusMediaInfo?.sizeFormatted || 'KB',
+                type: isVideo ? 'video' : 'image',
+                isTrimmed: !!(pendingStatusMediaInfo && pendingStatusMediaInfo.isTrimmed) || !!pendingStatusFile.isTrimmed,
+                mediaSizeKB: pendingStatusMediaInfo?.sizeFormatted || formatBytesToKB(pendingStatusFile.size || 102400),
                 caption: document.getElementById('status-caption-input')?.value || '',
                 views: {},
                 reactions: {},
@@ -2582,7 +2730,10 @@ document.getElementById('publish-status-btn')?.addEventListener('click', async (
                     duration: pendingStatusMusic.duration || 30
                 } : null,
                 createdAt: Date.now()
-            });
+            };
+
+            await saveMediaWithChunks('stories', storyData, 'src', mediaSrc);
+
             showToast("Status Publicado", "Seu status de 24 horas está visível para seus contatos aceitos!", "green");
             document.getElementById('post-status-overlay')?.classList.remove('active');
             removeSelectedStatusMedia();
@@ -2600,17 +2751,31 @@ document.getElementById('publish-status-btn')?.addEventListener('click', async (
         } catch (pubErr) {
             console.error('Erro ao publicar status:', pubErr);
             showToast("Erro", "Não foi possível publicar o status.", "red");
+        } finally {
+            if (publishBtn) {
+                publishBtn.disabled = false;
+                publishBtn.innerHTML = '<i data-lucide="send"></i> <span>Publicar Status</span>';
+                if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+            }
         }
     };
 
     if (pendingStatusCompressedData) {
-        saveStoryWithSrc(pendingStatusCompressedData);
+        await saveStoryWithSrc(pendingStatusCompressedData);
         return;
     }
 
     const reader = new FileReader();
     reader.onload = async () => {
-        saveStoryWithSrc(reader.result);
+        await saveStoryWithSrc(reader.result);
+    };
+    reader.onerror = () => {
+        if (publishBtn) {
+            publishBtn.disabled = false;
+            publishBtn.innerHTML = '<i data-lucide="send"></i> <span>Publicar Status</span>';
+            if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+        }
+        showToast("Erro", "Erro ao processar arquivo de mídia.", "red");
     };
     reader.readAsDataURL(pendingStatusFile);
 });
@@ -9537,6 +9702,10 @@ export async function deletePost(postId) {
     if (typeof confirm === 'function' && !confirm('Deseja realmente excluir esta publicação?')) return;
     try {
         await deleteDoc(doc(db, 'posts', postId));
+        getDocs(collection(db, 'posts', postId, 'chunks')).then(snap => {
+            if (snap && snap.docs) snap.docs.forEach(d => deleteDoc(d.ref).catch(() => {}));
+        }).catch(() => {});
+        mediaChunkCache.delete(`posts_${postId}`);
         showToast('Post excluído', 'A publicação foi removida com sucesso.', 'green');
     } catch (err) {
         console.error('Erro ao excluir post:', err);
@@ -9933,6 +10102,25 @@ export function syncFeedAuthorsVipStatus(posts = []) {
     });
 }
 
+function resolvePostChunkedMedia(container, postsList) {
+    if (!container) return;
+    container.querySelectorAll('[data-chunk-post-id]').forEach(el => {
+        const pId = el.dataset.chunkPostId;
+        if (!pId) return;
+        loadMediaWithChunks('posts', pId).then(fullData => {
+            if (!fullData) return;
+            const postObj = Array.isArray(postsList) ? postsList.find(p => p.id === pId) : null;
+            if (postObj) postObj.mediaData = fullData;
+            let src = fullData;
+            if (el.dataset.chunkType === 'video' && el.dataset.chunkTrimmed === 'true' && !src.includes('#t=')) {
+                src = `${src}#t=0,${el.dataset.chunkDuration || 120}`;
+            }
+            el.src = src;
+            el.removeAttribute('data-chunk-post-id');
+        }).catch(err => console.warn('Erro ao carregar chunks de mídia do post:', err));
+    });
+}
+
 function renderPostsFeed(posts = []) {
     const feedList = document.getElementById('feed-list');
     const countLabel = document.getElementById('posts-count-label');
@@ -9954,12 +10142,14 @@ function renderPostsFeed(posts = []) {
                 const likes = Array.isArray(post.likes) ? post.likes.length : 0;
                 const comments = Array.isArray(post.comments) ? post.comments : [];
                 const caption = post.caption || '';
-                const postMediaSrc = (post.type === 'video' && post.isTrimmed && post.mediaData && typeof post.mediaData === 'string' && !post.mediaData.includes('#t='))
-                    ? `${post.mediaData}#t=0,${post.videoDuration || 120}`
-                    : (post.mediaData || '');
+                const rawMedia = post.mediaData || (post.hasChunks && post.id && mediaChunkCache.get(`posts_${post.id}`)) || '';
+                const isChunkPending = post.hasChunks && !rawMedia && post.id;
+                const postMediaSrc = (post.type === 'video' && post.isTrimmed && rawMedia && typeof rawMedia === 'string' && !rawMedia.includes('#t='))
+                    ? `${rawMedia}#t=0,${post.videoDuration || 120}`
+                    : (rawMedia || '');
                 const mediaTag = post.type === 'video'
-                    ? `<video src="${postMediaSrc}" controls playsinline></video>`
-                    : `<img src="${post.mediaData}" alt="Postagem" />`;
+                    ? `<video src="${postMediaSrc}" ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="video" data-chunk-trimmed="${post.isTrimmed ? 'true' : 'false'}" data-chunk-duration="${post.videoDuration || 120}"` : ''} controls playsinline></video>`
+                    : `<img src="${postMediaSrc}" ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="image"` : ''} alt="Postagem" />`;
                 const createdAt = new Date(post.createdAt || Date.now());
                 const timeLabel = createdAt.toLocaleString([], { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
                 const canDeletePost = isPostOwner(post, currentUser, currentProfile);
@@ -10014,6 +10204,8 @@ function renderPostsFeed(posts = []) {
                 `;
             }).join('');
 
+            resolvePostChunkedMedia(previewFeed, posts);
+
             previewFeed.querySelectorAll('[data-action="open-comment-modal"]').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const postId = btn.dataset.postId;
@@ -10039,12 +10231,14 @@ function renderPostsFeed(posts = []) {
         const rawComments = Array.isArray(post.comments) ? post.comments : [];
         const sortedComments = getSortedPostComments(rawComments);
         const caption = post.caption || '';
-        const postMediaSrc = (post.type === 'video' && post.isTrimmed && post.mediaData && typeof post.mediaData === 'string' && !post.mediaData.includes('#t='))
-            ? `${post.mediaData}#t=0,${post.videoDuration || 120}`
-            : (post.mediaData || '');
+        const rawMedia = post.mediaData || (post.hasChunks && post.id && mediaChunkCache.get(`posts_${post.id}`)) || '';
+        const isChunkPending = post.hasChunks && !rawMedia && post.id;
+        const postMediaSrc = (post.type === 'video' && post.isTrimmed && rawMedia && typeof rawMedia === 'string' && !rawMedia.includes('#t='))
+            ? `${rawMedia}#t=0,${post.videoDuration || 120}`
+            : (rawMedia || '');
         const mediaTag = post.type === 'video'
-            ? `<video src="${postMediaSrc}" controls playsinline></video>`
-            : `<img src="${post.mediaData}" alt="Postagem" />`;
+            ? `<video src="${postMediaSrc}" ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="video" data-chunk-trimmed="${post.isTrimmed ? 'true' : 'false'}" data-chunk-duration="${post.videoDuration || 120}"` : ''} controls playsinline></video>`
+            : `<img src="${postMediaSrc}" ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="image"` : ''} alt="Postagem" />`;
         const createdAt = new Date(post.createdAt || Date.now());
         const timeLabel = createdAt.toLocaleString([], { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
         const liked = currentUser && Array.isArray(post.likes) && post.likes.includes(currentUser.uid);
@@ -10194,6 +10388,17 @@ function renderPostsFeed(posts = []) {
             </article>
         `;
     }).join('');
+
+    resolvePostChunkedMedia(feedList, posts);
+
+    feedList.querySelectorAll('video').forEach(videoEl => {
+        videoEl.addEventListener('timeupdate', () => {
+            const maxD = Number(videoEl.dataset.chunkDuration) || 120;
+            if (videoEl.dataset.chunkTrimmed === 'true' && videoEl.currentTime >= maxD) {
+                videoEl.pause();
+            }
+        });
+    });
 
     if (window.lucide) lucide.createIcons();
 
@@ -11167,7 +11372,29 @@ if (postMediaInput) {
     postMediaInput.addEventListener('change', (event) => {
         const file = event.target.files?.[0];
         if (!file) return;
-        handlePostMediaSelection(file);
+
+        if (file.type && file.type.startsWith('video')) {
+            const video = document.createElement('video');
+            video.preload = 'metadata';
+            video.onloadedmetadata = function() {
+                try { window.URL.revokeObjectURL(video.src); } catch (err) {}
+                const dur = Number(video.duration) || 0;
+                file.originalDuration = dur;
+                file.duration = dur;
+                if (dur > 180) {
+                    file.isTrimmed = true;
+                    file.duration = 120;
+                }
+                handlePostMediaSelection(file);
+            };
+            try {
+                video.src = URL.createObjectURL(file);
+            } catch (err) {
+                handlePostMediaSelection(file);
+            }
+        } else {
+            handlePostMediaSelection(file);
+        }
     });
 }
 
@@ -11187,11 +11414,18 @@ document.getElementById('publish-post-btn')?.addEventListener('click', async () 
         return;
     }
 
+    const publishPostBtn = document.getElementById('publish-post-btn');
+    if (publishPostBtn) {
+        publishPostBtn.disabled = true;
+        publishPostBtn.innerHTML = '<i data-lucide="loader-2" class="spin"></i> <span>Publicando...</span>';
+        if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+    }
+
     const isVideo = file ? (file.type && file.type.startsWith('video')) : (pendingPostMediaInfo?.type === 'video');
 
     const savePostToFirestore = async (mediaPayload) => {
         try {
-            await addDoc(collection(db, 'posts'), {
+            const postDoc = {
                 authorUid: currentUser.uid,
                 authorName: currentProfile.name,
                 authorAvatar: currentProfile.avatar,
@@ -11200,9 +11434,8 @@ document.getElementById('publish-post-btn')?.addEventListener('click', async () 
                 isVip: checkIsVipUser(currentProfile),
                 isVerified: checkIsVipUser(currentProfile),
                 type: isVideo ? 'video' : 'image',
-                mediaData: mediaPayload,
-                mediaSizeKB: pendingPostMediaInfo?.sizeFormatted || 'KB',
-                isTrimmed: !!(pendingPostMediaInfo && pendingPostMediaInfo.isTrimmed),
+                mediaSizeKB: pendingPostMediaInfo?.sizeFormatted || formatBytesToKB(file?.size || 102400),
+                isTrimmed: !!(pendingPostMediaInfo && pendingPostMediaInfo.isTrimmed) || !!(file && file.isTrimmed),
                 videoDuration: isVideo ? (pendingPostMediaInfo?.duration || (file && file.duration) || 0) : null,
                 caption: postCaptionInput?.value?.trim() || '',
                 createdAt: Date.now(),
@@ -11216,7 +11449,9 @@ document.getElementById('publish-post-btn')?.addEventListener('click', async () 
                     audioUrl: pendingPostMusic.audioUrl,
                     duration: pendingPostMusic.duration || 30
                 } : null
-            });
+            };
+
+            await saveMediaWithChunks('posts', postDoc, 'mediaData', mediaPayload);
 
             showToast('Post publicado', 'Sua foto ou vídeo foi enviado com sucesso.', 'green');
             resetPostComposer();
@@ -11224,22 +11459,36 @@ document.getElementById('publish-post-btn')?.addEventListener('click', async () 
         } catch (error) {
             console.error('Erro ao publicar post:', error);
             showToast('Erro', 'Não foi possível publicar a mídia.', 'red');
+        } finally {
+            if (publishPostBtn) {
+                publishPostBtn.disabled = false;
+                publishPostBtn.innerHTML = '<i data-lucide="send"></i> <span>Publicar</span>';
+                if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+            }
         }
     };
 
     if (pendingPostMediaData) {
-        savePostToFirestore(pendingPostMediaData);
+        await savePostToFirestore(pendingPostMediaData);
         return;
     }
 
     if (file) {
         const reader = new FileReader();
         reader.onload = async () => {
-            savePostToFirestore(reader.result);
+            await savePostToFirestore(reader.result);
+        };
+        reader.onerror = () => {
+            if (publishPostBtn) {
+                publishPostBtn.disabled = false;
+                publishPostBtn.innerHTML = '<i data-lucide="send"></i> <span>Publicar</span>';
+                if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+            }
+            showToast('Erro', 'Erro ao ler arquivo.', 'red');
         };
         reader.readAsDataURL(file);
     } else {
-        savePostToFirestore('data:image/jpeg;base64,mockpreview');
+        await savePostToFirestore('data:image/jpeg;base64,mockpreview');
     }
 });
 
@@ -13725,6 +13974,9 @@ if (typeof window !== 'undefined') {
     window.getPendingPostMediaInfo = getPendingPostMediaInfo;
     window.getPendingStatusMediaInfo = () => pendingStatusMediaInfo;
     window.getPendingStatusCompressedData = () => pendingStatusCompressedData;
+    window.saveMediaWithChunks = saveMediaWithChunks;
+    window.loadMediaWithChunks = loadMediaWithChunks;
+    window.mediaChunkCache = mediaChunkCache;
 }
 
 if (typeof window !== 'undefined') {
