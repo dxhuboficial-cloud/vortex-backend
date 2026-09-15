@@ -3799,9 +3799,27 @@ test('Recado / Bio do Contato: Exibição no cabeçalho do chat, cartão de intr
   });
 
   assert.strictEqual(env.elements['chat-window'].classList.contains('active'), true, 'Chat deve estar aberto');
-  assert.ok(env.elements['chat-window-bio'].innerText.includes('Vivendo e aprendendo todo dia!'), 'Bio deve ser exibida no cabeçalho do chat');
+  assert.strictEqual(env.elements['chat-window-bio'].style.display, 'none', 'Recado/Bio deve ser removido do cabeçalho do contato');
+  assert.strictEqual(env.elements['chat-header-sep'].style.display, 'none', 'Separador do cabeçalho deve estar oculto');
   assert.strictEqual(env.elements['chat-bio-bubble'].style.display, 'inline-flex', 'Balãozinho de recado estilo WhatsApp deve estar visível');
   assert.ok(env.elements['chat-bio-bubble-text'].innerText.includes('Vivendo e aprendendo todo dia!'), 'Balãozinho deve exibir o texto do recado');
+
+  // Teste de expiração do temporizador de 60 segundos do balãozinho de Bio
+  const startBioBubbleTimer = env.sandbox.startBioBubbleTimer || env.sandbox.window.startBioBubbleTimer;
+  assert.ok(typeof startBioBubbleTimer === 'function', 'startBioBubbleTimer deve existir');
+  startBioBubbleTimer(15);
+  await new Promise(r => setTimeout(r, 450));
+  assert.strictEqual(env.elements['chat-bio-bubble'].style.display, 'none', 'Balãozinho de bio deve desaparecer após expirar o tempo');
+
+  // Ao reabrir conversa, balãozinho deve reaparecer para a nova sessão
+  openDirectChat({
+    uid: contactMock.uid,
+    name: contactMock.name,
+    username: contactMock.username,
+    avatar: contactMock.avatar,
+    status: 'Vivendo e aprendendo todo dia! 🚀✨'
+  });
+  assert.strictEqual(env.elements['chat-bio-bubble'].style.display, 'inline-flex', 'Balãozinho deve reaparecer para nova sessão ao abrir conversa');
 
   // Clicar no balãozinho abre os dados do contato
   await env.elements['chat-bio-bubble'].click();
@@ -3813,7 +3831,7 @@ test('Recado / Bio do Contato: Exibição no cabeçalho do chat, cartão de intr
     status: 'Disponível para novas ideias 💡'
   });
 
-  assert.ok(env.elements['chat-window-bio'].innerText.includes('Disponível para novas ideias 💡'), 'Bio no cabeçalho deve atualizar instantaneamente com listener');
+  assert.strictEqual(env.elements['chat-window-bio'].style.display, 'none', 'Bio deve permanecer oculta no cabeçalho do contato');
   assert.ok(env.elements['chat-bio-bubble-text'].innerText.includes('Disponível para novas ideias 💡'), 'Texto do balãozinho deve atualizar instantaneamente com listener');
 
   // 5. Clicar na seta de voltar do chat (#close-chat) fecha o chat e oculta o balãozinho

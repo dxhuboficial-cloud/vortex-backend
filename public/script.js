@@ -3164,6 +3164,15 @@ function openGroupChat(group) {
     if (!groupId) return;
 
     cleanupActiveGroupListeners();
+    if (bioBubbleTimer) {
+        clearTimeout(bioBubbleTimer);
+        bioBubbleTimer = null;
+    }
+    const groupBioBubble = document.getElementById('chat-bio-bubble');
+    if (groupBioBubble) {
+        groupBioBubble.style.display = 'none';
+        groupBioBubble.classList.remove('scrolled-hide', 'bubble-expired');
+    }
 
     const chatWindow = document.getElementById('chat-window');
     if (chatWindow) {
@@ -3363,6 +3372,35 @@ function getActiveChatId() {
     return [currentUser.uid, activeChatContact.uid].sort().join('_');
 }
 
+let bioBubbleTimer = null;
+
+export function startBioBubbleTimer(durationMs = 60000) {
+    if (bioBubbleTimer) {
+        clearTimeout(bioBubbleTimer);
+        bioBubbleTimer = null;
+    }
+    const bubble = document.getElementById('chat-bio-bubble');
+    if (bubble) {
+        bubble.classList.remove('bubble-expired', 'scrolled-hide');
+    }
+    bioBubbleTimer = setTimeout(() => {
+        const b = document.getElementById('chat-bio-bubble');
+        if (b) {
+            b.classList.add('bubble-expired');
+            const fadeTimer = setTimeout(() => {
+                if (b && b.classList.contains('bubble-expired')) {
+                    b.style.display = 'none';
+                }
+            }, 350);
+            if (fadeTimer && typeof fadeTimer.unref === 'function') fadeTimer.unref();
+        }
+        bioBubbleTimer = null;
+    }, durationMs);
+    if (bioBubbleTimer && typeof bioBubbleTimer.unref === 'function') {
+        bioBubbleTimer.unref();
+    }
+}
+
 export function updateChatBioBubble(contactBio) {
     const bubble = document.getElementById('chat-bio-bubble');
     const dot = document.getElementById('chat-bio-bubble-dot');
@@ -3384,6 +3422,12 @@ export function updateChatBioBubble(contactBio) {
     if (textEl) {
         textEl.innerText = contactBio;
         textEl.title = `Recado: ${contactBio}`;
+    }
+
+    // Se já se passaram 60 segundos nesta conversa aberta, não reabre
+    if (bubble.classList.contains('bubble-expired')) {
+        bubble.style.display = 'none';
+        return;
     }
 
     bubble.style.display = 'inline-flex';
@@ -3429,15 +3473,11 @@ function refreshDirectChatStatus() {
 
     const contactBio = (activeContactUserData && activeContactUserData.status) ? activeContactUserData.status.trim() : (activeChatContact && activeChatContact.status ? activeChatContact.status.trim() : '');
     if (bioEl) {
-        if (contactBio) {
-            bioEl.innerText = `"${contactBio}"`;
-            bioEl.title = `Recado: ${contactBio}`;
-            bioEl.style.display = 'inline-block';
-            if (sepEl) sepEl.style.display = 'inline-block';
-        } else {
-            bioEl.style.display = 'none';
-            if (sepEl) sepEl.style.display = 'none';
-        }
+        bioEl.innerText = contactBio ? `"${contactBio}"` : '';
+        bioEl.title = `Recado: ${contactBio}`;
+        // Removido da exibição no cabeçalho do contato a pedido do usuário
+        bioEl.style.display = 'none';
+        if (sepEl) sepEl.style.display = 'none';
     }
     updateChatBioBubble(contactBio);
 
@@ -3542,6 +3582,7 @@ function openDirectChat(contact) {
         openChatDot.style.display = (contact.online && !contact.ghostMode) ? 'block' : 'none';
     }
     if (typeof updateChatPinUI === 'function') updateChatPinUI();
+    startBioBubbleTimer();
     refreshDirectChatStatus();
 
     // Tocar nas informações do contato (avatar/nome) abre os Dados do Contato
@@ -3563,7 +3604,7 @@ function openDirectChat(contact) {
     // Tocar no balãozinho de recado abre os Dados do Contato
     const bioBubble = document.getElementById('chat-bio-bubble');
     if (bioBubble) {
-        bioBubble.classList.remove('scrolled-hide');
+        bioBubble.classList.remove('scrolled-hide', 'bubble-expired');
         bioBubble.onclick = (e) => {
             if (e) e.stopPropagation();
             if (activeChatContact && !activeChatContact.isGroup) {
@@ -3577,7 +3618,7 @@ function openDirectChat(contact) {
         msgContainer._bioBubbleScrollBound = true;
         msgContainer.addEventListener('scroll', () => {
             const bubble = document.getElementById('chat-bio-bubble');
-            if (bubble && bubble.style.display !== 'none') {
+            if (bubble && bubble.style.display !== 'none' && !bubble.classList.contains('bubble-expired')) {
                 if (msgContainer.scrollTop > 50) {
                     bubble.classList.add('scrolled-hide');
                 } else {
@@ -11528,10 +11569,14 @@ document.getElementById('google-login-main-btn')?.addEventListener('click', asyn
 function closeChat() {
     closeContactProfile();
     document.getElementById('chat-window')?.classList.remove('active');
+    if (bioBubbleTimer) {
+        clearTimeout(bioBubbleTimer);
+        bioBubbleTimer = null;
+    }
     const bioBubble = document.getElementById('chat-bio-bubble');
     if (bioBubble) {
         bioBubble.style.display = 'none';
-        bioBubble.classList.remove('scrolled-hide');
+        bioBubble.classList.remove('scrolled-hide', 'bubble-expired');
     }
     const leaveGroupTrigger = document.getElementById('chat-leave-group-trigger');
     if (leaveGroupTrigger) leaveGroupTrigger.style.display = 'none';
@@ -12641,6 +12686,8 @@ if (typeof window !== 'undefined') {
     window.openContactProfile = openContactProfile;
     window.closeContactProfile = closeContactProfile;
     window.updateChatBioBubble = updateChatBioBubble;
+    window.startBioBubbleTimer = startBioBubbleTimer;
+    window.getBioBubbleTimer = () => bioBubbleTimer;
     window.initBackNavigation = initBackNavigation;
     window.closeTopmostActiveLayer = closeTopmostActiveLayer;
     window.handleSystemBackPress = handleSystemBackPress;

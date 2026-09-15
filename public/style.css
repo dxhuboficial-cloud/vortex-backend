@@ -6507,12 +6507,14 @@ input:checked + .slider:before { transform: translateX(22px); }
 }
 
 .chat-header-sep {
+    display: none !important;
     color: rgba(255, 255, 255, 0.35);
     font-size: 0.7rem;
     flex-shrink: 0;
 }
 
 .chat-header-bio {
+    display: none !important;
     color: var(--accent-color, #00ff88);
     font-size: 0.72rem;
     max-width: 140px;
@@ -6876,11 +6878,13 @@ input:checked + .slider:before { transform: translateX(22px); }
     }
 }
 
-.chat-bio-bubble.scrolled-hide {
+.chat-bio-bubble.scrolled-hide,
+.chat-bio-bubble.bubble-expired {
     opacity: 0;
     pointer-events: none;
     transform: translateY(-8px) scale(0.95);
     visibility: hidden;
+    transition: opacity 0.35s ease, transform 0.35s ease, visibility 0.35s ease;
 }
 
 .chat-bio-bubble:hover {
