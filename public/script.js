@@ -3408,12 +3408,19 @@ function openDirectChat(contact) {
     if (typeof updateChatPinUI === 'function') updateChatPinUI();
     refreshDirectChatStatus();
 
-    // Tocar no cabeçalho do contato abre os Dados do Contato
+    // Tocar nas informações do contato (avatar/nome) abre os Dados do Contato
     const headerUserInfo = document.getElementById('chat-header-user-info');
     if (headerUserInfo) {
         headerUserInfo.onclick = (e) => {
-            if (e.target.closest('#close-chat')) return;
-            openContactProfile(activeChatContact || contact);
+            if (e) {
+                e.stopPropagation();
+                if (e.target && e.target.closest && (e.target.closest('#close-chat') || e.target.closest('.header-icon-btn'))) {
+                    return;
+                }
+            }
+            if (activeChatContact && !activeChatContact.isGroup) {
+                openContactProfile(activeChatContact);
+            }
         };
     }
     
@@ -11282,6 +11289,7 @@ document.getElementById('google-login-main-btn')?.addEventListener('click', asyn
 });
 
 function closeChat() {
+    closeContactProfile();
     document.getElementById('chat-window')?.classList.remove('active');
     const leaveGroupTrigger = document.getElementById('chat-leave-group-trigger');
     if (leaveGroupTrigger) leaveGroupTrigger.style.display = 'none';
@@ -11313,7 +11321,33 @@ function closeChat() {
     if (typeof applyChatFilter === 'function') applyChatFilter();
 }
 
-document.getElementById('close-chat')?.addEventListener('click', closeChat);
+const closeChatBtn = document.getElementById('close-chat');
+if (closeChatBtn) {
+    closeChatBtn.onclick = (e) => {
+        if (e && typeof e.preventDefault === 'function') e.preventDefault();
+        if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+        closeChat();
+    };
+    closeChatBtn.addEventListener('click', (e) => {
+        if (e && typeof e.preventDefault === 'function') e.preventDefault();
+        if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+        closeChat();
+    });
+}
+
+const closeContactProfileBtn = document.getElementById('close-contact-profile');
+if (closeContactProfileBtn) {
+    closeContactProfileBtn.onclick = (e) => {
+        if (e && typeof e.preventDefault === 'function') e.preventDefault();
+        if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+        closeContactProfile();
+    };
+    closeContactProfileBtn.addEventListener('click', (e) => {
+        if (e && typeof e.preventDefault === 'function') e.preventDefault();
+        if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+        closeContactProfile();
+    });
+}
 
 /* ==========================================================================
    SISTEMA DE TRILHA SONORA & MÚSICAS VIA API (POSTS & STORIES)

@@ -3792,4 +3792,9 @@ test('Recado / Bio do Contato: Exibição no cabeçalho do chat, cartão de intr
   });
 
   assert.ok(env.elements['chat-window-bio'].innerText.includes('Disponível para novas ideias 💡'), 'Bio no cabeçalho deve atualizar instantaneamente com listener');
+
+  // 5. Clicar na seta de voltar do chat (#close-chat) fecha o chat e NUNCA abre o painel Dados do Contato
+  await env.elements['close-chat'].click();
+  assert.strictEqual(env.elements['chat-window'].classList.contains('active'), false, 'Chat deve fechar ao clicar na seta de voltar');
+  assert.strictEqual(env.elements['contact-profile-panel'].classList.contains('active'), false, 'Painel Dados do Contato NUNCA deve abrir ao clicar na seta de voltar');
 });

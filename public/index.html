@@ -336,23 +336,25 @@
         <!-- Janela de Chat em Tempo Real -->
         <div id="chat-window" class="chat-window">
             <header class="chat-window-header" id="chat-normal-header">
-                <div class="chat-header-left" id="chat-header-user-info" role="button" tabindex="0" title="Toque para ver os dados do contato" aria-label="Ver dados do contato">
+                <div class="chat-header-left">
                     <div class="header-icon-btn" id="close-chat" title="Voltar" aria-label="Voltar">
                         <i data-lucide="arrow-left"></i>
                     </div>
-                    <div id="chat-window-avatar" class="avatar sm">
-                        <span class="avatar-initial" id="chat-window-avatar-initial"></span>
-                        <span class="online-dot-badge" id="chat-window-online-dot" style="display:none;"></span>
-                    </div>
-                    <div class="chat-window-info">
-                        <div class="chat-name-row">
-                            <span id="chat-window-name">Nome</span>
-                            <i data-lucide="badge-check" id="chat-window-verified-badge" class="verified-badge" style="display: none;"></i>
+                    <div class="chat-header-user-info" id="chat-header-user-info" role="button" tabindex="0" title="Toque para ver os dados do contato" aria-label="Ver dados do contato">
+                        <div id="chat-window-avatar" class="avatar sm">
+                            <span class="avatar-initial" id="chat-window-avatar-initial"></span>
+                            <span class="online-dot-badge" id="chat-window-online-dot" style="display:none;"></span>
                         </div>
-                        <div class="chat-subinfo-row">
-                            <span id="chat-window-status" class="status-animated">Online</span>
-                            <span class="chat-header-sep" id="chat-header-sep" style="display:none;">•</span>
-                            <span id="chat-window-bio" class="chat-header-bio" style="display:none;" title="Recado / Bio do contato"></span>
+                        <div class="chat-window-info">
+                            <div class="chat-name-row">
+                                <span id="chat-window-name">Nome</span>
+                                <i data-lucide="badge-check" id="chat-window-verified-badge" class="verified-badge" style="display: none;"></i>
+                            </div>
+                            <div class="chat-subinfo-row">
+                                <span id="chat-window-status" class="status-animated">Online</span>
+                                <span class="chat-header-sep" id="chat-header-sep" style="display:none;">•</span>
+                                <span id="chat-window-bio" class="chat-header-bio" style="display:none;" title="Recado / Bio do contato"></span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1882,6 +1884,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.51" defer></script>
+    <script type="module" src="script.js?v=1.0.52" defer></script>
 </body>
 </html>
