@@ -4264,3 +4264,174 @@ test('Pré-visualização de Story: Renderização do card inline com foto/víde
   assert.strictEqual(chooseMediaLabel.textContent, 'Escolher Mídia', 'Botão deve voltar para Escolher Mídia após publicação');
 });
 
+test('Compressão de Mídia para KB e Corte Automático de Vídeos: Fotos em KB, corte para 15s em stories e para 2 min (120s) em posts > 3 min, badges e publicação', async () => {
+  const env = createTestEnvironment();
+
+  const formatBytesToKB = env.sandbox.formatBytesToKB || env.sandbox.window.formatBytesToKB;
+  const formatDurationSeconds = env.sandbox.formatDurationSeconds || env.sandbox.window.formatDurationSeconds;
+  const compressImageFileToKB = env.sandbox.compressImageFileToKB || env.sandbox.window.compressImageFileToKB;
+  const trimAndCompressVideoToKB = env.sandbox.trimAndCompressVideoToKB || env.sandbox.window.trimAndCompressVideoToKB;
+  const setPendingStatusMedia = env.sandbox.setPendingStatusMedia || env.sandbox.window.setPendingStatusMedia;
+  const removeSelectedStatusMedia = env.sandbox.removeSelectedStatusMedia || env.sandbox.window.removeSelectedStatusMedia;
+  const handlePostMediaSelection = env.sandbox.handlePostMediaSelection || env.sandbox.window.handlePostMediaSelection;
+  const resetPostComposer = env.sandbox.resetPostComposer || env.sandbox.window.resetPostComposer;
+
+  assert.ok(typeof formatBytesToKB === 'function', 'formatBytesToKB deve ser uma função');
+  assert.ok(typeof formatDurationSeconds === 'function', 'formatDurationSeconds deve ser uma função');
+  assert.ok(typeof compressImageFileToKB === 'function', 'compressImageFileToKB deve ser uma função');
+  assert.ok(typeof trimAndCompressVideoToKB === 'function', 'trimAndCompressVideoToKB deve ser uma função');
+
+  // 1. Funções Utilitárias: Conversão de Bytes para KB e Formatação de Tempo
+  assert.strictEqual(formatBytesToKB(1024), '1 KB');
+  assert.strictEqual(formatBytesToKB(512000), '500 KB');
+  assert.strictEqual(formatBytesToKB(2097152), '2048 KB');
+  assert.strictEqual(formatBytesToKB(0), '0 KB');
+
+  assert.strictEqual(formatDurationSeconds(15), '0:15');
+  assert.strictEqual(formatDurationSeconds(120), '2:00');
+  assert.strictEqual(formatDurationSeconds(180), '3:00');
+  assert.strictEqual(formatDurationSeconds(75), '1:15');
+
+  // 2. Compressão de Foto para a Faixa de KB
+  const largeMockPhoto = {
+    name: 'foto_alta_resolucao.jpg',
+    type: 'image/jpeg',
+    size: 4194304 // 4 MB
+  };
+  const photoResult = await compressImageFileToKB(largeMockPhoto, { maxDimension: 1280, targetMaxKB: 500 });
+  assert.ok(photoResult, 'Resultado da compressão de imagem deve existir');
+  assert.ok(photoResult.sizeFormatted.includes('KB'), 'Tamanho da imagem deve ser formatado em KB');
+  assert.ok(photoResult.dataUrl.startsWith('data:image/'), 'Deve gerar DataURL da imagem');
+
+  // 3. Corte e Compressão de Vídeo para Stories (Máximo 15 segundos)
+  const longStoryVideo = {
+    name: 'video_story_longo.mp4',
+    type: 'video/mp4',
+    size: 15728640, // 15 MB
+    duration: 50 // 50 segundos (> 15s)
+  };
+  const storyVideoResult = await trimAndCompressVideoToKB(longStoryVideo, { isStory: true });
+  assert.ok(storyVideoResult, 'Resultado do corte de vídeo para story deve existir');
+  assert.strictEqual(storyVideoResult.isTrimmed, true, 'Vídeo de story com > 15s deve ser marcado como isTrimmed');
+  assert.strictEqual(storyVideoResult.duration, 15, 'Vídeo de story deve ser cortado para exatamente 15s');
+  assert.strictEqual(storyVideoResult.durationFormatted, '0:15');
+  assert.ok(storyVideoResult.sizeFormatted.includes('KB'), 'Tamanho estimado deve estar em KB');
+  assert.ok(storyVideoResult.src.includes('#t=0,15'), 'URL do vídeo deve incluir media fragment de corte #t=0,15');
+
+  // Vídeo de story curto (<= 15s) não deve ser cortado
+  const shortStoryVideo = {
+    name: 'video_story_curto.mp4',
+    type: 'video/mp4',
+    size: 2097152,
+    duration: 10
+  };
+  const shortStoryResult = await trimAndCompressVideoToKB(shortStoryVideo, { isStory: true });
+  assert.strictEqual(shortStoryResult.isTrimmed, false, 'Vídeo de story <= 15s não deve ser cortado');
+  assert.strictEqual(shortStoryResult.duration, 10);
+
+  // 4. Corte e Compressão de Vídeo para Post (Vídeos > 3 min cortados para 2 min / 120s)
+  const longPostVideo = {
+    name: 'video_post_longo.mp4',
+    type: 'video/mp4',
+    size: 52428800, // 50 MB
+    duration: 240 // 4 minutos (> 180s / 3 min)
+  };
+  const postVideoResult = await trimAndCompressVideoToKB(longPostVideo, { maxDuration: 120, cutThreshold: 180 });
+  assert.ok(postVideoResult, 'Resultado do corte de vídeo de post deve existir');
+  assert.strictEqual(postVideoResult.isTrimmed, true, 'Vídeo de post > 3 min deve ser marcado como isTrimmed');
+  assert.strictEqual(postVideoResult.duration, 120, 'Vídeo de post deve ser cortado para 2 minutos (120s)');
+  assert.strictEqual(postVideoResult.durationFormatted, '2:00');
+  assert.ok(postVideoResult.sizeFormatted.includes('KB'), 'Tamanho deve estar em KB');
+  assert.ok(postVideoResult.src.includes('#t=0,120'), 'URL do vídeo de post deve incluir media fragment #t=0,120');
+
+  // Vídeo de post <= 3 min (ex: 90s) não deve ser cortado
+  const normalPostVideo = {
+    name: 'video_post_normal.mp4',
+    type: 'video/mp4',
+    size: 10485760,
+    duration: 90
+  };
+  const normalPostResult = await trimAndCompressVideoToKB(normalPostVideo, { maxDuration: 120, cutThreshold: 180 });
+  assert.strictEqual(normalPostResult.isTrimmed, false, 'Vídeo <= 3 min não deve ser cortado');
+  assert.strictEqual(normalPostResult.duration, 90);
+
+  // 5. Interface de Usuário no Story (Preview Card: Tamanho em KB e Badge de Corte)
+  const statusPreviewSize = env.elements['status-preview-size'];
+  const statusTrimmedBadge = env.elements['status-preview-trimmed-badge'];
+  assert.ok(statusPreviewSize, '#status-preview-size deve existir no DOM');
+  assert.ok(statusTrimmedBadge, '#status-preview-trimmed-badge deve existir no DOM');
+
+  // Seleciona vídeo longo de status (30s)
+  const video30s = { name: 'viagem.mp4', type: 'video/mp4', size: 8388608, duration: 30 };
+  setPendingStatusMedia(video30s, 'video');
+  await new Promise(r => setTimeout(r, 20));
+
+  assert.ok(statusPreviewSize.innerHTML.includes('KB'), 'Card inline de story deve exibir tamanho em KB');
+  assert.strictEqual(statusTrimmedBadge.style.display, 'inline-flex', 'Badge de corte deve ser exibido para vídeo > 15s');
+  assert.ok(statusTrimmedBadge.innerHTML.includes('Cortado (15s)'), 'Badge deve indicar Cortado (15s)');
+
+  // Limpeza de mídia do Story
+  removeSelectedStatusMedia();
+  assert.strictEqual(statusTrimmedBadge.style.display, 'none', 'Badge de corte deve ser ocultado ao remover mídia');
+
+  // 6. Interface de Usuário no Post Composer (Info Bar: Tag, Tamanho em KB, Duração e Badge de Corte)
+  const postInfoBar = env.elements['post-media-info-bar'];
+  const postTag = env.elements['post-preview-tag'];
+  const postSize = env.elements['post-preview-size'];
+  const postDuration = env.elements['post-preview-duration'];
+  const postTrimmedBadge = env.elements['post-preview-trimmed-badge'];
+
+  assert.ok(postInfoBar, '#post-media-info-bar deve existir no DOM');
+  assert.ok(postTag, '#post-preview-tag deve existir no DOM');
+  assert.ok(postSize, '#post-preview-size deve existir no DOM');
+  assert.ok(postDuration, '#post-preview-duration deve existir no DOM');
+  assert.ok(postTrimmedBadge, '#post-preview-trimmed-badge deve existir no DOM');
+
+  // Testar seleção de foto no post
+  const photoFile = { name: 'foto_paisagem.jpg', type: 'image/jpeg', size: 1572864 };
+  handlePostMediaSelection(photoFile);
+  await new Promise(r => setTimeout(r, 20));
+
+  assert.strictEqual(postInfoBar.style.display, 'flex', 'Barra de info deve estar visível');
+  assert.ok(postTag.innerHTML.includes('Foto'), 'Tag deve indicar Foto');
+  assert.ok(postSize.innerHTML.includes('KB'), 'Tamanho da foto deve ser exibido em KB');
+  assert.strictEqual(postDuration.style.display, 'none', 'Duração deve estar oculta para fotos');
+  assert.strictEqual(postTrimmedBadge.style.display, 'none', 'Badge de corte deve estar oculto para fotos');
+
+  // Testar seleção de vídeo longo (> 3 min) no post
+  const video4min = { name: 'podcast_video.mp4', type: 'video/mp4', size: 41943040, duration: 240 };
+  handlePostMediaSelection(video4min);
+  await new Promise(r => setTimeout(r, 20));
+
+  assert.strictEqual(postInfoBar.style.display, 'flex', 'Barra de info deve estar visível para vídeo');
+  assert.ok(postTag.innerHTML.includes('Vídeo'), 'Tag deve indicar Vídeo');
+  assert.ok(postSize.innerHTML.includes('KB'), 'Tamanho do vídeo deve estar em KB');
+  assert.strictEqual(postDuration.style.display, 'inline-flex', 'Duração deve estar visível para vídeo');
+  assert.ok(postDuration.innerHTML.includes('2:00'), 'Duração deve ser 2:00 para vídeo cortado');
+  assert.strictEqual(postTrimmedBadge.style.display, 'inline-flex', 'Badge de corte deve estar visível');
+  assert.ok(postTrimmedBadge.innerHTML.includes('Cortado (2 min)'), 'Badge deve indicar Cortado (2 min)');
+
+  // Resetar compositor de post
+  resetPostComposer();
+  assert.strictEqual(postInfoBar.style.display, 'none', 'Barra de info deve ser ocultada ao resetar');
+
+  // 7. Publicação no Firestore: Verificação de Metadados de Otimização
+  env.sandbox.window.setCurrentUser({ uid: 'user_media_test', email: 'media@test.com' });
+  env.sandbox.window.setCurrentProfile({ name: 'Lucas Criador', username: '@lucascriador', avatar: '' });
+
+  // Publicar post com vídeo de 4 min
+  handlePostMediaSelection(video4min);
+  await new Promise(r => setTimeout(r, 20));
+
+  const publishPostBtn = env.elements['publish-post-btn'];
+  await publishPostBtn.click();
+  await new Promise(r => setTimeout(r, 30));
+
+  const publishedPostKey = Object.keys(env.firestoreDocs).find(k => k.startsWith('posts/'));
+  assert.ok(publishedPostKey, 'Post deve ter sido criado no Firestore');
+  const postDoc = env.firestoreDocs[publishedPostKey];
+  assert.strictEqual(postDoc.isTrimmed, true, 'Post deve registrar isTrimmed: true no Firestore');
+  assert.strictEqual(postDoc.videoDuration, 120, 'Post deve registrar duração de 120s no Firestore');
+  assert.ok(postDoc.mediaSizeKB.includes('KB'), 'Post deve registrar tamanho em KB no Firestore');
+});
+

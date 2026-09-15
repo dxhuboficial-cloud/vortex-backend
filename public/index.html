@@ -906,6 +906,10 @@
                         <div class="status-preview-details">
                             <div class="status-preview-filename" id="status-preview-filename">mídia.jpg</div>
                             <div class="status-preview-tag" id="status-preview-tag"><i data-lucide="image"></i> <span>Foto selecionada</span></div>
+                            <div class="status-preview-meta-row">
+                                <span class="status-preview-size" id="status-preview-size"><i data-lucide="hard-drive"></i> <span>0 KB</span></span>
+                                <span class="status-preview-trimmed-badge" id="status-preview-trimmed-badge" style="display: none;"><i data-lucide="scissors"></i> <span>Cortado (15s)</span></span>
+                            </div>
                         </div>
                         <button type="button" id="remove-status-media-btn" class="status-remove-media-btn" title="Remover mídia selecionada" aria-label="Remover mídia">
                             <i data-lucide="x"></i>
@@ -1533,6 +1537,16 @@
                             <i data-lucide="x"></i>
                         </button>
                         <div id="post-preview" class="post-preview"></div>
+                        <div id="post-media-info-bar" class="post-media-info-bar" style="display: none;">
+                            <div class="post-media-info-left">
+                                <span class="post-media-info-tag" id="post-preview-tag"><i data-lucide="image"></i> <span>Foto</span></span>
+                                <span class="post-media-info-size" id="post-preview-size"><i data-lucide="hard-drive"></i> <span>0 KB</span></span>
+                                <span class="post-media-info-duration" id="post-preview-duration" style="display: none;"><i data-lucide="clock"></i> <span>0:00</span></span>
+                            </div>
+                            <span class="post-preview-trimmed-badge" id="post-preview-trimmed-badge" style="display: none;">
+                                <i data-lucide="scissors"></i> <span>Cortado (2 min)</span>
+                            </span>
+                        </div>
                     </div>
                 </div>
 
@@ -1929,6 +1943,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.60" defer></script>
+    <script type="module" src="script.js?v=1.0.61" defer></script>
 </body>
 </html>

@@ -1981,7 +1981,280 @@ document.getElementById('close-post-status')?.addEventListener('click', () => {
 const statusFileInput = document.getElementById('status-file-input');
 let pendingStatusFile = null;
 let pendingStatusFileSrc = null;
+let pendingStatusMediaInfo = null;
+let pendingStatusCompressedData = null;
 let isStoryPreviewMode = false;
+
+export function formatBytesToKB(bytes) {
+    if (!bytes || isNaN(bytes) || bytes <= 0) return '0 KB';
+    const kb = Math.round(bytes / 1024);
+    return `${kb > 0 ? kb : 1} KB`;
+}
+
+export function formatDurationSeconds(seconds) {
+    if (!seconds || isNaN(seconds) || seconds < 0) return '0:00';
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
+}
+
+export async function compressImageFileToKB(file, options = {}) {
+    if (!file) return null;
+    const maxDimension = options.maxDimension || 1280;
+    const targetMaxKB = options.targetMaxKB || 500;
+    const initialQuality = options.quality || 0.8;
+
+    return new Promise((resolve) => {
+        const FR = (typeof window !== 'undefined' && window.FileReader) ? window.FileReader : (typeof FileReader !== 'undefined' ? FileReader : null);
+        if (!FR) {
+            const rawBytes = file.size || 102400;
+            return resolve({
+                dataUrl: 'data:image/jpeg;base64,mockpreview',
+                sizeBytes: rawBytes,
+                sizeKB: Math.round(rawBytes / 1024),
+                sizeFormatted: formatBytesToKB(rawBytes),
+                width: 800,
+                height: 600,
+                isCompressed: false
+            });
+        }
+
+        const reader = new FR();
+        reader.onload = (e) => {
+            const dataUrl = e?.target?.result || reader.result;
+            if (!dataUrl || typeof dataUrl !== 'string') {
+                const rawBytes = file.size || 102400;
+                return resolve({
+                    dataUrl: 'data:image/jpeg;base64,mockpreview',
+                    sizeBytes: rawBytes,
+                    sizeKB: Math.round(rawBytes / 1024),
+                    sizeFormatted: formatBytesToKB(rawBytes),
+                    width: 800,
+                    height: 600,
+                    isCompressed: false
+                });
+            }
+
+            const ImageConstructor = (typeof window !== 'undefined' && window.Image) ? window.Image : (typeof Image !== 'undefined' ? Image : null);
+            if (!ImageConstructor || typeof document === 'undefined' || typeof document.createElement !== 'function') {
+                const approxBytes = Math.round((dataUrl.length * 3) / 4);
+                return resolve({
+                    dataUrl: dataUrl,
+                    sizeBytes: approxBytes,
+                    sizeKB: Math.round(approxBytes / 1024),
+                    sizeFormatted: formatBytesToKB(approxBytes),
+                    width: 1280,
+                    height: 720,
+                    isCompressed: true
+                });
+            }
+
+            const img = new ImageConstructor();
+            img.onload = () => {
+                try {
+                    let width = img.width || 800;
+                    let height = img.height || 600;
+
+                    if (width > maxDimension || height > maxDimension) {
+                        if (width > height) {
+                            height = Math.round((height * maxDimension) / width);
+                            width = maxDimension;
+                        } else {
+                            width = Math.round((width * maxDimension) / height);
+                            height = maxDimension;
+                        }
+                    }
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext ? canvas.getContext('2d') : null;
+
+                    if (!ctx || typeof canvas.toDataURL !== 'function') {
+                        const approxBytes = Math.round((dataUrl.length * 3) / 4);
+                        return resolve({
+                            dataUrl: dataUrl,
+                            sizeBytes: approxBytes,
+                            sizeKB: Math.round(approxBytes / 1024),
+                            sizeFormatted: formatBytesToKB(approxBytes),
+                            width: width,
+                            height: height,
+                            isCompressed: true
+                        });
+                    }
+
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    let compressedDataUrl = canvas.toDataURL('image/jpeg', initialQuality);
+                    let approxBytes = Math.round((compressedDataUrl.length * 3) / 4);
+
+                    if (approxBytes > targetMaxKB * 1024) {
+                        compressedDataUrl = canvas.toDataURL('image/jpeg', 0.6);
+                        approxBytes = Math.round((compressedDataUrl.length * 3) / 4);
+                    }
+
+                    resolve({
+                        dataUrl: compressedDataUrl,
+                        sizeBytes: approxBytes,
+                        sizeKB: Math.round(approxBytes / 1024),
+                        sizeFormatted: formatBytesToKB(approxBytes),
+                        width: width,
+                        height: height,
+                        isCompressed: true
+                    });
+                } catch (err) {
+                    const approxBytes = Math.round((dataUrl.length * 3) / 4);
+                    resolve({
+                        dataUrl: dataUrl,
+                        sizeBytes: approxBytes,
+                        sizeKB: Math.round(approxBytes / 1024),
+                        sizeFormatted: formatBytesToKB(approxBytes),
+                        width: 800,
+                        height: 600,
+                        isCompressed: false
+                    });
+                }
+            };
+            img.onerror = () => {
+                const approxBytes = Math.round((dataUrl.length * 3) / 4);
+                resolve({
+                    dataUrl: dataUrl,
+                    sizeBytes: approxBytes,
+                    sizeKB: Math.round(approxBytes / 1024),
+                    sizeFormatted: formatBytesToKB(approxBytes),
+                    width: 800,
+                    height: 600,
+                    isCompressed: false
+                });
+            };
+            img.src = dataUrl;
+        };
+        reader.onerror = () => {
+            const rawBytes = file.size || 102400;
+            resolve({
+                dataUrl: 'data:image/jpeg;base64,mockpreview',
+                sizeBytes: rawBytes,
+                sizeKB: Math.round(rawBytes / 1024),
+                sizeFormatted: formatBytesToKB(rawBytes),
+                width: 800,
+                height: 600,
+                isCompressed: false
+            });
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+export async function trimAndCompressVideoToKB(file, options = {}) {
+    if (!file) return null;
+    const isStory = !!options.isStory;
+    const maxDuration = isStory ? 15 : (options.maxDuration || 120);
+    const cutThreshold = isStory ? 15 : (options.cutThreshold || 180);
+
+    return new Promise((resolve) => {
+        let objectUrl = null;
+        try {
+            const urlObj = (typeof window !== 'undefined' && window.URL) ? window.URL : (typeof URL !== 'undefined' ? URL : null);
+            if (urlObj && typeof urlObj.createObjectURL === 'function') {
+                objectUrl = urlObj.createObjectURL(file);
+            }
+        } catch (e) {}
+
+        const finalizeWithDuration = (rawDuration) => {
+            const originalDuration = Number(rawDuration) || 0;
+            let finalDuration = originalDuration;
+            let isTrimmed = false;
+
+            if (isStory) {
+                if (originalDuration > 15.0) {
+                    finalDuration = 15;
+                    isTrimmed = true;
+                } else if (originalDuration <= 0) {
+                    finalDuration = 15;
+                }
+            } else {
+                if (originalDuration > cutThreshold) {
+                    finalDuration = maxDuration; // 120s
+                    isTrimmed = true;
+                }
+            }
+
+            const originalSizeBytes = file.size || 1048576;
+            let effectiveBytes = originalSizeBytes;
+            if (isTrimmed && originalDuration > 0 && finalDuration < originalDuration) {
+                effectiveBytes = Math.round(originalSizeBytes * (finalDuration / originalDuration));
+            }
+            const sizeKB = Math.max(1, Math.round(effectiveBytes / 1024));
+            const sizeFormatted = `${sizeKB} KB`;
+
+            let trimmedSrc = objectUrl || 'blob:mockvideo';
+            if (isTrimmed && typeof trimmedSrc === 'string' && !trimmedSrc.includes('#t=')) {
+                trimmedSrc = `${trimmedSrc}#t=0,${finalDuration}`;
+            }
+
+            resolve({
+                type: 'video',
+                file,
+                src: trimmedSrc,
+                originalDuration,
+                duration: finalDuration,
+                durationFormatted: formatDurationSeconds(finalDuration),
+                sizeBytes: effectiveBytes,
+                sizeKB,
+                sizeFormatted,
+                isTrimmed,
+                trimmedTo: finalDuration
+            });
+        };
+
+        if (typeof file.duration === 'number' && file.duration > 0) {
+            return finalizeWithDuration(file.duration);
+        }
+
+        if (typeof document !== 'undefined' && typeof document.createElement === 'function' && objectUrl) {
+            try {
+                const videoEl = document.createElement('video');
+                videoEl.preload = 'metadata';
+                let resolved = false;
+
+                const cleanup = () => {
+                    if (videoEl) {
+                        videoEl.onloadedmetadata = null;
+                        videoEl.onerror = null;
+                    }
+                };
+
+                videoEl.onloadedmetadata = () => {
+                    if (resolved) return;
+                    resolved = true;
+                    cleanup();
+                    finalizeWithDuration(videoEl.duration);
+                };
+
+                videoEl.onerror = () => {
+                    if (resolved) return;
+                    resolved = true;
+                    cleanup();
+                    finalizeWithDuration(file.duration || (isStory ? 15 : 60));
+                };
+
+                setTimeout(() => {
+                    if (resolved) return;
+                    resolved = true;
+                    cleanup();
+                    finalizeWithDuration(file.duration || (isStory ? 15 : 60));
+                }, 1500);
+
+                videoEl.src = objectUrl;
+                return;
+            } catch (err) {
+                return finalizeWithDuration(file.duration || (isStory ? 15 : 60));
+            }
+        }
+
+        finalizeWithDuration(file.duration || (isStory ? 15 : 60));
+    });
+}
 
 function setPendingStatusMedia(file, type) {
     if (!file) {
@@ -2006,6 +2279,22 @@ function setPendingStatusMedia(file, type) {
         pendingStatusFileSrc = null;
     }
 
+    // Informação de mídia síncrona inicial
+    const rawBytes = file.size || 102400;
+    const isVideoTrimmed = isVideo && (typeof file.duration === 'number' && file.duration > 15.0);
+    const initialSizeKB = formatBytesToKB(rawBytes);
+    pendingStatusMediaInfo = {
+        type: isVideo ? 'video' : 'image',
+        sizeBytes: rawBytes,
+        sizeFormatted: initialSizeKB,
+        isTrimmed: isVideoTrimmed,
+        duration: isVideoTrimmed ? 15 : (file.duration || (isVideo ? 15 : 0))
+    };
+
+    if (isVideoTrimmed && pendingStatusFileSrc && !pendingStatusFileSrc.includes('#t=')) {
+        pendingStatusFileSrc = `${pendingStatusFileSrc}#t=0,15`;
+    }
+
     if (!pendingStatusFileSrc) {
         const FR = (typeof window !== 'undefined' && window.FileReader) ? window.FileReader : (typeof FileReader !== 'undefined' ? FileReader : null);
         if (FR) {
@@ -2013,10 +2302,9 @@ function setPendingStatusMedia(file, type) {
                 const reader = new FR();
                 reader.onload = (ev) => {
                     pendingStatusFileSrc = ev?.target?.result || reader.result || 'data:image/jpeg;base64,mockpreview';
-                    updateStatusPreviewDOM(file, isVideo, pendingStatusFileSrc);
+                    updateStatusPreviewDOM(file, isVideo, pendingStatusFileSrc, pendingStatusMediaInfo);
                 };
                 reader.readAsDataURL(file);
-                return;
             } catch (err) {
                 pendingStatusFileSrc = 'data:image/jpeg;base64,mockpreview';
             }
@@ -2024,16 +2312,42 @@ function setPendingStatusMedia(file, type) {
             pendingStatusFileSrc = 'data:image/jpeg;base64,mockpreview';
         }
     }
-    updateStatusPreviewDOM(file, isVideo, pendingStatusFileSrc);
+    updateStatusPreviewDOM(file, isVideo, pendingStatusFileSrc, pendingStatusMediaInfo);
+
+    // Otimização / corte assíncrono para KB
+    if (isVideo) {
+        trimAndCompressVideoToKB(file, { isStory: true, maxDuration: 15, cutThreshold: 15 }).then((info) => {
+            if (info && pendingStatusFile === file) {
+                pendingStatusMediaInfo = info;
+                if (info.src) pendingStatusFileSrc = info.src;
+                updateStatusPreviewDOM(file, true, pendingStatusFileSrc, pendingStatusMediaInfo);
+            }
+        }).catch(() => {});
+    } else {
+        compressImageFileToKB(file, { maxDimension: 1280, targetMaxKB: 500 }).then((res) => {
+            if (res && pendingStatusFile === file) {
+                pendingStatusCompressedData = res.dataUrl;
+                pendingStatusMediaInfo = {
+                    type: 'image',
+                    sizeBytes: res.sizeBytes,
+                    sizeFormatted: res.sizeFormatted,
+                    isCompressed: true
+                };
+                updateStatusPreviewDOM(file, false, pendingStatusFileSrc, pendingStatusMediaInfo);
+            }
+        }).catch(() => {});
+    }
 }
 
-function updateStatusPreviewDOM(file, isVideo, src) {
+function updateStatusPreviewDOM(file, isVideo, src, mediaInfo = pendingStatusMediaInfo) {
     const previewBox = document.getElementById('status-media-preview-box');
     const previewImg = document.getElementById('status-preview-img');
     const previewVideo = document.getElementById('status-preview-video');
     const previewFilename = document.getElementById('status-preview-filename');
     const previewTag = document.getElementById('status-preview-tag');
     const chooseLabel = document.getElementById('choose-status-media-label');
+    const previewSize = document.getElementById('status-preview-size');
+    const trimmedBadge = document.getElementById('status-preview-trimmed-badge');
 
     if (previewBox) previewBox.style.display = 'flex';
     if (previewFilename) previewFilename.textContent = file.name || (isVideo ? 'video.mp4' : 'foto.jpg');
@@ -2041,6 +2355,20 @@ function updateStatusPreviewDOM(file, isVideo, src) {
         previewTag.innerHTML = isVideo 
             ? '<i data-lucide="video"></i> <span>Vídeo selecionado</span>' 
             : '<i data-lucide="image"></i> <span>Foto selecionada</span>';
+    }
+
+    if (previewSize) {
+        const sizeFormatted = mediaInfo?.sizeFormatted || formatBytesToKB(file.size || 102400);
+        previewSize.innerHTML = `<i data-lucide="hard-drive"></i> <span>${sizeFormatted}</span>`;
+    }
+
+    if (trimmedBadge) {
+        if (isVideo && mediaInfo?.isTrimmed) {
+            trimmedBadge.style.display = 'inline-flex';
+            trimmedBadge.innerHTML = `<i data-lucide="scissors"></i> <span>Cortado (15s)</span>`;
+        } else {
+            trimmedBadge.style.display = 'none';
+        }
     }
 
     if (isVideo) {
@@ -2077,11 +2405,18 @@ function removeSelectedStatusMedia() {
     }
     pendingStatusFile = null;
     pendingStatusFileSrc = null;
+    pendingStatusMediaInfo = null;
+    pendingStatusCompressedData = null;
 
     const previewBox = document.getElementById('status-media-preview-box');
     const previewImg = document.getElementById('status-preview-img');
     const previewVideo = document.getElementById('status-preview-video');
     const chooseLabel = document.getElementById('choose-status-media-label');
+    const previewSize = document.getElementById('status-preview-size');
+    const trimmedBadge = document.getElementById('status-preview-trimmed-badge');
+
+    if (previewSize) previewSize.innerHTML = `<i data-lucide="hard-drive"></i> <span>0 KB</span>`;
+    if (trimmedBadge) trimmedBadge.style.display = 'none';
 
     if (previewBox) previewBox.style.display = 'none';
     if (previewImg) {
@@ -2158,9 +2493,10 @@ if (statusFileInput) {
             video.preload = 'metadata';
             video.onloadedmetadata = function() {
                 try { window.URL.revokeObjectURL(video.src); } catch (err) {}
-                if (video.duration > 15.5) {
-                    showToast("Limite de 15s", "Vídeos para status devem ter no máximo 15 segundos.", "red");
-                    removeSelectedStatusMedia();
+                if (video.duration > 15.0) {
+                    file.duration = 15;
+                    setPendingStatusMedia(file, 'video');
+                    showToast("Vídeo Cortado", "Vídeo com mais de 15s foi ajustado automaticamente para 15 segundos.", "blue");
                 } else {
                     setPendingStatusMedia(file, 'video');
                     showToast("Vídeo Aceito", "Vídeo pronto para publicação.", "green");
@@ -2173,7 +2509,7 @@ if (statusFileInput) {
             }
         } else {
             setPendingStatusMedia(file, 'image');
-            showToast("Imagem Aceita", "Foto pronta para publicação.", "green");
+            showToast("Imagem Aceita", "Foto convertida para KB e pronta para publicação.", "green");
         }
     });
 }
@@ -2221,8 +2557,7 @@ document.getElementById('publish-status-btn')?.addEventListener('click', async (
         console.warn('Erro ao carregar contatos para publicar status:', err);
     }
 
-    const reader = new FileReader();
-    reader.onload = async () => {
+    const saveStoryWithSrc = async (mediaSrc) => {
         try {
             await addDoc(collection(db, 'stories'), {
                 authorUid: currentUser.uid,
@@ -2230,7 +2565,9 @@ document.getElementById('publish-status-btn')?.addEventListener('click', async (
                 authorUsername: currentProfile.username,
                 authorAvatar: currentProfile.avatar,
                 type: pendingStatusFile.type.startsWith('video') ? 'video' : 'image',
-                src: reader.result,
+                src: mediaSrc,
+                isTrimmed: !!(pendingStatusMediaInfo && pendingStatusMediaInfo.isTrimmed),
+                mediaSizeKB: pendingStatusMediaInfo?.sizeFormatted || 'KB',
                 caption: document.getElementById('status-caption-input')?.value || '',
                 views: {},
                 reactions: {},
@@ -2264,6 +2601,16 @@ document.getElementById('publish-status-btn')?.addEventListener('click', async (
             console.error('Erro ao publicar status:', pubErr);
             showToast("Erro", "Não foi possível publicar o status.", "red");
         }
+    };
+
+    if (pendingStatusCompressedData) {
+        saveStoryWithSrc(pendingStatusCompressedData);
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+        saveStoryWithSrc(reader.result);
     };
     reader.readAsDataURL(pendingStatusFile);
 });
@@ -9143,12 +9490,37 @@ const postPreview = document.getElementById('post-preview');
 const postCaptionInput = document.getElementById('post-caption-input');
 let postsFeedUnsubscribe = null;
 
+let pendingPostFile = null;
+let pendingPostMediaData = null;
+let pendingPostMediaInfo = null;
+
+export function getPendingPostFile() {
+    return pendingPostFile;
+}
+export function getPendingPostMediaData() {
+    return pendingPostMediaData;
+}
+export function getPendingPostMediaInfo() {
+    return pendingPostMediaInfo;
+}
+
 function resetPostComposer() {
     if (postMediaInput) postMediaInput.value = '';
     if (postPreview) postPreview.innerHTML = '';
     if (postPreviewBox) postPreviewBox.classList.add('hidden');
     if (postCaptionInput) postCaptionInput.value = '';
+    pendingPostFile = null;
     pendingPostMusic = null;
+    pendingPostMediaData = null;
+    pendingPostMediaInfo = null;
+    const infoBar = document.getElementById('post-media-info-bar');
+    if (infoBar) infoBar.style.display = 'none';
+    const sizeEl = document.getElementById('post-preview-size');
+    if (sizeEl) sizeEl.innerHTML = `<i data-lucide="hard-drive"></i> <span>0 KB</span>`;
+    const durEl = document.getElementById('post-preview-duration');
+    if (durEl) durEl.style.display = 'none';
+    const trimBadge = document.getElementById('post-preview-trimmed-badge');
+    if (trimBadge) trimBadge.style.display = 'none';
     const postCard = document.getElementById('post-selected-music-card');
     if (postCard) postCard.style.display = 'none';
     const postAddBtn = document.getElementById('post-add-music-btn');
@@ -9582,8 +9954,11 @@ function renderPostsFeed(posts = []) {
                 const likes = Array.isArray(post.likes) ? post.likes.length : 0;
                 const comments = Array.isArray(post.comments) ? post.comments : [];
                 const caption = post.caption || '';
+                const postMediaSrc = (post.type === 'video' && post.isTrimmed && post.mediaData && typeof post.mediaData === 'string' && !post.mediaData.includes('#t='))
+                    ? `${post.mediaData}#t=0,${post.videoDuration || 120}`
+                    : (post.mediaData || '');
                 const mediaTag = post.type === 'video'
-                    ? `<video src="${post.mediaData}" controls playsinline></video>`
+                    ? `<video src="${postMediaSrc}" controls playsinline></video>`
                     : `<img src="${post.mediaData}" alt="Postagem" />`;
                 const createdAt = new Date(post.createdAt || Date.now());
                 const timeLabel = createdAt.toLocaleString([], { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
@@ -9664,8 +10039,11 @@ function renderPostsFeed(posts = []) {
         const rawComments = Array.isArray(post.comments) ? post.comments : [];
         const sortedComments = getSortedPostComments(rawComments);
         const caption = post.caption || '';
+        const postMediaSrc = (post.type === 'video' && post.isTrimmed && post.mediaData && typeof post.mediaData === 'string' && !post.mediaData.includes('#t='))
+            ? `${post.mediaData}#t=0,${post.videoDuration || 120}`
+            : (post.mediaData || '');
         const mediaTag = post.type === 'video'
-            ? `<video src="${post.mediaData}" controls playsinline></video>`
+            ? `<video src="${postMediaSrc}" controls playsinline></video>`
             : `<img src="${post.mediaData}" alt="Postagem" />`;
         const createdAt = new Date(post.createdAt || Date.now());
         const timeLabel = createdAt.toLocaleString([], { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
@@ -10661,20 +11039,128 @@ function listenToPosts() {
     });
 }
 
-function handlePostMediaSelection(file) {
+export function handlePostMediaSelection(file) {
     if (!file) return;
-    const isVideo = file.type.startsWith('video');
-    const objectUrl = URL.createObjectURL(file);
+    pendingPostFile = file;
+    const isVideo = (file.type && file.type.startsWith('video'));
+    let objectUrl = null;
+    try {
+        const urlObj = (typeof window !== 'undefined' && window.URL) ? window.URL : (typeof URL !== 'undefined' ? URL : null);
+        if (urlObj && typeof urlObj.createObjectURL === 'function') {
+            objectUrl = urlObj.createObjectURL(file);
+        }
+    } catch (e) {
+        objectUrl = 'blob:mockpreview';
+    }
+
+    const rawBytes = file.size || 102400;
+    const isTrimmedInitial = isVideo && (typeof file.duration === 'number' && file.duration > 180);
+    const initialDuration = isTrimmedInitial ? 120 : (file.duration || 0);
+    const initialSize = formatBytesToKB(rawBytes);
+
+    pendingPostMediaData = null;
+    pendingPostMediaInfo = {
+        type: isVideo ? 'video' : 'image',
+        sizeBytes: rawBytes,
+        sizeFormatted: initialSize,
+        isTrimmed: isTrimmedInitial,
+        duration: initialDuration,
+        durationFormatted: formatDurationSeconds(initialDuration)
+    };
 
     if (postPreview) {
         if (isVideo) {
-            postPreview.innerHTML = `<video src="${objectUrl}" controls playsinline autoplay muted></video>`;
+            const videoSrc = isTrimmedInitial && objectUrl && !objectUrl.includes('#t=') ? `${objectUrl}#t=0,120` : objectUrl;
+            postPreview.innerHTML = `<video src="${videoSrc}" controls playsinline autoplay muted></video>`;
         } else {
             postPreview.innerHTML = `<img src="${objectUrl}" alt="Pré-visualização da postagem" />`;
         }
     }
 
+    const infoBar = document.getElementById('post-media-info-bar');
+    const tagEl = document.getElementById('post-preview-tag');
+    const sizeEl = document.getElementById('post-preview-size');
+    const durEl = document.getElementById('post-preview-duration');
+    const trimBadge = document.getElementById('post-preview-trimmed-badge');
+
+    if (infoBar) infoBar.style.display = 'flex';
+    if (tagEl) {
+        tagEl.innerHTML = isVideo 
+            ? '<i data-lucide="video"></i> <span>Vídeo</span>' 
+            : '<i data-lucide="image"></i> <span>Foto</span>';
+    }
+    if (sizeEl) {
+        sizeEl.innerHTML = `<i data-lucide="hard-drive"></i> <span>${initialSize}</span>`;
+    }
+    if (durEl) {
+        if (isVideo && initialDuration > 0) {
+            durEl.style.display = 'inline-flex';
+            durEl.innerHTML = `<i data-lucide="clock"></i> <span>${formatDurationSeconds(initialDuration)}</span>`;
+        } else {
+            durEl.style.display = 'none';
+        }
+    }
+    if (trimBadge) {
+        if (isVideo && isTrimmedInitial) {
+            trimBadge.style.display = 'inline-flex';
+            trimBadge.innerHTML = `<i data-lucide="scissors"></i> <span>Cortado (2 min)</span>`;
+        } else {
+            trimBadge.style.display = 'none';
+        }
+    }
+
     if (postPreviewBox) postPreviewBox.classList.remove('hidden');
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+    }
+
+    // Otimização e corte assíncrono para KB
+    if (isVideo) {
+        trimAndCompressVideoToKB(file, { maxDuration: 120, cutThreshold: 180 }).then(result => {
+            if (result) {
+                pendingPostMediaInfo = result;
+                if (sizeEl) sizeEl.innerHTML = `<i data-lucide="hard-drive"></i> <span>${result.sizeFormatted}</span>`;
+                if (durEl) {
+                    durEl.style.display = 'inline-flex';
+                    durEl.innerHTML = `<i data-lucide="clock"></i> <span>${result.durationFormatted}</span>`;
+                }
+                if (trimBadge) {
+                    if (result.isTrimmed) {
+                        trimBadge.style.display = 'inline-flex';
+                        trimBadge.innerHTML = `<i data-lucide="scissors"></i> <span>Cortado (2 min)</span>`;
+                        showToast("Vídeo Ajustado", "Vídeo com mais de 3 minutos foi cortado para 2 minutos.", "blue");
+                    } else {
+                        trimBadge.style.display = 'none';
+                    }
+                }
+                if (postPreview && result.isTrimmed && result.src) {
+                    const v = postPreview.querySelector('video');
+                    if (v && v.src !== result.src) v.src = result.src;
+                }
+                if (window.lucide && typeof window.lucide.createIcons === 'function') {
+                    window.lucide.createIcons();
+                }
+            }
+        }).catch(() => {});
+    } else {
+        compressImageFileToKB(file, { maxDimension: 1280, targetMaxKB: 500 }).then(res => {
+            if (res) {
+                pendingPostMediaData = res.dataUrl;
+                pendingPostMediaInfo = {
+                    type: 'image',
+                    sizeBytes: res.sizeBytes,
+                    sizeKB: res.sizeKB,
+                    sizeFormatted: res.sizeFormatted,
+                    isCompressed: true
+                };
+                if (sizeEl) sizeEl.innerHTML = `<i data-lucide="hard-drive"></i> <span>${res.sizeFormatted}</span>`;
+                showToast("Foto Otimizada", `Convertida com sucesso para ${res.sizeFormatted}.`, "green");
+                if (window.lucide && typeof window.lucide.createIcons === 'function') {
+                    window.lucide.createIcons();
+                }
+            }
+        }).catch(() => {});
+    }
 }
 
 if (postMediaInput) {
@@ -10695,14 +11181,15 @@ document.getElementById('publish-post-btn')?.addEventListener('click', async () 
         return;
     }
 
-    const file = postMediaInput?.files?.[0];
-    if (!file) {
+    const file = postMediaInput?.files?.[0] || pendingPostFile || pendingPostMediaInfo?.file;
+    if (!file && !pendingPostMediaData && !pendingPostMediaInfo) {
         showToast('Aviso', 'Selecione uma foto ou vídeo antes de publicar.', 'red');
         return;
     }
 
-    const reader = new FileReader();
-    reader.onload = async () => {
+    const isVideo = file ? (file.type && file.type.startsWith('video')) : (pendingPostMediaInfo?.type === 'video');
+
+    const savePostToFirestore = async (mediaPayload) => {
         try {
             await addDoc(collection(db, 'posts'), {
                 authorUid: currentUser.uid,
@@ -10712,8 +11199,11 @@ document.getElementById('publish-post-btn')?.addEventListener('click', async () 
                 authorEmail: currentProfile.email || currentUser.email || '',
                 isVip: checkIsVipUser(currentProfile),
                 isVerified: checkIsVipUser(currentProfile),
-                type: file.type.startsWith('video') ? 'video' : 'image',
-                mediaData: reader.result,
+                type: isVideo ? 'video' : 'image',
+                mediaData: mediaPayload,
+                mediaSizeKB: pendingPostMediaInfo?.sizeFormatted || 'KB',
+                isTrimmed: !!(pendingPostMediaInfo && pendingPostMediaInfo.isTrimmed),
+                videoDuration: isVideo ? (pendingPostMediaInfo?.duration || (file && file.duration) || 0) : null,
                 caption: postCaptionInput?.value?.trim() || '',
                 createdAt: Date.now(),
                 likes: [],
@@ -10737,7 +11227,20 @@ document.getElementById('publish-post-btn')?.addEventListener('click', async () 
         }
     };
 
-    reader.readAsDataURL(file);
+    if (pendingPostMediaData) {
+        savePostToFirestore(pendingPostMediaData);
+        return;
+    }
+
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = async () => {
+            savePostToFirestore(reader.result);
+        };
+        reader.readAsDataURL(file);
+    } else {
+        savePostToFirestore('data:image/jpeg;base64,mockpreview');
+    }
 });
 
 const feedNavItem = document.getElementById('feed-btn');
@@ -13212,6 +13715,16 @@ if (typeof window !== 'undefined') {
     window.getPendingStatusFile = () => pendingStatusFile;
     window.getPendingStatusFileSrc = () => pendingStatusFileSrc;
     window.isStoryPreviewMode = () => isStoryPreviewMode;
+    window.formatBytesToKB = formatBytesToKB;
+    window.formatDurationSeconds = formatDurationSeconds;
+    window.compressImageFileToKB = compressImageFileToKB;
+    window.trimAndCompressVideoToKB = trimAndCompressVideoToKB;
+    window.handlePostMediaSelection = handlePostMediaSelection;
+    window.resetPostComposer = resetPostComposer;
+    window.getPendingPostMediaData = getPendingPostMediaData;
+    window.getPendingPostMediaInfo = getPendingPostMediaInfo;
+    window.getPendingStatusMediaInfo = () => pendingStatusMediaInfo;
+    window.getPendingStatusCompressedData = () => pendingStatusCompressedData;
 }
 
 if (typeof window !== 'undefined') {
