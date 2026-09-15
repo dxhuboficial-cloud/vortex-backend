@@ -415,7 +415,9 @@ header h1 span {
 .chat-card .verified-badge,
 .chat-name-row .verified-badge,
 .post-author .verified-badge,
+.feed-username .verified-badge,
 .feed-comment-author-line .verified-badge,
+.comment-item-header .verified-badge,
 .group-sender-name .verified-badge,
 .member-list-item .verified-badge {
     color: var(--accent-color, #00ff88);
@@ -2702,7 +2704,7 @@ input:checked + .slider:before { transform: translateX(22px); }
 .post-head { display: flex; justify-content: space-between; align-items: center; }
 .post-author { display: flex; align-items: center; gap: 10px; }
 .post-author-avatar { width: 34px; height: 34px; border-radius: 50%; background-size: cover; background-position: center; border: 1px solid rgba(255,255,255,0.1); }
-.post-author-name { font-weight: 700; color: var(--text-main); font-size: 0.86rem; }
+.post-author-name { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; color: var(--text-main); font-size: 0.86rem; }
 .post-time { font-size: 0.7rem; color: var(--text-dim); }
 .post-media { border-radius: 14px; overflow: hidden; background: #000; }
 .post-media img, .post-media video { display: block; width: 100%; max-height: 280px; object-fit: cover; }
@@ -2770,7 +2772,7 @@ input:checked + .slider:before { transform: translateX(22px); }
 .feed-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px 8px; flex-shrink: 0; }
 .feed-author { display: flex; align-items: center; gap: 10px; }
 .feed-avatar { width: 36px; height: 36px; border-radius: 50%; background-size: cover; background-position: center; border: 1px solid rgba(255,255,255,0.12); }
-.feed-username { font-weight: 700; color: var(--text-main); font-size: 0.84rem; }
+.feed-username { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; color: var(--text-main); font-size: 0.84rem; }
 .feed-time { color: var(--text-dim); font-size: 0.7rem; }
 .feed-media { width: 100%; background: #000; flex-shrink: 0; }
 .feed-media img, .feed-media video { display: block; width: 100%; max-height: 400px; object-fit: cover; }

@@ -2942,11 +2942,32 @@ test('Post Sharing Flow & Social Networks: Share button on posts, modal open/clo
   assert.ok(modal, 'Elemento #post-share-modal deve existir no DOM');
   assert.ok(!modal.classList.contains('active'), 'Modal deve iniciar inativo');
 
-  // 2. Renderizar posts no feed e verificar presença do botão de compartilhar
-  renderPostsFeed([samplePost]);
+  // 2. Renderizar posts no feed e verificar presença do botão de compartilhar e selo de assinante
+  const vipSubscriberPost = {
+    id: 'post_vip_sub_999',
+    authorName: 'Deyvison VIP',
+    authorUid: 'user_deyvison_vip',
+    isVip: true,
+    isVerified: true,
+    type: 'image',
+    mediaData: 'https://images.unsplash.com/photo-1518770660439-4636190af475',
+    caption: 'Novidades exclusivas para assinantes ⚡',
+    createdAt: Date.now() + 1000,
+    likes: [],
+    comments: []
+  };
+
+  renderPostsFeed([samplePost, vipSubscriberPost]);
   const feedList = env.elements['feed-list'];
   assert.ok(feedList.innerHTML.includes('data-action="share-post"'), 'Feed deve renderizar botão de ação share-post');
   assert.ok(feedList.innerHTML.includes('Compartilhar'), 'Botão deve conter o texto Compartilhar');
+
+  // Validação do selo de verificado em posts de assinantes
+  const vipBadgeMatch = feedList.innerHTML.includes('data-author-uid="user_deyvison_vip"') && feedList.innerHTML.includes('style="display:inline-flex;"');
+  assert.ok(vipBadgeMatch, 'Selo de verificado deve aparecer nos posts dos assinantes');
+
+  const nonVipBadgeMatch = feedList.innerHTML.includes('data-author-uid="user_alex"') && feedList.innerHTML.includes('style="display:none;"');
+  assert.ok(nonVipBadgeMatch, 'Selo de verificado deve estar oculto para não-assinantes');
 
   // 3. Abrir o modal de compartilhamento
   openPostShareModal(samplePost);

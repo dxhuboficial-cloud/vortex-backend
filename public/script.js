@@ -9243,6 +9243,61 @@ window.setCurrentProfile = (p) => { currentProfile = p; if (typeof updateProfile
 window.getCurrentProfile = () => currentProfile;
 window.renderPostsFeed = renderPostsFeed;
 
+export const authorVipCache = new Map();
+const authorListenersMap = new Map();
+
+export function isAuthorVipUser(authorUid, data = {}) {
+    if (authorUid && currentUser && authorUid === currentUser.uid) {
+        return checkIsVipUser(currentProfile);
+    }
+    if (authorUid && authorVipCache.has(authorUid)) {
+        return authorVipCache.get(authorUid);
+    }
+    if (data.isVip || data.isVerified || checkIsVipUser(data)) {
+        return true;
+    }
+    const username = (data.authorUsername || data.username || '').toLowerCase().replace('@', '');
+    const email = (data.authorEmail || data.email || '').toLowerCase();
+    if (username === 'dxhuboficial' || email === 'dxhub.oficial@gmail.com') {
+        return true;
+    }
+    return false;
+}
+
+export function syncFeedAuthorsVipStatus(posts = []) {
+    if (typeof doc !== 'function' || typeof onSnapshot !== 'function' || typeof db === 'undefined') return;
+    const authorUids = new Set();
+    posts.forEach(p => {
+        if (p.authorUid) authorUids.add(p.authorUid);
+        if (Array.isArray(p.comments)) {
+            p.comments.forEach(c => { if (c.authorUid) authorUids.add(c.authorUid); });
+        }
+    });
+
+    authorUids.forEach(uid => {
+        if (authorListenersMap.has(uid)) return;
+        try {
+            const unsub = onSnapshot(doc(db, 'users', uid), (snap) => {
+                if (snap && snap.exists()) {
+                    const uData = snap.data();
+                    const isVip = checkIsVipUser(uData);
+                    authorVipCache.set(uid, isVip);
+                    const badges = document.querySelectorAll(`.verified-badge[data-author-uid="${uid}"]`);
+                    badges.forEach(b => {
+                        b.style.display = isVip ? 'inline-flex' : 'none';
+                    });
+                    if (badges.length > 0 && window.lucide) {
+                        lucide.createIcons();
+                    }
+                }
+            }, () => {});
+            authorListenersMap.set(uid, unsub);
+        } catch (e) {
+            // Silencioso em testes ou caso offline
+        }
+    });
+}
+
 function renderPostsFeed(posts = []) {
     const feedList = document.getElementById('feed-list');
     const countLabel = document.getElementById('posts-count-label');
@@ -9251,12 +9306,15 @@ function renderPostsFeed(posts = []) {
     const sorted = [...posts].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
     if (countLabel) countLabel.innerText = `${sorted.length} ${sorted.length === 1 ? 'postagem' : 'postagens'}`;
 
+    syncFeedAuthorsVipStatus(sorted);
+
     if (previewFeed) {
         if (!sorted.length) {
             previewFeed.innerHTML = '<div class="post-empty">Nenhuma postagem ainda. Seja o primeiro a publicar.</div>';
         } else {
             previewFeed.innerHTML = sorted.slice(0, 3).map((post) => {
                 const authorName = post.authorName || 'Usuário';
+                const isPostAuthorVip = isAuthorVipUser(post.authorUid, post);
                 const avatar = post.authorAvatar ? `style="background-image: url('${post.authorAvatar}')"` : '';
                 const likes = Array.isArray(post.likes) ? post.likes.length : 0;
                 const comments = Array.isArray(post.comments) ? post.comments : [];
@@ -9278,7 +9336,7 @@ function renderPostsFeed(posts = []) {
                                 <div>
                                     <div class="post-author-name">
                                         <span>${escapeHTML(authorName)}</span>
-                                        <i data-lucide="badge-check" class="verified-badge" style="display:${(post.isVip || post.isVerified || (currentUser && post.authorUid === currentUser.uid && checkIsVipUser(currentProfile)) || (post.authorUsername === 'dxhuboficial') || (post.authorEmail === 'dxhub.oficial@gmail.com')) ? 'inline-flex' : 'none'};"></i>
+                                        <i data-lucide="badge-check" class="verified-badge post-author-verified-badge" data-author-uid="${post.authorUid || ''}" style="display:${isPostAuthorVip ? 'inline-flex' : 'none'};"></i>
                                     </div>
                                     <div class="post-time">${timeLabel}</div>
                                 </div>
@@ -9337,6 +9395,7 @@ function renderPostsFeed(posts = []) {
 
     feedList.innerHTML = sorted.map((post) => {
         const authorName = post.authorName || 'Usuário';
+        const isPostAuthorVip = isAuthorVipUser(post.authorUid, post);
         const avatar = post.authorAvatar ? `style="background-image: url('${post.authorAvatar}')"` : '';
         const likes = Array.isArray(post.likes) ? post.likes.length : 0;
         const rawComments = Array.isArray(post.comments) ? post.comments : [];
@@ -9358,7 +9417,10 @@ function renderPostsFeed(posts = []) {
                     <div class="feed-author">
                         <div class="feed-avatar" ${avatar}></div>
                         <div>
-                            <div class="feed-username">${escapeHTML(authorName)}</div>
+                            <div class="feed-username">
+                                <span>${escapeHTML(authorName)}</span>
+                                <i data-lucide="badge-check" class="verified-badge post-author-verified-badge" data-author-uid="${post.authorUid || ''}" style="display:${isPostAuthorVip ? 'inline-flex' : 'none'};"></i>
+                            </div>
                             <div class="feed-time">${timeLabel}</div>
                         </div>
                     </div>
@@ -9430,7 +9492,7 @@ function renderPostsFeed(posts = []) {
                                         <div class="feed-comment-text-wrap">
                                             <div class="feed-comment-author-line">
                                                 <strong>${escapeHTML(comment.author || 'Usuário')}</strong>
-                                                <i data-lucide="badge-check" class="verified-badge" style="display:${(comment.isVip || comment.isVerified || (currentUser && comment.authorUid === currentUser.uid && checkIsVipUser(currentProfile)) || (comment.authorUsername === 'dxhuboficial') || (comment.authorEmail === 'dxhub.oficial@gmail.com')) ? 'inline-flex' : 'none'};"></i>
+                                                <i data-lucide="badge-check" class="verified-badge comment-verified-badge" data-author-uid="${comment.authorUid || ''}" style="display:${isAuthorVipUser(comment.authorUid, comment) ? 'inline-flex' : 'none'};"></i>
                                                 <span>:</span>
                                                 ${isEdited ? `<span class="comment-edited-badge">(editado)</span>` : ''}
                                             </div>
@@ -9784,13 +9846,15 @@ export function openPostCommentModal(post) {
 
     if (meta) {
         const timeStr = new Date(post.createdAt || Date.now()).toLocaleString([], { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-        meta.innerText = `${post.authorName || 'Usuário'} • ${timeStr}${post.caption ? ` • "${post.caption}"` : ''}`;
+        const isPostAuthorVip = isAuthorVipUser(post.authorUid, post);
+        meta.innerHTML = `<span style="display:inline-flex; align-items:center; gap:4px;"><span>${escapeHTML(post.authorName || 'Usuário')}</span><i data-lucide="badge-check" class="verified-badge post-author-verified-badge" data-author-uid="${post.authorUid || ''}" style="display:${isPostAuthorVip ? 'inline-flex' : 'none'};"></i></span> • ${timeStr}${post.caption ? ` • "${escapeHTML(post.caption)}"` : ''}`;
     }
 
     renderCommentsModalList();
 
     modal.classList.add('active');
     modal.setAttribute('aria-hidden', 'false');
+    if (window.lucide) lucide.createIcons();
     if (input) {
         input.value = '';
         setTimeout(() => input.focus(), 80);
@@ -9822,6 +9886,7 @@ export function renderCommentsModalList() {
         const commentId = c.id;
         const idx = c._originalIndex !== undefined ? c._originalIndex : sortedComments.indexOf(c);
         const author = c.author || 'Usuário';
+        const isCommentVip = isAuthorVipUser(c.authorUid, c);
         const text = c.text || '';
         const isPinned = !!c.isPinned;
         const isEdited = !!c.isEdited;
@@ -9844,7 +9909,9 @@ export function renderCommentsModalList() {
                 ` : ''}
                 <div style="flex: 1; min-width: 0;">
                     <div class="comment-item-header">
-                        <strong>${escapeHTML(author)}:</strong>
+                        <strong>${escapeHTML(author)}</strong>
+                        <i data-lucide="badge-check" class="verified-badge comment-verified-badge" data-author-uid="${c.authorUid || ''}" style="display:${isCommentVip ? 'inline-flex' : 'none'};"></i>
+                        <span>:</span>
                         ${isEdited ? `<span class="comment-edited-badge">(editado)</span>` : ''}
                     </div>
                     ${isEditingThisComment ? `
@@ -12691,6 +12758,8 @@ if (typeof window !== 'undefined') {
     window.initBackNavigation = initBackNavigation;
     window.closeTopmostActiveLayer = closeTopmostActiveLayer;
     window.handleSystemBackPress = handleSystemBackPress;
+    window.isAuthorVipUser = isAuthorVipUser;
+    window.authorVipCache = authorVipCache;
 }
 
 if (typeof window !== 'undefined') {
