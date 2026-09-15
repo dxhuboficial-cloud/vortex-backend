@@ -335,10 +335,10 @@ const ringtoneSound = new Audio('https://assets.mixkit.co/active_storage/sfx/135
 ringtoneSound.loop = true;
 
 const mediaSizeLimits = {
-    image: { bytes: 700000, label: 'imagem' },
-    video: { bytes: 650000, label: 'vídeo' },
-    audio: { bytes: 700000, label: 'música ou áudio' },
-    file: { bytes: 600000, label: 'arquivo' }
+    image: { bytes: 26214400, label: 'imagem' },
+    video: { bytes: 26214400, label: 'vídeo' },
+    audio: { bytes: 26214400, label: 'música ou áudio' },
+    file: { bytes: 26214400, label: 'arquivo' }
 };
 
 function getMediaSizeLimit(type) {
@@ -347,7 +347,10 @@ function getMediaSizeLimit(type) {
 
 function showMediaSizeWarning(type) {
     const limit = getMediaSizeLimit(type);
-    showToast('Arquivo muito grande', `O limite para ${limit.label} é ${(limit.bytes / 1000).toFixed(0)} KB.`, 'red');
+    const limitLabel = limit.bytes >= 1048576 
+        ? `${(limit.bytes / 1048576).toFixed(0)} MB` 
+        : `${(limit.bytes / 1024).toFixed(0)} KB`;
+    showToast('Arquivo muito grande', `O limite para ${limit.label} é ${limitLabel}.`, 'red');
 }
 
 window.addEventListener('pointerdown', () => { hasUserInteracted = true; }, { once: true, passive: true });
@@ -2024,14 +2027,25 @@ export const mediaChunkCache = new Map();
 export const MAX_DIRECT_PAYLOAD_CHARS = 700000;
 export const MEDIA_CHUNK_SIZE = 500000;
 
+export function getPathSegments(collectionPath) {
+    if (Array.isArray(collectionPath)) return collectionPath;
+    if (typeof collectionPath === 'string') {
+        return collectionPath.split('/').filter(Boolean);
+    }
+    return [collectionPath];
+}
+
 export async function saveMediaWithChunks(collectionName, docData, mediaFieldName, mediaPayload) {
+    const pathSegments = getPathSegments(collectionName);
+    const colRef = collection(db, ...pathSegments);
+
     if (!mediaPayload || typeof mediaPayload !== 'string' || mediaPayload.length <= MAX_DIRECT_PAYLOAD_CHARS) {
         const fullDoc = {
             ...docData,
             [mediaFieldName]: mediaPayload || null,
             hasChunks: false
         };
-        const docRef = await addDoc(collection(db, collectionName), fullDoc);
+        const docRef = await addDoc(colRef, fullDoc);
         if (mediaPayload && docRef && docRef.id) {
             mediaChunkCache.set(`${collectionName}_${docRef.id}`, mediaPayload);
         }
@@ -2053,7 +2067,7 @@ export async function saveMediaWithChunks(collectionName, docData, mediaFieldNam
         chunkSize: MEDIA_CHUNK_SIZE
     };
 
-    const docRef = await addDoc(collection(db, collectionName), mainDoc);
+    const docRef = await addDoc(colRef, mainDoc);
 
     // Gravar os chunks na subcoleção em lotes de até 400
     const BATCH_LIMIT = 400;
@@ -2062,7 +2076,7 @@ export async function saveMediaWithChunks(collectionName, docData, mediaFieldNam
         const chunkBatch = chunks.slice(b, b + BATCH_LIMIT);
         for (let i = 0; i < chunkBatch.length; i++) {
             const index = b + i;
-            const chunkDocRef = doc(db, collectionName, docRef.id, 'chunks', String(index));
+            const chunkDocRef = doc(db, ...pathSegments, docRef.id, 'chunks', String(index));
             batch.set(chunkDocRef, {
                 index: index,
                 part: chunkBatch[i],
@@ -2076,6 +2090,56 @@ export async function saveMediaWithChunks(collectionName, docData, mediaFieldNam
     return docRef;
 }
 
+export async function updateMessageMediaWithChunks(chatId, msgId, updateFields, mediaPayload) {
+    const colPath = `chats/${chatId}/messages`;
+    const cacheKey = `${colPath}_${msgId}`;
+    const targetDocRef = doc(db, 'chats', chatId, 'messages', msgId);
+
+    if (!mediaPayload || typeof mediaPayload !== 'string' || mediaPayload.length <= MAX_DIRECT_PAYLOAD_CHARS) {
+        await updateDoc(targetDocRef, {
+            ...updateFields,
+            fileData: mediaPayload || '',
+            hasChunks: false
+        });
+        if (mediaPayload) {
+            mediaChunkCache.set(cacheKey, mediaPayload);
+        }
+        return;
+    }
+
+    // Payload > 700 KB: particionar em chunks
+    const chunks = [];
+    for (let i = 0; i < mediaPayload.length; i += MEDIA_CHUNK_SIZE) {
+        chunks.push(mediaPayload.slice(i, i + MEDIA_CHUNK_SIZE));
+    }
+
+    await updateDoc(targetDocRef, {
+        ...updateFields,
+        fileData: null,
+        hasChunks: true,
+        totalChunks: chunks.length,
+        chunkSize: MEDIA_CHUNK_SIZE
+    });
+
+    const BATCH_LIMIT = 400;
+    for (let b = 0; b < chunks.length; b += BATCH_LIMIT) {
+        const batch = writeBatch(db);
+        const chunkBatch = chunks.slice(b, b + BATCH_LIMIT);
+        for (let i = 0; i < chunkBatch.length; i++) {
+            const index = b + i;
+            const chunkDocRef = doc(db, 'chats', chatId, 'messages', msgId, 'chunks', String(index));
+            batch.set(chunkDocRef, {
+                index: index,
+                part: chunkBatch[i],
+                createdAt: Date.now()
+            });
+        }
+        await batch.commit();
+    }
+
+    mediaChunkCache.set(cacheKey, mediaPayload);
+}
+
 export async function loadMediaWithChunks(collectionName, docId, fallbackSrc = '') {
     if (!docId) return fallbackSrc || '';
     const cacheKey = `${collectionName}_${docId}`;
@@ -2087,7 +2151,8 @@ export async function loadMediaWithChunks(collectionName, docId, fallbackSrc = '
     }
 
     try {
-        const chunksSnap = await getDocs(collection(db, collectionName, docId, 'chunks'));
+        const pathSegments = getPathSegments(collectionName);
+        const chunksSnap = await getDocs(collection(db, ...pathSegments, docId, 'chunks'));
         if (chunksSnap && !chunksSnap.empty) {
             const list = [];
             chunksSnap.forEach(d => {
@@ -2274,8 +2339,9 @@ export async function compressImageFileToKB(file, options = {}) {
 export async function trimAndCompressVideoToKB(file, options = {}) {
     if (!file) return null;
     const isStory = !!options.isStory;
+    const isChat = !!options.isChat;
     const maxDuration = isStory ? 15 : (options.maxDuration || 120);
-    const cutThreshold = isStory ? 15 : (options.cutThreshold || 180);
+    const cutThreshold = isStory ? 15 : (isChat ? 120 : (options.cutThreshold || 180));
 
     return new Promise((resolve) => {
         let objectUrl = null;
@@ -2383,6 +2449,111 @@ export async function trimAndCompressVideoToKB(file, options = {}) {
         }
 
         finalizeWithDuration(file.originalDuration || file.duration || (isStory ? 15 : 60));
+    });
+}
+
+export async function trimAndCompressAudioToKB(file, options = {}) {
+    if (!file) return null;
+    const maxDuration = options.maxDuration || 120; // 2 minutos (120s)
+    const cutThreshold = options.cutThreshold || 120; // 2 minutos (120s)
+
+    return new Promise((resolve) => {
+        let objectUrl = null;
+        try {
+            const urlObj = (typeof window !== 'undefined' && window.URL) ? window.URL : (typeof URL !== 'undefined' ? URL : null);
+            if (urlObj && typeof urlObj.createObjectURL === 'function') {
+                objectUrl = urlObj.createObjectURL(file);
+            }
+        } catch (e) {}
+
+        const finalizeWithDuration = (rawDuration) => {
+            const originalDuration = Number(file.originalDuration || rawDuration) || 0;
+            let finalDuration = originalDuration;
+            let isTrimmed = !!file.isTrimmed;
+
+            if (originalDuration > cutThreshold || isTrimmed) {
+                finalDuration = maxDuration; // 120s
+                isTrimmed = true;
+            }
+
+            const originalSizeBytes = file.size || 1048576;
+            let effectiveBytes = originalSizeBytes;
+            if (isTrimmed && originalDuration > 0 && finalDuration < originalDuration) {
+                effectiveBytes = Math.round(originalSizeBytes * (finalDuration / originalDuration));
+            }
+            const sizeKB = Math.max(1, Math.round(effectiveBytes / 1024));
+            const sizeFormatted = `${sizeKB} KB`;
+
+            let trimmedSrc = objectUrl || 'blob:mockaudio';
+            if (isTrimmed && typeof trimmedSrc === 'string' && !trimmedSrc.includes('#t=')) {
+                trimmedSrc = `${trimmedSrc}#t=0,${finalDuration}`;
+            }
+
+            resolve({
+                type: 'audio',
+                file,
+                src: trimmedSrc,
+                originalDuration,
+                duration: finalDuration,
+                durationFormatted: formatDurationSeconds(finalDuration),
+                sizeBytes: effectiveBytes,
+                sizeKB,
+                sizeFormatted,
+                isTrimmed,
+                trimmedTo: finalDuration
+            });
+        };
+
+        if (typeof file.originalDuration === 'number' && file.originalDuration > 0) {
+            return finalizeWithDuration(file.originalDuration);
+        }
+
+        if (typeof file.duration === 'number' && file.duration > 0) {
+            return finalizeWithDuration(file.duration);
+        }
+
+        if (typeof Audio !== 'undefined' && objectUrl) {
+            try {
+                const audioEl = new Audio();
+                audioEl.preload = 'metadata';
+                let resolved = false;
+
+                const cleanup = () => {
+                    if (audioEl) {
+                        audioEl.onloadedmetadata = null;
+                        audioEl.onerror = null;
+                    }
+                };
+
+                audioEl.onloadedmetadata = () => {
+                    if (resolved) return;
+                    resolved = true;
+                    cleanup();
+                    finalizeWithDuration(audioEl.duration);
+                };
+
+                audioEl.onerror = () => {
+                    if (resolved) return;
+                    resolved = true;
+                    cleanup();
+                    finalizeWithDuration(file.originalDuration || file.duration || 60);
+                };
+
+                setTimeout(() => {
+                    if (resolved) return;
+                    resolved = true;
+                    cleanup();
+                    finalizeWithDuration(file.originalDuration || file.duration || 60);
+                }, 1500);
+
+                audioEl.src = objectUrl;
+                return;
+            } catch (err) {
+                return finalizeWithDuration(file.originalDuration || file.duration || 60);
+            }
+        }
+
+        finalizeWithDuration(file.originalDuration || file.duration || 60);
     });
 }
 
@@ -4525,6 +4696,38 @@ function openDirectChat(contact) {
     playSound(clickSound);
 }
 
+export function resolveChatChunkedMedia(container, chatId) {
+    if (!container || !chatId) return;
+    container.querySelectorAll('[data-has-chunks="true"]').forEach(async el => {
+        const msgId = el.dataset.msgId;
+        if (!msgId) return;
+        try {
+            const fullData = await loadMediaWithChunks(`chats/${chatId}/messages`, msgId);
+            if (!fullData) return;
+            if (el.tagName === 'IMG' || el.tagName === 'VIDEO') {
+                let src = fullData;
+                if (el.dataset.isTrimmed === 'true' && !src.includes('#t=')) {
+                    src = `${src}#t=0,120`;
+                }
+                el.src = src;
+            } else if (el.classList.contains('audio-player-ui')) {
+                let src = fullData;
+                if (el.dataset.isTrimmed === 'true' && !src.includes('#t=')) {
+                    src = `${src}#t=0,120`;
+                }
+                el.dataset.src = src;
+            } else if (el.classList.contains('view-once-bubble')) {
+                el.dataset.src = fullData;
+            } else if (el.tagName === 'A' && el.classList.contains('file-attachment-card')) {
+                el.href = fullData;
+            }
+            el.dataset.hasChunks = 'false';
+        } catch (err) {
+            console.warn('Erro ao resolver chunks de mensagem do chat:', err);
+        }
+    });
+}
+
 function loadRealtimeMessages() {
     if (!currentUser || !activeChatContact) return;
     if (currentChatUnsubscribe) currentChatUnsubscribe();
@@ -4654,15 +4857,18 @@ function loadRealtimeMessages() {
                 `;
             } else {
                 if (msg.type === 'audio') {
+                    const isTrimmed = !!msg.isTrimmed;
                     const durMatch = (msg.text || '').match(/\((.*?)\)/);
                     const durFromText = durMatch ? parseAudioDuration(durMatch[1]) : '';
                     const durFromMsg = parseAudioDuration(msg.duration);
-                    let dur = durFromMsg || durFromText || '';
+                    let dur = isTrimmed ? '02:00' : (durFromMsg || durFromText || '');
                     if (!dur || dur === '00:05') {
                         dur = '00:00';
                     }
+                    const trimBadgeHTML = isTrimmed ? `<span class="media-trim-badge" style="display:inline-flex; align-items:center; gap:4px; font-size:0.68rem; color:#ffdd57; background:rgba(255,221,87,0.15); border:1px solid rgba(255,221,87,0.3); padding:2px 6px; border-radius:12px; margin-bottom:4px; font-weight:600;">✂️ Cortado (2 min)${msg.fileSize ? ` • ${msg.fileSize}` : ''}</span>` : (msg.fileSize ? `<span style="display:inline-block; font-size:0.65rem; opacity:0.75; margin-bottom:2px;">📁 ${msg.fileSize}</span>` : '');
                     mediaHTML = `
-                        <div class="audio-player-ui" data-src="${msg.fileData || ''}" data-total-duration="${dur}">
+                        ${trimBadgeHTML}
+                        <div class="audio-player-ui" data-src="${msg.fileData || ''}" data-total-duration="${dur}" data-msg-id="${msg.id}" data-chat-id="${chatId}" data-has-chunks="${msg.hasChunks ? 'true' : 'false'}" data-is-trimmed="${isTrimmed ? 'true' : 'false'}" data-max-duration="${isTrimmed ? '120' : ''}">
                             <i data-lucide="play" style="width: 16px; height: 16px; cursor: pointer;"></i>
                             <div class="waveform">
                                 ${Array.from({ length: 14 }, () => `<div class="wave-bar" style="height: ${Math.floor(Math.random() * 12) + 4}px"></div>`).join('')}
@@ -4672,6 +4878,7 @@ function loadRealtimeMessages() {
                         </div>
                     `;
                 } else if (msg.type === 'image') {
+                    const sizeBadgeHTML = msg.fileSize ? `<span style="display:inline-block; font-size:0.68rem; opacity:0.75; margin-top:2px;">${msg.fileSize}</span>` : '';
                     if (msg.viewOnce) {
                         const hasViewed = Array.isArray(msg.viewedBy) && msg.viewedBy.includes(currentUser.uid);
                         if (hasViewed) {
@@ -4684,21 +4891,30 @@ function loadRealtimeMessages() {
                             `;
                         } else {
                             mediaHTML = `
-                                <div class="view-once-bubble unopened" data-src="${msg.fileData || ''}" data-msg-id="${msg.id}">
+                                <div class="view-once-bubble unopened" data-src="${msg.fileData || ''}" data-msg-id="${msg.id}" data-chat-id="${chatId}" data-has-chunks="${msg.hasChunks ? 'true' : 'false'}">
                                     <span class="view-once-badge">1</span>
                                     <i data-lucide="eye"></i>
                                     <span>Foto de visualização única</span>
+                                    ${msg.fileSize ? `<span style="font-size:0.65rem; opacity:0.8; margin-left:4px;">(${msg.fileSize})</span>` : ''}
                                 </div>
                             `;
                         }
                     } else {
-                        mediaHTML = `<img src="${msg.fileData}" alt="Imagem" class="chat-clickable-image" style="max-width:100%; border-radius:10px; margin-bottom:4px; cursor:pointer;">`;
+                        mediaHTML = `
+                            <img src="${msg.fileData || ''}" alt="Imagem" class="chat-clickable-image" data-msg-id="${msg.id}" data-chat-id="${chatId}" data-has-chunks="${msg.hasChunks ? 'true' : 'false'}" style="max-width:100%; border-radius:10px; margin-bottom:4px; cursor:pointer;">
+                            ${sizeBadgeHTML}
+                        `;
                     }
                 } else if (msg.type === 'video') {
-                    mediaHTML = `<video src="${msg.fileData}" controls playsinline style="max-width:100%; border-radius:10px; margin-bottom:4px;"></video>`;
+                    const isTrimmed = !!msg.isTrimmed;
+                    const trimBadgeHTML = isTrimmed ? `<span class="media-trim-badge" style="display:inline-flex; align-items:center; gap:4px; font-size:0.68rem; color:#ffdd57; background:rgba(255,221,87,0.15); border:1px solid rgba(255,221,87,0.3); padding:2px 6px; border-radius:12px; margin-bottom:4px; font-weight:600;">✂️ Cortado (2 min)${msg.fileSize ? ` • ${msg.fileSize}` : ''}</span>` : (msg.fileSize ? `<span style="display:inline-block; font-size:0.68rem; opacity:0.75; margin-bottom:4px;">📹 ${msg.fileSize}</span>` : '');
+                    mediaHTML = `
+                        ${trimBadgeHTML}
+                        <video src="${msg.fileData || ''}" controls playsinline data-msg-id="${msg.id}" data-chat-id="${chatId}" data-has-chunks="${msg.hasChunks ? 'true' : 'false'}" data-is-trimmed="${isTrimmed ? 'true' : 'false'}" data-max-duration="${isTrimmed ? '120' : ''}" style="max-width:100%; border-radius:10px; margin-bottom:4px;"></video>
+                    `;
                 } else if (msg.type === 'file') {
                     mediaHTML = `
-                        <a href="${msg.fileData}" download="${msg.fileName || 'arquivo'}" class="file-attachment-card">
+                        <a href="${msg.fileData || '#'}" download="${msg.fileName || 'arquivo'}" class="file-attachment-card" data-msg-id="${msg.id}" data-chat-id="${chatId}" data-has-chunks="${msg.hasChunks ? 'true' : 'false'}">
                             <i data-lucide="file-text"></i>
                             <div class="file-info">
                                 <div class="file-name">${msg.fileName || 'Arquivo'}</div>
@@ -4867,7 +5083,8 @@ function loadRealtimeMessages() {
                         tempAudio.preload = 'metadata';
                         tempAudio.onloadedmetadata = () => {
                             if (tempAudio.duration && isFinite(tempAudio.duration) && tempAudio.duration > 0) {
-                                const realDur = formatAudioTime(tempAudio.duration);
+                                const rawDur = (audioUi.dataset.isTrimmed === 'true' || audioUi.dataset.maxDuration === '120') && tempAudio.duration > 120 ? 120 : tempAudio.duration;
+                                const realDur = audioUi.dataset.isTrimmed === 'true' ? '02:00' : formatAudioTime(rawDur);
                                 if (durSpan && !audioUi.classList.contains('playing')) {
                                     durSpan.innerText = realDur;
                                 }
@@ -4878,19 +5095,54 @@ function loadRealtimeMessages() {
                     } catch (_) {}
                 }
 
-                audioUi.onclick = (e) => {
+                audioUi.onclick = async (e) => {
                     if (e.target.closest('.audio-speed-btn')) return;
-                    playVoiceNote(audioUi, msg.fileData);
+                    let targetSrc = audioUi.dataset.src || msg.fileData;
+                    if ((!targetSrc || audioUi.dataset.hasChunks === 'true') && audioUi.dataset.msgId && audioUi.dataset.chatId) {
+                        try {
+                            targetSrc = await loadMediaWithChunks(`chats/${audioUi.dataset.chatId}/messages`, audioUi.dataset.msgId, targetSrc);
+                            if (targetSrc) {
+                                audioUi.dataset.src = targetSrc;
+                                audioUi.dataset.hasChunks = 'false';
+                            }
+                        } catch (err) {
+                            console.warn('Erro ao carregar chunks do áudio:', err);
+                        }
+                    }
+                    playVoiceNote(audioUi, targetSrc);
                 };
+            }
+
+            // Vídeos do Chat: controle de reprodução e corte de 2 minutos
+            const chatVideo = msgDiv.querySelector('video');
+            if (chatVideo) {
+                const isTrimmed = chatVideo.dataset.isTrimmed === 'true';
+                const maxDur = chatVideo.dataset.maxDuration ? parseFloat(chatVideo.dataset.maxDuration) : (isTrimmed ? 120 : 0);
+                if (maxDur > 0) {
+                    chatVideo.addEventListener('timeupdate', () => {
+                        if (chatVideo.currentTime >= maxDur) {
+                            chatVideo.currentTime = maxDur;
+                            chatVideo.pause();
+                        }
+                    });
+                }
             }
 
             // Visualização Única e Foto em Tela Cheia
             const viewOnceUnopened = msgDiv.querySelector('.view-once-bubble.unopened');
             if (viewOnceUnopened) {
-                viewOnceUnopened.onclick = (e) => {
+                viewOnceUnopened.onclick = async (e) => {
                     e.stopPropagation();
-                    const src = viewOnceUnopened.dataset.src;
+                    let src = viewOnceUnopened.dataset.src;
                     const msgId = viewOnceUnopened.dataset.msgId;
+                    const cId = viewOnceUnopened.dataset.chatId || chatId;
+                    if ((!src || viewOnceUnopened.dataset.hasChunks === 'true') && msgId && cId) {
+                        src = await loadMediaWithChunks(`chats/${cId}/messages`, msgId, src);
+                        if (src) {
+                            viewOnceUnopened.dataset.src = src;
+                            viewOnceUnopened.dataset.hasChunks = 'false';
+                        }
+                    }
                     if (src) {
                         openViewOnceModal(src);
                         if (msgId && chatId) {
@@ -4904,9 +5156,21 @@ function loadRealtimeMessages() {
 
             const chatImg = msgDiv.querySelector('.chat-clickable-image');
             if (chatImg) {
-                chatImg.onclick = (e) => {
+                chatImg.onclick = async (e) => {
                     e.stopPropagation();
-                    openViewOnceModal(chatImg.src);
+                    let src = chatImg.src;
+                    const msgId = chatImg.dataset.msgId;
+                    const cId = chatImg.dataset.chatId || chatId;
+                    if ((!src || chatImg.dataset.hasChunks === 'true' || src.endsWith('#') || (typeof window !== 'undefined' && src === window.location.href)) && msgId && cId) {
+                        src = await loadMediaWithChunks(`chats/${cId}/messages`, msgId, src);
+                        if (src) {
+                            chatImg.src = src;
+                            chatImg.dataset.hasChunks = 'false';
+                        }
+                    }
+                    if (src) {
+                        openViewOnceModal(src);
+                    }
                 };
             }
 
@@ -4956,6 +5220,7 @@ function loadRealtimeMessages() {
             container.appendChild(msgDiv);
         });
 
+        resolveChatChunkedMedia(container, chatId);
         if (window.lucide) lucide.createIcons();
         container.scrollTop = container.scrollHeight;
     });
@@ -8146,6 +8411,17 @@ async function sendChatMessage(type = 'text', payload = {}) {
         msgData.poll = payload.poll;
     }
 
+    if (payload.isTrimmed) {
+        msgData.isTrimmed = true;
+    }
+    if (payload.durationSeconds !== undefined) {
+        msgData.durationSeconds = payload.durationSeconds;
+    }
+    if (payload.viewOnce) {
+        msgData.viewOnce = true;
+        msgData.viewedBy = [];
+    }
+
     if (replyingToMsg) {
         msgData.replyTo = {
             id: replyingToMsg.id,
@@ -8155,7 +8431,12 @@ async function sendChatMessage(type = 'text', payload = {}) {
         cancelReply();
     }
 
-    const messageRef = await addDoc(collection(db, 'chats', chatId, 'messages'), msgData);
+    let messageRef;
+    if (msgData.fileData && msgData.fileData.length > MAX_DIRECT_PAYLOAD_CHARS) {
+        messageRef = await saveMediaWithChunks(`chats/${chatId}/messages`, msgData, 'fileData', msgData.fileData);
+    } else {
+        messageRef = await addDoc(collection(db, 'chats', chatId, 'messages'), msgData);
+    }
     playSound(replySendSound);
     return messageRef;
 }
@@ -8327,6 +8608,8 @@ export function playVoiceNote(playerEl, audioData) {
     const isPlaying = playerEl.classList.contains('playing');
     const durSpan = playerEl.querySelector('.audio-duration-text');
     const waveBars = playerEl.querySelectorAll('.wave-bar');
+    const isTrimmed = playerEl.dataset.isTrimmed === 'true';
+    const maxDur = playerEl.dataset.maxDuration ? parseFloat(playerEl.dataset.maxDuration) : (isTrimmed ? 120 : 0);
 
     if (currentPlayingAudio) {
         currentPlayingAudio.pause();
@@ -8363,7 +8646,7 @@ export function playVoiceNote(playerEl, audioData) {
                 if (window.lucide) lucide.createIcons();
             }
             if (durSpan) {
-                const totalDur = playerEl.dataset.totalDuration || (currentPlayingAudio && currentPlayingAudio.duration && isFinite(currentPlayingAudio.duration) ? formatAudioTime(currentPlayingAudio.duration) : '');
+                const totalDur = isTrimmed ? '02:00' : (playerEl.dataset.totalDuration || (currentPlayingAudio && currentPlayingAudio.duration && isFinite(currentPlayingAudio.duration) ? formatAudioTime(currentPlayingAudio.duration) : ''));
                 if (totalDur && totalDur !== '00:00') {
                     durSpan.innerText = totalDur;
                 }
@@ -8376,7 +8659,8 @@ export function playVoiceNote(playerEl, audioData) {
 
         currentPlayingAudio.onloadedmetadata = () => {
             if (currentPlayingAudio.duration && isFinite(currentPlayingAudio.duration) && currentPlayingAudio.duration > 0) {
-                const totalDur = formatAudioTime(currentPlayingAudio.duration);
+                const rawDur = (maxDur > 0 && currentPlayingAudio.duration > maxDur) ? maxDur : currentPlayingAudio.duration;
+                const totalDur = isTrimmed ? '02:00' : formatAudioTime(rawDur);
                 playerEl.dataset.totalDuration = totalDur;
                 if (!playerEl.classList.contains('playing') && durSpan) {
                     durSpan.innerText = totalDur;
@@ -8385,11 +8669,18 @@ export function playVoiceNote(playerEl, audioData) {
         };
 
         currentPlayingAudio.ontimeupdate = () => {
+            if (maxDur > 0 && currentPlayingAudio.currentTime >= maxDur) {
+                currentPlayingAudio.currentTime = maxDur;
+                currentPlayingAudio.pause();
+                resetUI();
+                return;
+            }
             if (durSpan && playerEl.classList.contains('playing')) {
                 durSpan.innerText = formatAudioTime(currentPlayingAudio.currentTime);
             }
-            if (currentPlayingAudio.duration && isFinite(currentPlayingAudio.duration) && currentPlayingAudio.duration > 0) {
-                const progress = currentPlayingAudio.currentTime / currentPlayingAudio.duration;
+            const effectiveDuration = (maxDur > 0 && currentPlayingAudio.duration > maxDur) ? maxDur : currentPlayingAudio.duration;
+            if (effectiveDuration && isFinite(effectiveDuration) && effectiveDuration > 0) {
+                const progress = currentPlayingAudio.currentTime / effectiveDuration;
                 const totalBars = waveBars.length;
                 const activeCount = Math.floor(progress * totalBars);
                 waveBars.forEach((bar, index) => {
@@ -8822,7 +9113,7 @@ document.getElementById('poll-votes-modal')?.addEventListener('click', (e) => {
 function handleFileUpload(inputEl, type, options = {}) {
     if (!inputEl) return;
     inputEl.addEventListener('change', async (e) => {
-        const file = e.target.files[0];
+        const file = e.target.files && e.target.files[0] ? e.target.files[0] : null;
         if (!file) return;
 
         if (activeChatContact && !activeChatContact.isGroup) {
@@ -8846,7 +9137,7 @@ function handleFileUpload(inputEl, type, options = {}) {
         }
 
         const isViewOnce = !!options.viewOnce;
-        const sendingType = file.type.startsWith('audio') ? 'music' : type;
+        const sendingType = file.type && file.type.startsWith('audio') ? 'music' : type;
         const sendingLabel = isViewOnce ? 'Enviando foto única' : ({
             image: 'Enviando imagem',
             video: 'Enviando vídeo',
@@ -8856,41 +9147,324 @@ function handleFileUpload(inputEl, type, options = {}) {
 
         const sendingBubble = createSendingStatusBubble(sendingType, sendingLabel, file.name);
         publishTemporaryChatActivity(sendingType, sendingLabel, 30000);
+        const chatId = getActiveChatId();
+        if (!chatId) {
+            clearChatActivityTimer();
+            updateChatActivity(sendingType, sendingLabel, false).catch(() => {});
+            removeSendingStatusBubble(sendingBubble);
+            inputEl.value = '';
+            return;
+        }
+
+        // 1. Tratamento para FOTOS ("Foto" e "Única") -> Comprimir para KB
+        if (type === 'image') {
+            let compressed = null;
+            try {
+                compressed = await compressImageFileToKB(file, { maxDimension: 1280, targetMaxKB: 500, quality: 0.82 });
+            } catch (err) {
+                console.warn('Erro ao compactar imagem para KB:', err);
+            }
+
+            const formattedSize = compressed?.sizeFormatted || formatBytesToKB(file.size);
+            let pendingMessageRef = null;
+
+            try {
+                pendingMessageRef = await sendChatMessage(type, {
+                    fileName: file.name,
+                    fileSize: formattedSize,
+                    uploadState: 'uploading',
+                    uploadPercent: 0,
+                    viewOnce: isViewOnce,
+                    viewedBy: []
+                });
+            } catch (error) {
+                console.error('Erro ao iniciar envio da imagem:', error);
+                clearChatActivityTimer();
+                updateChatActivity(sendingType, sendingLabel, false).catch(() => {});
+                removeSendingStatusBubble(sendingBubble);
+                inputEl.value = '';
+                return;
+            }
+
+            const deliverImage = async (finalDataUrl) => {
+                try {
+                    await updateMessageMediaWithChunks(chatId, pendingMessageRef.id, {
+                        fileName: file.name,
+                        fileSize: formattedSize,
+                        uploadState: 'sent',
+                        uploadPercent: 100,
+                        viewOnce: isViewOnce,
+                        viewedBy: []
+                    }, finalDataUrl);
+                    showToast("Foto Convertida", `${file.name} compactada para ${formattedSize} e enviada!`, "green");
+                } catch (error) {
+                    console.error('Erro ao salvar imagem:', error);
+                    await updateDoc(doc(db, 'chats', chatId, 'messages', pendingMessageRef.id), { uploadState: 'failed', text: 'Falha ao carregar a mídia.' }).catch(() => {});
+                    showToast('Erro', 'Não foi possível enviar este arquivo.', 'red');
+                } finally {
+                    clearChatActivityTimer();
+                    updateChatActivity(sendingType, sendingLabel, false).catch(() => {});
+                    removeSendingStatusBubble(sendingBubble);
+                }
+            };
+
+            if (compressed && compressed.dataUrl && typeof compressed.dataUrl === 'string' && compressed.dataUrl.startsWith('data:')) {
+                await deliverImage(compressed.dataUrl);
+            } else if (file.dataUrl) {
+                await deliverImage(file.dataUrl);
+            } else {
+                const FR = (typeof window !== 'undefined' && window.FileReader) ? window.FileReader : (typeof FileReader !== 'undefined' ? FileReader : null);
+                if (FR) {
+                    const reader = new FR();
+                    reader.onload = async () => {
+                        await deliverImage(reader.result);
+                    };
+                    reader.onerror = async () => {
+                        await updateDoc(doc(db, 'chats', chatId, 'messages', pendingMessageRef.id), { uploadState: 'failed', text: 'Falha ao ler foto.' }).catch(() => {});
+                        clearChatActivityTimer();
+                        updateChatActivity(sendingType, sendingLabel, false).catch(() => {});
+                        removeSendingStatusBubble(sendingBubble);
+                        showToast('Erro', 'Não foi possível carregar este arquivo.', 'red');
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    await deliverImage('data:image/jpeg;base64,mockpreview');
+                }
+            }
+
+            attachDrawer?.classList.remove('active');
+            inputEl.value = '';
+            return;
+        }
+
+        // 2. Tratamento para VÍDEOS -> Duração máxima de 2 minutos (120s), corte automático e tamanho em KB
+        if (type === 'video') {
+            let videoInfo = null;
+            try {
+                videoInfo = await trimAndCompressVideoToKB(file, { isChat: true, maxDuration: 120, cutThreshold: 120 });
+            } catch (err) {
+                console.warn('Erro ao processar vídeo para chat:', err);
+            }
+
+            const isTrimmed = videoInfo ? !!videoInfo.isTrimmed : (file.duration > 120);
+            const finalDuration = videoInfo ? videoInfo.durationFormatted : (isTrimmed ? '02:00' : '0:00');
+            const finalDurationSecs = videoInfo ? videoInfo.duration : (isTrimmed ? 120 : 0);
+            const finalSize = videoInfo ? videoInfo.sizeFormatted : formatBytesToKB(file.size);
+
+            if (isTrimmed) {
+                showToast("Vídeo Ajustado", "Vídeo com mais de 2 minutos foi cortado automaticamente para 2 minutos.", "blue");
+            }
+
+            let pendingMessageRef = null;
+            try {
+                pendingMessageRef = await sendChatMessage(type, {
+                    fileName: file.name,
+                    fileSize: finalSize,
+                    duration: finalDuration,
+                    durationSeconds: finalDurationSecs,
+                    isTrimmed: isTrimmed,
+                    uploadState: 'uploading',
+                    uploadPercent: 0,
+                    viewOnce: isViewOnce,
+                    viewedBy: []
+                });
+            } catch (error) {
+                console.error('Erro ao iniciar envio do vídeo:', error);
+                clearChatActivityTimer();
+                updateChatActivity(sendingType, sendingLabel, false).catch(() => {});
+                removeSendingStatusBubble(sendingBubble);
+                inputEl.value = '';
+                return;
+            }
+
+            const deliverVideo = async (rawPayload) => {
+                try {
+                    let payload = rawPayload;
+                    if (isTrimmed && typeof payload === 'string' && !payload.includes('#t=')) {
+                        payload = `${payload}#t=0,120`;
+                    }
+                    await updateMessageMediaWithChunks(chatId, pendingMessageRef.id, {
+                        fileName: file.name,
+                        fileSize: finalSize,
+                        duration: finalDuration,
+                        durationSeconds: finalDurationSecs,
+                        isTrimmed: isTrimmed,
+                        uploadState: 'sent',
+                        uploadPercent: 100,
+                        viewOnce: isViewOnce,
+                        viewedBy: []
+                    }, payload);
+                    showToast("Vídeo Enviado", `${file.name} (${finalSize}${isTrimmed ? ' • cortado para 2 min' : ''}) enviado!`, "green");
+                } catch (error) {
+                    console.error('Erro ao enviar vídeo:', error);
+                    await updateDoc(doc(db, 'chats', chatId, 'messages', pendingMessageRef.id), { uploadState: 'failed', text: 'Falha ao carregar o vídeo.' }).catch(() => {});
+                    showToast('Erro', 'Não foi possível enviar este vídeo.', 'red');
+                } finally {
+                    clearChatActivityTimer();
+                    updateChatActivity(sendingType, sendingLabel, false).catch(() => {});
+                    removeSendingStatusBubble(sendingBubble);
+                }
+            };
+
+            if (file.dataUrl) {
+                await deliverVideo(file.dataUrl);
+            } else {
+                const FR = (typeof window !== 'undefined' && window.FileReader) ? window.FileReader : (typeof FileReader !== 'undefined' ? FileReader : null);
+                if (FR) {
+                    const reader = new FR();
+                    reader.onload = async () => {
+                        await deliverVideo(reader.result);
+                    };
+                    reader.onerror = async () => {
+                        await updateDoc(doc(db, 'chats', chatId, 'messages', pendingMessageRef.id), { uploadState: 'failed', text: 'Falha ao ler vídeo.' }).catch(() => {});
+                        clearChatActivityTimer();
+                        updateChatActivity(sendingType, sendingLabel, false).catch(() => {});
+                        removeSendingStatusBubble(sendingBubble);
+                        showToast('Erro', 'Não foi possível carregar este vídeo.', 'red');
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    await deliverVideo('data:video/mp4;base64,mockvideo');
+                }
+            }
+
+            attachDrawer?.classList.remove('active');
+            inputEl.value = '';
+            return;
+        }
+
+        // 3. Tratamento para MÚSICAS / ÁUDIO -> Duração máxima de 2 minutos (120s), corte automático e tamanho em KB
+        if (type === 'audio') {
+            let audioInfo = null;
+            try {
+                audioInfo = await trimAndCompressAudioToKB(file, { maxDuration: 120, cutThreshold: 120 });
+            } catch (err) {
+                console.warn('Erro ao processar música para chat:', err);
+            }
+
+            const isTrimmed = audioInfo ? !!audioInfo.isTrimmed : (file.duration > 120);
+            const finalDuration = audioInfo ? audioInfo.durationFormatted : (isTrimmed ? '02:00' : '0:00');
+            const finalDurationSecs = audioInfo ? audioInfo.duration : (isTrimmed ? 120 : 0);
+            const finalSize = audioInfo ? audioInfo.sizeFormatted : formatBytesToKB(file.size);
+
+            if (isTrimmed) {
+                showToast("Música Ajustada", "Música com mais de 2 minutos foi cortada automaticamente para 2 minutos.", "blue");
+            }
+
+            let pendingMessageRef = null;
+            try {
+                pendingMessageRef = await sendChatMessage(type, {
+                    fileName: file.name,
+                    fileSize: finalSize,
+                    duration: finalDuration,
+                    durationSeconds: finalDurationSecs,
+                    isTrimmed: isTrimmed,
+                    text: `Música: ${file.name} (${finalDuration})`,
+                    uploadState: 'uploading',
+                    uploadPercent: 0,
+                    viewOnce: isViewOnce,
+                    viewedBy: []
+                });
+            } catch (error) {
+                console.error('Erro ao iniciar envio da música:', error);
+                clearChatActivityTimer();
+                updateChatActivity(sendingType, sendingLabel, false).catch(() => {});
+                removeSendingStatusBubble(sendingBubble);
+                inputEl.value = '';
+                return;
+            }
+
+            const deliverAudio = async (rawPayload) => {
+                try {
+                    let payload = rawPayload;
+                    if (isTrimmed && typeof payload === 'string' && !payload.includes('#t=')) {
+                        payload = `${payload}#t=0,120`;
+                    }
+                    await updateMessageMediaWithChunks(chatId, pendingMessageRef.id, {
+                        fileName: file.name,
+                        fileSize: finalSize,
+                        duration: finalDuration,
+                        durationSeconds: finalDurationSecs,
+                        isTrimmed: isTrimmed,
+                        text: `Música: ${file.name} (${finalDuration})`,
+                        uploadState: 'sent',
+                        uploadPercent: 100,
+                        viewOnce: isViewOnce,
+                        viewedBy: []
+                    }, payload);
+                    showToast("Música Enviada", `${file.name} (${finalSize}${isTrimmed ? ' • cortada para 2 min' : ''}) enviada!`, "green");
+                } catch (error) {
+                    console.error('Erro ao enviar música:', error);
+                    await updateDoc(doc(db, 'chats', chatId, 'messages', pendingMessageRef.id), { uploadState: 'failed', text: 'Falha ao carregar a música.' }).catch(() => {});
+                    showToast('Erro', 'Não foi possível enviar esta música.', 'red');
+                } finally {
+                    clearChatActivityTimer();
+                    updateChatActivity(sendingType, sendingLabel, false).catch(() => {});
+                    removeSendingStatusBubble(sendingBubble);
+                }
+            };
+
+            if (file.dataUrl) {
+                await deliverAudio(file.dataUrl);
+            } else {
+                const FR = (typeof window !== 'undefined' && window.FileReader) ? window.FileReader : (typeof FileReader !== 'undefined' ? FileReader : null);
+                if (FR) {
+                    const reader = new FR();
+                    reader.onload = async () => {
+                        await deliverAudio(reader.result);
+                    };
+                    reader.onerror = async () => {
+                        await updateDoc(doc(db, 'chats', chatId, 'messages', pendingMessageRef.id), { uploadState: 'failed', text: 'Falha ao ler áudio.' }).catch(() => {});
+                        clearChatActivityTimer();
+                        updateChatActivity(sendingType, sendingLabel, false).catch(() => {});
+                        removeSendingStatusBubble(sendingBubble);
+                        showToast('Erro', 'Não foi possível carregar este áudio.', 'red');
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    await deliverAudio('data:audio/mp3;base64,mockaudio');
+                }
+            }
+
+            attachDrawer?.classList.remove('active');
+            inputEl.value = '';
+            return;
+        }
+
+        // 4. Tratamento para DOCUMENTOS (PDF / APK / etc.)
+        const finalSize = formatBytesToKB(file.size);
         let pendingMessageRef = null;
 
         try {
             pendingMessageRef = await sendChatMessage(type, {
                 fileName: file.name,
-                fileSize: `${(file.size / 1024).toFixed(1)} KB`,
+                fileSize: finalSize,
                 uploadState: 'uploading',
                 uploadPercent: 0,
                 viewOnce: isViewOnce,
                 viewedBy: []
             });
         } catch (error) {
-            console.error('Erro ao iniciar envio da mídia:', error);
+            console.error('Erro ao iniciar envio do arquivo:', error);
             clearChatActivityTimer();
             updateChatActivity(sendingType, sendingLabel, false).catch(() => {});
             removeSendingStatusBubble(sendingBubble);
+            inputEl.value = '';
             return;
         }
 
-        const reader = new FileReader();
-        reader.onload = async () => {
+        const deliverFile = async (rawPayload) => {
             try {
-                await updateDoc(pendingMessageRef, {
-                    fileData: reader.result,
+                await updateMessageMediaWithChunks(chatId, pendingMessageRef.id, {
                     fileName: file.name,
-                    fileSize: `${(file.size / 1024).toFixed(1)} KB`,
+                    fileSize: finalSize,
                     uploadState: 'sent',
-                    uploadPercent: 100,
-                    viewOnce: isViewOnce,
-                    viewedBy: []
-                });
-                showToast("Enviado", `${file.name} enviado com sucesso!`, "green");
+                    uploadPercent: 100
+                }, rawPayload);
+                showToast("Arquivo Enviado", `${file.name} (${finalSize}) enviado com sucesso!`, "green");
             } catch (error) {
-                console.error('Erro ao enviar mídia:', error);
-                await updateDoc(pendingMessageRef, { uploadState: 'failed', text: 'Falha ao carregar a mídia.' }).catch(() => {});
+                console.error('Erro ao enviar arquivo:', error);
+                await updateDoc(doc(db, 'chats', chatId, 'messages', pendingMessageRef.id), { uploadState: 'failed', text: 'Falha ao carregar o arquivo.' }).catch(() => {});
                 showToast('Erro', 'Não foi possível enviar este arquivo.', 'red');
             } finally {
                 clearChatActivityTimer();
@@ -8898,14 +9472,29 @@ function handleFileUpload(inputEl, type, options = {}) {
                 removeSendingStatusBubble(sendingBubble);
             }
         };
-        reader.onerror = async () => {
-            await updateDoc(pendingMessageRef, { uploadState: 'failed', text: 'Falha ao carregar a mídia.' }).catch(() => {});
-            clearChatActivityTimer();
-            updateChatActivity(sendingType, sendingLabel, false).catch(() => {});
-            removeSendingStatusBubble(sendingBubble);
-            showToast('Erro', 'Não foi possível carregar este arquivo.', 'red');
-        };
-        reader.readAsDataURL(file);
+
+        if (file.dataUrl) {
+            await deliverFile(file.dataUrl);
+        } else {
+            const FR = (typeof window !== 'undefined' && window.FileReader) ? window.FileReader : (typeof FileReader !== 'undefined' ? FileReader : null);
+            if (FR) {
+                const reader = new FR();
+                reader.onload = async () => {
+                    await deliverFile(reader.result);
+                };
+                reader.onerror = async () => {
+                    await updateDoc(doc(db, 'chats', chatId, 'messages', pendingMessageRef.id), { uploadState: 'failed', text: 'Falha ao ler arquivo.' }).catch(() => {});
+                    clearChatActivityTimer();
+                    updateChatActivity(sendingType, sendingLabel, false).catch(() => {});
+                    removeSendingStatusBubble(sendingBubble);
+                    showToast('Erro', 'Não foi possível carregar este arquivo.', 'red');
+                };
+                reader.readAsDataURL(file);
+            } else {
+                await deliverFile('data:application/octet-stream;base64,mockdoc');
+            }
+        }
+
         attachDrawer?.classList.remove('active');
         inputEl.value = '';
     });
@@ -13973,10 +14562,15 @@ if (typeof window !== 'undefined') {
     window.getPendingPostMediaData = getPendingPostMediaData;
     window.getPendingPostMediaInfo = getPendingPostMediaInfo;
     window.getPendingStatusMediaInfo = () => pendingStatusMediaInfo;
-    window.getPendingStatusCompressedData = () => pendingStatusCompressedData;
     window.saveMediaWithChunks = saveMediaWithChunks;
     window.loadMediaWithChunks = loadMediaWithChunks;
     window.mediaChunkCache = mediaChunkCache;
+    window.trimAndCompressAudioToKB = trimAndCompressAudioToKB;
+    window.updateMessageMediaWithChunks = updateMessageMediaWithChunks;
+    window.resolveChatChunkedMedia = resolveChatChunkedMedia;
+    window.handleFileUpload = handleFileUpload;
+    window.sendChatMessage = sendChatMessage;
+    window.mediaSizeLimits = mediaSizeLimits;
 }
 
 if (typeof window !== 'undefined') {

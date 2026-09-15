@@ -4534,4 +4534,158 @@ test('Particionamento de Mídia em Chunks no Firestore: Publicação de vídeos 
   assert.ok(postDuration.innerHTML.includes('2:00'), 'Duração deve ser formatada como 2:00');
 });
 
+test('Mídias no Chat de Contatos: Fotos em KB, corte de vídeos e músicas para 2 min em KB, e particionamento em chunks no Firestore', async () => {
+  const env = createTestEnvironment();
+  const alice = { uid: 'user-alice-111', email: 'alice@vortex.vip', name: 'Alice' };
+  const bob = { uid: 'user-bob-222', email: 'bob@vortex.vip', name: 'Bob' };
+  if (typeof env.sandbox.window.setCurrentUser === 'function') {
+    env.sandbox.window.setCurrentUser(alice);
+  }
+
+  const mediaSizeLimits = env.sandbox.window.mediaSizeLimits;
+  const compressImageFileToKB = env.sandbox.window.compressImageFileToKB;
+  const trimAndCompressVideoToKB = env.sandbox.window.trimAndCompressVideoToKB;
+  const trimAndCompressAudioToKB = env.sandbox.window.trimAndCompressAudioToKB;
+  const updateMessageMediaWithChunks = env.sandbox.window.updateMessageMediaWithChunks;
+  const loadMediaWithChunks = env.sandbox.window.loadMediaWithChunks;
+  const mediaChunkCache = env.sandbox.window.mediaChunkCache;
+  const playVoiceNote = env.sandbox.window.playVoiceNote;
+
+  // 1. Validar que os limites de upload do chat foram elevados para 25 MB
+  assert.ok(mediaSizeLimits, 'mediaSizeLimits deve existir');
+  assert.strictEqual(mediaSizeLimits.image.bytes, 26214400, 'Limite para fotos deve ser 25 MB');
+  assert.strictEqual(mediaSizeLimits.video.bytes, 26214400, 'Limite para vídeos deve ser 25 MB');
+  assert.strictEqual(mediaSizeLimits.audio.bytes, 26214400, 'Limite para músicas/áudio deve ser 25 MB');
+  assert.strictEqual(mediaSizeLimits.file.bytes, 26214400, 'Limite para arquivos deve ser 25 MB');
+
+  // 2. Testar compressão de fotos para KB
+  const rawImageFile = {
+    name: 'ferias_praia.jpg',
+    type: 'image/jpeg',
+    size: 4800000 // 4.8 MB
+  };
+  const compressedPhoto = await compressImageFileToKB(rawImageFile, { maxDimension: 1280, targetMaxKB: 500 });
+  assert.ok(compressedPhoto, 'Foto deve ser processada');
+  assert.ok(compressedPhoto.sizeFormatted.includes('KB'), 'Tamanho da foto deve ser formatado em KB');
+  assert.ok(compressedPhoto.dataUrl, 'Foto deve ter dataUrl gerado');
+
+  // 3. Testar corte automático de vídeo para 2 minutos (120s) e tamanho em KB
+  const longVideoFile = {
+    name: 'aula_completa.mp4',
+    type: 'video/mp4',
+    size: 20000000, // 20 MB
+    duration: 300 // 5 minutos (> 120s)
+  };
+  const processedLongVideo = await trimAndCompressVideoToKB(longVideoFile, { isChat: true, maxDuration: 120, cutThreshold: 120 });
+  assert.strictEqual(processedLongVideo.isTrimmed, true, 'Vídeo com mais de 2 minutos deve ser cortado');
+  assert.strictEqual(processedLongVideo.duration, 120, 'Duração do vídeo cortado deve ser 120 segundos');
+  assert.ok(processedLongVideo.durationFormatted.includes('2:00'), 'Duração formatada deve conter 2:00');
+  assert.ok(processedLongVideo.sizeFormatted.includes('KB'), 'Tamanho deve estar em KB');
+  assert.ok(processedLongVideo.src.includes('#t=0,120'), 'src deve incluir fragmento de corte #t=0,120');
+
+  // Testar vídeo curto (<= 2 min) - não deve ser cortado
+  const shortVideoFile = {
+    name: 'stories_rapido.mp4',
+    type: 'video/mp4',
+    size: 1500000,
+    duration: 45 // 45 segundos
+  };
+  const processedShortVideo = await trimAndCompressVideoToKB(shortVideoFile, { isChat: true, maxDuration: 120, cutThreshold: 120 });
+  assert.strictEqual(processedShortVideo.isTrimmed, false, 'Vídeo com menos de 2 minutos não deve ser cortado');
+  assert.strictEqual(processedShortVideo.duration, 45, 'Duração deve ser mantida');
+
+  // 4. Testar corte automático de música para 2 minutos (120s) e tamanho em KB
+  const longMusicFile = {
+    name: 'musica_rock_show.mp3',
+    type: 'audio/mp3',
+    size: 9000000, // 9 MB
+    duration: 250 // 4 minutos e 10 segundos (> 120s)
+  };
+  const processedMusic = await trimAndCompressAudioToKB(longMusicFile, { maxDuration: 120, cutThreshold: 120 });
+  assert.strictEqual(processedMusic.isTrimmed, true, 'Música com mais de 2 minutos deve ser cortada para 2 min');
+  assert.strictEqual(processedMusic.duration, 120, 'Duração da música deve ser 120 segundos');
+  assert.ok(processedMusic.durationFormatted.includes('2:00'), 'Duração formatada deve conter 2:00');
+  assert.ok(processedMusic.sizeFormatted.includes('KB'), 'Tamanho da música deve ser em KB');
+  assert.ok(processedMusic.src.includes('#t=0,120'), 'src da música deve incluir fragmento de corte #t=0,120');
+
+  // Testar música curta (<= 2 min) - não deve ser cortada
+  const shortMusicFile = {
+    name: 'jingle.mp3',
+    type: 'audio/mp3',
+    size: 800000,
+    duration: 50
+  };
+  const processedShortMusic = await trimAndCompressAudioToKB(shortMusicFile, { maxDuration: 120, cutThreshold: 120 });
+  assert.strictEqual(processedShortMusic.isTrimmed, false, 'Música curta não deve ser cortada');
+  assert.strictEqual(processedShortMusic.duration, 50);
+
+  // 5. Testar particionamento de mensagens com chunks no chat (chats/{chatId}/messages/{msgId}/chunks)
+  const chatId = `chat_${alice.uid}_${bob.uid}`;
+  const msgId = 'msg_large_video_123';
+
+  // Criar documento inicial da mensagem no mock do Firestore
+  const msgPath = `chats/${chatId}/messages/${msgId}`;
+  env.firestoreDocs[msgPath] = {
+    senderUid: alice.uid,
+    type: 'video',
+    fileName: 'video_podcast.mp4',
+    fileSize: '1540 KB',
+    duration: '02:00',
+    isTrimmed: true,
+    uploadState: 'uploading'
+  };
+
+  // Simular payload Base64 de 2.2 MB (> 700 KB)
+  const largeVideoPayload = 'data:video/mp4;base64,' + 'X'.repeat(2200000);
+  await updateMessageMediaWithChunks(chatId, msgId, {
+    uploadState: 'sent',
+    uploadPercent: 100,
+    fileSize: '1540 KB',
+    duration: '02:00',
+    isTrimmed: true
+  }, largeVideoPayload);
+
+  const updatedMsgDoc = env.firestoreDocs[msgPath];
+  assert.strictEqual(updatedMsgDoc.fileData, null, 'fileData no doc da mensagem deve ser null para evitar erro de 1MB do Firestore');
+  assert.strictEqual(updatedMsgDoc.hasChunks, true, 'hasChunks deve ser true');
+  assert.strictEqual(updatedMsgDoc.totalChunks, 5, '2.200.022 caracteres devem ser divididos em 5 chunks de 500.000');
+
+  // Verificar que os chunks foram salvos na subcoleção correta
+  const savedChunkKeys = Object.keys(env.firestoreDocs).filter(k => k.startsWith(`chats/${chatId}/messages/${msgId}/chunks/`));
+  assert.strictEqual(savedChunkKeys.length, 5, 'Devem existir 5 documentos na subcoleção chats/{chatId}/messages/{msgId}/chunks');
+
+  // Testar remontagem via loadMediaWithChunks com caminho aninhado
+  mediaChunkCache.delete(`chats/${chatId}/messages_${msgId}`);
+  const reassembledChatMedia = await loadMediaWithChunks(`chats/${chatId}/messages`, msgId);
+  assert.strictEqual(reassembledChatMedia.length, largeVideoPayload.length, 'Payload remontado deve ser idêntico ao original');
+  assert.strictEqual(reassembledChatMedia, largeVideoPayload, 'Mídia do chat remontada byte a byte com perfeição');
+
+  // 6. Testar limitação de reprodução no player playVoiceNote para áudios cortados (max 120s)
+  const doc = env.sandbox.document;
+  const dummyAudioPlayer = doc.createElement('div');
+  dummyAudioPlayer.className = 'audio-player-ui';
+  dummyAudioPlayer.dataset.isTrimmed = 'true';
+  dummyAudioPlayer.dataset.maxDuration = '120';
+  dummyAudioPlayer.dataset.totalDuration = '02:00';
+  const durSpan = doc.createElement('span');
+  durSpan.className = 'audio-duration-text';
+  durSpan.innerText = '02:00';
+  dummyAudioPlayer.appendChild(durSpan);
+
+  playVoiceNote(dummyAudioPlayer, 'data:audio/mp3;base64,mock');
+  assert.ok(dummyAudioPlayer.classList.contains('playing'), 'Player deve iniciar reprodução');
+
+  // Simular evento ontimeupdate com currentTime alcançando 120s
+  const currentPlaying = env.sandbox.currentPlayingAudio || env.sandbox.window.currentPlayingAudio;
+  if (currentPlaying) {
+    currentPlaying.currentTime = 120;
+    if (typeof currentPlaying.ontimeupdate === 'function') {
+      currentPlaying.ontimeupdate();
+    }
+    // Ao atingir 120s, deve parar e resetar
+    assert.strictEqual(dummyAudioPlayer.classList.contains('playing'), false, 'Player deve parar ao atingir o limite de 2 minutos (120s)');
+  }
+});
+
+
 
