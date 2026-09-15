@@ -3981,6 +3981,14 @@ test('Músicas Favoritas: Salvar/favoritar músicas (❤️), aba ⭐ Favoritas,
   assert.strictEqual(parsedCache.length, 1);
   assert.strictEqual(parsedCache[0].id, 'fav_track_01');
 
+  const formatMusicDuration = env.sandbox.formatMusicDuration || env.sandbox.window.formatMusicDuration;
+  assert.ok(typeof formatMusicDuration === 'function', 'formatMusicDuration deve estar disponível');
+  assert.strictEqual(formatMusicDuration(146), '2:26', '146 segundos deve formatar para 2:26');
+  assert.strictEqual(formatMusicDuration(30), '0:30', '30 segundos deve formatar para 0:30');
+  assert.strictEqual(formatMusicDuration('0:146'), '2:26', 'Formato anterior 0:146 deve ser corrigido para 2:26');
+  assert.strictEqual(formatMusicDuration(214), '3:34', '214 segundos deve formatar para 3:34');
+  assert.strictEqual(formatMusicDuration(5), '0:05', '5 segundos deve formatar para 0:05');
+
   // 3. Adicionar uma segunda faixa favorita
   const sampleTrack2 = {
     id: 'fav_track_02',
@@ -3988,7 +3996,7 @@ test('Músicas Favoritas: Salvar/favoritar músicas (❤️), aba ⭐ Favoritas,
     artist: 'Viola Elétrica',
     cover: 'https://example.com/cover2.jpg',
     audioUrl: 'https://example.com/audio2.mp3',
-    duration: 30
+    duration: 146
   };
 
   await toggleFavoriteTrack(sampleTrack2);
@@ -4023,6 +4031,8 @@ test('Músicas Favoritas: Salvar/favoritar músicas (❤️), aba ⭐ Favoritas,
   assert.ok(resultsContainer.innerHTML.includes('Neon Skyline Night'), 'Resultados devem conter a faixa favoritada Neon Skyline Night');
   assert.ok(resultsContainer.innerHTML.includes('Amanhecer no Sertão'), 'Resultados devem conter a faixa favoritada Amanhecer no Sertão');
   assert.ok(resultsContainer.innerHTML.includes('data-action="toggle-fav-track"'), 'Card deve renderizar o botão de favoritar');
+  assert.ok(resultsContainer.innerHTML.includes('2:26'), 'Duração de 146 segundos deve ser exibida como 2:26');
+  assert.strictEqual(resultsContainer.innerHTML.includes('0:146'), false, 'NUNCA deve exibir 0:146');
 
   // 6. Selecionar música favorita para Story
   selectMusicTrack(sampleTrack1);

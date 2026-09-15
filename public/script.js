@@ -249,6 +249,31 @@ export function formatAudioTime(seconds) {
     return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 }
 
+export function formatMusicDuration(duration) {
+    if (duration === null || duration === undefined || duration === '') return '0:30';
+    let totalSecs;
+    if (typeof duration === 'string' && duration.includes(':')) {
+        const parts = duration.split(':').map(p => parseInt(p, 10));
+        if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+            totalSecs = parts[0] * 60 + parts[1];
+        } else if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+            totalSecs = parts[0] * 3600 + parts[1] * 60 + parts[2];
+        } else {
+            totalSecs = Math.round(Number(duration));
+        }
+    } else {
+        totalSecs = Math.round(Number(duration));
+    }
+    if (isNaN(totalSecs) || totalSecs <= 0) return '0:30';
+    const hours = Math.floor(totalSecs / 3600);
+    const mins = Math.floor((totalSecs % 3600) / 60);
+    const secs = totalSecs % 60;
+    if (hours > 0) {
+        return `${hours}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
+    return `${mins}:${String(secs).padStart(2, '0')}`;
+}
+
 export function parseAudioDuration(dur) {
     if (!dur) return '';
     if (typeof dur === 'number') {
@@ -12072,7 +12097,7 @@ async function loadMusicPickerResults(query = '', genre = '') {
                     <div class="track-info">
                         <span class="track-title">${escapeHTML(track.title)}</span>
                         <span class="track-artist">${escapeHTML(track.artist)}</span>
-                        <span class="track-meta-tag"><i data-lucide="music-2" style="width:11px;height:11px;"></i> 0:${track.duration < 10 ? '0' + track.duration : track.duration}</span>
+                        <span class="track-meta-tag"><i data-lucide="music-2" style="width:11px;height:11px;"></i> ${formatMusicDuration(track.duration)}</span>
                     </div>
                     <div class="track-actions-wrap">
                         <button type="button" class="track-fav-btn ${isFav ? 'favorited' : ''}" data-action="toggle-fav-track" data-track-id="${escapeHTML(track.id)}" title="${isFav ? 'Remover dos favoritos' : 'Salvar nos favoritos'}" aria-label="Favoritar">
@@ -12944,6 +12969,7 @@ if (typeof window !== 'undefined') {
     window.setUserFavoriteTracks = setUserFavoriteTracks;
     window.loadUserFavoriteTracks = loadUserFavoriteTracks;
     window.loadMusicPickerResults = loadMusicPickerResults;
+    window.formatMusicDuration = formatMusicDuration;
 }
 
 if (typeof window !== 'undefined') {
