@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E⚡%3C/text%3E%3C/svg%3E">
-    <link rel="stylesheet" href="style.css?v=1.0.70">
+    <link rel="stylesheet" href="style.css?v=1.0.71">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -383,6 +383,10 @@
                             <div class="chat-name-row">
                                 <span id="chat-window-name">Nome</span>
                                 <i data-lucide="badge-check" id="chat-window-verified-badge" class="verified-badge" style="display: none;"></i>
+                                <span id="chat-ephemeral-badge" class="chat-ephemeral-badge" style="display: none;" title="Mensagens temporárias ativas">
+                                    <i data-lucide="clock"></i>
+                                    <span id="chat-ephemeral-badge-text">24h</span>
+                                </span>
                             </div>
                             <div class="chat-subinfo-row">
                                 <span id="chat-window-status" class="status-animated">Online</span>
@@ -413,6 +417,10 @@
                     <div class="dropdown-item" id="chat-pin-trigger">
                         <i data-lucide="pin" id="chat-pin-icon"></i>
                         <span id="chat-pin-text">Fixar Conversa</span>
+                    </div>
+                    <div class="dropdown-item" id="chat-ephemeral-trigger">
+                        <i data-lucide="clock"></i>
+                        <span>Mensagens Temporárias</span>
                     </div>
                     <div class="dropdown-item" id="clear-chat-trigger">
                         <i data-lucide="trash"></i>
@@ -616,6 +624,53 @@
                 <div class="modal-actions-col">
                     <button id="confirm-clear-chat-btn" class="danger-btn btn-delete-everyone">Limpar Conversa Para Mim</button>
                     <button id="cancel-clear-chat-btn" class="close-btn modal-cancel-btn">Cancelar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Mensagens Temporárias -->
+        <div id="chat-ephemeral-modal" class="custom-modal-overlay">
+            <div class="custom-modal-card ephemeral-modal-card">
+                <div class="custom-modal-header">
+                    <h3 class="custom-modal-title"><i data-lucide="clock" class="ephemeral-header-icon"></i> Mensagens Temporárias</h3>
+                    <div class="header-icon-btn" id="close-ephemeral-modal" title="Fechar" aria-label="Fechar">
+                        <i data-lucide="x"></i>
+                    </div>
+                </div>
+                <p class="modal-instruction-text">Quando ativadas, as novas mensagens desta conversa desaparecerão e serão apagadas do banco de dados após o tempo escolhido para economizar espaço:</p>
+                <div class="ephemeral-options-list" id="ephemeral-options-list">
+                    <div class="ephemeral-option-card" id="ephemeral-option-24h" data-duration="24h">
+                        <div class="ephemeral-option-info">
+                            <span class="ephemeral-option-title">24 horas</span>
+                            <span class="ephemeral-option-desc">Limpa e apaga as mensagens após 1 dia</span>
+                        </div>
+                        <div class="ephemeral-radio-dot"></div>
+                    </div>
+                    <div class="ephemeral-option-card" id="ephemeral-option-7d" data-duration="7d">
+                        <div class="ephemeral-option-info">
+                            <span class="ephemeral-option-title">7 dias</span>
+                            <span class="ephemeral-option-desc">Limpa e apaga as mensagens após 1 semana</span>
+                        </div>
+                        <div class="ephemeral-radio-dot"></div>
+                    </div>
+                    <div class="ephemeral-option-card" id="ephemeral-option-30d" data-duration="30d">
+                        <div class="ephemeral-option-info">
+                            <span class="ephemeral-option-title">30 dias</span>
+                            <span class="ephemeral-option-desc">Limpa e apaga as mensagens após 1 mês</span>
+                        </div>
+                        <div class="ephemeral-radio-dot"></div>
+                    </div>
+                    <div class="ephemeral-option-card selected" id="ephemeral-option-off" data-duration="off">
+                        <div class="ephemeral-option-info">
+                            <span class="ephemeral-option-title">Desativadas</span>
+                            <span class="ephemeral-option-desc">As mensagens não expiram nem são apagadas</span>
+                        </div>
+                        <div class="ephemeral-radio-dot"></div>
+                    </div>
+                </div>
+                <div class="modal-actions-row" style="margin-top: 20px; display: flex; gap: 10px;">
+                    <button type="button" id="save-ephemeral-btn" class="submit-btn" style="flex: 1;">Salvar</button>
+                    <button type="button" id="cancel-ephemeral-btn" class="close-btn modal-cancel-btn" style="width: auto;">Cancelar</button>
                 </div>
             </div>
         </div>
@@ -2111,6 +2166,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.70" defer></script>
+    <script type="module" src="script.js?v=1.0.71" defer></script>
 </body>
 </html>

@@ -447,7 +447,7 @@ function createTestEnvironment() {
         this.addEventListener = (evt, cb) => { this['on' + evt] = cb; };
         this.removeEventListener = () => {};
       },
-      setInterval,
+      setInterval: (fn, ms) => { const t = setInterval(fn, ms); if (t && typeof t.unref === 'function') t.unref(); return t; },
       clearInterval,
       setTimeout,
       clearTimeout,
@@ -531,7 +531,7 @@ function createTestEnvironment() {
     localStorage: mockLocalStorage,
     requestAnimationFrame: (cb) => setTimeout(cb, 16),
     cancelAnimationFrame: (id) => clearTimeout(id),
-    setInterval,
+    setInterval: (fn, ms) => { const t = setInterval(fn, ms); if (t && typeof t.unref === 'function') t.unref(); return t; },
     clearInterval,
     setTimeout,
     clearTimeout,
@@ -5004,6 +5004,112 @@ test('Layout Responsivo Desktop no PC (>= 900px) e Preservação Mobile: Duas co
   // Simular fechar chat
   doc.querySelectorAll('.chat-card').forEach(c => c.classList.remove('active-chat'));
   assert.strictEqual(card1.classList.contains('active-chat'), false, 'Card 1 deve perder active-chat ao fechar');
+});
+
+test('Mensagens Temporárias (24h, 7d, 30d, desativado), Limpeza Física no Firestore, Lock de Envio Concorrente e Garantia Contra IDs Duplicados', async () => {
+  // 1. Integridade do HTML
+  assert.ok(htmlContent.includes('id="chat-ephemeral-trigger"'), 'Elemento chat-ephemeral-trigger deve existir no HTML');
+  assert.ok(htmlContent.includes('id="chat-ephemeral-modal"'), 'Elemento chat-ephemeral-modal deve existir no HTML');
+  assert.ok(htmlContent.includes('id="chat-ephemeral-badge"'), 'Elemento chat-ephemeral-badge deve existir no HTML');
+  assert.ok(htmlContent.includes('data-duration="24h"'), 'Opção 24h deve existir no HTML');
+  assert.ok(htmlContent.includes('data-duration="7d"'), 'Opção 7d deve existir no HTML');
+  assert.ok(htmlContent.includes('data-duration="30d"'), 'Opção 30d deve existir no HTML');
+  assert.ok(htmlContent.includes('data-duration="off"'), 'Opção desativadas deve existir no HTML');
+
+  // 2. Integridade do CSS
+  assert.ok(cssContent.includes('.chat-ephemeral-badge'), 'Regra .chat-ephemeral-badge deve existir no CSS');
+  assert.ok(cssContent.includes('.ephemeral-modal-card'), 'Regra .ephemeral-modal-card deve existir no CSS');
+  assert.ok(cssContent.includes('.ephemeral-option-card'), 'Regra .ephemeral-option-card deve existir no CSS');
+  assert.ok(cssContent.includes('.msg-ephemeral-clock'), 'Regra .msg-ephemeral-clock deve existir no CSS');
+
+  // 3. Execução e Comportamento no Sandbox
+  const env = createTestEnvironment();
+  const doc = env.sandbox.document;
+  const win = env.sandbox.window;
+
+  const modal = env.elements['chat-ephemeral-modal'];
+  const trigger = env.elements['chat-ephemeral-trigger'];
+  const closeBtn = env.elements['close-ephemeral-modal'];
+  const cancelBtn = env.elements['cancel-ephemeral-btn'];
+  const saveBtn = env.elements['save-ephemeral-btn'];
+  const badge = env.elements['chat-ephemeral-badge'];
+  const badgeText = env.elements['chat-ephemeral-badge-text'];
+
+  assert.ok(modal, 'Modal deve ser criado no ambiente');
+  assert.ok(trigger, 'Trigger deve ser criado no ambiente');
+  assert.ok(badge, 'Badge deve ser criado no ambiente');
+
+  // Configurar usuário e contato ativo
+  const user = { uid: 'test-user-1', displayName: 'Usuário Teste' };
+  win.setCurrentUser(user);
+  win.setCurrentProfile({ name: 'Usuário Teste', uid: 'test-user-1' });
+  win.setActiveChatContact({ uid: 'contact-ephemeral-user', name: 'Amigo Teste' });
+
+  // Inicializar o modal
+  win.setupEphemeralMessagesModal();
+
+  // Testar abertura do modal
+  trigger.onclick();
+  assert.ok(modal.classList.contains('active'), 'Modal deve abrir ao clicar no trigger');
+
+  // Testar seleção da opção de 24 horas
+  const option24h = env.elements['ephemeral-option-24h'];
+  assert.ok(option24h, 'Card de 24h deve existir no modal');
+  option24h.onclick();
+  assert.ok(option24h.classList.contains('selected'), 'Card de 24h deve ser selecionado');
+
+  // Salvar configuração
+  await saveBtn.onclick();
+  assert.strictEqual(modal.classList.contains('active'), false, 'Modal deve fechar após salvar');
+  assert.strictEqual(win.getCurrentChatEphemeralDuration(), '24h', 'Duração da conversa deve ser 24h');
+  assert.strictEqual(badge.style.display, 'inline-flex', 'Badge de mensagens temporárias deve ficar visível');
+  assert.strictEqual(badgeText.innerText, '24h', 'Texto do badge deve ser 24h');
+
+  // Verificar persistência no Firestore
+  const chatId = ['test-user-1', 'contact-ephemeral-user'].sort().join('_');
+  const chatDocInDb = env.firestoreDocs[`chats/${chatId}`];
+  assert.ok(chatDocInDb, 'Documento da conversa deve ser criado/atualizado no Firestore');
+  assert.strictEqual(chatDocInDb.ephemeralDuration, '24h', 'ephemeralDuration deve ser 24h no Firestore');
+
+  // Testar envio de mensagem com expiração de 24h
+  const startTime = Date.now();
+  const sentRef = await win.sendChatMessage('text', { text: 'Olá mensagem temporária' });
+  assert.ok(sentRef, 'Referência da mensagem deve ser retornada');
+  const msgDocInDb = env.firestoreDocs[`chats/${chatId}/messages/${sentRef.id}`];
+  assert.ok(msgDocInDb, 'Mensagem deve estar gravada no Firestore');
+  assert.strictEqual(msgDocInDb.ephemeral, true, 'Mensagem deve possuir flag ephemeral true');
+  assert.strictEqual(msgDocInDb.ephemeralDuration, '24h', 'Mensagem deve registrar ephemeralDuration 24h');
+  assert.ok(msgDocInDb.expiresAt >= startTime + 86400000 - 1000, 'expiresAt deve ser de pelo menos 24h a frente');
+  assert.ok(msgDocInDb.clientMsgId, 'Mensagem deve possuir clientMsgId único');
+  assert.ok(sentRef.id.startsWith('msg_'), 'ID gerado deve possuir prefixo único garantido');
+
+  // Testar lock contra envio concorrente
+  assert.strictEqual(win.getIsSendingChatMessage(), false, 'Lock deve estar liberado após término');
+
+  // Testar limpeza física de mensagens expiradas no Firestore (purgeExpiredMessages)
+  const expiredMsgId1 = 'msg_expired_1';
+  const expiredMsgId2 = 'msg_expired_2';
+  env.firestoreDocs[`chats/${chatId}/messages/${expiredMsgId1}`] = { text: 'Antiga 1', expiresAt: Date.now() - 5000 };
+  env.firestoreDocs[`chats/${chatId}/messages/${expiredMsgId2}`] = { text: 'Antiga 2', expiresAt: Date.now() - 10000, hasChunks: true };
+  env.firestoreDocs[`chats/${chatId}/messages/${expiredMsgId2}/chunks/0`] = { part: 'chunkdata' };
+
+  assert.ok(env.firestoreDocs[`chats/${chatId}/messages/${expiredMsgId1}`], 'Msg 1 deve existir antes da purga');
+  assert.ok(env.firestoreDocs[`chats/${chatId}/messages/${expiredMsgId2}`], 'Msg 2 deve existir antes da purga');
+
+  await win.purgeExpiredMessages(chatId, [expiredMsgId1, expiredMsgId2], [expiredMsgId2]);
+
+  assert.strictEqual(env.firestoreDocs[`chats/${chatId}/messages/${expiredMsgId1}`], undefined, 'Msg 1 deve ser excluída fisicamente do Firestore');
+  assert.strictEqual(env.firestoreDocs[`chats/${chatId}/messages/${expiredMsgId2}`], undefined, 'Msg 2 deve ser excluída fisicamente do Firestore');
+
+  // Testar desativação das mensagens temporárias
+  trigger.onclick();
+  const optionOff = env.elements['ephemeral-option-off'];
+  assert.ok(optionOff, 'Card desativadas deve existir');
+  optionOff.onclick();
+  await saveBtn.onclick();
+  assert.strictEqual(win.getCurrentChatEphemeralDuration(), 'off', 'Duração deve voltar para off');
+  assert.strictEqual(badge.style.display, 'none', 'Badge deve ficar oculto quando desativado');
+  assert.strictEqual(env.firestoreDocs[`chats/${chatId}`].ephemeralDuration, 'off', 'Firestore deve registrar off');
 });
 
 

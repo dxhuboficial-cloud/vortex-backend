@@ -91,6 +91,10 @@ let storyMusicAudio = null;
 let isStoryMusicMuted = false;
 
 let currentChatUnsubscribe = null;
+let currentChatDocUnsubscribe = null;
+let currentChatEphemeralDuration = 'off';
+let ephemeralExpirationTimer = null;
+let isSendingChatMessage = false;
 let contactsUnsubscribe = null;
 let requestsUnsubscribe = null;
 let storiesUnsubscribe = null;
@@ -2801,7 +2805,7 @@ export function getPathSegments(collectionPath) {
     return [collectionPath];
 }
 
-export async function saveMediaWithChunks(collectionName, docData, mediaFieldName, mediaPayload) {
+export async function saveMediaWithChunks(collectionName, docData, mediaFieldName, mediaPayload, customDocId = null) {
     const pathSegments = getPathSegments(collectionName);
     const colRef = collection(db, ...pathSegments);
 
@@ -2811,7 +2815,13 @@ export async function saveMediaWithChunks(collectionName, docData, mediaFieldNam
             [mediaFieldName]: mediaPayload || null,
             hasChunks: false
         };
-        const docRef = await addDoc(colRef, fullDoc);
+        let docRef;
+        if (customDocId) {
+            docRef = doc(db, ...pathSegments, customDocId);
+            await setDoc(docRef, fullDoc);
+        } else {
+            docRef = await addDoc(colRef, fullDoc);
+        }
         if (mediaPayload && docRef && docRef.id) {
             mediaChunkCache.set(`${collectionName}_${docRef.id}`, mediaPayload);
         }
@@ -2833,7 +2843,13 @@ export async function saveMediaWithChunks(collectionName, docData, mediaFieldNam
         chunkSize: MEDIA_CHUNK_SIZE
     };
 
-    const docRef = await addDoc(colRef, mainDoc);
+    let docRef;
+    if (customDocId) {
+        docRef = doc(db, ...pathSegments, customDocId);
+        await setDoc(docRef, mainDoc);
+    } else {
+        docRef = await addDoc(colRef, mainDoc);
+    }
 
     // Gravar os chunks na subcoleção em lotes de até 400
     const BATCH_LIMIT = 400;
@@ -5538,13 +5554,201 @@ export function resolveChatChunkedMedia(container, chatId) {
     });
 }
 
+/* ==========================================================================
+   MENSAGENS TEMPORÁRIAS (24h, 7d, 30d, off) & LIMPEZA AUTOMÁTICA
+   ========================================================================== */
+export function updateChatEphemeralUI(duration = 'off') {
+    currentChatEphemeralDuration = duration || 'off';
+    const badge = document.getElementById('chat-ephemeral-badge');
+    const badgeText = document.getElementById('chat-ephemeral-badge-text');
+    if (badge && badgeText) {
+        if (currentChatEphemeralDuration && currentChatEphemeralDuration !== 'off') {
+            badge.style.display = 'inline-flex';
+            badgeText.innerText = currentChatEphemeralDuration;
+            const labelMap = {
+                '24h': '24 horas',
+                '7d': '7 dias',
+                '30d': '30 dias'
+            };
+            badge.title = `Mensagens temporárias ativas (${labelMap[currentChatEphemeralDuration] || currentChatEphemeralDuration})`;
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+
+    // Atualiza seleção visual dos cards no modal se existir
+    const modal = document.getElementById('chat-ephemeral-modal');
+    if (modal) {
+        const directCards = ['ephemeral-option-24h', 'ephemeral-option-7d', 'ephemeral-option-30d', 'ephemeral-option-off']
+            .map(id => document.getElementById(id))
+            .filter(Boolean);
+        const allCards = directCards.length > 0 ? directCards : Array.from(modal.querySelectorAll('.ephemeral-option-card') || []);
+        allCards.forEach(card => {
+            card.classList.toggle('selected', card.dataset.duration === currentChatEphemeralDuration);
+        });
+    }
+}
+
+export async function purgeExpiredMessages(chatId, expiredDocIds = [], expiredChunkDocIds = []) {
+    if (!chatId || !Array.isArray(expiredDocIds) || expiredDocIds.length === 0) return;
+    try {
+        if (Array.isArray(expiredChunkDocIds) && expiredChunkDocIds.length > 0) {
+            for (const msgId of expiredChunkDocIds) {
+                try {
+                    const chunksSnap = await getDocs(collection(db, 'chats', chatId, 'messages', msgId, 'chunks'));
+                    if (!chunksSnap.empty) {
+                        const chunkBatch = writeBatch(db);
+                        chunksSnap.forEach(cd => chunkBatch.delete(cd.ref));
+                        await chunkBatch.commit();
+                    }
+                } catch (chunkErr) {
+                    console.warn('Erro ao limpar chunks de mensagem expirada:', chunkErr);
+                }
+            }
+        }
+
+        for (let i = 0; i < expiredDocIds.length; i += 400) {
+            const batch = writeBatch(db);
+            const slice = expiredDocIds.slice(i, i + 400);
+            slice.forEach(msgId => {
+                const ref = doc(db, 'chats', chatId, 'messages', msgId);
+                batch.delete(ref);
+            });
+            await batch.commit();
+        }
+        console.log(`[VORTEX] Limpeza de ${expiredDocIds.length} mensagem(ns) temporária(s) expirada(s) realizada com sucesso.`);
+    } catch (err) {
+        console.error('Erro ao purgar mensagens expiradas:', err);
+    }
+}
+
+export async function saveChatEphemeralDuration(chatId, duration = 'off') {
+    if (!chatId || !currentUser) return;
+    currentChatEphemeralDuration = duration;
+    updateChatEphemeralUI(duration);
+
+    await setDoc(doc(db, 'chats', chatId), {
+        ephemeralDuration: duration,
+        ephemeralUpdatedAt: Date.now(),
+        ephemeralUpdatedBy: currentUser.uid
+    }, { merge: true });
+
+    if (activeChatContact && activeChatContact.isGroup && activeChatContact.uid) {
+        await updateDoc(doc(db, 'groups', activeChatContact.uid), {
+            ephemeralDuration: duration
+        }).catch(() => {});
+    }
+}
+
+export function setupEphemeralMessagesModal() {
+    const trigger = document.getElementById('chat-ephemeral-trigger');
+    const modal = document.getElementById('chat-ephemeral-modal');
+    const closeBtn = document.getElementById('close-ephemeral-modal');
+    const cancelBtn = document.getElementById('cancel-ephemeral-btn');
+    const saveBtn = document.getElementById('save-ephemeral-btn');
+
+    if (!modal) return;
+
+    let selectedDuration = currentChatEphemeralDuration || 'off';
+
+    const getCards = () => {
+        const directCards = ['ephemeral-option-24h', 'ephemeral-option-7d', 'ephemeral-option-30d', 'ephemeral-option-off']
+            .map(id => document.getElementById(id))
+            .filter(Boolean);
+        if (directCards.length > 0) return directCards;
+        return Array.from(modal.querySelectorAll('.ephemeral-option-card') || []);
+    };
+
+    const updateUISelection = (dur) => {
+        selectedDuration = dur;
+        getCards().forEach(card => {
+            const matches = card.dataset.duration === dur;
+            card.classList.toggle('selected', matches);
+        });
+    };
+
+    if (trigger) {
+        trigger.onclick = () => {
+            document.getElementById('chat-dropdown-menu')?.classList.remove('active');
+            if (!activeChatContact) {
+                showToast('Aviso', 'Abra uma conversa para configurar as mensagens temporárias.', 'yellow');
+                return;
+            }
+            selectedDuration = currentChatEphemeralDuration || 'off';
+            updateUISelection(selectedDuration);
+            modal.classList.add('active');
+        };
+    }
+
+    getCards().forEach(card => {
+        card.onclick = () => {
+            const dur = card.dataset.duration;
+            if (dur) updateUISelection(dur);
+        };
+    });
+
+    if (closeBtn) {
+        closeBtn.onclick = () => {
+            modal.classList.remove('active');
+        };
+    }
+
+    if (cancelBtn) {
+        cancelBtn.onclick = () => {
+            modal.classList.remove('active');
+        };
+    }
+
+    if (saveBtn) {
+        saveBtn.onclick = async () => {
+            const chatId = getActiveChatId();
+            if (!chatId || !activeChatContact) return;
+            try {
+                await saveChatEphemeralDuration(chatId, selectedDuration);
+                modal.classList.remove('active');
+                const labelMap = {
+                    '24h': '24 horas',
+                    '7d': '7 dias',
+                    '30d': '30 dias',
+                    'off': 'desativadas'
+                };
+                showToast('Mensagens Temporárias', `Configuração salva: mensagens temporárias ${labelMap[selectedDuration] || selectedDuration}.`, 'green');
+                playSound(clickSound);
+            } catch (err) {
+                console.error('Erro ao salvar mensagens temporárias:', err);
+                showToast('Erro', 'Não foi possível salvar a configuração.', 'red');
+            }
+        };
+    }
+}
+
 function loadRealtimeMessages() {
     if (!currentUser || !activeChatContact) return;
     if (currentChatUnsubscribe) currentChatUnsubscribe();
+    if (currentChatDocUnsubscribe) {
+        currentChatDocUnsubscribe();
+        currentChatDocUnsubscribe = null;
+    }
 
     const chatId = getActiveChatId();
     if (!chatId) return;
-    const messagesQuery = query(collection(db, 'chats', chatId, 'messages'), orderBy('createdAt', 'asc'), limit(100));
+
+    // Sincronizar configuração de mensagens temporárias deste chat
+    try {
+        currentChatDocUnsubscribe = onSnapshot(doc(db, 'chats', chatId), (cSnap) => {
+            if (cSnap.exists()) {
+                const cData = cSnap.data();
+                updateChatEphemeralUI(cData.ephemeralDuration || 'off');
+            } else {
+                updateChatEphemeralUI('off');
+            }
+        }, (err) => console.warn('Erro ao ouvir configurações do chat:', err));
+    } catch (e) {
+        console.warn('Erro ao registrar listener do chat:', e);
+    }
+
+    // Busca as mensagens mais recentes (evita que o chat trave em 100 mensagens)
+    const messagesQuery = query(collection(db, 'chats', chatId, 'messages'), orderBy('createdAt', 'desc'), limit(150));
 
     currentChatUnsubscribe = onSnapshot(messagesQuery, (snapshot) => {
         const container = document.getElementById('message-container');
@@ -5552,9 +5756,63 @@ function loadRealtimeMessages() {
         container.innerHTML = '';
         currentChatMessagesMap.clear();
 
-        // Marcar mensagens como lidas
-        snapshot.forEach(docSnap => {
-            const message = { id: docSnap.id, ...docSnap.data() };
+        // Inverter para ordem cronológica (mais antigas -> mais novas)
+        const rawDocs = [...snapshot.docs].reverse();
+        const now = Date.now();
+        const expiredDocIds = [];
+        const expiredChunkDocIds = [];
+        const validDocs = [];
+
+        rawDocs.forEach(docSnap => {
+            const data = docSnap.data();
+            if (data.expiresAt && Number(data.expiresAt) <= now) {
+                expiredDocIds.push(docSnap.id);
+                if (data.hasChunks) {
+                    expiredChunkDocIds.push(docSnap.id);
+                }
+                return;
+            }
+            validDocs.push(docSnap);
+        });
+
+        // Limpeza física no Firestore para liberar espaço
+        if (expiredDocIds.length > 0) {
+            purgeExpiredMessages(chatId, expiredDocIds, expiredChunkDocIds).catch(() => {});
+        }
+
+        // Agendamento dinâmico da próxima expiração
+        if (ephemeralExpirationTimer) {
+            clearTimeout(ephemeralExpirationTimer);
+            ephemeralExpirationTimer = null;
+        }
+        let nextExpirationDiff = null;
+        validDocs.forEach(docSnap => {
+            const data = docSnap.data();
+            if (data.expiresAt && Number(data.expiresAt) > now) {
+                const diff = Number(data.expiresAt) - now;
+                if (nextExpirationDiff === null || diff < nextExpirationDiff) {
+                    nextExpirationDiff = diff;
+                }
+            }
+        });
+        if (nextExpirationDiff !== null && nextExpirationDiff > 0) {
+            const timerDelay = Math.min(Math.max(nextExpirationDiff + 500, 1000), 3600000);
+            ephemeralExpirationTimer = setTimeout(() => {
+                if (activeChatContact && getActiveChatId() === chatId) {
+                    loadRealtimeMessages();
+                }
+            }, timerDelay);
+            if (ephemeralExpirationTimer && typeof ephemeralExpirationTimer.unref === 'function') {
+                ephemeralExpirationTimer.unref();
+            }
+        }
+
+        // Marcar mensagens como lidas com prevenção estrita contra duplicação de ID
+        const seenMsgIds = new Set();
+        validDocs.forEach(docSnap => {
+            if (seenMsgIds.has(docSnap.id)) return;
+            seenMsgIds.add(docSnap.id);
+            const message = { ...docSnap.data(), id: docSnap.id };
             currentChatMessagesMap.set(docSnap.id, message);
             if (message.deletedFor && message.deletedFor.includes(currentUser.uid)) return;
             if (!activeChatContact.isGroup && (blockedContactsSet.has(message.senderUid) || (message.senderUid && blockedContactsSet.has(message.senderUid)))) return;
@@ -5622,8 +5880,11 @@ function loadRealtimeMessages() {
             container.appendChild(introCard);
         }
 
-        snapshot.forEach(docSnap => {
-            const msg = { id: docSnap.id, ...docSnap.data() };
+        const renderedMsgIds = new Set();
+        validDocs.forEach(docSnap => {
+            if (renderedMsgIds.has(docSnap.id)) return;
+            renderedMsgIds.add(docSnap.id);
+            const msg = { ...docSnap.data(), id: docSnap.id };
             if (msg.deletedFor && msg.deletedFor.includes(currentUser.uid)) return;
             if (!activeChatContact.isGroup && msg.senderUid !== currentUser.uid && blockedContactsSet.has(msg.senderUid)) {
                 return;
@@ -5833,6 +6094,11 @@ function loadRealtimeMessages() {
                 }
             }
 
+            let ephemeralClockHTML = '';
+            if (msg.ephemeral || msg.expiresAt) {
+                ephemeralClockHTML = `<i data-lucide="clock" class="msg-ephemeral-clock" title="Mensagem temporária${msg.ephemeralDuration ? ` (${msg.ephemeralDuration})` : ''}"></i>`;
+            }
+
             msgDiv.innerHTML = `
                 ${groupSenderHTML}
                 ${forwardedHTML}
@@ -5840,6 +6106,7 @@ function loadRealtimeMessages() {
                 ${mediaHTML}
                 ${textHTML}
                 <div class="msg-status">
+                    ${ephemeralClockHTML}
                     ${msg.isEdited && !msg.deletedForEveryone ? `<span class="msg-edited-tag" title="Mensagem editada"><i data-lucide="pencil"></i>Editada</span>` : ''}
                     <span class="msg-time">${timeStr}</span>
                     ${isMe && !msg.deletedForEveryone ? `<i data-lucide="check-check" class="seen-icon ${hasBeenSeen ? 'seen-confirmed' : 'seen-pending'}" title="${hasBeenSeen ? 'Visualizada' : 'Não visualizada'}"></i>` : ''}
@@ -8944,8 +9211,8 @@ if (chatInput) {
 
     chatInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
+            e.preventDefault();
             if (editingMessage) {
-                e.preventDefault();
                 const val = chatInput.value.trim();
                 if (!val) {
                     showToast('Aviso', 'A mensagem não pode ficar vazia.', 'yellow');
@@ -8961,11 +9228,11 @@ if (chatInput) {
 
             const val = chatInput.value.trim();
             if (val) {
-                sendChatMessage('text', { text: val });
                 chatInput.value = '';
                 document.getElementById('chat-send-icon')?.setAttribute('data-lucide', 'mic');
                 if (activeChatContact && currentUser) updateTypingStateForActiveChat(false);
                 if (window.lucide) lucide.createIcons();
+                sendChatMessage('text', { text: val });
             }
         }
     });
@@ -9130,11 +9397,11 @@ if (chatSendBtn) {
 
         const val = chatInput?.value.trim();
         if (val) {
-            sendChatMessage('text', { text: val });
             if (chatInput) chatInput.value = '';
             updateTypingStateForActiveChat(false);
             document.getElementById('chat-send-icon')?.setAttribute('data-lucide', 'mic');
             if (window.lucide) lucide.createIcons();
+            sendChatMessage('text', { text: val });
         } else {
             toggleVoiceRecording();
         }
@@ -9170,118 +9437,148 @@ document.getElementById('recording-slide-cancel')?.addEventListener('click', () 
 
 async function sendChatMessage(type = 'text', payload = {}) {
     if (!currentUser || !activeChatContact) return;
-    if (isUserBanned(currentProfile)) {
-        showToast('Conta Suspensa', 'Sua conta está banida e não pode enviar mensagens.', 'red');
+    if (isSendingChatMessage) {
+        console.warn('[VORTEX] Envio de mensagem em andamento, ignorando chamada concorrente.');
         return;
     }
-    if (isUserRestricted(currentProfile)) {
-        showRestrictionActionNotice();
-        return;
-    }
-    if (!activeChatContact.isGroup) {
-        if (blockedContactsSet.has(activeChatContact.uid)) {
-            showToast('Contato Bloqueado', 'Você bloqueou este contato. Desbloqueie para conversar.', 'red');
+    isSendingChatMessage = true;
+    try {
+        if (isUserBanned(currentProfile)) {
+            showToast('Conta Suspensa', 'Sua conta está banida e não pode enviar mensagens.', 'red');
             return;
         }
-        if (isBlockedByActiveContact) {
-            showToast('Bloqueado', 'Você foi bloqueado por este contato e não pode enviar mensagens.', 'red');
+        if (isUserRestricted(currentProfile)) {
+            showRestrictionActionNotice();
             return;
         }
-        try {
-            const blockedBySnap = await getDoc(doc(db, 'users', activeChatContact.uid, 'blocked', currentUser.uid));
-            if (blockedBySnap.exists()) {
-                isBlockedByActiveContact = true;
-                updateActiveChatBlockedUI();
-                showToast('Mensagem não entregue', 'Você foi bloqueado por este contato.', 'red');
+        if (!activeChatContact.isGroup) {
+            if (blockedContactsSet.has(activeChatContact.uid)) {
+                showToast('Contato Bloqueado', 'Você bloqueou este contato. Desbloqueie para conversar.', 'red');
                 return;
             }
-        } catch (e) {
-            console.warn('Erro ao checar bloqueio:', e);
-        }
-    }
-    if (activeChatContact.isGroup && activeChatContact.paused) {
-        showToast('Grupo pausado', 'O administrador pausou o envio de mensagens.', 'red');
-        return;
-    }
-    if (activeChatContact.isGroup) {
-        const groupSnap = await getDoc(doc(db, 'groups', activeChatContact.uid));
-        if (!groupSnap.exists()) {
-            showToast('Grupo indisponível', 'Este grupo não existe mais.', 'red');
-            return;
-        }
-        if (groupSnap.data().paused) {
-            activeChatContact.paused = true;
-            const chatInput = document.getElementById('chat-input-main');
-            const chatSendButton = document.getElementById('chat-send-btn-main');
-            if (chatInput) {
-                chatInput.disabled = true;
-                chatInput.placeholder = 'Grupo pausado pelo administrador';
+            if (isBlockedByActiveContact) {
+                showToast('Bloqueado', 'Você foi bloqueado por este contato e não pode enviar mensagens.', 'red');
+                return;
             }
-            if (chatSendButton) chatSendButton.disabled = true;
+            try {
+                const blockedBySnap = await getDoc(doc(db, 'users', activeChatContact.uid, 'blocked', currentUser.uid));
+                if (blockedBySnap.exists()) {
+                    isBlockedByActiveContact = true;
+                    updateActiveChatBlockedUI();
+                    showToast('Mensagem não entregue', 'Você foi bloqueado por este contato.', 'red');
+                    return;
+                }
+            } catch (e) {
+                console.warn('Erro ao checar bloqueio:', e);
+            }
+        }
+        if (activeChatContact.isGroup && activeChatContact.paused) {
             showToast('Grupo pausado', 'O administrador pausou o envio de mensagens.', 'red');
             return;
         }
-    }
-    const chatId = getActiveChatId();
-    if (!chatId) return;
-
-    const msgData = {
-        senderUid: currentUser.uid,
-        senderName: currentProfile?.name || currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Usuário',
-        senderAvatar: currentProfile?.avatar || currentUser?.photoURL || '',
-        type: type,
-        text: payload.text || '',
-        fileData: payload.fileData || '',
-        fileName: payload.fileName || '',
-        fileSize: payload.fileSize || '',
-        duration: payload.duration || '',
-        uploadState: payload.uploadState || 'sent',
-        uploadPercent: payload.uploadPercent || 100,
-        createdAt: Date.now()
-    };
-
-    if (payload.poll) {
-        msgData.poll = payload.poll;
-    }
-
-    const isSenderVip = checkIsVipUser(currentProfile);
-    if (isSenderVip) {
-        msgData.isVip = true;
-        msgData.isVerified = true;
-        const fontStyle = currentProfile?.vipTextStyle || (typeof localStorage !== 'undefined' ? localStorage.getItem('vortex_vip_font') : 'normal') || 'normal';
-        if (fontStyle && fontStyle !== 'normal') {
-            msgData.vipTextStyle = fontStyle;
+        if (activeChatContact.isGroup) {
+            const groupSnap = await getDoc(doc(db, 'groups', activeChatContact.uid));
+            if (!groupSnap.exists()) {
+                showToast('Grupo indisponível', 'Este grupo não existe mais.', 'red');
+                return;
+            }
+            if (groupSnap.data().paused) {
+                activeChatContact.paused = true;
+                const chatInput = document.getElementById('chat-input-main');
+                const chatSendButton = document.getElementById('chat-send-btn-main');
+                if (chatInput) {
+                    chatInput.disabled = true;
+                    chatInput.placeholder = 'Grupo pausado pelo administrador';
+                }
+                if (chatSendButton) chatSendButton.disabled = true;
+                showToast('Grupo pausado', 'O administrador pausou o envio de mensagens.', 'red');
+                return;
+            }
         }
-    }
+        const chatId = getActiveChatId();
+        if (!chatId) return;
 
-    if (payload.isTrimmed) {
-        msgData.isTrimmed = true;
-    }
-    if (payload.durationSeconds !== undefined) {
-        msgData.durationSeconds = payload.durationSeconds;
-    }
-    if (payload.viewOnce) {
-        msgData.viewOnce = true;
-        msgData.viewedBy = [];
-    }
-
-    if (replyingToMsg) {
-        msgData.replyTo = {
-            id: replyingToMsg.id,
-            text: replyingToMsg.text || (replyingToMsg.type === 'image' ? 'Foto' : (replyingToMsg.type === 'audio' ? 'Áudio' : 'Arquivo')),
-            senderName: replyingToMsg.senderName || 'Contato'
+        const msgData = {
+            senderUid: currentUser.uid,
+            senderName: currentProfile?.name || currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Usuário',
+            senderAvatar: currentProfile?.avatar || currentUser?.photoURL || '',
+            type: type,
+            text: payload.text || '',
+            fileData: payload.fileData || '',
+            fileName: payload.fileName || '',
+            fileSize: payload.fileSize || '',
+            duration: payload.duration || '',
+            uploadState: payload.uploadState || 'sent',
+            uploadPercent: payload.uploadPercent || 100,
+            createdAt: Date.now()
         };
-        cancelReply();
-    }
 
-    let messageRef;
-    if (msgData.fileData && msgData.fileData.length > MAX_DIRECT_PAYLOAD_CHARS) {
-        messageRef = await saveMediaWithChunks(`chats/${chatId}/messages`, msgData, 'fileData', msgData.fileData);
-    } else {
-        messageRef = await addDoc(collection(db, 'chats', chatId, 'messages'), msgData);
+        if (payload.poll) {
+            msgData.poll = payload.poll;
+        }
+
+        const isSenderVip = checkIsVipUser(currentProfile);
+        if (isSenderVip) {
+            msgData.isVip = true;
+            msgData.isVerified = true;
+            const fontStyle = currentProfile?.vipTextStyle || (typeof localStorage !== 'undefined' ? localStorage.getItem('vortex_vip_font') : 'normal') || 'normal';
+            if (fontStyle && fontStyle !== 'normal') {
+                msgData.vipTextStyle = fontStyle;
+            }
+        }
+
+        if (payload.isTrimmed) {
+            msgData.isTrimmed = true;
+        }
+        if (payload.durationSeconds !== undefined) {
+            msgData.durationSeconds = payload.durationSeconds;
+        }
+        if (payload.viewOnce) {
+            msgData.viewOnce = true;
+            msgData.viewedBy = [];
+        }
+
+        if (replyingToMsg) {
+            msgData.replyTo = {
+                id: replyingToMsg.id,
+                text: replyingToMsg.text || (replyingToMsg.type === 'image' ? 'Foto' : (replyingToMsg.type === 'audio' ? 'Áudio' : 'Arquivo')),
+                senderName: replyingToMsg.senderName || 'Contato'
+            };
+            cancelReply();
+        }
+
+        // Suporte para mensagens temporárias (expiração automática e limpeza no Firestore)
+        if (currentChatEphemeralDuration && currentChatEphemeralDuration !== 'off') {
+            const durationMsMap = {
+                '24h': 24 * 60 * 60 * 1000,
+                '7d': 7 * 24 * 60 * 60 * 1000,
+                '30d': 30 * 24 * 60 * 60 * 1000
+            };
+            const durMs = durationMsMap[currentChatEphemeralDuration];
+            if (durMs) {
+                msgData.ephemeral = true;
+                msgData.ephemeralDuration = currentChatEphemeralDuration;
+                msgData.expiresAt = Date.now() + durMs;
+            }
+        }
+
+        // Geração de ID globalmente único para prevenir qualquer ID duplicado no Firestore
+        const uniqueMsgId = `msg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}_${currentUser.uid.substring(0, 5)}`;
+        msgData.clientMsgId = uniqueMsgId;
+
+        let messageRef;
+        if (msgData.fileData && msgData.fileData.length > MAX_DIRECT_PAYLOAD_CHARS) {
+            messageRef = await saveMediaWithChunks(`chats/${chatId}/messages`, msgData, 'fileData', msgData.fileData, uniqueMsgId);
+        } else {
+            const targetDocRef = doc(db, 'chats', chatId, 'messages', uniqueMsgId);
+            await setDoc(targetDocRef, msgData);
+            messageRef = targetDocRef;
+        }
+        playSound(replySendSound);
+        return messageRef;
+    } finally {
+        isSendingChatMessage = false;
     }
-    playSound(replySendSound);
-    return messageRef;
 }
 
 function createSendingStatusBubble(type, label, fileName = '') {
@@ -14113,6 +14410,16 @@ function closeChat() {
         updateTypingStateForActiveChat(false);
     }
     if (currentChatUnsubscribe) currentChatUnsubscribe();
+    if (currentChatDocUnsubscribe) {
+        currentChatDocUnsubscribe();
+        currentChatDocUnsubscribe = null;
+    }
+    if (ephemeralExpirationTimer) {
+        clearTimeout(ephemeralExpirationTimer);
+        ephemeralExpirationTimer = null;
+    }
+    currentChatEphemeralDuration = 'off';
+    updateChatEphemeralUI('off');
     if (contactStatusUnsubscribe) contactStatusUnsubscribe();
     if (activeChatActivityUnsubscribe) activeChatActivityUnsubscribe();
     if (blockedByContactUnsubscribe) {
@@ -15434,6 +15741,12 @@ if (typeof window !== 'undefined') {
     window.setupVipSettingsControls = setupVipSettingsControls;
     window.startRgbThemeChroma = startRgbThemeChroma;
     window.stopRgbThemeChroma = stopRgbThemeChroma;
+    window.updateChatEphemeralUI = updateChatEphemeralUI;
+    window.purgeExpiredMessages = purgeExpiredMessages;
+    window.saveChatEphemeralDuration = saveChatEphemeralDuration;
+    window.setupEphemeralMessagesModal = setupEphemeralMessagesModal;
+    window.getCurrentChatEphemeralDuration = () => currentChatEphemeralDuration;
+    window.getIsSendingChatMessage = () => isSendingChatMessage;
 }
 
 if (typeof window !== 'undefined') {
@@ -15441,4 +15754,5 @@ if (typeof window !== 'undefined') {
     setupChatEmojiDrawer();
     setupChatWallpaperModal();
     setupVipSettingsControls();
+    setupEphemeralMessagesModal();
 }
