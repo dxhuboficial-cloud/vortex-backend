@@ -1000,7 +1000,7 @@ let rgbThemeHue = 0;
 
 export function startRgbThemeChroma() {
     if (rgbThemeChromaInterval) return;
-    rgbThemeChromaInterval = setInterval(() => {
+    const tick = () => {
         if (typeof document === 'undefined' || !document.body || !document.body.classList.contains('theme-rgb')) {
             stopRgbThemeChroma();
             return;
@@ -1013,7 +1013,9 @@ export function startRgbThemeChroma() {
         if (document.body && document.body.style && typeof document.body.style.setProperty === 'function') {
             document.body.style.setProperty('--accent-color', color);
         }
-    }, 60);
+    };
+    tick();
+    rgbThemeChromaInterval = setInterval(tick, 60);
 }
 
 export function stopRgbThemeChroma() {

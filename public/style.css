@@ -7404,46 +7404,41 @@ body.theme-hacker .icon-btn {
 }
 
 body.theme-rgb {
-    /* O valor dinâmico de --accent-color é ciclado suavemente por startRgbThemeChroma() no JS */
+    --bg-color: #08070d !important;
+    --bg-secondary: #100e1a !important;
+    background: radial-gradient(circle at 50% 0%, #170b24 0%, #08070d 100%) !important;
 }
 
 body.theme-rgb .app-container {
-    box-shadow: inset 0 0 30px rgba(255, 0, 127, 0.12), 0 0 25px rgba(0, 240, 255, 0.18) !important;
+    box-shadow: inset 0 0 35px rgba(255, 0, 127, 0.1), 0 0 25px rgba(0, 240, 255, 0.12) !important;
 }
 
 body.theme-rgb .sidebar,
-body.theme-rgb .header,
+body.theme-rgb header,
 body.theme-rgb .chat-window,
-body.theme-rgb .settings-panel,
-body.theme-rgb .bottom-nav-bar {
-    animation: rgbRainbowBorder 4.5s linear infinite !important;
-    position: relative;
-}
-
-body.theme-rgb .header::after,
-body.theme-rgb .chat-window-header::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, #ff0055, #ff9900, #00ff66, #00f0ff, #aa00ff, #ff0055);
-    background-size: 300% 100%;
-    animation: rgbRainbowGradient 3.5s linear infinite;
-    z-index: 10;
-}
-
-body.theme-rgb .danger-btn,
-body.theme-rgb .nav-tab.active,
-body.theme-rgb .chat-tab-pill.active {
-    animation: rgbRainbowBorder 3.5s linear infinite !important;
+body.theme-rgb .settings-drawer {
+    border-color: var(--accent-color) !important;
+    box-shadow: 0 0 14px rgba(255, 0, 127, 0.15), inset 0 0 14px rgba(0, 240, 255, 0.08) !important;
 }
 
 body.theme-rgb .message.sent {
     background: linear-gradient(135deg, rgba(255, 0, 127, 0.35), rgba(0, 240, 255, 0.35)) !important;
-    border: 1px solid rgba(255, 255, 255, 0.4) !important;
-    animation: rgbRainbowBorder 5s linear infinite !important;
+    border: 1px solid var(--accent-color) !important;
+    box-shadow: 0 0 10px rgba(0, 240, 255, 0.25) !important;
+}
+
+body.theme-rgb .message.received {
+    background: rgba(16, 14, 26, 0.92) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+body.theme-rgb .danger-btn {
+    box-shadow: 0 0 14px var(--accent-color) !important;
+}
+
+body.theme-rgb .nav-tab.active,
+body.theme-rgb .chat-tab-pill.active {
+    box-shadow: 0 0 12px var(--accent-color) !important;
 }
 
 /* ==========================================================================
