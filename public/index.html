@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E⚡%3C/text%3E%3C/svg%3E">
-    <link rel="stylesheet" href="style.css?v=1.0.67">
+    <link rel="stylesheet" href="style.css?v=1.0.68">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -105,104 +105,107 @@
             <div class="view-once-hint">Toque em qualquer lugar para fechar</div>
         </div>
 
-        <!-- Header VIP com Botões Interativos -->
-        <header>
-            <h1>VORTEX <span>VIP</span></h1>
-            <div class="header-icons">
-                <div class="header-icon-btn" id="search-trigger" title="Buscar Usuários por @" aria-label="Buscar Usuários por @">
-                    <i data-lucide="search"></i>
+        <!-- Barra Lateral de Conversas (Sidebar Desktop / Lista Mobile) -->
+        <aside class="sidebar" id="main-sidebar">
+            <!-- Header VIP com Botões Interativos -->
+            <header>
+                <h1>VORTEX <span>VIP</span></h1>
+                <div class="header-icons">
+                    <div class="header-icon-btn" id="search-trigger" title="Buscar Usuários por @" aria-label="Buscar Usuários por @">
+                        <i data-lucide="search"></i>
+                    </div>
+                    <div class="header-icon-btn requests-icon-wrapper" id="requests-btn" title="Solicitações de Amizade" aria-label="Solicitações">
+                        <i data-lucide="users"></i>
+                        <span id="requests-badge" class="requests-badge">0</span>
+                    </div>
+                    <div class="header-icon-btn requests-icon-wrapper" id="notifications-bell-btn" title="Notificações, Avisos e Alertas" aria-label="Notificações">
+                        <i data-lucide="bell"></i>
+                        <span id="notifications-bell-badge" class="requests-badge" style="display: none;">0</span>
+                    </div>
+                    <div class="header-icon-btn" id="profile-btn" title="Meu Perfil" aria-label="Meu Perfil">
+                        <i data-lucide="user"></i>
+                    </div>
+                    <div class="header-icon-btn admin-badge-btn" id="admin-panel-btn" title="Painel de Moderação ADM" aria-label="Painel ADM" style="display: none;">
+                        <i data-lucide="shield-alert"></i>
+                        <span id="admin-pending-badge" class="admin-pending-badge" style="display:none;">0</span>
+                    </div>
+                    <div class="header-icon-btn" id="settings-btn" title="Configurações VIP" aria-label="Configurações VIP">
+                        <i data-lucide="settings"></i>
+                    </div>
                 </div>
-                <div class="header-icon-btn requests-icon-wrapper" id="requests-btn" title="Solicitações de Amizade" aria-label="Solicitações">
-                    <i data-lucide="users"></i>
-                    <span id="requests-badge" class="requests-badge">0</span>
+            </header>
+
+            <!-- Banner Flutuante de Banimento Temporário (3 Horas) -->
+            <div id="temp-ban-banner" class="temp-ban-banner" style="display: none;">
+                <div class="temp-ban-icon"><i data-lucide="shield-alert"></i></div>
+                <div class="temp-ban-info">
+                    <div class="temp-ban-headline">Sua conta foi banida temporalmente você não vai conseguir enviar mensagem curtir ou comentar.</div>
+                    <div class="temp-ban-subheadline">Ainda é possível enviar story e publicar post além disso nada mais...</div>
                 </div>
-                <div class="header-icon-btn requests-icon-wrapper" id="notifications-bell-btn" title="Notificações, Avisos e Alertas" aria-label="Notificações">
-                    <i data-lucide="bell"></i>
-                    <span id="notifications-bell-badge" class="requests-badge" style="display: none;">0</span>
-                </div>
-                <div class="header-icon-btn" id="profile-btn" title="Meu Perfil" aria-label="Meu Perfil">
-                    <i data-lucide="user"></i>
-                </div>
-                <div class="header-icon-btn admin-badge-btn" id="admin-panel-btn" title="Painel de Moderação ADM" aria-label="Painel ADM" style="display: none;">
-                    <i data-lucide="shield-alert"></i>
-                    <span id="admin-pending-badge" class="admin-pending-badge" style="display:none;">0</span>
-                </div>
-                <div class="header-icon-btn" id="settings-btn" title="Configurações VIP" aria-label="Configurações VIP">
-                    <i data-lucide="settings"></i>
+                <div class="temp-ban-timer-box">
+                    <span class="temp-ban-timer-label">Liberada em:</span>
+                    <span id="temp-ban-countdown" class="temp-ban-timer-val">03:00:00</span>
                 </div>
             </div>
-        </header>
 
-        <!-- Banner Flutuante de Banimento Temporário (3 Horas) -->
-        <div id="temp-ban-banner" class="temp-ban-banner" style="display: none;">
-            <div class="temp-ban-icon"><i data-lucide="shield-alert"></i></div>
-            <div class="temp-ban-info">
-                <div class="temp-ban-headline">Sua conta foi banida temporalmente você não vai conseguir enviar mensagem curtir ou comentar.</div>
-                <div class="temp-ban-subheadline">Ainda é possível enviar story e publicar post além disso nada mais...</div>
-            </div>
-            <div class="temp-ban-timer-box">
-                <span class="temp-ban-timer-label">Liberada em:</span>
-                <span id="temp-ban-countdown" class="temp-ban-timer-val">03:00:00</span>
-            </div>
-        </div>
-
-        <!-- Banner de Tolerância / Cobrança VIP (7 Dias) -->
-        <div id="vip-grace-banner" class="vip-grace-banner" style="display: none;">
-            <div class="vip-grace-icon"><i data-lucide="alert-triangle"></i></div>
-            <div class="vip-grace-info">
-                <div class="vip-grace-headline">Sua Assinatura VIP Venceu!</div>
-                <div class="vip-grace-subheadline">Período de tolerância: restam <strong id="vip-grace-days-left">7 dias</strong>. Renove por R$ 30,00 para não perder seu Selo de Verificado!</div>
-            </div>
-            <button type="button" id="vip-grace-renew-btn" class="danger-btn vip-grace-renew-btn">Renovar (R$ 30,00)</button>
-        </div>
-
-        <!-- Stories Estilo Instagram VIP -->
-        <div class="stories-container" id="stories-container-list">
-            <div id="user-story-card" class="story-item" data-name="Seu Status" data-status="Online" title="Criar ou ver meu status">
-                <div class="story-ring">
-                    <div id="user-avatar-display" class="avatar" role="img" aria-label="Sua foto de perfil"></div>
-                    <div class="add-story-btn" id="open-post-status" title="Novo Status (24h)" aria-label="Novo Status"><i data-lucide="plus"></i></div>
+            <!-- Banner de Tolerância / Cobrança VIP (7 Dias) -->
+            <div id="vip-grace-banner" class="vip-grace-banner" style="display: none;">
+                <div class="vip-grace-icon"><i data-lucide="alert-triangle"></i></div>
+                <div class="vip-grace-info">
+                    <div class="vip-grace-headline">Sua Assinatura VIP Venceu!</div>
+                    <div class="vip-grace-subheadline">Período de tolerância: restam <strong id="vip-grace-days-left">7 dias</strong>. Renove por R$ 30,00 para não perder seu Selo de Verificado!</div>
                 </div>
-                <div class="story-author-tag">
-                    <span id="user-display-name">Seu Status</span>
-                    <i data-lucide="badge-check" id="user-verified-badge" class="verified-badge story-badge-icon" style="display: none;"></i>
+                <button type="button" id="vip-grace-renew-btn" class="danger-btn vip-grace-renew-btn">Renovar (R$ 30,00)</button>
+            </div>
+
+            <!-- Stories Estilo Instagram VIP -->
+            <div class="stories-container" id="stories-container-list">
+                <div id="user-story-card" class="story-item" data-name="Seu Status" data-status="Online" title="Criar ou ver meu status">
+                    <div class="story-ring">
+                        <div id="user-avatar-display" class="avatar" role="img" aria-label="Sua foto de perfil"></div>
+                        <div class="add-story-btn" id="open-post-status" title="Novo Status (24h)" aria-label="Novo Status"><i data-lucide="plus"></i></div>
+                    </div>
+                    <div class="story-author-tag">
+                        <span id="user-display-name">Seu Status</span>
+                        <i data-lucide="badge-check" id="user-verified-badge" class="verified-badge story-badge-icon" style="display: none;"></i>
+                    </div>
                 </div>
+                <div id="dynamic-stories-list"></div>
             </div>
-            <div id="dynamic-stories-list"></div>
-        </div>
 
-        <!-- Filtros Rápidos -->
-        <div class="filters">
-            <span class="filter-pill active" data-filter="todos">Todos</span>
-            <span class="filter-pill" data-filter="nao-lidas">Não lidas</span>
-            <span class="filter-pill" data-filter="grupos">Grupos</span>
-            <span class="filter-pill" data-filter="vips">VIPs</span>
-        </div>
-
-        <!-- Lista de Conversas em Tempo Real -->
-        <main class="chat-list" id="chat-conversations-list">
-            <div id="empty-chat-state" class="gallery-empty-state">
-                <i data-lucide="message-square-dashed" class="empty-state-icon"></i>
-                <p>Nenhuma conversa ainda.</p>
-                <small>Toque na lupa para buscar amigos digitando @ e enviar uma solicitação!</small>
+            <!-- Filtros Rápidos -->
+            <div class="filters">
+                <span class="filter-pill active" data-filter="todos">Todos</span>
+                <span class="filter-pill" data-filter="nao-lidas">Não lidas</span>
+                <span class="filter-pill" data-filter="grupos">Grupos</span>
+                <span class="filter-pill" data-filter="vips">VIPs</span>
             </div>
-        </main>
 
-        <nav class="bottom-nav" aria-label="Navegação principal">
-            <button type="button" class="bottom-nav-item" id="gallery-btn" title="Galeria de Capturas" aria-label="Galeria de Capturas">
-                <i data-lucide="image"></i>
-                <span>Galeria</span>
+            <!-- Lista de Conversas em Tempo Real -->
+            <main class="chat-list" id="chat-conversations-list">
+                <div id="empty-chat-state" class="gallery-empty-state">
+                    <i data-lucide="message-square-dashed" class="empty-state-icon"></i>
+                    <p>Nenhuma conversa ainda.</p>
+                    <small>Toque na lupa para buscar amigos digitando @ e enviar uma solicitação!</small>
+                </div>
+            </main>
+
+            <nav class="bottom-nav" aria-label="Navegação principal">
+                <button type="button" class="bottom-nav-item" id="gallery-btn" title="Galeria de Capturas" aria-label="Galeria de Capturas">
+                    <i data-lucide="image"></i>
+                    <span>Galeria</span>
+                </button>
+                <button type="button" class="bottom-nav-item" id="feed-btn" title="Feed Reels" aria-label="Feed Reels">
+                    <i data-lucide="clapperboard"></i>
+                    <span>Feed</span>
+                </button>
+            </nav>
+
+            <!-- Botão Flutuante (Criar Grupo) -->
+            <button class="fab" id="main-fab-btn" aria-label="Criar novo grupo" title="Criar Novo Grupo">
+                <i data-lucide="plus"></i>
             </button>
-            <button type="button" class="bottom-nav-item" id="feed-btn" title="Feed Reels" aria-label="Feed Reels">
-                <i data-lucide="clapperboard"></i>
-                <span>Feed</span>
-            </button>
-        </nav>
-
-        <!-- Botão Flutuante (Criar Grupo) -->
-        <button class="fab" id="main-fab-btn" aria-label="Criar novo grupo" title="Criar Novo Grupo">
-            <i data-lucide="plus"></i>
-        </button>
+        </aside>
 
         <!-- Story Viewer Overlay Fullscreen -->
         <div id="story-viewer" class="story-viewer">
@@ -346,6 +349,21 @@
                 </div>
 
                 <div id="viewers-sheet-list" class="viewers-sheet-list"></div>
+            </div>
+        </div>
+
+        <!-- Placeholder Desktop para quando nenhuma conversa estiver aberta -->
+        <div id="desktop-chat-placeholder" class="desktop-chat-placeholder">
+            <div class="desktop-placeholder-content">
+                <div class="desktop-placeholder-badge">
+                    <i data-lucide="zap" class="desktop-placeholder-icon"></i>
+                </div>
+                <h2>VORTEX <span>VIP</span> Desktop</h2>
+                <p>Envie e receba mensagens com segurança e privacidade em tempo real no seu computador.</p>
+                <div class="desktop-placeholder-security">
+                    <i data-lucide="lock"></i>
+                    <span>Criptografia ponta a ponta e rede quântica ativa</span>
+                </div>
             </div>
         </div>
 
@@ -2091,6 +2109,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.67" defer></script>
+    <script type="module" src="script.js?v=1.0.68" defer></script>
 </body>
 </html>

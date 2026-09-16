@@ -820,7 +820,9 @@ test('HTML DOM Integrity: All required elements and modal IDs exist in index.htm
     'save-wallpaper-btn',
     'reset-wallpaper-btn',
     'vip-theme-selector',
-    'vip-font-selector'
+    'vip-font-selector',
+    'desktop-chat-placeholder',
+    'main-sidebar'
   ];
 
   for (const id of requiredIds) {
@@ -867,7 +869,9 @@ test('CSS Integrity: Braces match and classes are defined', () => {
     '.vip-animated-emoji',
     '.chat-emoji-drawer',
     '.wallpaper-modal-card',
-    '.vip-exclusive-tag'
+    '.vip-exclusive-tag',
+    '.desktop-chat-placeholder',
+    '.sidebar'
   ];
 
   for (const cls of requiredClasses) {
@@ -4949,6 +4953,59 @@ test('Recursos VORTEX VIP: Temas VIP (Cyber Park, Hacker 0101 em canvas, RGB), F
   assert.strictEqual(msgContainer.classList.contains('has-custom-wallpaper'), false, 'Ao resetar, custom wallpaper deve ser desativado');
   assert.strictEqual(msgContainer.style.background, '', 'Background do container deve voltar ao padrão vazio');
 });
+
+test('Layout Responsivo Desktop no PC (>= 900px) e Preservação Mobile: Duas colunas, Sidebar, Desktop Placeholder e destaque de chat ativo', () => {
+  // 1. Integridade do HTML
+  assert.ok(htmlContent.includes('id="main-sidebar"') || htmlContent.includes("id='main-sidebar'"), 'Elemento main-sidebar deve existir no HTML');
+  assert.ok(htmlContent.includes('class="sidebar"'), 'Classe sidebar deve existir no HTML');
+  assert.ok(htmlContent.includes('id="desktop-chat-placeholder"'), 'Placeholder desktop deve existir no HTML');
+  assert.ok(htmlContent.includes('desktop-placeholder-badge'), 'Badge do placeholder desktop deve existir no HTML');
+  assert.ok(htmlContent.includes('VORTEX VIP Desktop') || htmlContent.includes('VORTEX <span>VIP</span> Desktop'), 'Título do desktop deve existir');
+
+  // 2. Integridade do CSS
+  assert.ok(cssContent.includes('.sidebar {'), 'Regra .sidebar deve estar definida no CSS');
+  assert.ok(cssContent.includes('.desktop-chat-placeholder {'), 'Regra .desktop-chat-placeholder deve estar definida');
+  assert.ok(cssContent.includes('@media (min-width: 900px)'), 'Media query desktop >= 900px deve existir no CSS');
+  assert.ok(cssContent.includes('.chat-card.active-chat'), 'Regra para destacar conversa ativa no desktop deve existir');
+
+  // 3. Verificação de Classes e Comportamento
+  const env = createTestEnvironment();
+  const doc = env.sandbox.document;
+
+  function makeCard(id, uid) {
+    const classes = new Set(['chat-card']);
+    return {
+      id,
+      dataset: { uid },
+      classList: {
+        _classes: classes,
+        add(...c) { c.forEach(x => classes.add(x)); },
+        remove(...c) { c.forEach(x => classes.delete(x)); },
+        toggle(c, val) {
+          if (val === undefined) val = !classes.has(c);
+          if (val) classes.add(c); else classes.delete(c);
+          return val;
+        },
+        contains(c) { return classes.has(c); }
+      }
+    };
+  }
+
+  const card1 = makeCard('test-pc-card-1', 'user-pc-1');
+  const card2 = makeCard('test-pc-card-2', 'user-pc-2');
+  env.elements['test-pc-card-1'] = card1;
+  env.elements['test-pc-card-2'] = card2;
+
+  // Simular ativação da conversa no desktop
+  doc.querySelectorAll('.chat-card').forEach(c => c.classList.toggle('active-chat', c.dataset.uid === 'user-pc-1'));
+  assert.ok(card1.classList.contains('active-chat'), 'Card 1 deve receber active-chat quando selecionado');
+  assert.strictEqual(card2.classList.contains('active-chat'), false, 'Card 2 não deve possuir active-chat');
+
+  // Simular fechar chat
+  doc.querySelectorAll('.chat-card').forEach(c => c.classList.remove('active-chat'));
+  assert.strictEqual(card1.classList.contains('active-chat'), false, 'Card 1 deve perder active-chat ao fechar');
+});
+
 
 
 

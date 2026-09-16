@@ -4857,6 +4857,7 @@ function openGroupChat(group) {
     if (chatWindow) {
         chatWindow.classList.add('active');
     }
+    document.querySelectorAll('.chat-card').forEach(c => c.classList.toggle('active-chat', c.dataset.uid === groupId));
     const leaveGroupTrigger = document.getElementById('chat-leave-group-trigger');
     if (leaveGroupTrigger) leaveGroupTrigger.style.display = 'flex';
 
@@ -5428,6 +5429,7 @@ function openDirectChat(contact) {
     updateActiveChatBlockedUI();
     loadRealtimeMessages();
     if (windowEl) windowEl.classList.add('active');
+    document.querySelectorAll('.chat-card').forEach(c => c.classList.toggle('active-chat', c.dataset.uid === (contact.uid || contact.chatId || contact.id)));
     playSound(clickSound);
 }
 
@@ -13991,6 +13993,7 @@ document.getElementById('google-login-main-btn')?.addEventListener('click', asyn
 function closeChat() {
     closeContactProfile();
     document.getElementById('chat-window')?.classList.remove('active');
+    document.querySelectorAll('.chat-card').forEach(c => c.classList.remove('active-chat'));
     if (bioBubbleTimer) {
         clearTimeout(bioBubbleTimer);
         bioBubbleTimer = null;
