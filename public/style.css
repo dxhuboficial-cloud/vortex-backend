@@ -7268,3 +7268,526 @@ input:checked + .slider:before { transform: translateX(22px); }
     max-width: 250px;
     line-height: 1.25;
 }
+
+/* ==========================================================================
+   Canvas de Chuva Binária (Tema Hacker Matrix / Racke VIP)
+   ========================================================================== */
+.matrix-binary-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    display: none;
+}
+
+body.theme-hacker .matrix-binary-canvas {
+    display: block;
+    opacity: 0.22;
+}
+
+/* ==========================================================================
+   Temas Exclusivos VORTEX VIP (Cyberpunk, Hacker e RGB)
+   ========================================================================== */
+/* 1. Cyberpunk ("cyber Park") */
+body.theme-cyberpunk {
+    --accent-color: #ffe600 !important;
+    --bg-color: #080911 !important;
+    --bg-secondary: #0f101d !important;
+    background: radial-gradient(circle at 15% 15%, #180a2b 0%, #080911 85%) !important;
+}
+body.theme-cyberpunk .sidebar,
+body.theme-cyberpunk .header,
+body.theme-cyberpunk .chat-window,
+body.theme-cyberpunk .settings-drawer {
+    border-color: rgba(255, 230, 0, 0.35) !important;
+    box-shadow: inset 0 0 15px rgba(255, 0, 127, 0.08), 0 0 10px rgba(0, 240, 255, 0.05) !important;
+}
+body.theme-cyberpunk .message.sent {
+    background: linear-gradient(135deg, rgba(255, 0, 127, 0.35), rgba(255, 230, 0, 0.25)) !important;
+    border: 1px solid rgba(255, 230, 0, 0.45) !important;
+    box-shadow: 0 0 10px rgba(255, 0, 127, 0.2) !important;
+}
+body.theme-cyberpunk .message.received {
+    background: rgba(15, 16, 29, 0.92) !important;
+    border: 1px solid rgba(0, 240, 255, 0.35) !important;
+}
+body.theme-cyberpunk .danger-btn {
+    box-shadow: 0 0 12px rgba(255, 230, 0, 0.4) !important;
+}
+
+/* 2. Hacker ("Racke") Terminal */
+body.theme-hacker {
+    --accent-color: #00ff66 !important;
+    --bg-color: #020603 !important;
+    --bg-secondary: #051208 !important;
+    background: #020603 !important;
+}
+body.theme-hacker .sidebar,
+body.theme-hacker .header,
+body.theme-hacker .chat-window,
+body.theme-hacker .settings-drawer {
+    border-color: rgba(0, 255, 102, 0.35) !important;
+    box-shadow: 0 0 14px rgba(0, 255, 102, 0.12) !important;
+    background-color: rgba(3, 10, 5, 0.95) !important;
+}
+body.theme-hacker .message.sent {
+    background: rgba(0, 255, 102, 0.14) !important;
+    border: 1px solid #00ff66 !important;
+    box-shadow: 0 0 8px rgba(0, 255, 102, 0.25) !important;
+    color: #eaffea !important;
+}
+body.theme-hacker .message.received {
+    background: rgba(5, 17, 8, 0.92) !important;
+    border: 1px solid rgba(0, 255, 102, 0.25) !important;
+    color: #c9f5d1 !important;
+}
+body.theme-hacker .danger-btn,
+body.theme-hacker .icon-btn {
+    border-color: #00ff66 !important;
+}
+
+/* 3. RGB Chroma Dinâmico */
+@keyframes rgbChromaFlow {
+    0% { filter: hue-rotate(0deg); }
+    100% { filter: hue-rotate(360deg); }
+}
+@keyframes rgbCardGlow {
+    0% { box-shadow: 0 0 12px #ff0055, inset 0 0 8px rgba(255, 0, 85, 0.15); }
+    33% { box-shadow: 0 0 12px #00ff66, inset 0 0 8px rgba(0, 255, 102, 0.15); }
+    66% { box-shadow: 0 0 12px #00f0ff, inset 0 0 8px rgba(0, 240, 255, 0.15); }
+    100% { box-shadow: 0 0 12px #ff0055, inset 0 0 8px rgba(255, 0, 85, 0.15); }
+}
+body.theme-rgb {
+    --accent-color: #ff007f !important;
+}
+body.theme-rgb .sidebar,
+body.theme-rgb .header,
+body.theme-rgb .chat-window {
+    border-color: rgba(255, 0, 127, 0.5) !important;
+    animation: rgbCardGlow 6s linear infinite;
+}
+body.theme-rgb .message.sent {
+    background: linear-gradient(135deg, rgba(255, 0, 127, 0.3), rgba(0, 240, 255, 0.3)) !important;
+    border: 1px solid rgba(255, 255, 255, 0.35) !important;
+    animation: rgbCardGlow 6s linear infinite;
+}
+
+/* ==========================================================================
+   Fontes e Textos Animados VIP (RGB, Azul Ciano, Neon Minimalista, Futurista)
+   ========================================================================== */
+@keyframes rgbTextShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+.vip-text-rgb {
+    background: linear-gradient(90deg, #ff0055, #ff7700, #ffee00, #00ff66, #00f0ff, #aa00ff, #ff0055);
+    background-size: 300% 100%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: rgbTextShift 3s linear infinite;
+    font-weight: 600;
+    filter: drop-shadow(0 0 6px rgba(0, 240, 255, 0.45));
+    letter-spacing: 0.3px;
+    display: inline-block;
+}
+
+@keyframes cyanElectricPulse {
+    0% {
+        text-shadow: 0 0 4px #00f0ff, 0 0 10px rgba(0, 240, 255, 0.6);
+        color: #e0ffff;
+    }
+    50% {
+        text-shadow: 0 0 9px #00f0ff, 0 0 18px rgba(0, 240, 255, 0.95), 0 0 28px rgba(0, 240, 255, 0.5);
+        color: #ffffff;
+    }
+    100% {
+        text-shadow: 0 0 4px #00f0ff, 0 0 10px rgba(0, 240, 255, 0.6);
+        color: #e0ffff;
+    }
+}
+.vip-text-cyan {
+    color: #00f0ff;
+    font-family: 'Consolas', 'Courier New', monospace, sans-serif;
+    letter-spacing: 0.6px;
+    font-weight: 500;
+    animation: cyanElectricPulse 2s ease-in-out infinite alternate;
+    display: inline-block;
+}
+
+@keyframes neonSoftBreathe {
+    0% {
+        text-shadow: 0 0 4px #d896ff, 0 0 9px #be29ec;
+        opacity: 0.92;
+    }
+    50% {
+        text-shadow: 0 0 8px #d896ff, 0 0 15px #be29ec, 0 0 24px rgba(190, 41, 236, 0.6);
+        opacity: 1;
+    }
+    100% {
+        text-shadow: 0 0 4px #d896ff, 0 0 9px #be29ec;
+        opacity: 0.92;
+    }
+}
+.vip-text-neon_minimal {
+    color: #fdf5ff;
+    font-weight: 500;
+    letter-spacing: 0.8px;
+    animation: neonSoftBreathe 2.4s ease-in-out infinite;
+    display: inline-block;
+}
+
+@keyframes futuristicGlitch {
+    0%, 100% {
+        text-shadow: 1.5px 0 #ff0055, -1.5px 0 #00ffff, 0 0 6px rgba(0, 255, 204, 0.6);
+        transform: skew(0deg);
+    }
+    90% {
+        text-shadow: 1.5px 0 #ff0055, -1.5px 0 #00ffff, 0 0 6px rgba(0, 255, 204, 0.6);
+        transform: skew(0deg);
+    }
+    93% {
+        text-shadow: -2.5px 0 #ff0055, 2px 0 #00ffff, 0 0 10px #00ffcc;
+        transform: skew(-2.5deg);
+    }
+    96% {
+        text-shadow: 2px 0 #ff0055, -2px 0 #00ffff, 0 0 4px #00ffcc;
+        transform: skew(1.8deg);
+    }
+    98% {
+        text-shadow: 0 0 6px #00ffcc;
+        transform: skew(0deg);
+    }
+}
+.vip-text-futuristic {
+    color: #00ffcc;
+    font-family: 'Consolas', 'Courier New', monospace;
+    letter-spacing: 1px;
+    font-weight: 600;
+    animation: futuristicGlitch 3.5s infinite;
+    display: inline-block;
+}
+
+/* ==========================================================================
+   Emojis Animados VIP
+   ========================================================================== */
+@keyframes vipEmojiFloat {
+    0% {
+        transform: translateY(0px) scale(1) rotate(0deg);
+        filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.5));
+    }
+    50% {
+        transform: translateY(-8px) scale(1.15) rotate(4deg);
+        filter: drop-shadow(0 0 12px rgba(255, 215, 0, 0.95)) drop-shadow(0 0 20px rgba(255, 0, 128, 0.55));
+    }
+    100% {
+        transform: translateY(0px) scale(1) rotate(0deg);
+        filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.5));
+    }
+}
+@keyframes vipEmojiInlineBounce {
+    0% {
+        transform: scale(1);
+        filter: drop-shadow(0 0 2px rgba(255, 240, 31, 0.4));
+    }
+    50% {
+        transform: scale(1.22);
+        filter: drop-shadow(0 0 7px rgba(255, 240, 31, 0.85)) drop-shadow(0 0 12px rgba(0, 240, 255, 0.6));
+    }
+    100% {
+        transform: scale(1);
+        filter: drop-shadow(0 0 2px rgba(255, 240, 31, 0.4));
+    }
+}
+.vip-animated-emoji-giant {
+    display: inline-block;
+    font-size: 3.2rem;
+    line-height: 1.15;
+    margin: 4px 6px;
+    animation: vipEmojiFloat 2.2s ease-in-out infinite;
+    transform-origin: center bottom;
+    vertical-align: middle;
+}
+.vip-animated-emoji {
+    display: inline-block;
+    font-size: 1.25em;
+    animation: vipEmojiInlineBounce 1.8s ease-in-out infinite;
+    transform-origin: center center;
+    vertical-align: -2px;
+    margin: 0 2px;
+}
+
+/* ==========================================================================
+   Gaveta de Emojis VORTEX (#chat-emoji-drawer)
+   ========================================================================== */
+.chat-input-emoji-btn {
+    cursor: pointer;
+    color: var(--text-dim);
+    transition: color 0.2s ease, transform 0.2s ease;
+    margin-right: 4px;
+}
+.chat-input-emoji-btn:hover {
+    color: var(--accent-color);
+    transform: scale(1.1);
+}
+.chat-emoji-drawer {
+    position: absolute;
+    bottom: 66px;
+    left: 12px;
+    right: 12px;
+    max-width: 420px;
+    height: 290px;
+    background: rgba(14, 18, 26, 0.96);
+    backdrop-filter: blur(18px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 14px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.65);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: slideUpEmoji 0.22s ease-out;
+}
+@keyframes slideUpEmoji {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+.emoji-drawer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.3);
+}
+.emoji-drawer-vip-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.76rem;
+    color: #ffd700;
+    font-weight: 600;
+}
+.emoji-drawer-vip-badge i {
+    width: 14px;
+    height: 14px;
+}
+.emoji-drawer-close {
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    font-size: 1.4rem;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+}
+.emoji-drawer-close:hover {
+    color: #fff;
+}
+.emoji-drawer-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 6px 10px;
+    background: rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.emoji-tab-btn {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 4px 8px;
+    font-size: 1.15rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.emoji-tab-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+.emoji-tab-btn.active {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: var(--accent-color);
+}
+.emoji-drawer-grid {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 10px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(36px, 1fr));
+    gap: 6px;
+}
+.emoji-item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.45rem;
+    height: 38px;
+    border-radius: 8px;
+    cursor: pointer;
+    user-select: none;
+    transition: transform 0.15s ease, background-color 0.15s ease;
+}
+.emoji-item:hover {
+    transform: scale(1.25);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* ==========================================================================
+   Plano de Fundo da Conversa (#chat-wallpaper-modal)
+   ========================================================================== */
+.wallpaper-modal-card {
+    max-width: 480px;
+}
+.wallpaper-preview-box {
+    width: 100%;
+    height: 120px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    margin-bottom: 14px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px;
+    box-sizing: border-box;
+    background-size: cover !important;
+    background-position: center !important;
+    transition: all 0.3s ease;
+}
+.wallpaper-preview-mock-bubble {
+    padding: 6px 12px;
+    border-radius: 12px;
+    font-size: 0.82rem;
+    max-width: 80%;
+}
+.wallpaper-preview-mock-bubble.sent {
+    align-self: flex-end;
+    background: var(--accent-color);
+    color: #000;
+    font-weight: 500;
+}
+.wallpaper-preview-mock-bubble.received {
+    align-self: flex-start;
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+}
+.wallpaper-presets-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 14px;
+}
+.wallpaper-preset-item {
+    height: 52px;
+    border-radius: 8px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+    transition: transform 0.2s ease, border-color 0.2s ease;
+    user-select: none;
+}
+.wallpaper-preset-item:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255, 255, 255, 0.4);
+}
+.wallpaper-preset-item.active {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 10px var(--accent-color);
+}
+.wallpaper-actions-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+.wallpaper-upload-btn {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+.wallpaper-scope-selector {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 14px;
+    padding: 8px 10px;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 8px;
+}
+.wallpaper-scope-opt {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.82rem;
+    color: var(--text-dim);
+    cursor: pointer;
+}
+.wallpaper-scope-opt input:checked + span {
+    color: #fff;
+    font-weight: 500;
+}
+
+/* ==========================================================================
+   Seletores VIP nas Configurações (#vip-theme-selector & #vip-font-selector)
+   ========================================================================== */
+.vip-exclusive-tag {
+    background: linear-gradient(135deg, #ffd700, #ff8800);
+    color: #000;
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+}
+.vip-theme-selector,
+.vip-font-selector {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+}
+.vip-theme-option,
+.vip-font-option {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #ddd;
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.vip-theme-option:hover,
+.vip-font-option:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.25);
+}
+.vip-theme-option.active,
+.vip-font-option.active {
+    background: rgba(255, 240, 31, 0.15);
+    border-color: var(--accent-color);
+    color: #fff;
+    font-weight: 600;
+    box-shadow: 0 0 8px rgba(255, 240, 31, 0.3);
+}
+.vip-badge-mini,
+.vip-theme-badge {
+    color: #ffd700;
+    font-size: 0.72rem;
+}

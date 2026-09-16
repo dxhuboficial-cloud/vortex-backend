@@ -898,13 +898,487 @@ export function checkVipSubscriptionLifecycle() {
     }
 }
 
+// ==========================================================================
+// Chuva de Códigos Binários (0 e 1) - Tema Hacker Matrix VIP
+// ==========================================================================
+let matrixCanvasAnimId = null;
+let matrixColumns = [];
+let matrixCanvasInitialized = false;
+
+export function initBinaryMatrixCanvas() {
+    if (typeof document === 'undefined') return null;
+    const canvas = document.getElementById('matrix-binary-canvas');
+    if (!canvas) return null;
+    const ctx = canvas.getContext ? canvas.getContext('2d') : null;
+    if (!ctx) return null;
+
+    function resize() {
+        if (!canvas) return;
+        canvas.width = (typeof window !== 'undefined' && window.innerWidth) ? window.innerWidth : 800;
+        canvas.height = (typeof window !== 'undefined' && window.innerHeight) ? window.innerHeight : 600;
+        const fontSize = 15;
+        const cols = Math.floor(canvas.width / fontSize) || 20;
+        matrixColumns = Array.from({ length: cols }, () => Math.floor(Math.random() * -50));
+    }
+
+    if (!matrixCanvasInitialized && typeof window !== 'undefined' && window.addEventListener) {
+        window.addEventListener('resize', resize);
+        matrixCanvasInitialized = true;
+    }
+    resize();
+    return { canvas, ctx };
+}
+
+export function startBinaryMatrix() {
+    const setup = initBinaryMatrixCanvas();
+    if (!setup) return;
+    const { canvas, ctx } = setup;
+    if (matrixCanvasAnimId) return;
+
+    const fontSize = 15;
+    let lastTime = 0;
+    const fpsInterval = 1000 / 30;
+
+    function drawMatrix(time) {
+        if (typeof document !== 'undefined' && document.body && !document.body.classList.contains('theme-hacker')) {
+            stopBinaryMatrix();
+            return;
+        }
+        if (typeof requestAnimationFrame === 'function') {
+            matrixCanvasAnimId = requestAnimationFrame(drawMatrix);
+        }
+
+        const elapsed = time - lastTime;
+        if (elapsed < fpsInterval) return;
+        lastTime = time - (elapsed % fpsInterval);
+
+        if (ctx && ctx.fillRect) {
+            ctx.fillStyle = 'rgba(2, 6, 3, 0.08)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#00ff66';
+            ctx.font = `${fontSize}px monospace`;
+
+            for (let i = 0; i < matrixColumns.length; i++) {
+                const char = Math.random() > 0.5 ? '1' : '0';
+                const x = i * fontSize;
+                const y = matrixColumns[i] * fontSize;
+
+                if (ctx.fillText) ctx.fillText(char, x, y);
+
+                if (y > canvas.height && Math.random() > 0.975) {
+                    matrixColumns[i] = 0;
+                } else {
+                    matrixColumns[i]++;
+                }
+            }
+        }
+    }
+
+    if (typeof requestAnimationFrame === 'function') {
+        matrixCanvasAnimId = requestAnimationFrame(drawMatrix);
+    }
+}
+
+export function stopBinaryMatrix() {
+    if (matrixCanvasAnimId) {
+        if (typeof cancelAnimationFrame === 'function') {
+            cancelAnimationFrame(matrixCanvasAnimId);
+        }
+        matrixCanvasAnimId = null;
+    }
+    if (typeof document !== 'undefined') {
+        const canvas = document.getElementById('matrix-binary-canvas');
+        if (canvas && canvas.getContext) {
+            const ctx = canvas.getContext('2d');
+            if (ctx && ctx.clearRect) ctx.clearRect(0, 0, canvas.width || 800, canvas.height || 600);
+        }
+    }
+}
+
+// ==========================================================================
+// Formatação de Mensagens com Emojis Animados e Fontes VIP
+// ==========================================================================
+export function formatChatMessageText(rawText, isSenderVip = false, vipTextStyle = 'normal') {
+    if (!rawText) return '';
+    const emojiRegex = /(?:\p{Extended_Pictographic}|\p{Emoji_Presentation})/gu;
+    const trimmed = String(rawText).trim();
+
+    if (isSenderVip) {
+        const nonEmoji = trimmed.replace(emojiRegex, '').trim();
+        const matches = trimmed.match(emojiRegex);
+        if (matches && nonEmoji.length === 0 && matches.length <= 4) {
+            const giantEmojis = matches.map(em => `<span class="vip-animated-emoji-giant" title="Emoji Animado VIP ⭐">${em}</span>`).join(' ');
+            return `<div class="msg-text-content msg-giant-emojis">${giantEmojis}</div>`;
+        }
+    }
+
+    let escaped = escapeHTML(rawText);
+
+    if (isSenderVip) {
+        escaped = escaped.replace(/(?:[\u2700-\u27bf]|(?:\ud83c[\udde6-\uddff]){2}|[\ud800-\udbff][\udc00-\udfff]|[\u0023-\u0039]\ufe0f?\u20e3|\u3299|\u3297|\u303d|\u3030|\u24c2|\ud83c[\udd70-\udd71]|\ud83c[\udd7e-\udd7f]|\ud83c\udd8e|\ud83c[\udd91-\udd9a]|\ud83c[\udde6-\uddff]|\ud83c[\ude01-\ude02]|\ud83c\ude1a|\ud83c\ude2f|\ud83c[\ude32-\ude3a]|\ud83c[\ude50-\ude51]|\u203c|\u2049|[\u25aa-\u25ab]|\u25b6|\u25c0|[\u25fb-\u25fe]|\u00a9|\u00ae|\u2122|\u2139|\ud83c\udc04|[\u2600-\u26ff]|\u2b55|\u2b1c|\u2b1b|\u2b50)/g, (match) => {
+            return `<span class="vip-animated-emoji" title="Emoji Animado VIP ⭐">${match}</span>`;
+        });
+    }
+
+    const styleClass = (isSenderVip && vipTextStyle && vipTextStyle !== 'normal') ? ` vip-text-${vipTextStyle}` : '';
+    return `<div class="msg-text-content${styleClass}">${escaped}</div>`;
+}
+
+// ==========================================================================
+// Gaveta e Seletor de Emojis (#chat-emoji-drawer)
+// ==========================================================================
+export const EMOJI_CATEGORIES = {
+    smileys: ['😀','😃','😄','😁','😆','😅','😂','🤣','🥲','🥹','😊','😇','🙂','😉','😌','😍','🥰','😘','😗','😙','😚','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🫢','🫣','🤫','🤔','🫡','🤐','🤨','😐','😑','😶','🫥','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','🥴','😵','🤯','🤠','🥳','🥸','😎','🤓','🧐'],
+    vip: ['⚡','⭐','👑','💎','🔥','🚀','🪐','🔮','✨','💫','🌟','🏆','🥇','🏵️','🎖️','🎯','🕶️','🦾','🤖','👾','💥','🌀','🌠','🛸','🪄','💰','💵','💸','🌌','🎇','🎆','🧨'],
+    hearts: ['❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❤️‍🔥','❤️‍🩹','❣️','💕','💞','💓','💗','💖','💘','💝','💟','💌','🫶','💋','👩‍❤️‍👨','👨‍❤️‍👨','👩‍❤️‍👩'],
+    gestures: ['👍','👎','👌','🤌','✌️','🤞','🫰','🤟','🤘','🤙','👈','👉','👆','🖕','👇','☝️','🫵','👋','🤚','🖐️','✋','🖖','🫱','🫲','🫳','🫴','👏','🙌','👐','🤲','🤝','🙏'],
+    objects: ['🔥','⚡','✨','🎉','🎊','🎮','🕹️','🎧','🎤','🎸','🥁','📱','💻','🖥️','⌚','⏰','💡','🔦','🔑','🗝️','🛡️','⚔️','💣','💊','💉','🩸','🧬','🧪','🧫']
+};
+
+export function insertEmojiIntoChatInput(emoji) {
+    const input = document.getElementById('chat-input-main');
+    if (!input) return;
+    const start = (input.selectionStart !== undefined && input.selectionStart !== null) ? input.selectionStart : input.value.length;
+    const end = (input.selectionEnd !== undefined && input.selectionEnd !== null) ? input.selectionEnd : input.value.length;
+    const val = input.value || '';
+    input.value = val.slice(0, start) + emoji + val.slice(end);
+    const newPos = start + emoji.length;
+    if (input.setSelectionRange) {
+        input.focus();
+        input.setSelectionRange(newPos, newPos);
+    }
+    if (typeof input.dispatchEvent === 'function') {
+        try {
+            const evt = typeof Event !== 'undefined' ? new Event('input', { bubbles: true }) : { type: 'input', bubbles: true };
+            input.dispatchEvent(evt);
+        } catch (e) {}
+    }
+}
+
+export function setupChatEmojiDrawer() {
+    const emojiBtn = document.getElementById('chat-emoji-btn');
+    const drawer = document.getElementById('chat-emoji-drawer');
+    const closeBtn = document.getElementById('close-emoji-drawer-btn');
+    const grid = document.getElementById('emoji-drawer-grid');
+    if (!emojiBtn || !drawer || !grid) return;
+
+    function renderCategory(cat) {
+        const list = EMOJI_CATEGORIES[cat] || EMOJI_CATEGORIES.smileys;
+        grid.innerHTML = '';
+        list.forEach(emoji => {
+            const item = document.createElement('div');
+            item.className = 'emoji-item';
+            item.innerText = emoji;
+            item.title = emoji;
+            item.onclick = (e) => {
+                if (e && e.stopPropagation) e.stopPropagation();
+                insertEmojiIntoChatInput(emoji);
+            };
+            grid.appendChild(item);
+        });
+    }
+
+    renderCategory('smileys');
+
+    emojiBtn.onclick = (e) => {
+        if (e && e.stopPropagation) e.stopPropagation();
+        const isHidden = drawer.style.display === 'none' || !drawer.style.display;
+        drawer.style.display = isHidden ? 'flex' : 'none';
+        if (isHidden) renderCategory('smileys');
+    };
+
+    if (closeBtn) {
+        closeBtn.onclick = (e) => {
+            if (e && e.stopPropagation) e.stopPropagation();
+            drawer.style.display = 'none';
+        };
+    }
+
+    const tabs = drawer.querySelectorAll('.emoji-tab-btn');
+    tabs.forEach(tab => {
+        tab.onclick = (e) => {
+            if (e && e.stopPropagation) e.stopPropagation();
+            tabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            renderCategory(tab.dataset.cat);
+        };
+    });
+
+    if (typeof document !== 'undefined' && document.addEventListener) {
+        document.addEventListener('click', (e) => {
+            if (drawer.style.display !== 'none' && !drawer.contains(e.target) && e.target !== emojiBtn && !emojiBtn.contains(e.target)) {
+                drawer.style.display = 'none';
+            }
+        });
+    }
+}
+
+// ==========================================================================
+// Plano de Fundo da Conversa (Chat Wallpaper)
+// ==========================================================================
+export function applyChatWallpaper(chatId) {
+    if (typeof document === 'undefined') return;
+    const container = document.getElementById('message-container');
+    if (!container) return;
+    const activeChatId = chatId || getActiveChatId();
+    const wp = (activeChatId && typeof localStorage !== 'undefined' && localStorage.getItem(`vortex_wallpaper_${activeChatId}`)) ||
+               (typeof localStorage !== 'undefined' && localStorage.getItem('vortex_wallpaper_global')) || '';
+
+    if (!wp || wp === 'default') {
+        container.style.background = '';
+        container.style.backgroundImage = '';
+        container.classList.remove('has-custom-wallpaper');
+        return;
+    }
+
+    if (wp.startsWith('data:image') || wp.startsWith('http')) {
+        container.style.background = `url("${wp}") center/cover no-repeat`;
+    } else if (wp.startsWith('linear-gradient') || wp.startsWith('#') || wp.startsWith('rgba')) {
+        container.style.background = wp;
+    } else if (wp === 'total-black') {
+        container.style.background = '#030303';
+    } else if (wp === 'cyber-dark') {
+        container.style.background = 'linear-gradient(135deg, #090d16 0%, #030712 100%)';
+    } else if (wp === 'cosmic-purple') {
+        container.style.background = 'linear-gradient(135deg, #2e0854 0%, #0c021f 100%)';
+    } else if (wp === 'matrix-green') {
+        container.style.background = 'linear-gradient(135deg, #021a08 0%, #010803 100%)';
+    } else if (wp === 'deep-cyan') {
+        container.style.background = 'linear-gradient(135deg, #022026 0%, #010c10 100%)';
+    } else if (wp === 'sunset-glow') {
+        container.style.background = 'linear-gradient(135deg, #2b091f 0%, #10020d 100%)';
+    } else {
+        container.style.background = wp;
+    }
+    container.classList.add('has-custom-wallpaper');
+}
+
+export function setupChatWallpaperModal() {
+    const trigger = document.getElementById('chat-wallpaper-trigger');
+    const modal = document.getElementById('chat-wallpaper-modal');
+    const closeBtn = document.getElementById('close-wallpaper-modal');
+    const previewBox = document.getElementById('wallpaper-preview-box');
+    const presets = document.querySelectorAll('.wallpaper-preset-item');
+    const fileInput = document.getElementById('wallpaper-file-input');
+    const saveBtn = document.getElementById('save-wallpaper-btn');
+    const resetBtn = document.getElementById('reset-wallpaper-btn');
+    if (!modal) return;
+
+    let selectedWp = 'default';
+
+    function updatePreview(val) {
+        selectedWp = val;
+        if (!previewBox) return;
+        if (!val || val === 'default') {
+            previewBox.style.background = 'rgba(255, 255, 255, 0.05)';
+        } else if (val.startsWith('data:image') || val.startsWith('http')) {
+            previewBox.style.background = `url("${val}") center/cover no-repeat`;
+        } else if (val.startsWith('linear-gradient') || val.startsWith('#')) {
+            previewBox.style.background = val;
+        } else if (val === 'total-black') {
+            previewBox.style.background = '#030303';
+        } else if (val === 'cyber-dark') {
+            previewBox.style.background = 'linear-gradient(135deg, #090d16 0%, #030712 100%)';
+        } else if (val === 'cosmic-purple') {
+            previewBox.style.background = 'linear-gradient(135deg, #2e0854 0%, #0c021f 100%)';
+        } else if (val === 'matrix-green') {
+            previewBox.style.background = 'linear-gradient(135deg, #021a08 0%, #010803 100%)';
+        } else if (val === 'deep-cyan') {
+            previewBox.style.background = 'linear-gradient(135deg, #022026 0%, #010c10 100%)';
+        } else if (val === 'sunset-glow') {
+            previewBox.style.background = 'linear-gradient(135deg, #2b091f 0%, #10020d 100%)';
+        }
+    }
+
+    if (trigger) {
+        trigger.onclick = () => {
+            const dropdown = document.getElementById('chat-dropdown-menu');
+            if (dropdown) dropdown.classList.remove('active');
+            const chatId = getActiveChatId();
+            const currentWp = (chatId && typeof localStorage !== 'undefined' && localStorage.getItem(`vortex_wallpaper_${chatId}`)) ||
+                              (typeof localStorage !== 'undefined' && localStorage.getItem('vortex_wallpaper_global')) || 'default';
+            updatePreview(currentWp);
+            presets.forEach(p => p.classList.toggle('active', p.dataset.wallpaper === currentWp));
+            modal.classList.add('active');
+        };
+    }
+
+    if (closeBtn) {
+        closeBtn.onclick = () => modal.classList.remove('active');
+    }
+
+    presets.forEach(preset => {
+        preset.onclick = () => {
+            presets.forEach(p => p.classList.remove('active'));
+            preset.classList.add('active');
+            updatePreview(preset.dataset.wallpaper);
+        };
+    });
+
+    if (fileInput) {
+        fileInput.onchange = async (e) => {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+            try {
+                const compressed = await compressImageFileToKB(file, { maxDimension: 1280, targetMaxKB: 350, quality: 0.8 });
+                updatePreview(compressed.data);
+                presets.forEach(p => p.classList.remove('active'));
+                showToast('Foto Carregada', `Plano de fundo preparado (${compressed.sizeKB} KB)`, 'green');
+            } catch (err) {
+                console.error('Erro ao comprimir imagem de wallpaper:', err);
+                showToast('Erro', 'Não foi possível processar a foto.', 'red');
+            }
+        };
+    }
+
+    if (saveBtn) {
+        saveBtn.onclick = () => {
+            const scopeRadio = document.querySelector('input[name="wallpaper-scope"]:checked');
+            const scope = scopeRadio ? scopeRadio.value : 'chat';
+            const chatId = getActiveChatId();
+
+            if (typeof localStorage !== 'undefined') {
+                if (scope === 'chat' && chatId) {
+                    if (selectedWp === 'default') {
+                        localStorage.removeItem(`vortex_wallpaper_${chatId}`);
+                    } else {
+                        localStorage.setItem(`vortex_wallpaper_${chatId}`, selectedWp);
+                    }
+                } else {
+                    if (selectedWp === 'default') {
+                        localStorage.removeItem('vortex_wallpaper_global');
+                    } else {
+                        localStorage.setItem('vortex_wallpaper_global', selectedWp);
+                    }
+                }
+            }
+
+            applyChatWallpaper(chatId);
+            modal.classList.remove('active');
+            showToast('Plano de Fundo Salvo', 'Papel de parede aplicado com sucesso!', 'green');
+        };
+    }
+
+    if (resetBtn) {
+        resetBtn.onclick = () => {
+            const scopeRadio = document.querySelector('input[name="wallpaper-scope"]:checked');
+            const scope = scopeRadio ? scopeRadio.value : 'chat';
+            const chatId = getActiveChatId();
+            if (typeof localStorage !== 'undefined') {
+                if (scope === 'chat' && chatId) {
+                    localStorage.removeItem(`vortex_wallpaper_${chatId}`);
+                } else {
+                    localStorage.removeItem('vortex_wallpaper_global');
+                }
+            }
+            updatePreview('default');
+            applyChatWallpaper(chatId);
+            modal.classList.remove('active');
+            showToast('Plano de Fundo Restaurado', 'O papel de parede voltou ao padrão.', 'green');
+        };
+    }
+}
+
+// ==========================================================================
+// Seletores de Recursos VIP nas Configurações (#vip-theme-selector & #vip-font-selector)
+// ==========================================================================
+export function setupVipSettingsControls() {
+    const themeButtons = document.querySelectorAll('.vip-theme-option');
+    themeButtons.forEach(btn => {
+        btn.onclick = async () => {
+            const theme = btn.dataset.theme;
+            const isVip = checkIsVipUser(currentProfile);
+
+            if (theme !== 'default' && !isVip) {
+                showToast('Acesso Exclusivo VIP ⭐', 'Os temas Cyber Park, Hacker e RGB são exclusivos para membros VORTEX VIP. Assine agora!', 'orange');
+                const subBtn = document.getElementById('subscribe-btn');
+                if (subBtn) subBtn.click();
+                return;
+            }
+
+            currentProfile.vipTheme = theme;
+            if (typeof localStorage !== 'undefined') {
+                localStorage.setItem('vortex_vip_theme', theme);
+            }
+            if (currentUser && typeof updateDoc === 'function' && typeof doc === 'function') {
+                try {
+                    await updateDoc(doc(db, 'users', currentUser.uid), { vipTheme: theme });
+                } catch (e) {
+                    console.warn('Erro ao salvar tema VIP no Firestore:', e);
+                }
+            }
+            applyUserTheme();
+            showToast('Tema VIP Aplicado', `Tema ${theme.toUpperCase()} ativado com sucesso!`, 'green');
+        };
+    });
+
+    const fontButtons = document.querySelectorAll('.vip-font-option');
+    fontButtons.forEach(btn => {
+        btn.onclick = async () => {
+            const styleKey = btn.dataset.style;
+            const isVip = checkIsVipUser(currentProfile);
+
+            if (styleKey !== 'normal' && !isVip) {
+                showToast('Acesso Exclusivo VIP ⭐', 'As fontes animadas são exclusivas para membros VORTEX VIP. Assine agora!', 'orange');
+                const subBtn = document.getElementById('subscribe-btn');
+                if (subBtn) subBtn.click();
+                return;
+            }
+
+            currentProfile.vipTextStyle = styleKey;
+            if (typeof localStorage !== 'undefined') {
+                localStorage.setItem('vortex_vip_font', styleKey);
+            }
+            if (currentUser && typeof updateDoc === 'function' && typeof doc === 'function') {
+                try {
+                    await updateDoc(doc(db, 'users', currentUser.uid), { vipTextStyle: styleKey });
+                } catch (e) {
+                    console.warn('Erro ao salvar estilo VIP no Firestore:', e);
+                }
+            }
+            fontButtons.forEach(b => b.classList.toggle('active', b.dataset.style === styleKey));
+            showToast('Fonte VIP Configurada', `Estilo de texto animado (${styleKey}) ativado!`, 'green');
+        };
+    });
+}
+
 function applyUserTheme() {
-    document.documentElement.style.setProperty('--accent-color', currentProfile.accentColor || '#fff01f');
+    if (typeof document !== 'undefined' && document.documentElement && document.documentElement.style && typeof document.documentElement.style.setProperty === 'function') {
+        document.documentElement.style.setProperty('--accent-color', currentProfile.accentColor || '#fff01f');
+    }
     applyPrivacyModeState();
     document.body.classList.toggle('total-black', currentProfile.themeEnabled === false);
     document.querySelectorAll('.color-option').forEach(opt => {
         opt.classList.toggle('active', opt.dataset.color === currentProfile.accentColor);
     });
+
+    // Temas VORTEX VIP (Cyberpunk, Hacker com chuva binária e RGB)
+    const isVip = checkIsVipUser(currentProfile);
+    const savedVipTheme = currentProfile.vipTheme || (typeof localStorage !== 'undefined' ? localStorage.getItem('vortex_vip_theme') : 'default') || 'default';
+    const activeVipTheme = (isVip && savedVipTheme !== 'default') ? savedVipTheme : 'default';
+
+    document.body.classList.toggle('theme-cyberpark', activeVipTheme === 'cyberpark');
+    document.body.classList.toggle('theme-cyberpunk', activeVipTheme === 'cyberpark');
+    document.body.classList.toggle('theme-hacker', activeVipTheme === 'hacker');
+    document.body.classList.toggle('theme-rgb', activeVipTheme === 'rgb');
+
+    if (activeVipTheme === 'hacker') {
+        startBinaryMatrix();
+    } else {
+        stopBinaryMatrix();
+    }
+
+    document.querySelectorAll('.vip-theme-option').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.theme === activeVipTheme);
+    });
+
+    // Fontes Animadas VIP
+    const savedVipFont = currentProfile.vipTextStyle || (typeof localStorage !== 'undefined' ? localStorage.getItem('vortex_vip_font') : 'normal') || 'normal';
+    const activeVipFont = (isVip && savedVipFont !== 'normal') ? savedVipFont : 'normal';
+    document.querySelectorAll('.vip-font-option').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.style === activeVipFont);
+    });
+
     const soundTog = document.getElementById('sound-toggle');
     const ghostTog = document.getElementById('ghost-toggle');
     const privTog = document.getElementById('privacy-toggle');
@@ -4146,6 +4620,7 @@ function openGroupChat(group) {
 
     activeGroupDoc = group;
     activeChatContact = { uid: groupId, name: group.name || 'Grupo VIP', avatar: group.avatar || '', isGroup: true, paused: !!group.paused, members: group.members || [] };
+    applyChatWallpaper(groupId);
 
     const nameEl = document.getElementById('chat-window-name');
     const avatarEl = document.getElementById('chat-window-avatar');
@@ -4518,6 +4993,7 @@ function openDirectChat(contact) {
     exitSelectionMode();
     cancelReply();
     hideFloatingReactions();
+    applyChatWallpaper(contact.uid || contact.chatId || contact.id);
 
     if (nameEl) nameEl.innerText = contact.name || 'Contato';
     if (avatarEl) {
@@ -4979,7 +5455,13 @@ function loadRealtimeMessages() {
                 }
             }
 
-            let textHTML = (msg.text && !msg.deletedForEveryone && msg.type !== 'poll') ? `<div>${msg.text}</div>` : '';
+            let textHTML = '';
+            if (msg.text && !msg.deletedForEveryone && msg.type !== 'poll') {
+                const isSenderVip = isMe
+                    ? checkIsVipUser(currentProfile)
+                    : !!(msg.isVip || msg.isVerified || (msg.senderEmail === 'dxhub.oficial@gmail.com') || (msg.senderUsername === 'dxhuboficial') || checkIsVipUser(msg));
+                textHTML = formatChatMessageText(msg.text, isSenderVip, msg.vipTextStyle);
+            }
             const d = msg.createdAt ? new Date(msg.createdAt) : new Date();
             const timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 
@@ -8409,6 +8891,16 @@ async function sendChatMessage(type = 'text', payload = {}) {
 
     if (payload.poll) {
         msgData.poll = payload.poll;
+    }
+
+    const isSenderVip = checkIsVipUser(currentProfile);
+    if (isSenderVip) {
+        msgData.isVip = true;
+        msgData.isVerified = true;
+        const fontStyle = currentProfile?.vipTextStyle || (typeof localStorage !== 'undefined' ? localStorage.getItem('vortex_vip_font') : 'normal') || 'normal';
+        if (fontStyle && fontStyle !== 'normal') {
+            msgData.vipTextStyle = fontStyle;
+        }
     }
 
     if (payload.isTrimmed) {
@@ -14571,8 +15063,21 @@ if (typeof window !== 'undefined') {
     window.handleFileUpload = handleFileUpload;
     window.sendChatMessage = sendChatMessage;
     window.mediaSizeLimits = mediaSizeLimits;
+    window.initBinaryMatrixCanvas = initBinaryMatrixCanvas;
+    window.startBinaryMatrix = startBinaryMatrix;
+    window.stopBinaryMatrix = stopBinaryMatrix;
+    window.formatChatMessageText = formatChatMessageText;
+    window.EMOJI_CATEGORIES = EMOJI_CATEGORIES;
+    window.insertEmojiIntoChatInput = insertEmojiIntoChatInput;
+    window.setupChatEmojiDrawer = setupChatEmojiDrawer;
+    window.applyChatWallpaper = applyChatWallpaper;
+    window.setupChatWallpaperModal = setupChatWallpaperModal;
+    window.setupVipSettingsControls = setupVipSettingsControls;
 }
 
 if (typeof window !== 'undefined') {
     initBackNavigation();
+    setupChatEmojiDrawer();
+    setupChatWallpaperModal();
+    setupVipSettingsControls();
 }

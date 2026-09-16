@@ -51,9 +51,11 @@ function createTestEnvironment() {
           this._listeners[type] = this._listeners[type].filter(f => f !== fn);
         }
       },
-      dispatchEvent(type, eventObj = {}) {
+      dispatchEvent(eventOrType, eventObj = {}) {
+        const type = typeof eventOrType === 'string' ? eventOrType : (eventOrType && eventOrType.type ? eventOrType.type : 'custom');
+        const payload = typeof eventOrType === 'object' ? { ...eventOrType, ...eventObj } : eventObj;
         if (this._listeners[type]) {
-          const promises = this._listeners[type].map(fn => fn({ target: this, ...eventObj }));
+          const promises = this._listeners[type].map(fn => fn({ target: this, ...payload }));
           return Promise.all(promises);
         }
         return Promise.resolve();
@@ -141,6 +143,22 @@ function createTestEnvironment() {
       value: '',
       checked: false
     };
+
+    const tagRegex = new RegExp(`<[a-zA-Z0-9-]+[^>]*?id=["']${id}["'][^>]*?>`, 'i');
+    const tagMatch = htmlContent.match(tagRegex);
+    if (tagMatch) {
+      const tagStr = tagMatch[0];
+      const classM = tagStr.match(/class=["']([^"']+)["']/i);
+      if (classM) {
+        classM[1].split(/\s+/).filter(Boolean).forEach(c => elements[id].classList.add(c));
+      }
+      const dataMatches = tagStr.matchAll(/data-([a-zA-Z0-9-]+)=["']([^"']*)["']/g);
+      for (const dm of dataMatches) {
+        const camel = dm[1].replace(/-([a-z])/g, (_, g) => g.toUpperCase());
+        elements[id].dataset[camel] = dm[2];
+        elements[id].dataset[dm[1]] = dm[2];
+      }
+    }
   }
 
   // Pre-configure initial lock-screen state
@@ -325,6 +343,13 @@ function createTestEnvironment() {
     addEventListener: () => {},
     removeEventListener: () => {},
     createElement: (tag) => makeMockElement(tag),
+    documentElement: {
+      style: {
+        _props: {},
+        setProperty(k, v) { this._props[k] = String(v); },
+        getPropertyValue(k) { return this._props[k] || ''; }
+      }
+    },
     body: {
       classList: {
         _classes: new Set(),
@@ -361,12 +386,16 @@ function createTestEnvironment() {
     }
   };
 
+  class MockEvent { constructor(type, opts = {}) { this.type = type; Object.assign(this, opts); } }
+
   const sandbox = {
     console,
     fetch: globalThis.fetch,
     document: mockDoc,
     history: mockHistory,
+    Event: MockEvent,
     window: {
+      Event: MockEvent,
       fetch: globalThis.fetch,
       lucide: { createIcons: () => {} },
       history: mockHistory,
@@ -774,7 +803,21 @@ test('HTML DOM Integrity: All required elements and modal IDs exist in index.htm
     'story-preview-indicator',
     'story-preview-footer',
     'story-preview-back-btn',
-    'story-preview-publish-now-btn'
+    'story-preview-publish-now-btn',
+    'matrix-binary-canvas',
+    'chat-emoji-btn',
+    'chat-emoji-drawer',
+    'close-emoji-drawer-btn',
+    'emoji-drawer-grid',
+    'chat-wallpaper-trigger',
+    'chat-wallpaper-modal',
+    'close-wallpaper-modal',
+    'wallpaper-preview-box',
+    'wallpaper-presets-grid',
+    'save-wallpaper-btn',
+    'reset-wallpaper-btn',
+    'vip-theme-selector',
+    'vip-font-selector'
   ];
 
   for (const id of requiredIds) {
@@ -811,7 +854,17 @@ test('CSS Integrity: Braces match and classes are defined', () => {
     '.status-media-preview-box',
     '.preview-status-action-btn',
     '.story-preview-badge',
-    '.story-preview-footer'
+    '.story-preview-footer',
+    '.matrix-binary-canvas',
+    '.vip-text-rgb',
+    '.vip-text-cyan',
+    '.vip-text-neon_minimal',
+    '.vip-text-futuristic',
+    '.vip-animated-emoji-giant',
+    '.vip-animated-emoji',
+    '.chat-emoji-drawer',
+    '.wallpaper-modal-card',
+    '.vip-exclusive-tag'
   ];
 
   for (const cls of requiredClasses) {
@@ -4686,6 +4739,193 @@ test('Mídias no Chat de Contatos: Fotos em KB, corte de vídeos e músicas para
     assert.strictEqual(dummyAudioPlayer.classList.contains('playing'), false, 'Player deve parar ao atingir o limite de 2 minutos (120s)');
   }
 });
+
+test('Recursos VORTEX VIP: Temas VIP (Cyber Park, Hacker 0101 em canvas, RGB), Fontes Animadas VIP, Emojis Animados, Gaveta de Emojis e Papel de Parede do Chat', async () => {
+  const env = createTestEnvironment();
+  const doc = env.sandbox.document;
+  const localStorage = env.sandbox.localStorage;
+
+  // 1. Verificação do Canvas de Códigos Binários e Temas VIP
+  const matrixCanvas = env.elements['matrix-binary-canvas'];
+  assert.ok(matrixCanvas, 'Elemento #matrix-binary-canvas deve existir no DOM');
+
+  // Mock do getContext para o canvas no ambiente sandbox se necessário
+  matrixCanvas.getContext = () => ({
+    fillRect: () => {},
+    fillText: () => {},
+    clearRect: () => {},
+    fillStyle: '',
+    font: ''
+  });
+
+  // Usuário Comum (não-VIP): Bloqueio ao tentar selecionar tema VIP
+  const userCommon = {
+    uid: 'test-user-50',
+    name: 'Usuario Comum',
+    email: 'user@test.com',
+    isVip: false,
+    isVerified: false,
+    vipStatus: 'none'
+  };
+  env.sandbox.window.setCurrentUser({ uid: 'test-user-50', email: 'user@test.com' });
+  env.sandbox.window.setCurrentProfile(userCommon);
+
+  // Inicializar controles de configurações VIP
+  env.sandbox.setupVipSettingsControls();
+
+  // Encontrar botões dos temas nas configurações
+  const themeButtons = doc.querySelectorAll('.vip-theme-option');
+  assert.ok(themeButtons.length >= 4, 'Devem existir opções para Padrão, Cyber Park, Hacker e RGB');
+
+  const cyberOpt = themeButtons.find(b => b.dataset.theme === 'cyberpark');
+  assert.ok(cyberOpt, 'Opção Cyber Park deve existir');
+
+  // Não-VIP tenta ativar Cyber Park -> Bloqueado!
+  await cyberOpt.onclick();
+  const prof1 = env.sandbox.window.getCurrentProfile ? env.sandbox.window.getCurrentProfile() : env.sandbox.currentProfile;
+  assert.strictEqual(prof1.vipTheme, undefined, 'Usuário comum não pode ativar tema VIP');
+  assert.ok(!doc.body.classList.contains('theme-cyberpark'), 'Classe theme-cyberpark não deve ser aplicada para não-VIP');
+
+  // Agora transformar o usuário em VIP
+  const userVip = {
+    ...userCommon,
+    isVip: true,
+    isVerified: true,
+    vipStatus: 'active',
+    vipSubscriptionEnd: Date.now() + (30 * 24 * 60 * 60 * 1000)
+  };
+  env.sandbox.window.setCurrentProfile(userVip);
+
+  // VIP ativa tema Cyber Park -> Sucesso!
+  await cyberOpt.onclick();
+  const prof2 = env.sandbox.window.getCurrentProfile ? env.sandbox.window.getCurrentProfile() : env.sandbox.currentProfile;
+  assert.strictEqual(prof2.vipTheme, 'cyberpark', 'Usuário VIP ativa tema Cyber Park com sucesso');
+  assert.ok(doc.body.classList.contains('theme-cyberpark') || doc.body.classList.contains('theme-cyberpunk'), 'Classe do tema Cyberpark ativada no body');
+
+  // VIP ativa tema Hacker (Racke 0101) -> Sucesso com Matrix Binary Canvas!
+  const hackerOpt = themeButtons.find(b => b.dataset.theme === 'hacker');
+  assert.ok(hackerOpt, 'Opção Hacker Terminal deve existir');
+  await hackerOpt.onclick();
+  const prof3 = env.sandbox.window.getCurrentProfile ? env.sandbox.window.getCurrentProfile() : env.sandbox.currentProfile;
+  assert.strictEqual(prof3.vipTheme, 'hacker', 'Tema Hacker ativado');
+  assert.ok(doc.body.classList.contains('theme-hacker'), 'Classe theme-hacker ativa no body');
+
+  // VIP ativa tema RGB -> Sucesso!
+  const rgbOpt = themeButtons.find(b => b.dataset.theme === 'rgb');
+  assert.ok(rgbOpt, 'Opção RGB deve existir');
+  await rgbOpt.onclick();
+  const prof4 = env.sandbox.window.getCurrentProfile ? env.sandbox.window.getCurrentProfile() : env.sandbox.currentProfile;
+  assert.strictEqual(prof4.vipTheme, 'rgb', 'Tema RGB ativado');
+  assert.ok(doc.body.classList.contains('theme-rgb'), 'Classe theme-rgb ativa no body');
+
+  // 2. Fontes Animadas VIP (RGB, Azul Ciano, Neon Minimalista, Futurista)
+  const fontButtons = doc.querySelectorAll('.vip-font-option');
+  assert.ok(fontButtons.length >= 5, 'Devem existir 5 opções de fontes VIP (Normal + 4 animadas)');
+
+  const fontRgbOpt = fontButtons.find(b => b.dataset.style === 'rgb');
+  const fontCyanOpt = fontButtons.find(b => b.dataset.style === 'cyan');
+  const fontNeonOpt = fontButtons.find(b => b.dataset.style === 'neon_minimal');
+  const fontFuturisticOpt = fontButtons.find(b => b.dataset.style === 'futuristic');
+
+  assert.ok(fontRgbOpt && fontCyanOpt && fontNeonOpt && fontFuturisticOpt, 'Todos os 4 estilos animados devem estar presentes');
+
+  // Não-VIP tenta selecionar fonte RGB -> Bloqueado!
+  env.sandbox.window.setCurrentProfile(userCommon);
+  await fontRgbOpt.onclick();
+  const prof5 = env.sandbox.window.getCurrentProfile ? env.sandbox.window.getCurrentProfile() : env.sandbox.currentProfile;
+  assert.notStrictEqual(prof5.vipTextStyle, 'rgb', 'Usuário comum não pode ativar fonte animada RGB');
+
+  // VIP seleciona fonte RGB -> Sucesso!
+  env.sandbox.window.setCurrentProfile(userVip);
+  await fontRgbOpt.onclick();
+  const prof6 = env.sandbox.window.getCurrentProfile ? env.sandbox.window.getCurrentProfile() : env.sandbox.currentProfile;
+  assert.strictEqual(prof6.vipTextStyle, 'rgb', 'Estilo RGB selecionado pelo VIP');
+
+  // Testar renderização de mensagem com fonte animada RGB
+  const renderedRgb = env.sandbox.formatChatMessageText('Mensagem Cromática VORTEX VIP', true, 'rgb');
+  assert.ok(renderedRgb.includes('vip-text-rgb'), 'Texto deve receber a classe vip-text-rgb');
+
+  // Testar renderização com fonte Azul Ciano
+  const renderedCyan = env.sandbox.formatChatMessageText('Ciberespaço Conectado', true, 'cyan');
+  assert.ok(renderedCyan.includes('vip-text-cyan'), 'Texto deve receber a classe vip-text-cyan');
+
+  // Testar renderização com fonte Neon Minimalista
+  const renderedNeon = env.sandbox.formatChatMessageText('Elegância Minimalista', true, 'neon_minimal');
+  assert.ok(renderedNeon.includes('vip-text-neon_minimal'), 'Texto deve receber a classe vip-text-neon_minimal');
+
+  // Testar renderização com fonte Futurista
+  const renderedFuturistic = env.sandbox.formatChatMessageText('Holographic Terminal Glitch', true, 'futuristic');
+  assert.ok(renderedFuturistic.includes('vip-text-futuristic'), 'Texto deve receber a classe vip-text-futuristic');
+
+  // Usuário comum enviando texto -> Não recebe estilo animado
+  const renderedNormal = env.sandbox.formatChatMessageText('Texto comum de usuário', false, 'rgb');
+  assert.ok(!renderedNormal.includes('vip-text-rgb'), 'Não-VIP não pode renderizar fonte animada');
+
+  // 3. Emojis Animados Exclusivos para Usuários Verificados
+  // Caso A: Mensagem com apenas emojis de usuário VIP (1 a 4 emojis) -> vip-animated-emoji-giant
+  const renderedGiantEmojis = env.sandbox.formatChatMessageText('⚡ 🔥 ⭐', true, 'normal');
+  assert.ok(renderedGiantEmojis.includes('vip-animated-emoji-giant'), 'Emojis sozinhos de VIP devem receber classe vip-animated-emoji-giant');
+
+  // Caso B: Mensagem com texto e emoji de usuário VIP -> vip-animated-emoji inline
+  const renderedInlineEmoji = env.sandbox.formatChatMessageText('Olá VORTEX VIP! 🚀 Parabéns', true, 'normal');
+  assert.ok(renderedInlineEmoji.includes('vip-animated-emoji'), 'Emojis no meio do texto de VIP devem receber classe vip-animated-emoji');
+
+  // Caso C: Mensagem de usuário comum -> Sem classes de animação VIP
+  const renderedCommonEmoji = env.sandbox.formatChatMessageText('⚡ 🔥 ⭐', false, 'normal');
+  assert.ok(!renderedCommonEmoji.includes('vip-animated-emoji-giant'), 'Emojis de usuário comum não devem receber animação gigante VIP');
+  assert.ok(!renderedCommonEmoji.includes('vip-animated-emoji'), 'Emojis de usuário comum não devem receber animação VIP');
+
+  // 4. Gaveta de Emojis na Caixa de Texto (#chat-emoji-drawer e #chat-emoji-btn)
+  const emojiBtn = env.elements['chat-emoji-btn'];
+  const emojiDrawer = env.elements['chat-emoji-drawer'];
+  const chatInput = env.elements['chat-input-main'];
+
+  assert.ok(emojiBtn, 'Botão #chat-emoji-btn deve existir no rodapé');
+  assert.ok(emojiDrawer, 'Drawer #chat-emoji-drawer deve existir');
+
+  env.sandbox.setupChatEmojiDrawer();
+
+  // Clicar no botão de emoji abre o drawer
+  emojiBtn.onclick({ stopPropagation: () => {} });
+  assert.strictEqual(emojiDrawer.style.display, 'flex', 'Drawer de emojis deve abrir ao clicar no botão');
+
+  // Inserir emoji no input do chat
+  chatInput.value = 'Olá ';
+  chatInput.selectionStart = 4;
+  chatInput.selectionEnd = 4;
+
+  env.sandbox.insertEmojiIntoChatInput('⚡');
+  assert.strictEqual(chatInput.value, 'Olá ⚡', 'Emoji deve ser inserido na posição correta do cursor');
+
+  // 5. Plano de Fundo da Conversa (Chat Wallpaper)
+  const wpTrigger = env.elements['chat-wallpaper-trigger'];
+  const wpModal = env.elements['chat-wallpaper-modal'];
+  const msgContainer = env.elements['message-container'];
+
+  assert.ok(wpTrigger, 'Gatilho de papel de parede no dropdown deve existir');
+  assert.ok(wpModal, 'Modal de papel de parede deve existir');
+
+  env.sandbox.setupChatWallpaperModal();
+
+  // Abrir modal de papel de parede
+  wpTrigger.onclick();
+  assert.ok(wpModal.classList.contains('active'), 'Modal de papel de parede deve abrir ao clicar no item do menu');
+
+  // Aplicar preset Matrix Green na conversa atual
+  env.sandbox.activeChatContact = { uid: 'contact-test-123', name: 'Amigo Teste' };
+  localStorage.setItem('vortex_wallpaper_contact-test-123', 'matrix-green');
+
+  env.sandbox.applyChatWallpaper('contact-test-123');
+  assert.ok(msgContainer.classList.contains('has-custom-wallpaper'), 'Container de mensagens deve indicar papel de parede ativo');
+  assert.ok(msgContainer.style.background.includes('matrix') || msgContainer.style.background.includes('021a08'), 'Background do container deve aplicar o preset matrix-green');
+
+  // Resetar papel de parede para padrão
+  localStorage.removeItem('vortex_wallpaper_contact-test-123');
+  env.sandbox.applyChatWallpaper('contact-test-123');
+  assert.strictEqual(msgContainer.classList.contains('has-custom-wallpaper'), false, 'Ao resetar, custom wallpaper deve ser desativado');
+  assert.strictEqual(msgContainer.style.background, '', 'Background do container deve voltar ao padrão vazio');
+});
+
 
 
 

@@ -5,13 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E⚡%3C/text%3E%3C/svg%3E">
-    <link rel="stylesheet" href="style.css?v=1.0.49">
+    <link rel="stylesheet" href="style.css?v=1.0.64">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
+
+    <!-- Canvas de Códigos Binários Animados (Tema Hacker Matrix VIP) -->
+    <canvas id="matrix-binary-canvas" class="matrix-binary-canvas" aria-hidden="true"></canvas>
 
     <div class="app-container">
         <!-- Animação de Raio Neon ao Desbloquear -->
@@ -385,6 +388,10 @@
                         <i data-lucide="check-square"></i>
                         <span>Selecionar Mensagens</span>
                     </div>
+                    <div class="dropdown-item" id="chat-wallpaper-trigger">
+                        <i data-lucide="image"></i>
+                        <span>Papel de Parede</span>
+                    </div>
                     <div class="dropdown-item" id="chat-pin-trigger">
                         <i data-lucide="pin" id="chat-pin-icon"></i>
                         <span id="chat-pin-text">Fixar Conversa</span>
@@ -477,6 +484,25 @@
                 </div>
             </div>
 
+            <!-- Gaveta de Emojis VORTEX com suporte a Emojis Animados VIP -->
+            <div id="chat-emoji-drawer" class="chat-emoji-drawer" style="display: none;">
+                <div class="emoji-drawer-header">
+                    <div class="emoji-drawer-vip-badge">
+                        <i data-lucide="sparkles"></i>
+                        <span>Emojis Animados Exclusivos VIP ⭐</span>
+                    </div>
+                    <button type="button" id="close-emoji-drawer-btn" class="emoji-drawer-close" aria-label="Fechar">&times;</button>
+                </div>
+                <div class="emoji-drawer-tabs">
+                    <button type="button" class="emoji-tab-btn active" data-cat="smileys" title="Expressões">😀</button>
+                    <button type="button" class="emoji-tab-btn" data-cat="vip" title="VIP & Especiais">⚡</button>
+                    <button type="button" class="emoji-tab-btn" data-cat="hearts" title="Corações">❤️</button>
+                    <button type="button" class="emoji-tab-btn" data-cat="gestures" title="Gestos">👍</button>
+                    <button type="button" class="emoji-tab-btn" data-cat="objects" title="Fogo & Objetos">🔥</button>
+                </div>
+                <div id="emoji-drawer-grid" class="emoji-drawer-grid"></div>
+            </div>
+
             <footer class="chat-window-footer">
                 <div class="header-icon-btn" id="attach-btn" title="Anexar Fotos, Vídeos, Músicas ou Arquivos" aria-label="Anexar Arquivo">
                     <i data-lucide="paperclip"></i>
@@ -492,6 +518,9 @@
                     </div>
                     <label for="chat-input-main" class="sr-only">Digite uma mensagem</label>
                     <input type="text" id="chat-input-main" placeholder="Digite uma mensagem..." title="Digite uma mensagem" aria-label="Digite uma mensagem">
+                    <div class="header-icon-btn chat-input-emoji-btn" id="chat-emoji-btn" title="Inserir Emoji" aria-label="Inserir Emoji">
+                        <i data-lucide="smile"></i>
+                    </div>
                 </div>
                 <button id="chat-send-btn-main" class="icon-btn" aria-label="Enviar mensagem ou gravar áudio" title="Enviar / Gravar">
                     <i data-lucide="mic" id="chat-send-icon"></i>
@@ -667,6 +696,74 @@
                 <div class="modal-actions-col">
                     <button id="submit-report-contact-btn" class="danger-btn btn-delete-everyone">Enviar Denúncia</button>
                     <button id="cancel-report-modal-btn" class="close-btn modal-cancel-btn">Cancelar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Papel de Parede da Conversa -->
+        <div id="chat-wallpaper-modal" class="custom-modal-overlay">
+            <div class="custom-modal-card wallpaper-modal-card">
+                <div class="panel-top-bar">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <i data-lucide="image" style="width: 20px; height: 20px; color: var(--accent-color);"></i>
+                        <h2>Plano de Fundo da Conversa</h2>
+                    </div>
+                    <div class="header-icon-btn" id="close-wallpaper-modal" title="Fechar" aria-label="Fechar">
+                        <i data-lucide="x"></i>
+                    </div>
+                </div>
+                <p class="modal-instruction-text">Personalize o papel de parede desta conversa ou de todas as conversas:</p>
+                
+                <div id="wallpaper-preview-box" class="wallpaper-preview-box">
+                    <div class="wallpaper-preview-mock-bubble sent">Mensagem de pré-visualização ✨</div>
+                    <div class="wallpaper-preview-mock-bubble received">O fundo ficará incrível! 🚀</div>
+                </div>
+
+                <div class="wallpaper-presets-grid" id="wallpaper-presets-grid">
+                    <div class="wallpaper-preset-item active" id="wallpaper-preset-default" data-wallpaper="default" title="Padrão VORTEX">
+                        <span>Padrão</span>
+                    </div>
+                    <div class="wallpaper-preset-item" id="wallpaper-preset-black" data-wallpaper="total-black" style="background: #030303;" title="Total Black">
+                        <span>Black</span>
+                    </div>
+                    <div class="wallpaper-preset-item" id="wallpaper-preset-cyber" data-wallpaper="cyber-dark" style="background: linear-gradient(135deg, #090d16 0%, #030712 100%);" title="Cyber Dark">
+                        <span>Cyber</span>
+                    </div>
+                    <div class="wallpaper-preset-item" id="wallpaper-preset-cosmic" data-wallpaper="cosmic-purple" style="background: linear-gradient(135deg, #2e0854 0%, #0c021f 100%);" title="Roxo Cósmico">
+                        <span>Cósmico</span>
+                    </div>
+                    <div class="wallpaper-preset-item" id="wallpaper-preset-matrix" data-wallpaper="matrix-green" style="background: linear-gradient(135deg, #021a08 0%, #010803 100%);" title="Matrix">
+                        <span>Matrix</span>
+                    </div>
+                    <div class="wallpaper-preset-item" id="wallpaper-preset-cyan" data-wallpaper="deep-cyan" style="background: linear-gradient(135deg, #022026 0%, #010c10 100%);" title="Ciano Profundo">
+                        <span>Ciano</span>
+                    </div>
+                    <div class="wallpaper-preset-item" id="wallpaper-preset-sunset" data-wallpaper="sunset-glow" style="background: linear-gradient(135deg, #2b091f 0%, #10020d 100%);" title="Sunset Dark">
+                        <span>Sunset</span>
+                    </div>
+                </div>
+
+                <div class="wallpaper-actions-row">
+                    <label for="wallpaper-file-input" class="danger-btn wallpaper-upload-btn" title="Escolher Foto da Galeria">
+                        <i data-lucide="upload"></i> Escolher Foto
+                    </label>
+                    <input type="file" id="wallpaper-file-input" accept="image/*" style="display: none;">
+                    <button type="button" id="reset-wallpaper-btn" class="close-btn modal-cancel-btn" title="Restaurar Padrão">Restaurar</button>
+                </div>
+
+                <div class="wallpaper-scope-selector">
+                    <label class="wallpaper-scope-opt">
+                        <input type="radio" name="wallpaper-scope" value="chat" checked>
+                        <span>Apenas nesta conversa</span>
+                    </label>
+                    <label class="wallpaper-scope-opt">
+                        <input type="radio" name="wallpaper-scope" value="global">
+                        <span>Em todas as conversas</span>
+                    </label>
+                </div>
+
+                <div class="wallpaper-save-actions">
+                    <button type="button" id="save-wallpaper-btn" class="danger-btn" style="width: 100%;">Aplicar Plano de Fundo</button>
                 </div>
             </div>
         </div>
@@ -1156,6 +1253,57 @@
                         <input type="checkbox" id="theme-toggle" checked title="Tema">
                         <span class="slider"></span>
                     </label>
+                </div>
+
+                <div class="setting-item setting-vip-themes">
+                    <div class="setting-info">
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span>Temas VORTEX VIP</span>
+                            <span class="vip-exclusive-tag">⭐ VIP</span>
+                        </div>
+                        <small>Cyberpunk, Hacker com códigos binários e RGB</small>
+                    </div>
+                    <div class="vip-theme-selector" id="vip-theme-selector">
+                        <button type="button" class="vip-theme-option active" id="vip-theme-default" data-theme="default" title="Padrão">
+                            <span>Padrão</span>
+                        </button>
+                        <button type="button" class="vip-theme-option" id="vip-theme-cyberpark" data-theme="cyberpark" title="Cyberpunk">
+                            <span class="vip-theme-badge">⭐</span> Cyber Park
+                        </button>
+                        <button type="button" class="vip-theme-option" id="vip-theme-hacker" data-theme="hacker" title="Hacker Terminal">
+                            <span class="vip-theme-badge">⭐</span> Racke 0101
+                        </button>
+                        <button type="button" class="vip-theme-option" id="vip-theme-rgb" data-theme="rgb" title="RGB Chroma">
+                            <span class="vip-theme-badge">⭐</span> RGB
+                        </button>
+                    </div>
+                </div>
+
+                <div class="setting-item setting-vip-fonts">
+                    <div class="setting-info">
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span>Fonte de Texto Animada VIP</span>
+                            <span class="vip-exclusive-tag">⭐ VIP</span>
+                        </div>
+                        <small>Animações visuais exibidas nas suas mensagens</small>
+                    </div>
+                    <div class="vip-font-selector" id="vip-font-selector">
+                        <button type="button" class="vip-font-option active" id="vip-font-normal" data-style="normal" title="Normal">
+                            <span>Normal</span>
+                        </button>
+                        <button type="button" class="vip-font-option vip-font-rgb" id="vip-font-rgb" data-style="rgb" title="RGB">
+                            <span class="vip-badge-mini">⭐</span> Animação RGB
+                        </button>
+                        <button type="button" class="vip-font-option vip-font-cyan" id="vip-font-cyan" data-style="cyan" title="Azul Ciano">
+                            <span class="vip-badge-mini">⭐</span> Azul Ciano
+                        </button>
+                        <button type="button" class="vip-font-option vip-font-neon" id="vip-font-neon" data-style="neon_minimal" title="Neon Minimalista">
+                            <span class="vip-badge-mini">⭐</span> Neon Minimalista
+                        </button>
+                        <button type="button" class="vip-font-option vip-font-futuristic" id="vip-font-futuristic" data-style="futuristic" title="Futurista">
+                            <span class="vip-badge-mini">⭐</span> Futurista
+                        </button>
+                    </div>
                 </div>
 
                 <div class="setting-item">
@@ -1943,6 +2091,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.63" defer></script>
+    <script type="module" src="script.js?v=1.0.64" defer></script>
 </body>
 </html>
