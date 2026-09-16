@@ -325,6 +325,9 @@ function createTestEnvironment() {
       if (sel.includes('[data-filter="nao-lidas"]')) {
         return elements['filter-pill-nao-lidas'] || null;
       }
+      if (sel.includes('wallpaper-scope')) {
+        return { value: 'chat', checked: true };
+      }
       if (sel.includes('.chat-card[data-uid=')) {
         const uidMatch = sel.match(/data-uid="([^"]+)"/);
         if (uidMatch) {
@@ -4908,20 +4911,32 @@ test('Recursos VORTEX VIP: Temas VIP (Cyber Park, Hacker 0101 em canvas, RGB), F
   env.sandbox.setupChatWallpaperModal();
 
   // Abrir modal de papel de parede
+  env.sandbox.setActiveChatContact({ uid: 'contact-test-123', name: 'Amigo Teste' });
   wpTrigger.onclick();
   assert.ok(wpModal.classList.contains('active'), 'Modal de papel de parede deve abrir ao clicar no item do menu');
 
-  // Aplicar preset Matrix Green na conversa atual
-  env.sandbox.activeChatContact = { uid: 'contact-test-123', name: 'Amigo Teste' };
-  localStorage.setItem('vortex_wallpaper_contact-test-123', 'matrix-green');
+  // Selecionar preset cyber-dark e salvar pelo botão
+  const cyberPreset = env.elements['wallpaper-preset-cyber'];
+  const saveWpBtn = env.elements['save-wallpaper-btn'];
+  const resetWpBtn = env.elements['reset-wallpaper-btn'];
 
-  env.sandbox.applyChatWallpaper('contact-test-123');
-  assert.ok(msgContainer.classList.contains('has-custom-wallpaper'), 'Container de mensagens deve indicar papel de parede ativo');
-  assert.ok(msgContainer.style.background.includes('matrix') || msgContainer.style.background.includes('021a08'), 'Background do container deve aplicar o preset matrix-green');
+  assert.ok(cyberPreset, 'Preset cyber-dark deve existir');
+  assert.ok(saveWpBtn, 'Botão de salvar papel de parede deve existir');
+  assert.ok(resetWpBtn, 'Botão de restaurar papel de parede deve existir');
 
-  // Resetar papel de parede para padrão
-  localStorage.removeItem('vortex_wallpaper_contact-test-123');
-  env.sandbox.applyChatWallpaper('contact-test-123');
+  cyberPreset.onclick();
+  await saveWpBtn.onclick();
+
+  assert.strictEqual(wpModal.classList.contains('active'), false, 'Modal deve fechar após salvar');
+  assert.ok(localStorage.getItem('vortex_wallpaper_contact-test-123') === 'cyber-dark', 'Papel de parede deve ser gravado no localStorage para o contato');
+  assert.ok(msgContainer.classList.contains('has-custom-wallpaper'), 'Container deve conter classe de papel de parede');
+  assert.ok(msgContainer.style.background.includes('090d16') || msgContainer.style.background.includes('cyber'), 'Background deve ser cyber-dark');
+
+  // Testar restauração pelo botão de reset
+  wpTrigger.onclick();
+  await resetWpBtn.onclick();
+  assert.strictEqual(wpModal.classList.contains('active'), false, 'Modal deve fechar após reset');
+  assert.strictEqual(localStorage.getItem('vortex_wallpaper_contact-test-123'), null, 'Chave do contato deve ser removida do localStorage');
   assert.strictEqual(msgContainer.classList.contains('has-custom-wallpaper'), false, 'Ao resetar, custom wallpaper deve ser desativado');
   assert.strictEqual(msgContainer.style.background, '', 'Background do container deve voltar ao padrão vazio');
 });

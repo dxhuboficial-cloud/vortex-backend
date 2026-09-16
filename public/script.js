@@ -1116,41 +1116,123 @@ export function setupChatEmojiDrawer() {
 // ==========================================================================
 // Plano de Fundo da Conversa (Chat Wallpaper)
 // ==========================================================================
+export function setActiveChatContact(contact) {
+    activeChatContact = contact;
+    if (typeof document !== 'undefined') {
+        const win = document.getElementById('chat-window');
+        if (win && contact) {
+            win.dataset.chatId = contact.uid || '';
+            win.dataset.isGroup = contact.isGroup ? 'true' : 'false';
+        }
+    }
+}
+
+export function getActiveChatContact() {
+    return activeChatContact;
+}
+
+export function getChatWallpaperKeys(targetId) {
+    const keys = new Set();
+    const win = typeof document !== 'undefined' ? document.getElementById('chat-window') : null;
+    const domChatId = win && win.dataset ? win.dataset.chatId : null;
+    const domIsGroup = win && win.dataset ? win.dataset.isGroup === 'true' : false;
+
+    const idsToProcess = [targetId, domChatId].filter(Boolean);
+    for (const id of idsToProcess) {
+        const s = String(id);
+        keys.add(s);
+        if (s.startsWith('group_')) {
+            keys.add(s.replace('group_', ''));
+        } else {
+            if (domIsGroup || (activeChatContact && activeChatContact.isGroup)) {
+                keys.add(`group_${s}`);
+            }
+            if (!s.includes('_') && typeof currentUser !== 'undefined' && currentUser && currentUser.uid) {
+                keys.add([currentUser.uid, s].sort().join('_'));
+            }
+        }
+    }
+
+    if (typeof activeChatContact !== 'undefined' && activeChatContact && activeChatContact.uid) {
+        const cUid = String(activeChatContact.uid);
+        keys.add(cUid);
+        if (activeChatContact.isGroup) {
+            keys.add(`group_${cUid}`);
+        } else if (typeof currentUser !== 'undefined' && currentUser && currentUser.uid) {
+            keys.add([currentUser.uid, cUid].sort().join('_'));
+        }
+    }
+    const activeId = typeof getActiveChatId === 'function' ? getActiveChatId() : null;
+    if (activeId) keys.add(String(activeId));
+    return Array.from(keys);
+}
+
+export function getSavedChatWallpaper(targetId) {
+    const keys = getChatWallpaperKeys(targetId);
+    if (typeof localStorage !== 'undefined') {
+        for (const k of keys) {
+            const val = localStorage.getItem(`vortex_wallpaper_${k}`);
+            if (val) return val;
+        }
+    }
+    if (typeof currentProfile !== 'undefined' && currentProfile && currentProfile.chatWallpapers) {
+        for (const k of keys) {
+            if (currentProfile.chatWallpapers[k]) return currentProfile.chatWallpapers[k];
+        }
+    }
+    // Fallback para papel de parede global
+    if (typeof localStorage !== 'undefined') {
+        const globalWp = localStorage.getItem('vortex_wallpaper_global');
+        if (globalWp) return globalWp;
+    }
+    if (typeof currentProfile !== 'undefined' && currentProfile && currentProfile.chatWallpaperGlobal) {
+        return currentProfile.chatWallpaperGlobal;
+    }
+    return 'default';
+}
+
 export function applyChatWallpaper(chatId) {
     if (typeof document === 'undefined') return;
     const container = document.getElementById('message-container');
     if (!container) return;
-    const activeChatId = chatId || getActiveChatId();
-    const wp = (activeChatId && typeof localStorage !== 'undefined' && localStorage.getItem(`vortex_wallpaper_${activeChatId}`)) ||
-               (typeof localStorage !== 'undefined' && localStorage.getItem('vortex_wallpaper_global')) || '';
+    const wp = getSavedChatWallpaper(chatId);
 
     if (!wp || wp === 'default') {
         container.style.background = '';
         container.style.backgroundImage = '';
-        container.classList.remove('has-custom-wallpaper');
+        container.classList.remove('has-custom-wallpaper', 'has-custom-wallpaper-image');
         return;
     }
 
+    container.classList.add('has-custom-wallpaper');
     if (wp.startsWith('data:image') || wp.startsWith('http')) {
-        container.style.background = `url("${wp}") center/cover no-repeat`;
+        container.style.background = `url("${wp}") center center / cover no-repeat`;
+        container.classList.add('has-custom-wallpaper-image');
     } else if (wp.startsWith('linear-gradient') || wp.startsWith('#') || wp.startsWith('rgba')) {
         container.style.background = wp;
+        container.classList.remove('has-custom-wallpaper-image');
     } else if (wp === 'total-black') {
         container.style.background = '#030303';
+        container.classList.remove('has-custom-wallpaper-image');
     } else if (wp === 'cyber-dark') {
         container.style.background = 'linear-gradient(135deg, #090d16 0%, #030712 100%)';
+        container.classList.remove('has-custom-wallpaper-image');
     } else if (wp === 'cosmic-purple') {
         container.style.background = 'linear-gradient(135deg, #2e0854 0%, #0c021f 100%)';
+        container.classList.remove('has-custom-wallpaper-image');
     } else if (wp === 'matrix-green') {
         container.style.background = 'linear-gradient(135deg, #021a08 0%, #010803 100%)';
+        container.classList.remove('has-custom-wallpaper-image');
     } else if (wp === 'deep-cyan') {
         container.style.background = 'linear-gradient(135deg, #022026 0%, #010c10 100%)';
+        container.classList.remove('has-custom-wallpaper-image');
     } else if (wp === 'sunset-glow') {
         container.style.background = 'linear-gradient(135deg, #2b091f 0%, #10020d 100%)';
+        container.classList.remove('has-custom-wallpaper-image');
     } else {
         container.style.background = wp;
+        container.classList.remove('has-custom-wallpaper-image');
     }
-    container.classList.add('has-custom-wallpaper');
 }
 
 export function setupChatWallpaperModal() {
@@ -1167,26 +1249,34 @@ export function setupChatWallpaperModal() {
     let selectedWp = 'default';
 
     function updatePreview(val) {
-        selectedWp = val;
+        selectedWp = val || 'default';
         if (!previewBox) return;
         if (!val || val === 'default') {
             previewBox.style.background = 'rgba(255, 255, 255, 0.05)';
+            previewBox.style.backgroundImage = '';
         } else if (val.startsWith('data:image') || val.startsWith('http')) {
-            previewBox.style.background = `url("${val}") center/cover no-repeat`;
+            previewBox.style.background = `url("${val}") center center / cover no-repeat`;
         } else if (val.startsWith('linear-gradient') || val.startsWith('#')) {
             previewBox.style.background = val;
+            previewBox.style.backgroundImage = '';
         } else if (val === 'total-black') {
             previewBox.style.background = '#030303';
+            previewBox.style.backgroundImage = '';
         } else if (val === 'cyber-dark') {
             previewBox.style.background = 'linear-gradient(135deg, #090d16 0%, #030712 100%)';
+            previewBox.style.backgroundImage = '';
         } else if (val === 'cosmic-purple') {
             previewBox.style.background = 'linear-gradient(135deg, #2e0854 0%, #0c021f 100%)';
+            previewBox.style.backgroundImage = '';
         } else if (val === 'matrix-green') {
             previewBox.style.background = 'linear-gradient(135deg, #021a08 0%, #010803 100%)';
+            previewBox.style.backgroundImage = '';
         } else if (val === 'deep-cyan') {
             previewBox.style.background = 'linear-gradient(135deg, #022026 0%, #010c10 100%)';
+            previewBox.style.backgroundImage = '';
         } else if (val === 'sunset-glow') {
             previewBox.style.background = 'linear-gradient(135deg, #2b091f 0%, #10020d 100%)';
+            previewBox.style.backgroundImage = '';
         }
     }
 
@@ -1194,9 +1284,7 @@ export function setupChatWallpaperModal() {
         trigger.onclick = () => {
             const dropdown = document.getElementById('chat-dropdown-menu');
             if (dropdown) dropdown.classList.remove('active');
-            const chatId = getActiveChatId();
-            const currentWp = (chatId && typeof localStorage !== 'undefined' && localStorage.getItem(`vortex_wallpaper_${chatId}`)) ||
-                              (typeof localStorage !== 'undefined' && localStorage.getItem('vortex_wallpaper_global')) || 'default';
+            const currentWp = getSavedChatWallpaper();
             updatePreview(currentWp);
             presets.forEach(p => p.classList.toggle('active', p.dataset.wallpaper === currentWp));
             modal.classList.add('active');
@@ -1206,6 +1294,9 @@ export function setupChatWallpaperModal() {
     if (closeBtn) {
         closeBtn.onclick = () => modal.classList.remove('active');
     }
+    modal.onclick = (e) => {
+        if (e.target === modal) modal.classList.remove('active');
+    };
 
     presets.forEach(preset => {
         preset.onclick = () => {
@@ -1220,7 +1311,7 @@ export function setupChatWallpaperModal() {
             const file = e.target.files && e.target.files[0];
             if (!file) return;
             try {
-                const compressed = await compressImageFileToKB(file, { maxDimension: 1280, targetMaxKB: 350, quality: 0.8 });
+                const compressed = await compressImageFileToKB(file, { maxDimension: 1080, targetMaxKB: 180, quality: 0.78 });
                 updatePreview(compressed.data);
                 presets.forEach(p => p.classList.remove('active'));
                 showToast('Foto Carregada', `Plano de fundo preparado (${compressed.sizeKB} KB)`, 'green');
@@ -1232,47 +1323,101 @@ export function setupChatWallpaperModal() {
     }
 
     if (saveBtn) {
-        saveBtn.onclick = () => {
+        saveBtn.onclick = async () => {
             const scopeRadio = document.querySelector('input[name="wallpaper-scope"]:checked');
             const scope = scopeRadio ? scopeRadio.value : 'chat';
-            const chatId = getActiveChatId();
+            const keys = getChatWallpaperKeys();
 
             if (typeof localStorage !== 'undefined') {
-                if (scope === 'chat' && chatId) {
-                    if (selectedWp === 'default') {
-                        localStorage.removeItem(`vortex_wallpaper_${chatId}`);
-                    } else {
-                        localStorage.setItem(`vortex_wallpaper_${chatId}`, selectedWp);
+                if (scope === 'chat') {
+                    for (const k of keys) {
+                        try {
+                            if (selectedWp === 'default') {
+                                localStorage.removeItem(`vortex_wallpaper_${k}`);
+                            } else {
+                                localStorage.setItem(`vortex_wallpaper_${k}`, selectedWp);
+                            }
+                        } catch (err) {
+                            console.warn('Erro ao gravar no localStorage:', err);
+                        }
                     }
                 } else {
-                    if (selectedWp === 'default') {
-                        localStorage.removeItem('vortex_wallpaper_global');
-                    } else {
-                        localStorage.setItem('vortex_wallpaper_global', selectedWp);
+                    try {
+                        if (selectedWp === 'default') {
+                            localStorage.removeItem('vortex_wallpaper_global');
+                        } else {
+                            localStorage.setItem('vortex_wallpaper_global', selectedWp);
+                        }
+                    } catch (err) {
+                        console.warn('Erro ao gravar no localStorage:', err);
                     }
                 }
             }
 
-            applyChatWallpaper(chatId);
+            // Sincronizar com Firestore se o usuário estiver autenticado
+            if (typeof currentUser !== 'undefined' && currentUser && currentUser.uid && typeof db !== 'undefined') {
+                try {
+                    const userRef = doc(db, 'users', currentUser.uid);
+                    if (scope === 'chat') {
+                        if (!currentProfile.chatWallpapers) currentProfile.chatWallpapers = {};
+                        for (const k of keys) {
+                            if (selectedWp === 'default') {
+                                delete currentProfile.chatWallpapers[k];
+                            } else {
+                                currentProfile.chatWallpapers[k] = selectedWp;
+                            }
+                        }
+                        await updateDoc(userRef, { chatWallpapers: currentProfile.chatWallpapers });
+                    } else {
+                        currentProfile.chatWallpaperGlobal = selectedWp === 'default' ? null : selectedWp;
+                        await updateDoc(userRef, { chatWallpaperGlobal: currentProfile.chatWallpaperGlobal });
+                    }
+                } catch (fireErr) {
+                    console.warn('Erro ao sincronizar wallpaper no Firestore:', fireErr);
+                }
+            }
+
+            applyChatWallpaper();
             modal.classList.remove('active');
             showToast('Plano de Fundo Salvo', 'Papel de parede aplicado com sucesso!', 'green');
         };
     }
 
     if (resetBtn) {
-        resetBtn.onclick = () => {
+        resetBtn.onclick = async () => {
             const scopeRadio = document.querySelector('input[name="wallpaper-scope"]:checked');
             const scope = scopeRadio ? scopeRadio.value : 'chat';
-            const chatId = getActiveChatId();
+            const keys = getChatWallpaperKeys();
+
             if (typeof localStorage !== 'undefined') {
-                if (scope === 'chat' && chatId) {
-                    localStorage.removeItem(`vortex_wallpaper_${chatId}`);
+                if (scope === 'chat') {
+                    for (const k of keys) {
+                        try { localStorage.removeItem(`vortex_wallpaper_${k}`); } catch (e) {}
+                    }
                 } else {
-                    localStorage.removeItem('vortex_wallpaper_global');
+                    try { localStorage.removeItem('vortex_wallpaper_global'); } catch (e) {}
                 }
             }
+
+            if (typeof currentUser !== 'undefined' && currentUser && currentUser.uid && typeof db !== 'undefined') {
+                try {
+                    const userRef = doc(db, 'users', currentUser.uid);
+                    if (scope === 'chat') {
+                        if (currentProfile && currentProfile.chatWallpapers) {
+                            for (const k of keys) {
+                                delete currentProfile.chatWallpapers[k];
+                            }
+                            await updateDoc(userRef, { chatWallpapers: currentProfile.chatWallpapers });
+                        }
+                    } else {
+                        if (currentProfile) currentProfile.chatWallpaperGlobal = null;
+                        await updateDoc(userRef, { chatWallpaperGlobal: null });
+                    }
+                } catch (e) {}
+            }
+
             updatePreview('default');
-            applyChatWallpaper(chatId);
+            applyChatWallpaper();
             modal.classList.remove('active');
             showToast('Plano de Fundo Restaurado', 'O papel de parede voltou ao padrão.', 'green');
         };
@@ -4619,7 +4764,7 @@ function openGroupChat(group) {
     if (typeof applyChatFilter === 'function') applyChatFilter();
 
     activeGroupDoc = group;
-    activeChatContact = { uid: groupId, name: group.name || 'Grupo VIP', avatar: group.avatar || '', isGroup: true, paused: !!group.paused, members: group.members || [] };
+    setActiveChatContact({ uid: groupId, name: group.name || 'Grupo VIP', avatar: group.avatar || '', isGroup: true, paused: !!group.paused, members: group.members || [] });
     applyChatWallpaper(groupId);
 
     const nameEl = document.getElementById('chat-window-name');
@@ -4967,7 +5112,7 @@ function openDirectChat(contact) {
     const leaveGroupTrigger = document.getElementById('chat-leave-group-trigger');
     if (leaveGroupTrigger) leaveGroupTrigger.style.display = 'none';
 
-    activeChatContact = contact;
+    setActiveChatContact(contact);
     const windowEl = document.getElementById('chat-window');
     const nameEl = document.getElementById('chat-window-name');
     const statusEl = document.getElementById('chat-window-status');
@@ -15070,6 +15215,10 @@ if (typeof window !== 'undefined') {
     window.EMOJI_CATEGORIES = EMOJI_CATEGORIES;
     window.insertEmojiIntoChatInput = insertEmojiIntoChatInput;
     window.setupChatEmojiDrawer = setupChatEmojiDrawer;
+    window.setActiveChatContact = setActiveChatContact;
+    window.getActiveChatContact = getActiveChatContact;
+    window.getChatWallpaperKeys = getChatWallpaperKeys;
+    window.getSavedChatWallpaper = getSavedChatWallpaper;
     window.applyChatWallpaper = applyChatWallpaper;
     window.setupChatWallpaperModal = setupChatWallpaperModal;
     window.setupVipSettingsControls = setupVipSettingsControls;

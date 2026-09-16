@@ -1660,6 +1660,18 @@ header h1 span {
     background-blend-mode: overlay;
 }
 
+.message-container.has-custom-wallpaper {
+    background-image: none !important;
+    background-blend-mode: normal !important;
+}
+
+.message-container.has-custom-wallpaper.has-custom-wallpaper-image {
+    background-size: cover !important;
+    background-position: center center !important;
+    background-repeat: no-repeat !important;
+    background-blend-mode: normal !important;
+}
+
 .message {
     max-width: 85%;
     padding: 8px 12px;
