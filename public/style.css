@@ -8051,6 +8051,35 @@ body.theme-rgb .chat-tab-pill.active {
 
     .message {
         max-width: 65% !important;
+        font-size: 1rem !important;
+        padding: 10px 16px !important;
+        line-height: 1.5 !important;
+    }
+
+    /* Áudio maior no desktop */
+    .audio-player-ui {
+        padding: 10px 16px !important;
+        gap: 12px !important;
+    }
+
+    .audio-player-ui .audio-play-btn {
+        width: 36px !important;
+        height: 36px !important;
+    }
+
+    /* Tempo das mensagens maior */
+    .message-time, .msg-time {
+        font-size: 0.78rem !important;
+    }
+
+    /* Barra de anexos: fixar sobre a área do chat-window no desktop */
+    .attachment-drawer {
+        position: fixed !important;
+        bottom: 0 !important;
+        left: 420px !important;
+        right: 0 !important;
+        width: auto !important;
+        z-index: 1200 !important;
     }
 
     .chat-card.active-chat {
