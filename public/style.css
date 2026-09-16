@@ -8224,6 +8224,26 @@ body.theme-rgb .chat-tab-pill.active {
         max-width: 680px !important;
         width: 100% !important;
     }
+
+    /* Tela "Nova Postagem" no Desktop: confinar na coluna da sidebar (420px) */
+    .screenshot-gallery-overlay {
+        width: 420px !important;
+        max-width: 420px !important;
+        left: 0 !important;
+        right: auto !important;
+        border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+        z-index: 800 !important;
+    }
+
+    /* Feed Reels no Desktop: confinar na coluna da sidebar (420px) */
+    .feed-overlay {
+        width: 420px !important;
+        max-width: 420px !important;
+        left: 0 !important;
+        right: auto !important;
+        border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+        z-index: 800 !important;
+    }
 }
 
 /* ==========================================================================
