@@ -4820,6 +4820,8 @@ test('Recursos VORTEX VIP: Temas VIP (Cyber Park, Hacker 0101 em canvas, RGB), F
   const prof4 = env.sandbox.window.getCurrentProfile ? env.sandbox.window.getCurrentProfile() : env.sandbox.currentProfile;
   assert.strictEqual(prof4.vipTheme, 'rgb', 'Tema RGB ativado');
   assert.ok(doc.body.classList.contains('theme-rgb'), 'Classe theme-rgb ativa no body');
+  assert.ok(typeof env.sandbox.startRgbThemeChroma === 'function', 'startRgbThemeChroma deve existir');
+  assert.ok(typeof env.sandbox.stopRgbThemeChroma === 'function', 'stopRgbThemeChroma deve existir');
 
   // 2. Fontes Animadas VIP (RGB, Azul Ciano, Neon Minimalista, Futurista)
   const fontButtons = doc.querySelectorAll('.vip-font-option');
@@ -4868,6 +4870,13 @@ test('Recursos VORTEX VIP: Temas VIP (Cyber Park, Hacker 0101 em canvas, RGB), F
   // Caso A: Mensagem com apenas emojis de usuário VIP (1 a 4 emojis) -> vip-animated-emoji-giant
   const renderedGiantEmojis = env.sandbox.formatChatMessageText('⚡ 🔥 ⭐', true, 'normal');
   assert.ok(renderedGiantEmojis.includes('vip-animated-emoji-giant'), 'Emojis sozinhos de VIP devem receber classe vip-animated-emoji-giant');
+
+  // Caso A2: Emojis com seletores de variação Unicode (ex: ❤️ que possui \uFE0F) e sequências ZWJ (❤️‍🔥)
+  const renderedHeartEmoji = env.sandbox.formatChatMessageText('❤️', true, 'normal');
+  assert.ok(renderedHeartEmoji.includes('vip-animated-emoji-giant'), 'Emoji ❤️ com Variation Selector-16 deve ser reconhecido como emoji gigante');
+
+  const renderedFireHeart = env.sandbox.formatChatMessageText('❤️‍🔥', true, 'normal');
+  assert.ok(renderedFireHeart.includes('vip-animated-emoji-giant'), 'Emoji composto ❤️‍🔥 deve ser reconhecido como emoji gigante');
 
   // Caso B: Mensagem com texto e emoji de usuário VIP -> vip-animated-emoji inline
   const renderedInlineEmoji = env.sandbox.formatChatMessageText('Olá VORTEX VIP! 🚀 Parabéns', true, 'normal');

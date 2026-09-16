@@ -1661,15 +1661,11 @@ header h1 span {
 }
 
 .message-container.has-custom-wallpaper {
-    background-image: none !important;
+    background-image: none;
     background-blend-mode: normal !important;
-}
-
-.message-container.has-custom-wallpaper.has-custom-wallpaper-image {
     background-size: cover !important;
     background-position: center center !important;
     background-repeat: no-repeat !important;
-    background-blend-mode: normal !important;
 }
 
 .message {
@@ -7374,19 +7370,80 @@ body.theme-hacker .icon-btn {
     66% { box-shadow: 0 0 12px #00f0ff, inset 0 0 8px rgba(0, 240, 255, 0.15); }
     100% { box-shadow: 0 0 12px #ff0055, inset 0 0 8px rgba(255, 0, 85, 0.15); }
 }
-body.theme-rgb {
-    --accent-color: #ff007f !important;
+@keyframes rgbRainbowBorder {
+    0% {
+        border-color: #ff0055 !important;
+        box-shadow: 0 0 14px rgba(255, 0, 85, 0.45);
+    }
+    20% {
+        border-color: #ff9900 !important;
+        box-shadow: 0 0 14px rgba(255, 153, 0, 0.45);
+    }
+    40% {
+        border-color: #00ff66 !important;
+        box-shadow: 0 0 14px rgba(0, 255, 102, 0.45);
+    }
+    60% {
+        border-color: #00f0ff !important;
+        box-shadow: 0 0 14px rgba(0, 240, 255, 0.45);
+    }
+    80% {
+        border-color: #aa00ff !important;
+        box-shadow: 0 0 14px rgba(170, 0, 255, 0.45);
+    }
+    100% {
+        border-color: #ff0055 !important;
+        box-shadow: 0 0 14px rgba(255, 0, 85, 0.45);
+    }
 }
+
+@keyframes rgbRainbowGradient {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+body.theme-rgb {
+    /* O valor dinâmico de --accent-color é ciclado suavemente por startRgbThemeChroma() no JS */
+}
+
+body.theme-rgb .app-container {
+    box-shadow: inset 0 0 30px rgba(255, 0, 127, 0.12), 0 0 25px rgba(0, 240, 255, 0.18) !important;
+}
+
 body.theme-rgb .sidebar,
 body.theme-rgb .header,
-body.theme-rgb .chat-window {
-    border-color: rgba(255, 0, 127, 0.5) !important;
-    animation: rgbCardGlow 6s linear infinite;
+body.theme-rgb .chat-window,
+body.theme-rgb .settings-panel,
+body.theme-rgb .bottom-nav-bar {
+    animation: rgbRainbowBorder 4.5s linear infinite !important;
+    position: relative;
 }
+
+body.theme-rgb .header::after,
+body.theme-rgb .chat-window-header::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #ff0055, #ff9900, #00ff66, #00f0ff, #aa00ff, #ff0055);
+    background-size: 300% 100%;
+    animation: rgbRainbowGradient 3.5s linear infinite;
+    z-index: 10;
+}
+
+body.theme-rgb .danger-btn,
+body.theme-rgb .nav-tab.active,
+body.theme-rgb .chat-tab-pill.active {
+    animation: rgbRainbowBorder 3.5s linear infinite !important;
+}
+
 body.theme-rgb .message.sent {
-    background: linear-gradient(135deg, rgba(255, 0, 127, 0.3), rgba(0, 240, 255, 0.3)) !important;
-    border: 1px solid rgba(255, 255, 255, 0.35) !important;
-    animation: rgbCardGlow 6s linear infinite;
+    background: linear-gradient(135deg, rgba(255, 0, 127, 0.35), rgba(0, 240, 255, 0.35)) !important;
+    border: 1px solid rgba(255, 255, 255, 0.4) !important;
+    animation: rgbRainbowBorder 5s linear infinite !important;
 }
 
 /* ==========================================================================
@@ -7517,21 +7574,47 @@ body.theme-rgb .message.sent {
     }
 }
 .vip-animated-emoji-giant {
-    display: inline-block;
+    display: inline-block !important;
     font-size: 3.2rem;
     line-height: 1.15;
     margin: 4px 6px;
     animation: vipEmojiFloat 2.2s ease-in-out infinite;
     transform-origin: center bottom;
     vertical-align: middle;
+    -webkit-text-fill-color: initial !important;
+    -webkit-background-clip: border-box !important;
+    background: none !important;
+    color: initial !important;
+    visibility: visible !important;
+    opacity: 1 !important;
 }
 .vip-animated-emoji {
-    display: inline-block;
+    display: inline-block !important;
     font-size: 1.25em;
     animation: vipEmojiInlineBounce 1.8s ease-in-out infinite;
     transform-origin: center center;
     vertical-align: -2px;
     margin: 0 2px;
+    -webkit-text-fill-color: initial !important;
+    -webkit-background-clip: border-box !important;
+    background: none !important;
+    color: initial !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+.msg-giant-emojis span,
+.msg-text-content .vip-animated-emoji,
+.msg-text-content .vip-animated-emoji-giant {
+    -webkit-text-fill-color: initial !important;
+    -webkit-background-clip: border-box !important;
+    background: none !important;
+    color: initial !important;
+    text-shadow: none !important;
+    display: inline-block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    font-style: normal !important;
 }
 
 /* ==========================================================================

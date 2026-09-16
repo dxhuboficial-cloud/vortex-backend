@@ -995,18 +995,56 @@ export function stopBinaryMatrix() {
     }
 }
 
+let rgbThemeChromaInterval = null;
+let rgbThemeHue = 0;
+
+export function startRgbThemeChroma() {
+    if (rgbThemeChromaInterval) return;
+    rgbThemeChromaInterval = setInterval(() => {
+        if (typeof document === 'undefined' || !document.body || !document.body.classList.contains('theme-rgb')) {
+            stopRgbThemeChroma();
+            return;
+        }
+        rgbThemeHue = (rgbThemeHue + 4) % 360;
+        const color = `hsl(${rgbThemeHue}, 100%, 55%)`;
+        if (document.documentElement && document.documentElement.style && typeof document.documentElement.style.setProperty === 'function') {
+            document.documentElement.style.setProperty('--accent-color', color);
+        }
+        if (document.body && document.body.style && typeof document.body.style.setProperty === 'function') {
+            document.body.style.setProperty('--accent-color', color);
+        }
+    }, 60);
+}
+
+export function stopRgbThemeChroma() {
+    if (rgbThemeChromaInterval) {
+        clearInterval(rgbThemeChromaInterval);
+        rgbThemeChromaInterval = null;
+    }
+    if (typeof document !== 'undefined') {
+        const resetColor = currentProfile.accentColor || '#fff01f';
+        if (document.documentElement && document.documentElement.style && typeof document.documentElement.style.setProperty === 'function') {
+            document.documentElement.style.setProperty('--accent-color', resetColor);
+        }
+        if (document.body && document.body.style && typeof document.body.style.removeProperty === 'function') {
+            document.body.style.removeProperty('--accent-color');
+        }
+    }
+}
+
 // ==========================================================================
 // Formatação de Mensagens com Emojis Animados e Fontes VIP
 // ==========================================================================
 export function formatChatMessageText(rawText, isSenderVip = false, vipTextStyle = 'normal') {
     if (!rawText) return '';
-    const emojiRegex = /(?:\p{Extended_Pictographic}|\p{Emoji_Presentation})/gu;
+    // Regex abrangente para cobrir todos os emojis Unicode (incluindo variação \uFE0F, tons de pele e sequências ZWJ como ❤️‍🔥 e 👩‍❤️‍👨)
+    const EMOJI_REGEX = /(?:\p{Extended_Pictographic}|\p{Emoji_Presentation})(?:\uFE0F|\uD83C[\uDFFB-\uDFFF])?(?:\u200D(?:\p{Extended_Pictographic}|\p{Emoji_Presentation})(?:\uFE0F|\uD83C[\uDFFB-\uDFFF])?)*/gu;
     const trimmed = String(rawText).trim();
 
     if (isSenderVip) {
-        const nonEmoji = trimmed.replace(emojiRegex, '').trim();
-        const matches = trimmed.match(emojiRegex);
-        if (matches && nonEmoji.length === 0 && matches.length <= 4) {
+        const withoutEmojis = trimmed.replace(EMOJI_REGEX, '').trim();
+        const matches = trimmed.match(EMOJI_REGEX);
+        if (matches && withoutEmojis.length === 0 && matches.length <= 4) {
             const giantEmojis = matches.map(em => `<span class="vip-animated-emoji-giant" title="Emoji Animado VIP ⭐">${em}</span>`).join(' ');
             return `<div class="msg-text-content msg-giant-emojis">${giantEmojis}</div>`;
         }
@@ -1015,7 +1053,7 @@ export function formatChatMessageText(rawText, isSenderVip = false, vipTextStyle
     let escaped = escapeHTML(rawText);
 
     if (isSenderVip) {
-        escaped = escaped.replace(/(?:[\u2700-\u27bf]|(?:\ud83c[\udde6-\uddff]){2}|[\ud800-\udbff][\udc00-\udfff]|[\u0023-\u0039]\ufe0f?\u20e3|\u3299|\u3297|\u303d|\u3030|\u24c2|\ud83c[\udd70-\udd71]|\ud83c[\udd7e-\udd7f]|\ud83c\udd8e|\ud83c[\udd91-\udd9a]|\ud83c[\udde6-\uddff]|\ud83c[\ude01-\ude02]|\ud83c\ude1a|\ud83c\ude2f|\ud83c[\ude32-\ude3a]|\ud83c[\ude50-\ude51]|\u203c|\u2049|[\u25aa-\u25ab]|\u25b6|\u25c0|[\u25fb-\u25fe]|\u00a9|\u00ae|\u2122|\u2139|\ud83c\udc04|[\u2600-\u26ff]|\u2b55|\u2b1c|\u2b1b|\u2b50)/g, (match) => {
+        escaped = escaped.replace(EMOJI_REGEX, (match) => {
             return `<span class="vip-animated-emoji" title="Emoji Animado VIP ⭐">${match}</span>`;
         });
     }
@@ -1137,8 +1175,13 @@ export function getChatWallpaperKeys(targetId) {
     const domChatId = win && win.dataset ? win.dataset.chatId : null;
     const domIsGroup = win && win.dataset ? win.dataset.isGroup === 'true' : false;
 
-    const idsToProcess = [targetId, domChatId].filter(Boolean);
-    for (const id of idsToProcess) {
+    const candidates = [
+        targetId,
+        domChatId,
+        (typeof activeChatContact !== 'undefined' && activeChatContact) ? (activeChatContact.uid || activeChatContact.id || activeChatContact.groupId) : null
+    ].filter(Boolean);
+
+    for (const id of candidates) {
         const s = String(id);
         keys.add(s);
         if (s.startsWith('group_')) {
@@ -1153,17 +1196,25 @@ export function getChatWallpaperKeys(targetId) {
         }
     }
 
-    if (typeof activeChatContact !== 'undefined' && activeChatContact && activeChatContact.uid) {
-        const cUid = String(activeChatContact.uid);
-        keys.add(cUid);
-        if (activeChatContact.isGroup) {
-            keys.add(`group_${cUid}`);
-        } else if (typeof currentUser !== 'undefined' && currentUser && currentUser.uid) {
-            keys.add([currentUser.uid, cUid].sort().join('_'));
+    if (typeof activeChatContact !== 'undefined' && activeChatContact) {
+        const cUid = String(activeChatContact.uid || activeChatContact.id || activeChatContact.groupId || '');
+        if (cUid) {
+            keys.add(cUid);
+            if (activeChatContact.isGroup) {
+                keys.add(`group_${cUid}`);
+            } else if (typeof currentUser !== 'undefined' && currentUser && currentUser.uid) {
+                keys.add([currentUser.uid, cUid].sort().join('_'));
+            }
         }
     }
+
     const activeId = typeof getActiveChatId === 'function' ? getActiveChatId() : null;
     if (activeId) keys.add(String(activeId));
+
+    if (keys.size === 0) {
+        keys.add('current_chat');
+    }
+
     return Array.from(keys);
 }
 
@@ -1198,40 +1249,57 @@ export function applyChatWallpaper(chatId) {
     const wp = getSavedChatWallpaper(chatId);
 
     if (!wp || wp === 'default') {
-        container.style.background = '';
+        container.style.backgroundColor = '';
         container.style.backgroundImage = '';
-        container.classList.remove('has-custom-wallpaper', 'has-custom-wallpaper-image');
+        container.style.background = '';
+        container.classList.remove('has-custom-wallpaper');
         return;
     }
 
     container.classList.add('has-custom-wallpaper');
+    container.style.backgroundPosition = 'center center';
+    container.style.backgroundSize = 'cover';
+    container.style.backgroundRepeat = 'no-repeat';
+
     if (wp.startsWith('data:image') || wp.startsWith('http')) {
+        container.style.backgroundColor = '#0b141a';
+        container.style.backgroundImage = `url("${wp}")`;
         container.style.background = `url("${wp}") center center / cover no-repeat`;
-        container.classList.add('has-custom-wallpaper-image');
-    } else if (wp.startsWith('linear-gradient') || wp.startsWith('#') || wp.startsWith('rgba')) {
+    } else if (wp.startsWith('linear-gradient')) {
+        container.style.backgroundColor = '#0b141a';
+        container.style.backgroundImage = wp;
         container.style.background = wp;
-        container.classList.remove('has-custom-wallpaper-image');
+    } else if (wp.startsWith('#') || wp.startsWith('rgb')) {
+        container.style.backgroundColor = wp;
+        container.style.backgroundImage = 'none';
+        container.style.background = wp;
     } else if (wp === 'total-black') {
+        container.style.backgroundColor = '#030303';
+        container.style.backgroundImage = 'none';
         container.style.background = '#030303';
-        container.classList.remove('has-custom-wallpaper-image');
     } else if (wp === 'cyber-dark') {
+        container.style.backgroundColor = '#090d16';
+        container.style.backgroundImage = 'linear-gradient(135deg, #090d16 0%, #030712 100%)';
         container.style.background = 'linear-gradient(135deg, #090d16 0%, #030712 100%)';
-        container.classList.remove('has-custom-wallpaper-image');
     } else if (wp === 'cosmic-purple') {
+        container.style.backgroundColor = '#2e0854';
+        container.style.backgroundImage = 'linear-gradient(135deg, #2e0854 0%, #0c021f 100%)';
         container.style.background = 'linear-gradient(135deg, #2e0854 0%, #0c021f 100%)';
-        container.classList.remove('has-custom-wallpaper-image');
     } else if (wp === 'matrix-green') {
+        container.style.backgroundColor = '#021a08';
+        container.style.backgroundImage = 'linear-gradient(135deg, #021a08 0%, #010803 100%)';
         container.style.background = 'linear-gradient(135deg, #021a08 0%, #010803 100%)';
-        container.classList.remove('has-custom-wallpaper-image');
     } else if (wp === 'deep-cyan') {
+        container.style.backgroundColor = '#022026';
+        container.style.backgroundImage = 'linear-gradient(135deg, #022026 0%, #010c10 100%)';
         container.style.background = 'linear-gradient(135deg, #022026 0%, #010c10 100%)';
-        container.classList.remove('has-custom-wallpaper-image');
     } else if (wp === 'sunset-glow') {
+        container.style.backgroundColor = '#2b091f';
+        container.style.backgroundImage = 'linear-gradient(135deg, #2b091f 0%, #10020d 100%)';
         container.style.background = 'linear-gradient(135deg, #2b091f 0%, #10020d 100%)';
-        container.classList.remove('has-custom-wallpaper-image');
     } else {
+        container.style.backgroundImage = wp;
         container.style.background = wp;
-        container.classList.remove('has-custom-wallpaper-image');
     }
 }
 
@@ -1251,32 +1319,49 @@ export function setupChatWallpaperModal() {
     function updatePreview(val) {
         selectedWp = val || 'default';
         if (!previewBox) return;
+        previewBox.style.backgroundPosition = 'center center';
+        previewBox.style.backgroundSize = 'cover';
+        previewBox.style.backgroundRepeat = 'no-repeat';
+
         if (!val || val === 'default') {
-            previewBox.style.background = 'rgba(255, 255, 255, 0.05)';
-            previewBox.style.backgroundImage = '';
+            previewBox.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
+            previewBox.style.backgroundImage = 'none';
+            previewBox.style.background = '';
         } else if (val.startsWith('data:image') || val.startsWith('http')) {
+            previewBox.style.backgroundColor = '#0b141a';
+            previewBox.style.backgroundImage = `url("${val}")`;
             previewBox.style.background = `url("${val}") center center / cover no-repeat`;
-        } else if (val.startsWith('linear-gradient') || val.startsWith('#')) {
+        } else if (val.startsWith('linear-gradient')) {
+            previewBox.style.backgroundColor = '#0b141a';
+            previewBox.style.backgroundImage = val;
             previewBox.style.background = val;
-            previewBox.style.backgroundImage = '';
         } else if (val === 'total-black') {
+            previewBox.style.backgroundColor = '#030303';
+            previewBox.style.backgroundImage = 'none';
             previewBox.style.background = '#030303';
-            previewBox.style.backgroundImage = '';
         } else if (val === 'cyber-dark') {
+            previewBox.style.backgroundColor = '#090d16';
+            previewBox.style.backgroundImage = 'linear-gradient(135deg, #090d16 0%, #030712 100%)';
             previewBox.style.background = 'linear-gradient(135deg, #090d16 0%, #030712 100%)';
-            previewBox.style.backgroundImage = '';
         } else if (val === 'cosmic-purple') {
+            previewBox.style.backgroundColor = '#2e0854';
+            previewBox.style.backgroundImage = 'linear-gradient(135deg, #2e0854 0%, #0c021f 100%)';
             previewBox.style.background = 'linear-gradient(135deg, #2e0854 0%, #0c021f 100%)';
-            previewBox.style.backgroundImage = '';
         } else if (val === 'matrix-green') {
+            previewBox.style.backgroundColor = '#021a08';
+            previewBox.style.backgroundImage = 'linear-gradient(135deg, #021a08 0%, #010803 100%)';
             previewBox.style.background = 'linear-gradient(135deg, #021a08 0%, #010803 100%)';
-            previewBox.style.backgroundImage = '';
         } else if (val === 'deep-cyan') {
+            previewBox.style.backgroundColor = '#022026';
+            previewBox.style.backgroundImage = 'linear-gradient(135deg, #022026 0%, #010c10 100%)';
             previewBox.style.background = 'linear-gradient(135deg, #022026 0%, #010c10 100%)';
-            previewBox.style.backgroundImage = '';
         } else if (val === 'sunset-glow') {
+            previewBox.style.backgroundColor = '#2b091f';
+            previewBox.style.backgroundImage = 'linear-gradient(135deg, #2b091f 0%, #10020d 100%)';
             previewBox.style.background = 'linear-gradient(135deg, #2b091f 0%, #10020d 100%)';
-            previewBox.style.backgroundImage = '';
+        } else {
+            previewBox.style.backgroundImage = val;
+            previewBox.style.background = val;
         }
     }
 
@@ -1314,6 +1399,7 @@ export function setupChatWallpaperModal() {
                 const compressed = await compressImageFileToKB(file, { maxDimension: 1080, targetMaxKB: 180, quality: 0.78 });
                 updatePreview(compressed.data);
                 presets.forEach(p => p.classList.remove('active'));
+                fileInput.value = '';
                 showToast('Foto Carregada', `Plano de fundo preparado (${compressed.sizeKB} KB)`, 'green');
             } catch (err) {
                 console.error('Erro ao comprimir imagem de wallpaper:', err);
@@ -1328,8 +1414,18 @@ export function setupChatWallpaperModal() {
             const scope = scopeRadio ? scopeRadio.value : 'chat';
             const keys = getChatWallpaperKeys();
 
-            if (typeof localStorage !== 'undefined') {
-                if (scope === 'chat') {
+            if (scope === 'chat') {
+                if (typeof currentProfile !== 'undefined' && currentProfile) {
+                    if (!currentProfile.chatWallpapers) currentProfile.chatWallpapers = {};
+                    for (const k of keys) {
+                        if (selectedWp === 'default') {
+                            delete currentProfile.chatWallpapers[k];
+                        } else {
+                            currentProfile.chatWallpapers[k] = selectedWp;
+                        }
+                    }
+                }
+                if (typeof localStorage !== 'undefined') {
                     for (const k of keys) {
                         try {
                             if (selectedWp === 'default') {
@@ -1341,7 +1437,12 @@ export function setupChatWallpaperModal() {
                             console.warn('Erro ao gravar no localStorage:', err);
                         }
                     }
-                } else {
+                }
+            } else {
+                if (typeof currentProfile !== 'undefined' && currentProfile) {
+                    currentProfile.chatWallpaperGlobal = selectedWp === 'default' ? null : selectedWp;
+                }
+                if (typeof localStorage !== 'undefined') {
                     try {
                         if (selectedWp === 'default') {
                             localStorage.removeItem('vortex_wallpaper_global');
@@ -1354,32 +1455,26 @@ export function setupChatWallpaperModal() {
                 }
             }
 
-            // Sincronizar com Firestore se o usuário estiver autenticado
+            // Aplicar imediatamente sem aguardar chamada de rede
+            applyChatWallpaper();
+            modal.classList.remove('active');
+            showToast('Plano de Fundo Salvo', 'Papel de parede aplicado com sucesso!', 'green');
+
+            // Sincronizar com Firestore se o usuário estiver autenticado (background)
             if (typeof currentUser !== 'undefined' && currentUser && currentUser.uid && typeof db !== 'undefined') {
                 try {
                     const userRef = doc(db, 'users', currentUser.uid);
                     if (scope === 'chat') {
-                        if (!currentProfile.chatWallpapers) currentProfile.chatWallpapers = {};
-                        for (const k of keys) {
-                            if (selectedWp === 'default') {
-                                delete currentProfile.chatWallpapers[k];
-                            } else {
-                                currentProfile.chatWallpapers[k] = selectedWp;
-                            }
+                        if (currentProfile && currentProfile.chatWallpapers) {
+                            await updateDoc(userRef, { chatWallpapers: currentProfile.chatWallpapers });
                         }
-                        await updateDoc(userRef, { chatWallpapers: currentProfile.chatWallpapers });
                     } else {
-                        currentProfile.chatWallpaperGlobal = selectedWp === 'default' ? null : selectedWp;
                         await updateDoc(userRef, { chatWallpaperGlobal: currentProfile.chatWallpaperGlobal });
                     }
                 } catch (fireErr) {
                     console.warn('Erro ao sincronizar wallpaper no Firestore:', fireErr);
                 }
             }
-
-            applyChatWallpaper();
-            modal.classList.remove('active');
-            showToast('Plano de Fundo Salvo', 'Papel de parede aplicado com sucesso!', 'green');
         };
     }
 
@@ -1389,37 +1484,43 @@ export function setupChatWallpaperModal() {
             const scope = scopeRadio ? scopeRadio.value : 'chat';
             const keys = getChatWallpaperKeys();
 
-            if (typeof localStorage !== 'undefined') {
-                if (scope === 'chat') {
+            if (scope === 'chat') {
+                if (typeof currentProfile !== 'undefined' && currentProfile && currentProfile.chatWallpapers) {
+                    for (const k of keys) {
+                        delete currentProfile.chatWallpapers[k];
+                    }
+                }
+                if (typeof localStorage !== 'undefined') {
                     for (const k of keys) {
                         try { localStorage.removeItem(`vortex_wallpaper_${k}`); } catch (e) {}
                     }
-                } else {
+                }
+            } else {
+                if (typeof currentProfile !== 'undefined' && currentProfile) {
+                    currentProfile.chatWallpaperGlobal = null;
+                }
+                if (typeof localStorage !== 'undefined') {
                     try { localStorage.removeItem('vortex_wallpaper_global'); } catch (e) {}
                 }
-            }
-
-            if (typeof currentUser !== 'undefined' && currentUser && currentUser.uid && typeof db !== 'undefined') {
-                try {
-                    const userRef = doc(db, 'users', currentUser.uid);
-                    if (scope === 'chat') {
-                        if (currentProfile && currentProfile.chatWallpapers) {
-                            for (const k of keys) {
-                                delete currentProfile.chatWallpapers[k];
-                            }
-                            await updateDoc(userRef, { chatWallpapers: currentProfile.chatWallpapers });
-                        }
-                    } else {
-                        if (currentProfile) currentProfile.chatWallpaperGlobal = null;
-                        await updateDoc(userRef, { chatWallpaperGlobal: null });
-                    }
-                } catch (e) {}
             }
 
             updatePreview('default');
             applyChatWallpaper();
             modal.classList.remove('active');
             showToast('Plano de Fundo Restaurado', 'O papel de parede voltou ao padrão.', 'green');
+
+            if (typeof currentUser !== 'undefined' && currentUser && currentUser.uid && typeof db !== 'undefined') {
+                try {
+                    const userRef = doc(db, 'users', currentUser.uid);
+                    if (scope === 'chat') {
+                        if (currentProfile && currentProfile.chatWallpapers) {
+                            await updateDoc(userRef, { chatWallpapers: currentProfile.chatWallpapers });
+                        }
+                    } else {
+                        await updateDoc(userRef, { chatWallpaperGlobal: null });
+                    }
+                } catch (e) {}
+            }
         };
     }
 }
@@ -1488,19 +1589,24 @@ export function setupVipSettingsControls() {
 }
 
 function applyUserTheme() {
-    if (typeof document !== 'undefined' && document.documentElement && document.documentElement.style && typeof document.documentElement.style.setProperty === 'function') {
-        document.documentElement.style.setProperty('--accent-color', currentProfile.accentColor || '#fff01f');
+    // Temas VORTEX VIP (Cyberpunk, Hacker com chuva binária e RGB)
+    const isVip = checkIsVipUser(currentProfile);
+    const savedVipTheme = currentProfile.vipTheme || (typeof localStorage !== 'undefined' ? localStorage.getItem('vortex_vip_theme') : 'default') || 'default';
+    const activeVipTheme = (isVip && savedVipTheme !== 'default') ? savedVipTheme : 'default';
+
+    if (activeVipTheme !== 'rgb') {
+        if (typeof document !== 'undefined' && document.documentElement && document.documentElement.style && typeof document.documentElement.style.setProperty === 'function') {
+            document.documentElement.style.setProperty('--accent-color', currentProfile.accentColor || '#fff01f');
+        }
+        if (typeof document !== 'undefined' && document.body && document.body.style && typeof document.body.style.removeProperty === 'function') {
+            document.body.style.removeProperty('--accent-color');
+        }
     }
     applyPrivacyModeState();
     document.body.classList.toggle('total-black', currentProfile.themeEnabled === false);
     document.querySelectorAll('.color-option').forEach(opt => {
         opt.classList.toggle('active', opt.dataset.color === currentProfile.accentColor);
     });
-
-    // Temas VORTEX VIP (Cyberpunk, Hacker com chuva binária e RGB)
-    const isVip = checkIsVipUser(currentProfile);
-    const savedVipTheme = currentProfile.vipTheme || (typeof localStorage !== 'undefined' ? localStorage.getItem('vortex_vip_theme') : 'default') || 'default';
-    const activeVipTheme = (isVip && savedVipTheme !== 'default') ? savedVipTheme : 'default';
 
     document.body.classList.toggle('theme-cyberpark', activeVipTheme === 'cyberpark');
     document.body.classList.toggle('theme-cyberpunk', activeVipTheme === 'cyberpark');
@@ -1511,6 +1617,12 @@ function applyUserTheme() {
         startBinaryMatrix();
     } else {
         stopBinaryMatrix();
+    }
+
+    if (activeVipTheme === 'rgb') {
+        startRgbThemeChroma();
+    } else {
+        stopRgbThemeChroma();
     }
 
     document.querySelectorAll('.vip-theme-option').forEach(btn => {
@@ -15222,6 +15334,8 @@ if (typeof window !== 'undefined') {
     window.applyChatWallpaper = applyChatWallpaper;
     window.setupChatWallpaperModal = setupChatWallpaperModal;
     window.setupVipSettingsControls = setupVipSettingsControls;
+    window.startRgbThemeChroma = startRgbThemeChroma;
+    window.stopRgbThemeChroma = stopRgbThemeChroma;
 }
 
 if (typeof window !== 'undefined') {
