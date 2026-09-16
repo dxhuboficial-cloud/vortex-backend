@@ -7918,7 +7918,14 @@ body.theme-rgb .chat-tab-pill.active {
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 20px;
+    margin: 0 auto 20px auto;
+}
+
+.desktop-placeholder-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
 }
 
 .desktop-placeholder-icon {
