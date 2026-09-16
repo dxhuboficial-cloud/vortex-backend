@@ -5021,6 +5021,8 @@ test('Mensagens Temporárias (24h, 7d, 30d, desativado), Limpeza Física no Fire
   assert.ok(cssContent.includes('.ephemeral-modal-card'), 'Regra .ephemeral-modal-card deve existir no CSS');
   assert.ok(cssContent.includes('.ephemeral-option-card'), 'Regra .ephemeral-option-card deve existir no CSS');
   assert.ok(cssContent.includes('.msg-ephemeral-clock'), 'Regra .msg-ephemeral-clock deve existir no CSS');
+  assert.ok(cssContent.includes('.ephemeral-save-btn') || cssContent.includes('#save-ephemeral-btn'), 'Estilo colorido do botão de salvar mensagens temporárias deve existir no CSS');
+  assert.ok(cssContent.includes('.ephemeral-cancel-btn') || cssContent.includes('#cancel-ephemeral-btn'), 'Estilo do botão cancelar mensagens temporárias deve existir no CSS');
 
   // 3. Execução e Comportamento no Sandbox
   const env = createTestEnvironment();
