@@ -4258,7 +4258,16 @@ function listenToContacts() {
             chatListEl.appendChild(card);
 
             const grpProfileUnsub = onSnapshot(doc(db, 'groups', groupId), (groupSnap) => {
-                if (!groupSnap.exists()) return;
+                if (!groupSnap.exists()) {
+                    // O grupo foi apagado no Firestore! Auto-limpar imediatamente da subcoleção do usuário e da tela
+                    deleteDoc(doc(db, 'users', currentUser.uid, 'groups', groupId)).catch(() => {});
+                    card.remove();
+                    if (activeChatContact && (activeChatContact.uid === groupId || activeChatContact.groupId === groupId)) {
+                        closeChat();
+                        showToast("Grupo Apagado", "Este grupo foi apagado e removido da sua lista.", "blue");
+                    }
+                    return;
+                }
                 const liveGroup = { ...groupSnap.data(), id: groupId, groupId };
                 const liveAvatar = card.querySelector('.avatar');
                 if (liveAvatar) {
@@ -4266,6 +4275,8 @@ function listenToContacts() {
                 }
                 const liveName = card.querySelector('.name-text') || card.querySelector('.name');
                 if (liveName) liveName.innerText = liveGroup.name || 'Grupo VIP';
+            }, (error) => {
+                console.warn('Erro ao carregar dados do grupo (provavelmente apagado):', error);
             });
             activityUnsubscribes.push(grpProfileUnsub);
 
@@ -4521,13 +4532,22 @@ async function openGroupProfile(group) {
     managedGroup = { ...group, groupId: group.groupId || group.id };
     if (managedGroupUnsubscribe) managedGroupUnsubscribe();
     managedGroupUnsubscribe = onSnapshot(doc(db, 'groups', managedGroup.groupId), (groupSnap) => {
-        if (!groupSnap.exists()) return;
+        if (!groupSnap.exists()) {
+            document.getElementById('group-profile-panel')?.classList.remove('active');
+            deleteDoc(doc(db, 'users', currentUser.uid, 'groups', managedGroup.groupId)).catch(() => {});
+            const cards = document.querySelectorAll(`.chat-card[data-uid="${managedGroup.groupId}"], .chat-card[data-group-id="${managedGroup.groupId}"]`);
+            cards.forEach(c => c.remove());
+            showToast("Grupo Inexistente", "Este grupo já foi apagado e foi removido da sua lista.", "blue");
+            return;
+        }
         managedGroup = { ...managedGroup, ...groupSnap.data(), groupId: managedGroup.groupId };
         const liveAvatar = document.getElementById('group-profile-avatar');
         if (liveAvatar) liveAvatar.style.backgroundImage = managedGroup.avatar ? `url('${managedGroup.avatar}')` : '';
         pendingGroupAvatar = managedGroup.avatar || '';
         const liveTitle = document.getElementById('group-profile-title');
         if (liveTitle) liveTitle.innerText = managedGroup.name || 'Grupo VIP';
+    }, (err) => {
+        console.warn('Erro ao carregar dados do grupo em tempo real:', err);
     });
     const isAdmin = managedGroup.creatorUid === currentUser.uid;
     const panel = document.getElementById('group-profile-panel');
@@ -4744,7 +4764,7 @@ async function leaveGroup(targetGroup = null) {
         showToast("Erro", "Nenhum grupo selecionado.", "red");
         return false;
     }
-    const groupId = groupToLeave.groupId || groupToLeave.uid || groupToLeave.id;
+    const groupId = (typeof groupToLeave === 'string') ? groupToLeave : (groupToLeave.groupId || groupToLeave.uid || groupToLeave.id);
     if (!groupId) return false;
 
     if (typeof window !== 'undefined' && window.confirm && !window.confirm("Deseja realmente sair deste grupo?")) {
@@ -4752,12 +4772,18 @@ async function leaveGroup(targetGroup = null) {
     }
 
     try {
-        await updateDoc(doc(db, 'groups', groupId), {
-            members: arrayRemove(currentUser.uid),
-            admins: arrayRemove(currentUser.uid),
-            updatedAt: Date.now()
-        });
+        // Tenta remover o usuário do documento central do grupo no Firestore (se o grupo ainda existir)
+        try {
+            await updateDoc(doc(db, 'groups', groupId), {
+                members: arrayRemove(currentUser.uid),
+                admins: arrayRemove(currentUser.uid),
+                updatedAt: Date.now()
+            });
+        } catch (groupDocErr) {
+            console.warn('Documento do grupo não encontrado ou já apagado no Firestore, prosseguindo com remoção local:', groupDocErr);
+        }
 
+        // SEMPRE remover o grupo da subcoleção pessoal do usuário
         await deleteDoc(doc(db, 'users', currentUser.uid, 'groups', groupId)).catch(() => {});
         deleteDoc(doc(db, 'chats', `group_${groupId}`, 'presence', currentUser.uid)).catch(() => {});
 
@@ -4766,22 +4792,29 @@ async function leaveGroup(targetGroup = null) {
             rtdbSet(presRef, null).catch(() => {});
         }
 
-        if (activeChatContact && activeChatContact.uid === groupId) {
+        if (activeChatContact && (activeChatContact.uid === groupId || activeChatContact.groupId === groupId || activeChatContact.id === groupId)) {
             closeChat();
         }
 
         document.getElementById('group-profile-panel')?.classList.remove('active');
         managedGroup = null;
 
-        const card = document.querySelector(`.chat-card[data-uid="${groupId}"]`);
-        if (card) card.remove();
+        const cards = document.querySelectorAll(`.chat-card[data-uid="${groupId}"], .chat-card[data-group-id="${groupId}"]`);
+        cards.forEach(card => card.remove());
 
         showToast("Você saiu do grupo", "Você não faz mais parte deste grupo.", "blue");
         return true;
     } catch (err) {
-        console.error('Erro ao sair do grupo:', err);
-        showToast("Erro", "Não foi possível sair do grupo.", "red");
-        return false;
+        console.error('Erro ao sair do grupo, aplicando fallback:', err);
+        await deleteDoc(doc(db, 'users', currentUser.uid, 'groups', groupId)).catch(() => {});
+        const cards = document.querySelectorAll(`.chat-card[data-uid="${groupId}"], .chat-card[data-group-id="${groupId}"]`);
+        cards.forEach(card => card.remove());
+        document.getElementById('group-profile-panel')?.classList.remove('active');
+        if (activeChatContact && (activeChatContact.uid === groupId || activeChatContact.groupId === groupId || activeChatContact.id === groupId)) {
+            closeChat();
+        }
+        showToast("Você saiu do grupo", "Grupo removido da sua lista.", "blue");
+        return true;
     }
 }
 
@@ -5031,38 +5064,45 @@ function openGroupChat(group) {
     // 5. Listener do documento do grupo no Firestore
     try {
         currentGroupDocUnsubscribe = onSnapshot(doc(db, 'groups', groupId), (snap) => {
-            if (snap.exists()) {
-                activeGroupDoc = { id: snap.id, ...snap.data() };
-                if (activeChatContact && activeChatContact.uid === groupId) {
-                    activeChatContact.paused = !!activeGroupDoc.paused;
-                    activeChatContact.members = activeGroupDoc.members || [];
-                    activeChatContact.avatar = activeGroupDoc.avatar || '';
-                    activeChatContact.name = activeGroupDoc.name || activeChatContact.name || 'Grupo VIP';
+            if (!snap.exists()) {
+                cleanupActiveGroupListeners();
+                closeChat();
+                deleteDoc(doc(db, 'users', currentUser.uid, 'groups', groupId)).catch(() => {});
+                const cards = document.querySelectorAll(`.chat-card[data-uid="${groupId}"], .chat-card[data-group-id="${groupId}"]`);
+                cards.forEach(c => c.remove());
+                showToast("Grupo Apagado", "Este grupo foi excluído e não está mais disponível.", "blue");
+                return;
+            }
+            activeGroupDoc = { id: snap.id, ...snap.data() };
+            if (activeChatContact && activeChatContact.uid === groupId) {
+                activeChatContact.paused = !!activeGroupDoc.paused;
+                activeChatContact.members = activeGroupDoc.members || [];
+                activeChatContact.avatar = activeGroupDoc.avatar || '';
+                activeChatContact.name = activeGroupDoc.name || activeChatContact.name || 'Grupo VIP';
 
-                    const aEl = document.getElementById('chat-window-avatar');
-                    const nEl = document.getElementById('chat-window-name');
-                    if (aEl) {
-                        if (activeChatContact.avatar) {
-                            aEl.style.backgroundImage = `url('${activeChatContact.avatar}')`;
-                            aEl.innerText = '';
-                        } else {
-                            aEl.style.backgroundImage = '';
-                            aEl.innerText = activeChatContact.name.charAt(0).toUpperCase() || 'G';
-                        }
+                const aEl = document.getElementById('chat-window-avatar');
+                const nEl = document.getElementById('chat-window-name');
+                if (aEl) {
+                    if (activeChatContact.avatar) {
+                        aEl.style.backgroundImage = `url('${activeChatContact.avatar}')`;
+                        aEl.innerText = '';
+                    } else {
+                        aEl.style.backgroundImage = '';
+                        aEl.innerText = activeChatContact.name.charAt(0).toUpperCase() || 'G';
                     }
-                    if (nEl) {
-                        nEl.innerText = activeChatContact.name;
-                    }
-
-                    const cInp = document.getElementById('chat-input-main');
-                    const cBtn = document.getElementById('chat-send-btn-main');
-                    if (cInp) {
-                        cInp.disabled = !!activeGroupDoc.paused;
-                        cInp.placeholder = activeGroupDoc.paused ? 'Grupo pausado pelo administrador' : 'Digite uma mensagem...';
-                    }
-                    if (cBtn) cBtn.disabled = !!activeGroupDoc.paused;
-                    updateGroupChatHeaderStatus();
                 }
+                if (nEl) {
+                    nEl.innerText = activeChatContact.name;
+                }
+
+                const cInp = document.getElementById('chat-input-main');
+                const cBtn = document.getElementById('chat-send-btn-main');
+                if (cInp) {
+                    cInp.disabled = !!activeGroupDoc.paused;
+                    cInp.placeholder = activeGroupDoc.paused ? 'Grupo pausado pelo administrador' : 'Digite uma mensagem...';
+                }
+                if (cBtn) cBtn.disabled = !!activeGroupDoc.paused;
+                updateGroupChatHeaderStatus();
             }
         });
     } catch(e) {}
@@ -8439,7 +8479,24 @@ export async function adminDeletePost(postId) {
 export async function adminDeleteGroup(groupId) {
     if (!groupId) return;
     try {
+        let members = [];
+        try {
+            const groupSnap = await getDoc(doc(db, 'groups', groupId));
+            if (groupSnap.exists() && Array.isArray(groupSnap.data().members)) {
+                members = groupSnap.data().members;
+            }
+        } catch(e) {}
+
         await deleteDoc(doc(db, 'groups', groupId));
+
+        if (members.length > 0) {
+            const batch = writeBatch(db);
+            members.forEach(memberUid => {
+                batch.delete(doc(db, 'users', memberUid, 'groups', groupId));
+            });
+            await batch.commit().catch(() => {});
+        }
+
         adminGroups = adminGroups.filter(g => g.id !== groupId);
         if (currentAdminTab === 'groups') renderAdminGroups();
         showToast("Grupo Removido", "Grupo excluído pelo Administrador.", "green");
