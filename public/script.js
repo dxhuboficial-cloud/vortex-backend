@@ -903,22 +903,35 @@ export function checkVipSubscriptionLifecycle() {
 // ==========================================================================
 let matrixCanvasAnimId = null;
 let matrixColumns = [];
+let feedMatrixColumns = [];
 let matrixCanvasInitialized = false;
 
 export function initBinaryMatrixCanvas() {
     if (typeof document === 'undefined') return null;
     const canvas = document.getElementById('matrix-binary-canvas');
-    if (!canvas) return null;
-    const ctx = canvas.getContext ? canvas.getContext('2d') : null;
-    if (!ctx) return null;
+    const feedCanvas = document.getElementById('feed-matrix-canvas');
+    if (!canvas && !feedCanvas) return null;
+    const ctx = canvas && canvas.getContext ? canvas.getContext('2d') : null;
 
     function resize() {
-        if (!canvas) return;
-        canvas.width = (typeof window !== 'undefined' && window.innerWidth) ? window.innerWidth : 800;
-        canvas.height = (typeof window !== 'undefined' && window.innerHeight) ? window.innerHeight : 600;
+        const winW = (typeof window !== 'undefined' && window.innerWidth) ? window.innerWidth : 800;
+        const winH = (typeof window !== 'undefined' && window.innerHeight) ? window.innerHeight : 600;
         const fontSize = 15;
-        const cols = Math.floor(canvas.width / fontSize) || 20;
-        matrixColumns = Array.from({ length: cols }, () => Math.floor(Math.random() * -50));
+
+        if (canvas) {
+            canvas.width = winW;
+            canvas.height = winH;
+            const cols = Math.floor(canvas.width / fontSize) || 20;
+            matrixColumns = Array.from({ length: cols }, () => Math.floor(Math.random() * -50));
+        }
+
+        if (feedCanvas) {
+            const parent = feedCanvas.parentElement;
+            feedCanvas.width = (parent && parent.clientWidth) || winW;
+            feedCanvas.height = (parent && parent.clientHeight) || winH;
+            const feedCols = Math.floor(feedCanvas.width / fontSize) || 20;
+            feedMatrixColumns = Array.from({ length: feedCols }, () => Math.floor(Math.random() * -50));
+        }
     }
 
     if (!matrixCanvasInitialized && typeof window !== 'undefined' && window.addEventListener) {
@@ -939,6 +952,28 @@ export function startBinaryMatrix() {
     let lastTime = 0;
     const fpsInterval = 1000 / 30;
 
+    function drawColumns(targetCanvas, targetCtx, columns) {
+        if (!targetCanvas || !targetCtx || typeof targetCtx.fillRect !== 'function') return;
+        targetCtx.fillStyle = 'rgba(2, 6, 3, 0.08)';
+        targetCtx.fillRect(0, 0, targetCanvas.width, targetCanvas.height);
+        targetCtx.fillStyle = '#00ff66';
+        targetCtx.font = `${fontSize}px monospace`;
+
+        for (let i = 0; i < columns.length; i++) {
+            const char = Math.random() > 0.5 ? '1' : '0';
+            const x = i * fontSize;
+            const y = columns[i] * fontSize;
+
+            if (typeof targetCtx.fillText === 'function') targetCtx.fillText(char, x, y);
+
+            if (y > targetCanvas.height && Math.random() > 0.975) {
+                columns[i] = 0;
+            } else {
+                columns[i]++;
+            }
+        }
+    }
+
     function drawMatrix(time) {
         if (typeof document !== 'undefined' && document.body && !document.body.classList.contains('theme-hacker')) {
             stopBinaryMatrix();
@@ -952,25 +987,18 @@ export function startBinaryMatrix() {
         if (elapsed < fpsInterval) return;
         lastTime = time - (elapsed % fpsInterval);
 
-        if (ctx && ctx.fillRect) {
-            ctx.fillStyle = 'rgba(2, 6, 3, 0.08)';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = '#00ff66';
-            ctx.font = `${fontSize}px monospace`;
+        // Desenhar no canvas principal
+        drawColumns(canvas, ctx, matrixColumns);
 
-            for (let i = 0; i < matrixColumns.length; i++) {
-                const char = Math.random() > 0.5 ? '1' : '0';
-                const x = i * fontSize;
-                const y = matrixColumns[i] * fontSize;
-
-                if (ctx.fillText) ctx.fillText(char, x, y);
-
-                if (y > canvas.height && Math.random() > 0.975) {
-                    matrixColumns[i] = 0;
-                } else {
-                    matrixColumns[i]++;
-                }
+        // Desenhar no canvas do Feed Reels (se presente)
+        const feedCanvas = (typeof document !== 'undefined') ? document.getElementById('feed-matrix-canvas') : null;
+        if (feedCanvas && typeof feedCanvas.getContext === 'function') {
+            const feedCtx = feedCanvas.getContext('2d');
+            if (feedMatrixColumns.length === 0 && feedCanvas.width) {
+                const feedCols = Math.floor(feedCanvas.width / fontSize) || 20;
+                feedMatrixColumns = Array.from({ length: feedCols }, () => Math.floor(Math.random() * -50));
             }
+            drawColumns(feedCanvas, feedCtx, feedMatrixColumns);
         }
     }
 
@@ -988,9 +1016,14 @@ export function stopBinaryMatrix() {
     }
     if (typeof document !== 'undefined') {
         const canvas = document.getElementById('matrix-binary-canvas');
-        if (canvas && canvas.getContext) {
+        if (canvas && typeof canvas.getContext === 'function') {
             const ctx = canvas.getContext('2d');
-            if (ctx && ctx.clearRect) ctx.clearRect(0, 0, canvas.width || 800, canvas.height || 600);
+            if (ctx && typeof ctx.clearRect === 'function') ctx.clearRect(0, 0, canvas.width || 800, canvas.height || 600);
+        }
+        const feedCanvas = document.getElementById('feed-matrix-canvas');
+        if (feedCanvas && typeof feedCanvas.getContext === 'function') {
+            const feedCtx = feedCanvas.getContext('2d');
+            if (feedCtx && typeof feedCtx.clearRect === 'function') feedCtx.clearRect(0, 0, feedCanvas.width || 800, feedCanvas.height || 600);
         }
     }
 }
@@ -12881,6 +12914,9 @@ document.getElementById('feed-btn')?.addEventListener('click', () => {
     listenToPosts();
     document.getElementById('feed-overlay')?.classList.add('active');
     document.getElementById('screenshot-gallery-overlay')?.classList.remove('active');
+    if (typeof initBinaryMatrixCanvas === 'function') {
+        initBinaryMatrixCanvas();
+    }
 });
 
 document.getElementById('open-post-from-feed-btn')?.addEventListener('click', () => {

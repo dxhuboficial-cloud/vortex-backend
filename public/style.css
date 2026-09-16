@@ -7291,7 +7291,8 @@ input:checked + .slider:before { transform: translateX(22px); }
 /* ==========================================================================
    Canvas de Chuva Binária (Tema Hacker Matrix / Racke VIP)
    ========================================================================== */
-.matrix-binary-canvas {
+.matrix-binary-canvas,
+.feed-matrix-canvas {
     position: fixed;
     top: 0;
     left: 0;
@@ -7304,9 +7305,16 @@ input:checked + .slider:before { transform: translateX(22px); }
     display: none;
 }
 
-body.theme-hacker .matrix-binary-canvas {
+.feed-matrix-canvas {
+    position: absolute !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+body.theme-hacker .matrix-binary-canvas,
+body.theme-hacker .feed-matrix-canvas {
     display: block;
-    opacity: 0.22;
+    opacity: 0.35;
 }
 
 /* ==========================================================================
@@ -7368,6 +7376,83 @@ body.theme-hacker .message.received {
 body.theme-hacker .danger-btn,
 body.theme-hacker .icon-btn {
     border-color: #00ff66 !important;
+}
+
+/* Feed Reels no Tema Hacker */
+body.theme-hacker .feed-overlay {
+    background: #020603 !important;
+}
+body.theme-hacker .feed-overlay .gallery-header {
+    background: rgba(3, 12, 5, 0.92) !important;
+    border-bottom: 1px solid rgba(0, 255, 102, 0.35) !important;
+    box-shadow: 0 0 15px rgba(0, 255, 102, 0.12) !important;
+    position: relative;
+    z-index: 2;
+}
+body.theme-hacker .feed-overlay .gallery-header .post-creator-title {
+    color: #00ff66 !important;
+    text-shadow: 0 0 8px rgba(0, 255, 102, 0.4);
+}
+body.theme-hacker .feed-overlay .gallery-back-icon {
+    border: 1px solid rgba(0, 255, 102, 0.5) !important;
+    background: rgba(0, 255, 102, 0.15) !important;
+    color: #00ff66 !important;
+}
+body.theme-hacker .feed-overlay .feed-list {
+    position: relative;
+    z-index: 2;
+}
+body.theme-hacker .feed-card {
+    background: rgba(2, 10, 4, 0.88) !important;
+    border: 1px solid rgba(0, 255, 102, 0.3) !important;
+    box-shadow: 0 0 18px rgba(0, 255, 102, 0.14) !important;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+body.theme-hacker .feed-header {
+    border-bottom: 1px solid rgba(0, 255, 102, 0.15) !important;
+}
+body.theme-hacker .feed-username {
+    color: #00ff66 !important;
+}
+body.theme-hacker .feed-action-btn {
+    color: rgba(200, 255, 215, 0.75) !important;
+}
+body.theme-hacker .feed-action-btn:hover {
+    color: #00ff66 !important;
+}
+body.theme-hacker .feed-action-btn.liked {
+    color: #00ff66 !important;
+    text-shadow: 0 0 10px rgba(0, 255, 102, 0.6);
+}
+body.theme-hacker .post-publish-btn {
+    background: #00ff66 !important;
+    color: #020603 !important;
+    font-weight: 700 !important;
+    box-shadow: 0 0 12px rgba(0, 255, 102, 0.4) !important;
+}
+body.theme-hacker .post-comment-card {
+    background: rgba(3, 12, 5, 0.96) !important;
+    border: 1px solid rgba(0, 255, 102, 0.35) !important;
+    box-shadow: 0 0 20px rgba(0, 255, 102, 0.2) !important;
+}
+body.theme-hacker .comment-send-btn {
+    background: #00ff66 !important;
+    color: #020603 !important;
+}
+
+/* Desktop Chat Placeholder no Tema Hacker */
+body.theme-hacker .desktop-chat-placeholder {
+    background: radial-gradient(circle at 50% 50%, rgba(0, 255, 102, 0.05) 0%, rgba(2, 6, 3, 0.98) 75%) !important;
+    border-left: 1px solid rgba(0, 255, 102, 0.25) !important;
+}
+body.theme-hacker .desktop-placeholder-badge {
+    border-color: #00ff66 !important;
+    box-shadow: 0 0 25px rgba(0, 255, 102, 0.4) !important;
+    background: rgba(0, 255, 102, 0.1) !important;
+}
+body.theme-hacker .desktop-placeholder-icon {
+    color: #00ff66 !important;
 }
 
 /* 3. RGB Chroma Dinâmico */
