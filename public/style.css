@@ -8246,6 +8246,21 @@ body.theme-rgb .chat-tab-pill.active {
         border-right: none !important;
         z-index: 800 !important;
     }
+
+    /* Badge de Mensagens Temporárias no Desktop: discreto e elegante */
+    .chat-ephemeral-badge {
+        padding: 1.5px 5.5px !important;
+        font-size: 0.64rem !important;
+        gap: 3px !important;
+    }
+
+    .chat-ephemeral-badge i,
+    .chat-ephemeral-badge svg {
+        width: 10px !important;
+        height: 10px !important;
+        max-width: 10px !important;
+        max-height: 10px !important;
+    }
 }
 
 /* ==========================================================================
@@ -8254,24 +8269,37 @@ body.theme-rgb .chat-tab-pill.active {
 .chat-ephemeral-badge {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    background: rgba(0, 230, 255, 0.15);
-    border: 1px solid rgba(0, 230, 255, 0.35);
+    gap: 3px;
+    background: rgba(0, 230, 255, 0.12);
+    border: 1px solid rgba(0, 230, 255, 0.32);
     color: #00e5ff;
-    padding: 2px 7px;
-    border-radius: 12px;
-    font-size: 0.68rem;
+    padding: 1.5px 5.5px;
+    border-radius: 10px;
+    font-size: 0.64rem;
     font-weight: 700;
     line-height: 1;
     margin-left: 4px;
-    box-shadow: 0 0 10px rgba(0, 230, 255, 0.2);
+    box-shadow: 0 0 8px rgba(0, 230, 255, 0.18);
     transition: all 0.2s ease;
+    vertical-align: middle;
 }
 
-.chat-ephemeral-badge i {
-    width: 11px;
-    height: 11px;
+.chat-ephemeral-badge i,
+.chat-ephemeral-badge svg {
+    width: 10px !important;
+    height: 10px !important;
+    max-width: 10px !important;
+    max-height: 10px !important;
+    stroke-width: 2.2px !important;
+    flex-shrink: 0;
+    vertical-align: middle;
 }
+
+.chat-ephemeral-badge span {
+    font-size: 0.64rem;
+    line-height: 1;
+}
+
 
 .ephemeral-modal-card {
     max-width: 380px;
@@ -8368,13 +8396,21 @@ body.theme-rgb .chat-tab-pill.active {
 }
 
 .msg-ephemeral-clock {
-    width: 12px;
-    height: 12px;
+    width: 11px;
+    height: 11px;
     color: #00e5ff;
     opacity: 0.85;
     margin-right: 3px;
     vertical-align: middle;
     display: inline-block;
+}
+
+.msg-ephemeral-clock i,
+.msg-ephemeral-clock svg {
+    width: 10.5px !important;
+    height: 10.5px !important;
+    stroke-width: 2px !important;
+    vertical-align: middle;
 }
 
 /* Botões de Ação do Modal de Mensagens Temporárias */
