@@ -61,7 +61,8 @@ let currentProfile = {
     privacyMode: false,
     soundEnabled: true,
     themeEnabled: true,
-    isVerified: true,
+    isVerified: false,
+    isVip: false,
     pinnedChats: []
 };
 
@@ -493,7 +494,8 @@ onAuthStateChanged(auth, async (user) => {
         if (!userSnap.exists()) {
             const rawEmailPrefix = user.email ? user.email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '') : 'user';
             const autoUsername = `@${rawEmailPrefix}_${Math.floor(1000 + Math.random() * 9000)}`;
-            const nameParts = (user.displayName || 'Membro VIP').split(' ');
+            const nameParts = (user.displayName || 'Membro').split(' ');
+            const isAdmin = !!(user.email && user.email.toLowerCase() === 'dxhub.oficial@gmail.com');
 
             currentProfile = {
                 uid: user.uid,
@@ -509,7 +511,8 @@ onAuthStateChanged(auth, async (user) => {
                 ghostMode: false,
                 privacyMode: false,
                 soundEnabled: true,
-                isVerified: true,
+                isVerified: isAdmin,
+                isVip: isAdmin,
                 online: true,
                 lastSeen: Date.now(),
                 pinnedChats: []

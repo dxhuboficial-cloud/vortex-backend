@@ -366,6 +366,7 @@ function createTestEnvironment() {
 
   const soundPlayed = [];
   let vibrationPattern = null;
+  let authCallback = null;
   const rtdbDocs = {};
 
   const storageStore = {};
@@ -541,7 +542,7 @@ function createTestEnvironment() {
     GoogleAuthProvider: function() {},
     signInWithPopup: () => Promise.resolve(),
     signOut: () => Promise.resolve(),
-    onAuthStateChanged: () => {},
+    onAuthStateChanged: (auth, cb) => { authCallback = cb; },
     getFirestore: () => ({}),
     collection: (db, ...segments) => ({ path: segments.join('/') }),
     doc: (db, ...segments) => { const path = segments.join('/'); const id = segments[segments.length - 1]; return { path, id }; },
@@ -750,7 +751,8 @@ function createTestEnvironment() {
       firestoreDocs[path] = data;
       notifyFirestoreListeners(path);
     },
-    getVibration: () => vibrationPattern
+    getVibration: () => vibrationPattern,
+    triggerAuthStateChange: (u) => authCallback ? authCallback(u) : Promise.resolve()
   };
 }
 
@@ -5113,6 +5115,49 @@ test('Mensagens Temporárias (24h, 7d, 30d, desativado), Limpeza Física no Fire
   assert.strictEqual(badge.style.display, 'none', 'Badge deve ficar oculto quando desativado');
   assert.strictEqual(env.firestoreDocs[`chats/${chatId}`].ephemeralDuration, 'off', 'Firestore deve registrar off');
 });
+
+test('Novas Contas Criadas: Nunca recebem selo verificado grátis nem status VIP automático (isVerified: false e isVip: false)', async () => {
+  const env = createTestEnvironment();
+  const checkIsVipUser = env.sandbox.checkIsVipUser || env.sandbox.window.checkIsVipUser;
+  const currentProfile = env.sandbox.window.getCurrentProfile ? env.sandbox.window.getCurrentProfile() : env.sandbox.currentProfile;
+
+  // 1. Estado inicial do perfil padrão deve ser isVerified: false e isVip: false
+  assert.strictEqual(currentProfile.isVerified, false, 'Perfil padrão inicial deve ter isVerified: false');
+  assert.strictEqual(currentProfile.isVip, false, 'Perfil padrão inicial deve ter isVip: false');
+
+  // 2. Simular criação de nova conta comum de usuário (ex: usuario_novo@gmail.com)
+  const newCommonUser = {
+    uid: 'new-common-user-99',
+    email: 'novo_membro@gmail.com',
+    displayName: 'Carlos Silva',
+    photoURL: 'https://example.com/avatar.png'
+  };
+
+  await env.triggerAuthStateChange(newCommonUser);
+
+  const createdUserDoc = env.firestoreDocs['users/new-common-user-99'];
+  assert.ok(createdUserDoc, 'Documento da nova conta deve ser gravado no Firestore');
+  assert.strictEqual(createdUserDoc.isVerified, false, 'Nova conta criada NÃO deve ter verificado grátis (isVerified deve ser false)');
+  assert.strictEqual(createdUserDoc.isVip, false, 'Nova conta criada NÃO deve ter VIP grátis (isVip deve ser false)');
+  assert.strictEqual(checkIsVipUser(createdUserDoc), false, 'checkIsVipUser deve retornar false para nova conta comum');
+
+  // 3. Simular criação da conta administrativa oficial (dxhub.oficial@gmail.com)
+  const adminUser = {
+    uid: 'admin-dx-01',
+    email: 'dxhub.oficial@gmail.com',
+    displayName: 'DX Hub Oficial',
+    photoURL: ''
+  };
+
+  await env.triggerAuthStateChange(adminUser);
+
+  const adminUserDoc = env.firestoreDocs['users/admin-dx-01'];
+  assert.ok(adminUserDoc, 'Documento da conta admin deve ser gravado no Firestore');
+  assert.strictEqual(adminUserDoc.isVerified, true, 'Conta admin oficial deve ter isVerified: true');
+  assert.strictEqual(adminUserDoc.isVip, true, 'Conta admin oficial deve ter isVip: true');
+  assert.strictEqual(checkIsVipUser(adminUserDoc), true, 'checkIsVipUser deve retornar true para conta admin oficial');
+});
+
 
 
 
