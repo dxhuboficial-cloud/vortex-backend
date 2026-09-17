@@ -5384,6 +5384,103 @@ test('Selo de Verificado Único para Administradores VORTEX VIP (Vermelho Choque
   assert.ok(cssContent.includes('#ffe600'), 'CSS deve conter a cor amarela #ffe600 para a mensagem de admin');
 });
 
+test('Instalabilidade da VORTEX VIP no Navegador (PWA Completo: Manifest, Service Worker, Ícones e Prompt de Instalação)', async () => {
+  const env = createTestEnvironment();
+  const fs = await import('fs');
+  const path = await import('path');
+
+  const publicDir = path.join(process.cwd(), 'public');
+
+  // 1. Validar existência e estrutura do Web App Manifest (manifest.json)
+  const manifestPath = path.join(publicDir, 'manifest.json');
+  assert.ok(fs.existsSync(manifestPath), 'Arquivo manifest.json deve existir na pasta public');
+
+  const manifestContent = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+  assert.ok(manifestContent.name && manifestContent.name.includes('VORTEX VIP'), 'Manifest deve conter name com VORTEX VIP');
+  assert.strictEqual(manifestContent.short_name, 'VORTEX VIP', 'Manifest deve ter short_name VORTEX VIP');
+  assert.strictEqual(manifestContent.display, 'standalone', 'Manifest deve ter display: standalone');
+  assert.strictEqual(manifestContent.theme_color, '#fff01f', 'Manifest deve ter theme_color #fff01f');
+  assert.strictEqual(manifestContent.background_color, '#0a0a0c', 'Manifest deve ter background_color #0a0a0c');
+  assert.ok(Array.isArray(manifestContent.icons), 'Manifest deve conter array de ícones');
+
+  const iconSizes = manifestContent.icons.map(i => i.sizes);
+  assert.ok(iconSizes.includes('192x192'), 'Manifest deve incluir ícone 192x192');
+  assert.ok(iconSizes.includes('512x512'), 'Manifest deve incluir ícone 512x512');
+
+  // Validar existência física dos arquivos de ícones declarados
+  for (const icon of manifestContent.icons) {
+    const iconRelative = icon.src.replace(/^\//, '');
+    const fullIconPath = path.join(publicDir, iconRelative);
+    assert.ok(fs.existsSync(fullIconPath), `Arquivo de ícone ${icon.src} deve existir no disco`);
+    const stat = fs.statSync(fullIconPath);
+    assert.ok(stat.size > 0, `Arquivo de ícone ${icon.src} não pode ser vazio`);
+  }
+
+  // 2. Validar Service Worker (sw.js)
+  const swPath = path.join(publicDir, 'sw.js');
+  assert.ok(fs.existsSync(swPath), 'Arquivo sw.js deve existir na pasta public');
+  const swContent = fs.readFileSync(swPath, 'utf8');
+  assert.ok(swContent.includes('CACHE_NAME'), 'sw.js deve definir CACHE_NAME');
+  assert.ok(swContent.includes('addEventListener(\'install\''), 'sw.js deve escutar evento install');
+  assert.ok(swContent.includes('addEventListener(\'activate\''), 'sw.js deve escutar evento activate');
+  assert.ok(swContent.includes('addEventListener(\'fetch\''), 'sw.js deve escutar evento fetch');
+  assert.ok(swContent.includes('firestore.googleapis.com'), 'sw.js deve ignorar chamadas do Firestore para garantir tempo real');
+
+  // 3. Validar Tags Meta PWA no index.html
+  const htmlPath = path.join(publicDir, 'index.html');
+  const htmlContent = fs.readFileSync(htmlPath, 'utf8');
+  assert.ok(htmlContent.includes('rel="manifest"'), 'index.html deve conter link rel="manifest"');
+  assert.ok(htmlContent.includes('name="theme-color" content="#fff01f"'), 'index.html deve conter meta theme-color');
+  assert.ok(htmlContent.includes('apple-mobile-web-app-capable'), 'index.html deve suportar Apple PWA em tela cheia');
+  assert.ok(htmlContent.includes('apple-touch-icon'), 'index.html deve definir apple-touch-icon');
+  assert.ok(htmlContent.includes('id="install-app-header-btn"'), 'index.html deve ter botão de instalação no cabeçalho');
+  assert.ok(htmlContent.includes('id="install-app-setting-item"'), 'index.html deve ter opção de instalação nas configurações');
+  assert.ok(htmlContent.includes('id="pwa-install-banner"'), 'index.html deve ter banner flutuante de instalação');
+  assert.ok(htmlContent.includes('id="pwa-ios-modal"'), 'index.html deve ter modal instrucional para iOS Safari');
+
+  // 4. Validar Funções e Lógica de Instalação no script.js
+  const isAppInstalledPwa = env.sandbox.isAppInstalledPwa || env.sandbox.window.isAppInstalledPwa;
+  const updateInstallUIVisibility = env.sandbox.updateInstallUIVisibility || env.sandbox.window.updateInstallUIVisibility;
+  const triggerPwaInstall = env.sandbox.triggerPwaInstall || env.sandbox.window.triggerPwaInstall;
+  const setDeferredPrompt = env.sandbox.setDeferredPrompt || env.sandbox.window.setDeferredPrompt;
+  const openPwaIosModal = env.sandbox.openPwaIosModal || env.sandbox.window.openPwaIosModal;
+  const closePwaIosModal = env.sandbox.closePwaIosModal || env.sandbox.window.closePwaIosModal;
+
+  assert.ok(typeof isAppInstalledPwa === 'function', 'isAppInstalledPwa deve ser uma função');
+  assert.ok(typeof updateInstallUIVisibility === 'function', 'updateInstallUIVisibility deve ser uma função');
+  assert.ok(typeof triggerPwaInstall === 'function', 'triggerPwaInstall deve ser uma função');
+
+  // Testar visibilidade com prompt disponível
+  let promptTriggered = false;
+  const fakePrompt = {
+    prompt() { promptTriggered = true; },
+    userChoice: Promise.resolve({ outcome: 'accepted' })
+  };
+
+  setDeferredPrompt(fakePrompt);
+  updateInstallUIVisibility();
+
+  const headerBtn = env.elements['install-app-header-btn'];
+  assert.strictEqual(headerBtn.style.display, 'flex', 'Botão de instalar no cabeçalho deve estar visível quando prompt estiver pronto');
+
+  // Disparar instalação
+  await triggerPwaInstall();
+  assert.strictEqual(promptTriggered, true, 'triggerPwaInstall deve acionar deferredPrompt.prompt()');
+
+  // Testar modal instrucional iOS
+  const iosModal = env.elements['pwa-ios-modal'];
+  openPwaIosModal();
+  assert.strictEqual(iosModal.style.display, 'flex', 'openPwaIosModal deve abrir o modal do iOS');
+  closePwaIosModal();
+  assert.strictEqual(iosModal.style.display, 'none', 'closePwaIosModal deve fechar o modal do iOS');
+
+  // 5. Validar Estilos CSS do PWA
+  assert.ok(cssContent.includes('.install-header-btn'), 'style.css deve conter estilos do botão de instalação');
+  assert.ok(cssContent.includes('.pwa-install-banner'), 'style.css deve conter estilos do banner de instalação');
+  assert.ok(cssContent.includes('.pwa-ios-modal'), 'style.css deve conter estilos do modal do iOS');
+});
+
+
 
 
 

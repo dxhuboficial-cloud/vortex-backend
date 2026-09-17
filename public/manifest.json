@@ -1,0 +1,87 @@
+{
+  "name": "VORTEX VIP ⚡ - Mensagens em Tempo Real",
+  "short_name": "VORTEX VIP",
+  "description": "Rede social e mensagens em tempo real com criptografia quântica, chamadas e recursos exclusivos VIP.",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": [
+    "window-controls-overlay",
+    "standalone",
+    "minimal-ui"
+  ],
+  "orientation": "portrait-primary",
+  "background_color": "#0a0a0c",
+  "theme_color": "#fff01f",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "categories": [
+    "social",
+    "communication",
+    "entertainment"
+  ],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Conversas",
+      "short_name": "Conversas",
+      "description": "Abrir lista de conversas VIP",
+      "url": "/?tab=chats",
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Feed VIP",
+      "short_name": "Feed",
+      "description": "Abrir Feed de postagens e stories",
+      "url": "/?tab=feed",
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Meu Perfil",
+      "short_name": "Perfil",
+      "description": "Ver e editar meu perfil",
+      "url": "/?tab=profile",
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}

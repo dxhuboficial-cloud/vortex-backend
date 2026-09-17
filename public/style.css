@@ -8635,3 +8635,317 @@ body.theme-rgb .ephemeral-save-btn {
     box-shadow: 0 4px 18px rgba(0, 240, 255, 0.5) !important;
     color: #ffffff !important;
 }
+
+/* ==========================================================================
+   PWA - RECURSOS DE INSTALAÇÃO NO NAVEGADOR (VORTEX VIP ⚡)
+   ========================================================================== */
+
+/* Botão de Instalação no Cabeçalho */
+.install-header-btn {
+    position: relative;
+    color: var(--accent-color, #fff01f) !important;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.install-header-btn:hover {
+    color: #ffffff !important;
+    transform: translateY(-2px) scale(1.08);
+    box-shadow: 0 0 16px rgba(255, 240, 31, 0.45);
+}
+
+.install-header-btn::after {
+    content: '';
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 7px;
+    height: 7px;
+    background: #00e5ff;
+    border-radius: 50%;
+    box-shadow: 0 0 8px #00e5ff;
+    animation: installPulseDot 2s infinite ease-in-out;
+}
+
+@keyframes installPulseDot {
+    0%, 100% { transform: scale(0.9); opacity: 0.8; }
+    50% { transform: scale(1.4); opacity: 1; box-shadow: 0 0 14px #00e5ff; }
+}
+
+/* Linha de Instalação nas Configurações VIP */
+.install-app-row {
+    background: linear-gradient(135deg, rgba(255, 240, 31, 0.06) 0%, rgba(255, 23, 68, 0.04) 100%) !important;
+    border: 1px solid rgba(255, 240, 31, 0.25) !important;
+    border-radius: 14px !important;
+    padding: 12px 14px !important;
+    margin-bottom: 8px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.install-app-row:hover {
+    border-color: rgba(255, 240, 31, 0.5) !important;
+    box-shadow: 0 4px 18px rgba(255, 240, 31, 0.15) !important;
+}
+
+.install-inline-icon {
+    width: 16px;
+    height: 16px;
+    vertical-align: middle;
+    margin-right: 4px;
+    color: var(--accent-color, #fff01f);
+}
+
+.install-pwa-action-btn {
+    background: linear-gradient(135deg, #fff01f 0%, #ffc400 100%) !important;
+    color: #000000 !important;
+    font-weight: 800 !important;
+    font-size: 0.82rem !important;
+    padding: 8px 16px !important;
+    border-radius: 10px !important;
+    border: none !important;
+    cursor: pointer !important;
+    box-shadow: 0 2px 12px rgba(255, 240, 31, 0.35) !important;
+    transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+.install-pwa-action-btn:hover {
+    transform: translateY(-1px) scale(1.03) !important;
+    box-shadow: 0 4px 20px rgba(255, 240, 31, 0.6) !important;
+}
+
+/* Banner Flutuante de Instalação PWA */
+.pwa-install-banner {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100% - 32px);
+    max-width: 480px;
+    background: rgba(14, 14, 18, 0.96);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border: 1px solid rgba(255, 240, 31, 0.38);
+    border-radius: 18px;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.75), 0 0 30px rgba(255, 240, 31, 0.22);
+    z-index: 10000;
+    overflow: hidden;
+    animation: pwaBannerSlideUp 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes pwaBannerSlideUp {
+    from {
+        opacity: 0;
+        transform: translate(-50%, 40px) scale(0.96);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0) scale(1);
+    }
+}
+
+.pwa-banner-glow-line {
+    height: 3px;
+    width: 100%;
+    background: linear-gradient(90deg, #ff1744 0%, #fff01f 50%, #00e5ff 100%);
+}
+
+.pwa-banner-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+}
+
+.pwa-banner-icon-box {
+    flex-shrink: 0;
+}
+
+.pwa-banner-logo {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    box-shadow: 0 0 12px rgba(255, 240, 31, 0.3);
+    object-fit: cover;
+}
+
+.pwa-banner-text {
+    flex: 1;
+    min-width: 0;
+}
+
+.pwa-banner-title {
+    font-size: 0.94rem;
+    font-weight: 800;
+    color: #ffffff;
+    margin-bottom: 2px;
+    letter-spacing: 0.3px;
+}
+
+.pwa-banner-desc {
+    font-size: 0.77rem;
+    color: #b0b0c2;
+    line-height: 1.35;
+}
+
+.pwa-banner-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.pwa-banner-btn-primary {
+    background: linear-gradient(135deg, #fff01f 0%, #ffc400 100%) !important;
+    color: #000000 !important;
+    font-weight: 800 !important;
+    font-size: 0.82rem !important;
+    padding: 8px 16px !important;
+    border-radius: 10px !important;
+    border: none !important;
+    cursor: pointer !important;
+    box-shadow: 0 2px 10px rgba(255, 240, 31, 0.4) !important;
+    white-space: nowrap;
+}
+
+.pwa-banner-btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(255, 240, 31, 0.6) !important;
+}
+
+.pwa-banner-btn-dismiss {
+    background: transparent;
+    color: #888899;
+    font-size: 0.75rem;
+    border: none;
+    cursor: pointer;
+    text-align: center;
+    padding: 2px 6px;
+    transition: color 0.15s ease;
+}
+
+.pwa-banner-btn-dismiss:hover {
+    color: #ffffff;
+}
+
+/* Modal Instrucional de Instalação no iOS */
+.pwa-ios-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10001;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.pwa-ios-content {
+    background: #111116;
+    border: 1px solid rgba(255, 240, 31, 0.35);
+    border-radius: 20px;
+    padding: 24px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.85), 0 0 30px rgba(255, 240, 31, 0.2);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 18px;
+    box-sizing: border-box;
+    animation: pwaIosModalPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes pwaIosModalPop {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.pwa-ios-icon-wrap img {
+    border-radius: 12px;
+    box-shadow: 0 0 16px rgba(255, 240, 31, 0.35);
+}
+
+.pwa-ios-title {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #ffffff;
+    margin: 6px 0 4px 0;
+}
+
+.pwa-ios-subtitle {
+    font-size: 0.84rem;
+    color: #a0a0b2;
+    margin: 0;
+    line-height: 1.4;
+}
+
+.pwa-ios-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    text-align: left;
+    margin-top: 4px;
+}
+
+.pwa-ios-step {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 12px 14px;
+}
+
+.pwa-ios-step-num {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #fff01f;
+    color: #000000;
+    font-weight: 800;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.pwa-ios-step-text {
+    font-size: 0.88rem;
+    color: #e0e0ec;
+    line-height: 1.35;
+}
+
+.ios-share-inline-icon {
+    width: 16px;
+    height: 16px;
+    vertical-align: middle;
+    color: #00e5ff;
+    margin: 0 2px;
+}
+
+.pwa-ios-close-btn {
+    width: 100%;
+    background: linear-gradient(135deg, #fff01f 0%, #ffc400 100%) !important;
+    color: #000000 !important;
+    font-weight: 800 !important;
+    font-size: 0.92rem !important;
+    padding: 12px 20px !important;
+    border-radius: 12px !important;
+    border: none !important;
+    cursor: pointer !important;
+    box-shadow: 0 4px 16px rgba(255, 240, 31, 0.4) !important;
+}
+
+.pwa-ios-close-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 22px rgba(255, 240, 31, 0.6) !important;
+}

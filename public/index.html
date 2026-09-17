@@ -5,7 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E⚡%3C/text%3E%3C/svg%3E">
-    <link rel="stylesheet" href="style.css?v=1.0.80">
+    <link rel="stylesheet" href="style.css?v=1.0.81">
+    <!-- PWA Web App Manifest & Metadados de Instalação -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#fff01f">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/icon-512.png">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -128,6 +137,9 @@
                     <div class="header-icon-btn admin-badge-btn" id="admin-panel-btn" title="Painel de Moderação ADM" aria-label="Painel ADM" style="display: none;">
                         <i data-lucide="shield-alert"></i>
                         <span id="admin-pending-badge" class="admin-pending-badge" style="display:none;">0</span>
+                    </div>
+                    <div class="header-icon-btn install-header-btn" id="install-app-header-btn" title="Instalar VORTEX VIP no Dispositivo" aria-label="Instalar Aplicativo" style="display: none;">
+                        <i data-lucide="download"></i>
                     </div>
                     <div class="header-icon-btn" id="settings-btn" title="Configurações VIP" aria-label="Configurações VIP">
                         <i data-lucide="settings"></i>
@@ -1270,6 +1282,14 @@
                     <button id="open-admin-from-settings-btn" type="button" class="danger-btn admin-open-btn">Abrir ADM</button>
                 </div>
 
+                <div class="setting-item install-app-row" id="install-app-setting-item">
+                    <div class="setting-info">
+                        <span class="install-setting-label"><i data-lucide="download" class="install-inline-icon"></i> Instalar Aplicativo ⚡</span>
+                        <small id="install-setting-desc">Instalar o VORTEX VIP no navegador ou na tela inicial</small>
+                    </div>
+                    <button id="install-pwa-btn" type="button" class="danger-btn install-pwa-action-btn">Instalar</button>
+                </div>
+
                 <div class="setting-item">
                     <label for="sound-toggle" class="setting-info">
                         <span>Sons da Interface</span>
@@ -2164,8 +2184,54 @@
             </div>
         </div>
 
+        <!-- Banner Flutuante de Instalação PWA (Disponível no Navegador) -->
+        <div id="pwa-install-banner" class="pwa-install-banner" style="display: none;">
+            <div class="pwa-banner-glow-line"></div>
+            <div class="pwa-banner-content">
+                <div class="pwa-banner-icon-box">
+                    <img src="icons/icon-192.png" alt="VORTEX VIP" class="pwa-banner-logo" width="44" height="44">
+                </div>
+                <div class="pwa-banner-text">
+                    <div class="pwa-banner-title">Instalar VORTEX VIP ⚡</div>
+                    <div class="pwa-banner-desc">Adicione à tela inicial para abrir como aplicativo nativo em tela cheia.</div>
+                </div>
+                <div class="pwa-banner-actions">
+                    <button id="pwa-banner-install-btn" type="button" class="danger-btn pwa-banner-btn-primary">Instalar</button>
+                    <button id="pwa-banner-dismiss-btn" type="button" class="pwa-banner-btn-dismiss" title="Dispensar">Depois</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Instrucional de Instalação no iOS (Safari / iPhone / iPad) -->
+        <div id="pwa-ios-modal" class="settings-panel pwa-ios-modal" style="display: none;">
+            <div class="pwa-ios-content">
+                <div class="pwa-ios-header">
+                    <div class="pwa-ios-icon-wrap">
+                        <img src="icons/icon-192.png" alt="VORTEX VIP" width="48" height="48">
+                    </div>
+                    <h3 class="pwa-ios-title">Instalar no iPhone / iPad 📲</h3>
+                    <p class="pwa-ios-subtitle">Siga os 2 passos rápidos abaixo no Safari para ter o VORTEX VIP na sua tela de início:</p>
+                </div>
+                <div class="pwa-ios-steps">
+                    <div class="pwa-ios-step">
+                        <div class="pwa-ios-step-num">1</div>
+                        <div class="pwa-ios-step-text">
+                            Toque no botão de <strong>Compartilhar</strong> <i data-lucide="share" class="ios-share-inline-icon"></i> na barra inferior do Safari.
+                        </div>
+                    </div>
+                    <div class="pwa-ios-step">
+                        <div class="pwa-ios-step-num">2</div>
+                        <div class="pwa-ios-step-text">
+                            Role as opções para cima e selecione <strong>"Adicionar à Tela de Início"</strong> <i data-lucide="plus-square" class="ios-share-inline-icon"></i>.
+                        </div>
+                    </div>
+                </div>
+                <button type="button" id="close-pwa-ios-btn" class="danger-btn pwa-ios-close-btn">Entendi ⚡</button>
+            </div>
+        </div>
+
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.80" defer></script>
+    <script type="module" src="script.js?v=1.0.81" defer></script>
 </body>
 </html>

@@ -9042,6 +9042,142 @@ export function getAdminReports() {
     return adminReports;
 }
 
+/* ==========================================================================
+   PWA - GERENCIAMENTO DE INSTALAÇÃO NO NAVEGADOR (VORTEX VIP ⚡)
+   ========================================================================== */
+
+let pwaDeferredPrompt = null;
+let pwaIsInstalled = false;
+
+export function setDeferredPrompt(promptEvent) {
+    pwaDeferredPrompt = promptEvent;
+}
+
+export function getDeferredPrompt() {
+    return pwaDeferredPrompt;
+}
+
+export function isAppInstalledPwa() {
+    if (typeof window === 'undefined') return false;
+    const isStandaloneDisplay = typeof window.matchMedia === 'function' && window.matchMedia('(display-mode: standalone)').matches;
+    const isNavStandalone = typeof navigator !== 'undefined' && (navigator.standalone === true);
+    const isAndroidApp = typeof document !== 'undefined' && document.referrer && document.referrer.includes('android-app://');
+    return isStandaloneDisplay || isNavStandalone || isAndroidApp || pwaIsInstalled;
+}
+
+export function isIosSafari() {
+    if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
+    const ua = navigator.userAgent || '';
+    const isIos = /iphone|ipad|ipod/i.test(ua);
+    const isSafari = /safari/i.test(ua) && !/chrome|crios|fxios|edgios/i.test(ua);
+    return isIos && isSafari && !isAppInstalledPwa();
+}
+
+export function updateInstallUIVisibility() {
+    if (typeof document === 'undefined') return;
+    const isInstalled = isAppInstalledPwa();
+    const headerBtn = document.getElementById('install-app-header-btn');
+    const settingRow = document.getElementById('install-app-setting-item');
+    const banner = document.getElementById('pwa-install-banner');
+
+    if (isInstalled) {
+        if (headerBtn) headerBtn.style.display = 'none';
+        if (settingRow) settingRow.style.display = 'none';
+        if (banner) banner.style.display = 'none';
+        return;
+    }
+
+    const canInstall = !!pwaDeferredPrompt || isIosSafari();
+    if (headerBtn) headerBtn.style.display = canInstall ? 'flex' : 'none';
+    if (settingRow) settingRow.style.display = 'flex';
+}
+
+export function showPwaBannerIfEligible() {
+    if (typeof document === 'undefined' || isAppInstalledPwa()) return;
+    try {
+        if (sessionStorage.getItem('vortex_pwa_banner_dismissed') === 'true') return;
+    } catch (_) {}
+
+    const banner = document.getElementById('pwa-install-banner');
+    if (banner) {
+        banner.style.display = 'block';
+    }
+}
+
+export function dismissPwaInstallBanner() {
+    const banner = document.getElementById('pwa-install-banner');
+    if (banner) banner.style.display = 'none';
+    try {
+        sessionStorage.setItem('vortex_pwa_banner_dismissed', 'true');
+    } catch (_) {}
+}
+
+export function openPwaIosModal() {
+    const modal = document.getElementById('pwa-ios-modal');
+    if (modal) {
+        modal.style.display = 'flex';
+        if (window.lucide) lucide.createIcons();
+    }
+}
+
+export function closePwaIosModal() {
+    const modal = document.getElementById('pwa-ios-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+export async function triggerPwaInstall() {
+    if (isIosSafari()) {
+        openPwaIosModal();
+        return;
+    }
+
+    if (pwaDeferredPrompt) {
+        try {
+            pwaDeferredPrompt.prompt();
+            const choiceResult = await pwaDeferredPrompt.userChoice;
+            if (choiceResult && choiceResult.outcome === 'accepted') {
+                pwaIsInstalled = true;
+                dismissPwaInstallBanner();
+                showToast('Instalação Iniciada', 'VORTEX VIP ⚡ está sendo adicionado ao seu dispositivo!', 'yellow');
+            }
+            pwaDeferredPrompt = null;
+            updateInstallUIVisibility();
+        } catch (err) {
+            console.warn('[PWA] Erro ao disparar prompt:', err);
+        }
+    } else {
+        showToast('Instalação', 'Para instalar, clique no menu do navegador (⋮ ou configurações) e selecione "Instalar aplicativo" ou "Adicionar à tela inicial".', 'yellow');
+    }
+}
+
+// Registro do Service Worker e escuta de eventos PWA
+if (typeof window !== 'undefined') {
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js').then((reg) => {
+                console.log('[VORTEX VIP] Service Worker ativo com sucesso! Escopo:', reg.scope);
+            }).catch((err) => {
+                console.warn('[VORTEX VIP] Erro ao registrar Service Worker:', err);
+            });
+        });
+    }
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        pwaDeferredPrompt = e;
+        updateInstallUIVisibility();
+        showPwaBannerIfEligible();
+    });
+
+    window.addEventListener('appinstalled', () => {
+        pwaIsInstalled = true;
+        pwaDeferredPrompt = null;
+        updateInstallUIVisibility();
+        dismissPwaInstallBanner();
+        showToast('Aplicativo Instalado! ⚡', 'VORTEX VIP foi instalado com sucesso. Agora você pode abrir diretamente pela tela inicial!', 'green');
+    });
+}
+
 if (typeof window !== 'undefined') {
     window.VORTEX_ADMIN_EMAILS = VORTEX_ADMIN_EMAILS;
     window.AUTHORIZED_ADMIN_EMAILS = AUTHORIZED_ADMIN_EMAILS;
@@ -9103,7 +9239,27 @@ if (typeof window !== 'undefined') {
     window.checkIsAdminUser = checkIsAdminUser;
     window.updateVerifiedBadgeElement = updateVerifiedBadgeElement;
     window.showAdminBadgeToast = showAdminBadgeToast;
+    window.isAppInstalledPwa = isAppInstalledPwa;
+    window.isIosSafari = isIosSafari;
+    window.updateInstallUIVisibility = updateInstallUIVisibility;
+    window.triggerPwaInstall = triggerPwaInstall;
+    window.openPwaIosModal = openPwaIosModal;
+    window.closePwaIosModal = closePwaIosModal;
+    window.dismissPwaInstallBanner = dismissPwaInstallBanner;
+    window.showPwaBannerIfEligible = showPwaBannerIfEligible;
+    window.setDeferredPrompt = setDeferredPrompt;
+    window.getDeferredPrompt = getDeferredPrompt;
 }
+
+// Listeners de Instalação PWA
+document.getElementById('install-app-header-btn')?.addEventListener('click', triggerPwaInstall);
+document.getElementById('install-pwa-btn')?.addEventListener('click', triggerPwaInstall);
+document.getElementById('pwa-banner-install-btn')?.addEventListener('click', triggerPwaInstall);
+document.getElementById('pwa-banner-dismiss-btn')?.addEventListener('click', dismissPwaInstallBanner);
+document.getElementById('close-pwa-ios-btn')?.addEventListener('click', closePwaIosModal);
+document.getElementById('pwa-ios-modal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'pwa-ios-modal') closePwaIosModal();
+});
 
 // Listener de toque e clique no Selo de Administrador VORTEX VIP (exibe balão amarelo 💥Admin⚡)
 document.addEventListener('click', (e) => {
