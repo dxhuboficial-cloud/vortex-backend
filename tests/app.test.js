@@ -363,6 +363,17 @@ function createTestEnvironment() {
         remove(...c) { c.forEach(x => this._classes.delete(x)); },
         toggle(c, val) { if (val === undefined) val = !this._classes.has(c); if (val) this._classes.add(c); else this._classes.delete(c); return val; },
         contains(c) { return this._classes.has(c); }
+      },
+      appendChild(child) {
+        if (!this.children) this.children = [];
+        this.children.push(child);
+        const randId = child.id || ('dyn-' + Math.random().toString(36).slice(2, 7));
+        elements[randId] = child;
+        return child;
+      },
+      removeChild(child) {
+        if (this.children) this.children = this.children.filter(c => c !== child);
+        return child;
       }
     }
   };
@@ -5259,6 +5270,95 @@ test('Denúncia de Grupo: Botão no painel de perfil do grupo abre o modal ofici
   assert.strictEqual(lastReport.reporterUid, currentUser.uid, 'reporterUid deve ser o usuário logado');
   assert.strictEqual(lastReport.details, 'Grupo enviando links maliciosos em massa');
 });
+
+test('Selo de Verificado Único para Administradores VORTEX VIP (Vermelho Choque, Faíscas e Balão Amarelo 💥Admin⚡)', async () => {
+  const env = createTestEnvironment();
+  const checkIsAdminUser = env.sandbox.checkIsAdminUser || env.sandbox.window.checkIsAdminUser;
+  const updateVerifiedBadgeElement = env.sandbox.updateVerifiedBadgeElement || env.sandbox.window.updateVerifiedBadgeElement;
+  const showAdminBadgeToast = env.sandbox.showAdminBadgeToast || env.sandbox.window.showAdminBadgeToast;
+
+  assert.ok(typeof checkIsAdminUser === 'function', 'checkIsAdminUser deve ser uma função exportada');
+  assert.ok(typeof updateVerifiedBadgeElement === 'function', 'updateVerifiedBadgeElement deve ser uma função exportada');
+  assert.ok(typeof showAdminBadgeToast === 'function', 'showAdminBadgeToast deve ser uma função exportada');
+
+  // 1. Validar identificação de Administrador vs Usuário Comum
+  const adminAccount = {
+    uid: 'admin-dxhub-01',
+    email: 'dxhub.oficial@gmail.com',
+    username: 'dxhuboficial',
+    name: 'DX Hub Oficial Admin'
+  };
+  const regularVipAccount = {
+    uid: 'vip-user-02',
+    email: 'cliente.vip@gmail.com',
+    username: 'clientevip',
+    name: 'Cliente VIP',
+    isVip: true,
+    isVerified: true
+  };
+  const regularUserAccount = {
+    uid: 'normal-user-03',
+    email: 'normal@gmail.com',
+    username: 'normaluser',
+    name: 'Normal User',
+    isVip: false,
+    isVerified: false
+  };
+
+  assert.strictEqual(checkIsAdminUser(adminAccount), true, 'Conta de administrador deve retornar true para checkIsAdminUser');
+  assert.strictEqual(checkIsAdminUser(regularVipAccount), false, 'Usuário VIP comum NÃO deve retornar true para checkIsAdminUser');
+  assert.strictEqual(checkIsAdminUser(regularUserAccount), false, 'Usuário normal NÃO deve retornar true para checkIsAdminUser');
+
+  // 2. Validar aplicação do Selo de Administrador (.verified-badge-admin e título 💥Admin⚡)
+  const mockBadgeEl = {
+    id: 'test-badge',
+    style: { display: 'none' },
+    classList: {
+      _classes: new Set(['verified-badge']),
+      add(...c) { c.forEach(x => this._classes.add(x)); },
+      remove(...c) { c.forEach(x => this._classes.delete(x)); },
+      contains(c) { return this._classes.has(c); }
+    },
+    attributes: {},
+    setAttribute(k, v) { this.attributes[k] = String(v); },
+    removeAttribute(k) { delete this.attributes[k]; }
+  };
+
+  // Testar para Administrador
+  updateVerifiedBadgeElement(mockBadgeEl, adminAccount);
+  assert.strictEqual(mockBadgeEl.style.display, 'inline-flex', 'Badge de administrador deve ser exibido');
+  assert.ok(mockBadgeEl.classList.contains('verified-badge-admin'), 'Badge de administrador deve conter a classe .verified-badge-admin');
+  assert.strictEqual(mockBadgeEl.attributes['data-admin-badge'], 'true', 'Badge de administrador deve ter data-admin-badge="true"');
+  assert.strictEqual(mockBadgeEl.attributes['title'], '💥Admin⚡', 'Badge de administrador deve ter title="💥Admin⚡"');
+
+  // Testar para Usuário VIP Comum (não deve ter .verified-badge-admin)
+  updateVerifiedBadgeElement(mockBadgeEl, regularVipAccount);
+  assert.strictEqual(mockBadgeEl.style.display, 'inline-flex', 'Badge VIP comum deve ser exibido');
+  assert.strictEqual(mockBadgeEl.classList.contains('verified-badge-admin'), false, 'Badge VIP comum NÃO deve ter a classe .verified-badge-admin');
+  assert.strictEqual(mockBadgeEl.attributes['data-admin-badge'], undefined, 'Badge VIP comum NÃO deve ter data-admin-badge');
+  assert.strictEqual(mockBadgeEl.attributes['title'], 'Verificado VIP', 'Badge VIP comum deve ter title="Verificado VIP"');
+
+  // Testar para Usuário Normal (deve ser oculto)
+  updateVerifiedBadgeElement(mockBadgeEl, regularUserAccount);
+  assert.strictEqual(mockBadgeEl.style.display, 'none', 'Badge de usuário comum não-VIP deve ficar oculto');
+
+  // 3. Testar exibição da Mensagem Amarela 💥Admin⚡ ao tocar/clicar no selo
+  showAdminBadgeToast(null, mockBadgeEl);
+
+  const toastList = Object.values(env.elements).filter(el => el && el.classList && el.classList.contains && el.classList.contains('admin-badge-toast-yellow'));
+  assert.ok(toastList.length >= 1, 'Elemento de toast amarelo .admin-badge-toast-yellow deve ser criado no DOM');
+  const toast = toastList[toastList.length - 1];
+  assert.ok(toast.innerHTML.includes('💥Admin⚡'), 'Toast amarelo deve conter exatamente o texto 💥Admin⚡');
+
+  // 4. Validar CSS do Selo de Administrador (Vermelho #ff1744, choque elétrico shockTremor e faíscas electricSparksArc)
+  assert.ok(cssContent.includes('.verified-badge-admin'), 'CSS deve definir a classe .verified-badge-admin');
+  assert.ok(cssContent.includes('#ff1744'), 'CSS deve conter a cor vermelha #ff1744 para o selo de administrador');
+  assert.ok(cssContent.includes('shockTremor'), 'CSS deve conter animação de tremor de choque elétrico shockTremor');
+  assert.ok(cssContent.includes('electricSparksArc'), 'CSS deve conter animação de faíscas elétricas electricSparksArc');
+  assert.ok(cssContent.includes('.admin-badge-toast-yellow'), 'CSS deve estilizar a mensagem amarela .admin-badge-toast-yellow');
+  assert.ok(cssContent.includes('#ffe600'), 'CSS deve conter a cor amarela #ffe600 para a mensagem de admin');
+});
+
 
 
 

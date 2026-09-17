@@ -873,6 +873,107 @@ export function checkIsVipUser(user) {
     return sub.isVip;
 }
 
+export function checkIsAdminUser(userOrData) {
+    if (!userOrData) return false;
+    const email = (userOrData.email || userOrData.senderEmail || userOrData.authorEmail || '').toLowerCase().trim();
+    const username = (userOrData.username || userOrData.senderUsername || userOrData.authorUsername || '').toLowerCase().trim().replace(/^@/, '');
+    const name = (userOrData.name || userOrData.displayName || userOrData.senderName || userOrData.authorName || '').trim();
+    const role = (userOrData.role || '').toLowerCase().trim();
+    const uid = userOrData.uid || userOrData.userId || userOrData.authorUid || userOrData.senderUid || '';
+
+    if (email === 'dxhub.oficial@gmail.com' || username === 'dxhuboficial' || userOrData.isAdmin === true || role === 'admin' || name.includes('DX Hub')) {
+        return true;
+    }
+    if (typeof isUserAdmin === 'function' && isUserAdmin(userOrData)) {
+        return true;
+    }
+    if (currentUser && uid && (uid === currentUser.uid) && typeof isUserAdmin === 'function' && isUserAdmin(currentUser, currentProfile)) {
+        return true;
+    }
+    return false;
+}
+
+export function updateVerifiedBadgeElement(badgeEl, userOrData) {
+    if (!badgeEl) return;
+    const isVip = !!(userOrData && (checkIsVipUser(userOrData) || userOrData.isVip || userOrData.isVerified));
+    const isAdmin = !!(userOrData && checkIsAdminUser(userOrData));
+    const displayVal = (badgeEl.id === 'user-verified-badge' || badgeEl.id === 'story-verified-badge') ? 'inline-block' : 'inline-flex';
+
+    if (isAdmin) {
+        badgeEl.style.display = displayVal;
+        badgeEl.classList.add('active', 'verified-badge-admin');
+        badgeEl.setAttribute('data-admin-badge', 'true');
+        badgeEl.setAttribute('title', '💥Admin⚡');
+    } else if (isVip) {
+        badgeEl.style.display = displayVal;
+        badgeEl.classList.add('active');
+        badgeEl.classList.remove('verified-badge-admin');
+        badgeEl.removeAttribute('data-admin-badge');
+        badgeEl.setAttribute('title', 'Verificado VIP');
+    } else {
+        badgeEl.style.display = 'none';
+        badgeEl.classList.remove('active', 'verified-badge-admin');
+        badgeEl.removeAttribute('data-admin-badge');
+    }
+}
+
+export function showAdminBadgeToast(event, element) {
+    if (event) {
+        event.stopPropagation();
+        if (event.cancelable) event.preventDefault?.();
+    }
+    
+    if (typeof document !== 'undefined') {
+        document.querySelectorAll('.admin-badge-toast-yellow').forEach(el => el.remove());
+
+        const toast = document.createElement('div');
+        toast.className = 'admin-badge-toast-yellow';
+        toast.setAttribute('role', 'alert');
+        toast.innerHTML = '<span>💥Admin⚡</span>';
+
+        let left = typeof window !== 'undefined' ? window.innerWidth / 2 : 150;
+        let top = 60;
+
+        if (element && typeof element.getBoundingClientRect === 'function') {
+            const rect = element.getBoundingClientRect();
+            if (rect && (rect.width > 0 || rect.height > 0 || rect.top > 0 || rect.left > 0)) {
+                const winWidth = typeof window !== 'undefined' ? window.innerWidth : 360;
+                left = Math.max(55, Math.min(winWidth - 55, rect.left + rect.width / 2));
+                top = rect.top;
+            }
+        }
+
+        toast.style.left = `${left}px`;
+        toast.style.top = `${top}px`;
+
+        if (top < 55) {
+            toast.classList.add('position-below');
+        }
+
+        document.body.appendChild(toast);
+
+        if (typeof requestAnimationFrame === 'function') {
+            requestAnimationFrame(() => toast.classList.add('active'));
+        } else {
+            toast.classList.add('active');
+        }
+
+        if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+            try { navigator.vibrate([35, 25, 35]); } catch (_) {}
+        }
+
+        if (typeof playSound === 'function' && typeof clickSound !== 'undefined') {
+            try { playSound(clickSound); } catch (_) {}
+        }
+
+        setTimeout(() => {
+            toast.classList.remove('active');
+            setTimeout(() => toast.remove(), 250);
+        }, 2200);
+    }
+}
+
+
 export function checkVipSubscriptionLifecycle() {
     if (!currentUser || !currentProfile) return;
     const sub = getVipSubscriptionState(currentProfile);
@@ -1735,8 +1836,7 @@ function updateProfileDOM() {
     const sub = getVipSubscriptionState(currentProfile);
 
     if (userBadge) {
-        userBadge.style.display = isVip ? 'inline-block' : 'none';
-        userBadge.classList.toggle('active', isVip);
+        updateVerifiedBadgeElement(userBadge, currentProfile);
     }
     if (window.lucide) lucide.createIcons();
     if (subscribeBtn) {
@@ -2043,19 +2143,14 @@ function openStoryViewer(stories, author, options = {}) {
 
     const storyBadge = document.getElementById('story-verified-badge');
     if (storyBadge) {
-        const isAuthorVip = isPreview 
-            ? checkIsVipUser(currentProfile) 
-            : (isMyStory ? checkIsVipUser(currentProfile) : checkIsVipUser(author));
-        storyBadge.style.display = isAuthorVip ? 'inline-block' : 'none';
-        storyBadge.classList.toggle('active', isAuthorVip);
+        const storyUser = isPreview 
+            ? currentProfile 
+            : (isMyStory ? currentProfile : author);
+        updateVerifiedBadgeElement(storyBadge, storyUser);
         if (!isPreview && !isMyStory && author?.authorUid) {
             getDoc(doc(db, 'users', author.authorUid)).then(snap => {
-                if (snap.exists()) {
-                    const freshVip = checkIsVipUser(snap.data());
-                    if (storyBadge) {
-                        storyBadge.style.display = freshVip ? 'inline-block' : 'none';
-                        storyBadge.classList.toggle('active', freshVip);
-                    }
+                if (snap.exists() && storyBadge) {
+                    updateVerifiedBadgeElement(storyBadge, snap.data());
                 }
             }).catch(() => {});
         }
@@ -3911,7 +4006,7 @@ function listenToContacts() {
                     <div class="chat-header">
                         <span class="name">
                             <span class="name-text">${contact.name || 'Contato'}</span>
-                            <i data-lucide="badge-check" class="verified-badge chat-card-verified-badge" id="chat-card-verified-badge-${contactUid}" style="display:${(contact.isVip || contact.isVerified || checkIsVipUser(contact)) ? 'inline-flex' : 'none'};"></i>
+                            <i data-lucide="badge-check" class="verified-badge chat-card-verified-badge${checkIsAdminUser(contact) ? ' verified-badge-admin' : ''}" id="chat-card-verified-badge-${contactUid}" ${checkIsAdminUser(contact) ? 'data-admin-badge="true" title="💥Admin⚡"' : ''} style="display:${(contact.isVip || contact.isVerified || checkIsVipUser(contact)) ? 'inline-flex' : 'none'};"></i>
                             <span class="pinned-chat-badge" id="pinned-badge-${contactUid}" style="display:${isPinned ? 'inline-flex' : 'none'};" title="Conversa fixada">
                                 <i data-lucide="pin"></i>
                             </span>
@@ -3981,8 +4076,7 @@ function listenToContacts() {
                     const isVip = checkIsVipUser(uData);
                     if (tagEl) tagEl.style.display = isVip ? 'inline-block' : 'none';
                     if (badgeEl) {
-                        badgeEl.style.display = isVip ? 'inline-flex' : 'none';
-                        badgeEl.classList.toggle('active', isVip);
+                        updateVerifiedBadgeElement(badgeEl, uData);
                     }
                     card.dataset.isVip = isVip ? 'true' : 'false';
                     if (window.lucide) lucide.createIcons();
@@ -4454,8 +4548,7 @@ export async function openContactProfile(contact) {
     if (nameEl) nameEl.innerText = initName;
     if (usernameEl) usernameEl.innerText = initUsername;
     if (badgeEl) {
-        badgeEl.style.display = initIsVip ? 'inline-flex' : 'none';
-        badgeEl.classList.toggle('active', initIsVip);
+        updateVerifiedBadgeElement(badgeEl, contact);
     }
     if (bioTextEl) bioTextEl.innerText = `"${initBio}"`;
     if (bioDateEl) bioDateEl.innerText = 'Recado do perfil no VORTEX';
@@ -4494,8 +4587,7 @@ export async function openContactProfile(contact) {
         if (nameEl) nameEl.innerText = liveName;
         if (usernameEl) usernameEl.innerText = liveUsername;
         if (badgeEl) {
-            badgeEl.style.display = isVip ? 'inline-flex' : 'none';
-            badgeEl.classList.toggle('active', isVip);
+            updateVerifiedBadgeElement(badgeEl, uData || contact);
         }
         if (window.lucide) lucide.createIcons();
         if (bioTextEl) bioTextEl.innerText = `"${liveBio}"`;
@@ -5282,23 +5374,7 @@ function refreshDirectChatStatus() {
     updateChatBioBubble(contactBio);
 
     if (badgeEl) {
-        const isVip = activeContactUserData ? (
-            checkIsVipUser(activeContactUserData) ||
-            activeContactUserData.isVip ||
-            activeContactUserData.isVerified ||
-            (activeContactUserData.email && activeContactUserData.email.toLowerCase() === 'dxhub.oficial@gmail.com') ||
-            (activeContactUserData.username && activeContactUserData.username.toLowerCase().replace('@', '') === 'dxhuboficial') ||
-            (activeContactUserData.name && activeContactUserData.name.includes('DX Hub'))
-        ) : (
-            checkIsVipUser(activeChatContact) ||
-            activeChatContact.isVip ||
-            activeChatContact.isVerified ||
-            (activeChatContact.email && activeChatContact.email.toLowerCase() === 'dxhub.oficial@gmail.com') ||
-            (activeChatContact.username && activeChatContact.username.toLowerCase().replace('@', '') === 'dxhuboficial') ||
-            (activeChatContact.name && activeChatContact.name.includes('DX Hub'))
-        );
-        badgeEl.style.display = isVip ? 'inline-flex' : 'none';
-        badgeEl.classList.toggle('active', !!isVip);
+        updateVerifiedBadgeElement(badgeEl, activeContactUserData || activeChatContact);
         if (window.lucide) lucide.createIcons();
     }
 
@@ -5888,13 +5964,14 @@ function loadRealtimeMessages() {
             const contactName = activeChatContact.name || 'Contato';
             const contactAvatar = activeChatContact.avatar || '';
 
+            const isIntroAdmin = checkIsAdminUser(activeContactUserData || activeChatContact);
             introCard.innerHTML = `
                 <div class="intro-avatar" style="background-image: url('${contactAvatar}');" role="button" tabindex="0" title="Ver dados do contato">
                     ${!contactAvatar ? contactName.charAt(0).toUpperCase() : ''}
                 </div>
                 <h3 class="intro-name" role="button" tabindex="0" title="Ver dados do contato">
                     <span>${contactName}</span>
-                    <i data-lucide="badge-check" class="verified-badge" style="display:${isVip ? 'inline-flex' : 'none'};"></i>
+                    <i data-lucide="badge-check" class="verified-badge${isIntroAdmin ? ' verified-badge-admin' : ''}" ${isIntroAdmin ? 'data-admin-badge="true" title="💥Admin⚡"' : ''} style="display:${isVip ? 'inline-flex' : 'none'};"></i>
                 </h3>
                 <span class="intro-username">${contactUsername}</span>
                 <div class="intro-bio-box" role="button" tabindex="0" title="Toque para ver os dados do contato">
@@ -6106,19 +6183,21 @@ function loadRealtimeMessages() {
                 const resolvedName = (rawName && rawName !== 'Membro') ? rawName : (groupMemberNamesCache.get(msg.senderUid) || 'Membro');
                 if (isMe) {
                     const isMyVip = checkIsVipUser(currentProfile);
+                    const isMyAdm = checkIsAdminUser(currentProfile);
                     groupSenderHTML = `
                         <div class="group-sender-name group-sender-me" title="Enviado por você">
                             <span class="group-sender-name-text">${escapeHTML(resolvedName)} (Você)</span>
-                            <i data-lucide="badge-check" class="verified-badge" style="display:${isMyVip ? 'inline-flex' : 'none'};"></i>
+                            <i data-lucide="badge-check" class="verified-badge${isMyAdm ? ' verified-badge-admin' : ''}" ${isMyAdm ? 'data-admin-badge="true" title="💥Admin⚡"' : ''} style="display:${isMyVip ? 'inline-flex' : 'none'};"></i>
                         </div>
                     `;
                 } else {
                     const color = getGroupSenderColor(msg.senderUid);
-                    const isSenderVip = !!(msg.isVip || msg.isVerified || (msg.senderEmail === 'dxhub.oficial@gmail.com') || (msg.senderUsername === 'dxhuboficial'));
+                    const isSenderAdm = checkIsAdminUser(msg);
+                    const isSenderVip = !!(msg.isVip || msg.isVerified || (msg.senderEmail === 'dxhub.oficial@gmail.com') || (msg.senderUsername === 'dxhuboficial') || isSenderAdm);
                     groupSenderHTML = `
                         <div class="group-sender-name" style="color: ${color};" title="Enviado por ${escapeHTML(resolvedName)}">
                             <span class="group-sender-name-text">${escapeHTML(resolvedName)}</span>
-                            <i data-lucide="badge-check" class="verified-badge" style="display:${isSenderVip ? 'inline-flex' : 'none'};"></i>
+                            <i data-lucide="badge-check" class="verified-badge${isSenderAdm ? ' verified-badge-admin' : ''}" ${isSenderAdm ? 'data-admin-badge="true" title="💥Admin⚡"' : ''} style="display:${isSenderVip ? 'inline-flex' : 'none'};"></i>
                         </div>
                     `;
                 }
@@ -8988,9 +9067,19 @@ if (typeof window !== 'undefined') {
     window.openGroupChat = openGroupChat;
     window.openGroupProfile = openGroupProfile;
     window.closeChat = closeChat;
-    window.cleanupActiveGroupListeners = cleanupActiveGroupListeners;
     window.updateGroupChatHeaderStatus = updateGroupChatHeaderStatus;
+    window.checkIsAdminUser = checkIsAdminUser;
+    window.updateVerifiedBadgeElement = updateVerifiedBadgeElement;
+    window.showAdminBadgeToast = showAdminBadgeToast;
 }
+
+// Listener de toque e clique no Selo de Administrador VORTEX VIP (exibe balão amarelo 💥Admin⚡)
+document.addEventListener('click', (e) => {
+    const adminBadge = e.target?.closest?.('.verified-badge-admin, [data-admin-badge="true"]');
+    if (adminBadge) {
+        showAdminBadgeToast(e, adminBadge);
+    }
+});
 
 // Listeners de Notificações (Sino e Central de Avisos/Alertas)
 document.getElementById('notifications-bell-btn')?.addEventListener('click', openNotificationsPanel);
@@ -11121,6 +11210,7 @@ async function loadUsersForSearch(qText = '') {
                 btnHTML = `<button class="danger-btn send-req-btn" data-to="${u.id}" style="background:var(--accent-color); color:#000; font-weight:bold; padding:6px 12px; font-size:0.75rem; border:none; border-radius:8px;">Solicitar</button>`;
             }
 
+            const isUAdmin = checkIsAdminUser(u);
             const userBio = (u.status && u.status.trim()) ? u.status.trim() : 'Disponível no VORTEX ⚡';
             return `
                 <div class="member-list-item">
@@ -11131,7 +11221,7 @@ async function loadUsersForSearch(qText = '') {
                         <div>
                             <div style="display:flex; align-items:center; gap:4px;">
                                 <span style="font-size:0.88rem; font-weight:600; color:#fff;">${u.name} ${u.surname || ''}</span>
-                                <i data-lucide="badge-check" class="verified-badge" style="display:${(u.isVip || u.isVerified || checkIsVipUser(u)) ? 'inline-flex' : 'none'};"></i>
+                                <i data-lucide="badge-check" class="verified-badge${isUAdmin ? ' verified-badge-admin' : ''}" ${isUAdmin ? 'data-admin-badge="true" title="💥Admin⚡"' : ''} style="display:${(u.isVip || u.isVerified || checkIsVipUser(u)) ? 'inline-flex' : 'none'};"></i>
                             </div>
                             <div style="font-size:0.72rem; color:var(--accent-color);">${u.username || '@usuario'}</div>
                             <div class="search-user-bio">💬 "${userBio}"</div>
@@ -11225,6 +11315,7 @@ function listenToRequests() {
 
             listContainer.innerHTML = reqs.map(r => {
                 const reqBio = (r.fromBio && r.fromBio.trim()) ? r.fromBio.trim() : 'Disponível no VORTEX ⚡';
+                const isReqAdmin = checkIsAdminUser({ email: r.fromEmail, username: r.fromUsername, name: r.fromName, uid: r.fromUid });
                 return `
                     <div class="member-list-item">
                         <div style="display:flex; align-items:center; gap:8px;">
@@ -11234,7 +11325,7 @@ function listenToRequests() {
                             <div>
                                 <div style="display:flex; align-items:center; gap:4px;">
                                     <span style="font-size:0.88rem; font-weight:600;">${r.fromName}</span>
-                                    <i data-lucide="badge-check" class="verified-badge" style="display:${(r.fromIsVip || r.fromIsVerified) ? 'inline-flex' : 'none'};"></i>
+                                    <i data-lucide="badge-check" class="verified-badge${isReqAdmin ? ' verified-badge-admin' : ''}" ${isReqAdmin ? 'data-admin-badge="true" title="💥Admin⚡"' : ''} style="display:${(r.fromIsVip || r.fromIsVerified) ? 'inline-flex' : 'none'};"></i>
                                 </div>
                                 <div style="font-size:0.7rem; color:var(--accent-color);">${r.fromUsername || '@usuario'}</div>
                                 <div class="search-user-bio">💬 "${reqBio}"</div>
@@ -11855,7 +11946,7 @@ export function syncFeedAuthorsVipStatus(posts = []) {
                     authorVipCache.set(uid, isVip);
                     const badges = document.querySelectorAll(`.verified-badge[data-author-uid="${uid}"]`);
                     badges.forEach(b => {
-                        b.style.display = isVip ? 'inline-flex' : 'none';
+                        updateVerifiedBadgeElement(b, uData);
                     });
                     if (badges.length > 0 && window.lucide) {
                         lucide.createIcons();
@@ -11905,6 +11996,7 @@ function renderPostsFeed(posts = []) {
             previewFeed.innerHTML = sorted.slice(0, 3).map((post) => {
                 const authorName = post.authorName || 'Usuário';
                 const isPostAuthorVip = isAuthorVipUser(post.authorUid, post);
+                const isPostAuthorAdmin = checkIsAdminUser({ uid: post.authorUid, name: authorName, email: post.authorEmail, username: post.authorUsername });
                 const avatar = post.authorAvatar ? `style="background-image: url('${post.authorAvatar}')"` : '';
                 const likes = Array.isArray(post.likes) ? post.likes.length : 0;
                 const comments = Array.isArray(post.comments) ? post.comments : [];
@@ -11931,7 +12023,7 @@ function renderPostsFeed(posts = []) {
                                 <div>
                                     <div class="post-author-name">
                                         <span>${escapeHTML(authorName)}</span>
-                                        <i data-lucide="badge-check" class="verified-badge post-author-verified-badge" data-author-uid="${post.authorUid || ''}" style="display:${isPostAuthorVip ? 'inline-flex' : 'none'};"></i>
+                                        <i data-lucide="badge-check" class="verified-badge post-author-verified-badge${isPostAuthorAdmin ? ' verified-badge-admin' : ''}" data-author-uid="${post.authorUid || ''}" ${isPostAuthorAdmin ? 'data-admin-badge="true" title="💥Admin⚡"' : ''} style="display:${isPostAuthorVip ? 'inline-flex' : 'none'};"></i>
                                     </div>
                                     <div class="post-time">${timeLabel}</div>
                                 </div>
@@ -11993,6 +12085,7 @@ function renderPostsFeed(posts = []) {
     feedList.innerHTML = sorted.map((post) => {
         const authorName = post.authorName || 'Usuário';
         const isPostAuthorVip = isAuthorVipUser(post.authorUid, post);
+        const isPostAuthorAdmin = checkIsAdminUser({ uid: post.authorUid, name: authorName, email: post.authorEmail, username: post.authorUsername });
         const avatar = post.authorAvatar ? `style="background-image: url('${post.authorAvatar}')"` : '';
         const likes = Array.isArray(post.likes) ? post.likes.length : 0;
         const rawComments = Array.isArray(post.comments) ? post.comments : [];
@@ -12021,7 +12114,7 @@ function renderPostsFeed(posts = []) {
                         <div>
                             <div class="feed-username">
                                 <span>${escapeHTML(authorName)}</span>
-                                <i data-lucide="badge-check" class="verified-badge post-author-verified-badge" data-author-uid="${post.authorUid || ''}" style="display:${isPostAuthorVip ? 'inline-flex' : 'none'};"></i>
+                                <i data-lucide="badge-check" class="verified-badge post-author-verified-badge${isPostAuthorAdmin ? ' verified-badge-admin' : ''}" data-author-uid="${post.authorUid || ''}" ${isPostAuthorAdmin ? 'data-admin-badge="true" title="💥Admin⚡"' : ''} style="display:${isPostAuthorVip ? 'inline-flex' : 'none'};"></i>
                             </div>
                             <div class="feed-time">${timeLabel}</div>
                         </div>
@@ -12094,7 +12187,7 @@ function renderPostsFeed(posts = []) {
                                         <div class="feed-comment-text-wrap">
                                             <div class="feed-comment-author-line">
                                                 <strong>${escapeHTML(comment.author || 'Usuário')}</strong>
-                                                <i data-lucide="badge-check" class="verified-badge comment-verified-badge" data-author-uid="${comment.authorUid || ''}" style="display:${isAuthorVipUser(comment.authorUid, comment) ? 'inline-flex' : 'none'};"></i>
+                                                <i data-lucide="badge-check" class="verified-badge comment-verified-badge${checkIsAdminUser({ uid: comment.authorUid, name: comment.author, email: comment.authorEmail, username: comment.authorUsername }) ? ' verified-badge-admin' : ''}" data-author-uid="${comment.authorUid || ''}" ${checkIsAdminUser({ uid: comment.authorUid, name: comment.author, email: comment.authorEmail, username: comment.authorUsername }) ? 'data-admin-badge="true" title="💥Admin⚡"' : ''} style="display:${isAuthorVipUser(comment.authorUid, comment) ? 'inline-flex' : 'none'};"></i>
                                                 <span>:</span>
                                                 ${isEdited ? `<span class="comment-edited-badge">(editado)</span>` : ''}
                                             </div>
@@ -12460,7 +12553,8 @@ export function openPostCommentModal(post) {
     if (meta) {
         const timeStr = new Date(post.createdAt || Date.now()).toLocaleString([], { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
         const isPostAuthorVip = isAuthorVipUser(post.authorUid, post);
-        meta.innerHTML = `<span style="display:inline-flex; align-items:center; gap:4px;"><span>${escapeHTML(post.authorName || 'Usuário')}</span><i data-lucide="badge-check" class="verified-badge post-author-verified-badge" data-author-uid="${post.authorUid || ''}" style="display:${isPostAuthorVip ? 'inline-flex' : 'none'};"></i></span> • ${timeStr}${post.caption ? ` • "${escapeHTML(post.caption)}"` : ''}`;
+        const isPostAuthorAdmin = checkIsAdminUser({ uid: post.authorUid, name: post.authorName, email: post.authorEmail, username: post.authorUsername });
+        meta.innerHTML = `<span style="display:inline-flex; align-items:center; gap:4px;"><span>${escapeHTML(post.authorName || 'Usuário')}</span><i data-lucide="badge-check" class="verified-badge post-author-verified-badge${isPostAuthorAdmin ? ' verified-badge-admin' : ''}" data-author-uid="${post.authorUid || ''}" ${isPostAuthorAdmin ? 'data-admin-badge="true" title="💥Admin⚡"' : ''} style="display:${isPostAuthorVip ? 'inline-flex' : 'none'};"></i></span> • ${timeStr}${post.caption ? ` • "${escapeHTML(post.caption)}"` : ''}`;
     }
 
     renderCommentsModalList();
@@ -12523,7 +12617,7 @@ export function renderCommentsModalList() {
                 <div style="flex: 1; min-width: 0;">
                     <div class="comment-item-header">
                         <strong>${escapeHTML(author)}</strong>
-                        <i data-lucide="badge-check" class="verified-badge comment-verified-badge" data-author-uid="${c.authorUid || ''}" style="display:${isCommentVip ? 'inline-flex' : 'none'};"></i>
+                        <i data-lucide="badge-check" class="verified-badge comment-verified-badge${checkIsAdminUser({ uid: c.authorUid, name: author, email: c.authorEmail, username: c.authorUsername }) ? ' verified-badge-admin' : ''}" data-author-uid="${c.authorUid || ''}" ${checkIsAdminUser({ uid: c.authorUid, name: author, email: c.authorEmail, username: c.authorUsername }) ? 'data-admin-badge="true" title="💥Admin⚡"' : ''} style="display:${isCommentVip ? 'inline-flex' : 'none'};"></i>
                         <span>:</span>
                         ${isEdited ? `<span class="comment-edited-badge">(editado)</span>` : ''}
                     </div>
