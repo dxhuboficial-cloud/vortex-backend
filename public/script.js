@@ -4688,6 +4688,22 @@ async function openGroupProfile(group) {
             if (button.dataset.action === 'promote') await promoteGroupMember(memberUid);
         };
     });
+
+    const reportGroupBtn = document.getElementById('report-group-btn');
+    if (reportGroupBtn) {
+        reportGroupBtn.onclick = () => {
+            const currentGrp = managedGroup || group;
+            const targetId = currentGrp?.groupId || currentGrp?.id || currentGrp?.uid || (activeChatContact?.isGroup ? activeChatContact.uid : '');
+            const targetName = currentGrp?.name || (activeChatContact?.isGroup ? activeChatContact.name : 'Grupo VIP');
+            openReportModal({
+                type: 'group',
+                targetUid: targetId,
+                targetName: targetName,
+                isGroup: true
+            });
+        };
+    }
+
     panel?.classList.add('active');
 }
 
@@ -7334,6 +7350,7 @@ export function openReportModal(target) {
     }
 
     document.getElementById('report-contact-modal')?.classList.add('active');
+    if (window.lucide) lucide.createIcons();
 }
 
 export function closeReportModal() {
@@ -7369,6 +7386,12 @@ export async function submitGeneralReport(target = activeReportTarget, reason = 
         if (target.contentSnippet) reportData.contentSnippet = target.contentSnippet.substring(0, 150);
 
         await addDoc(collection(db, 'reports'), reportData);
+
+        if (targetType === 'group' && targetUid) {
+            updateDoc(doc(db, 'groups', targetUid), {
+                reports: arrayUnion({ uid: currentUser.uid, reason, details, createdAt: Date.now() })
+            }).catch(e => console.warn('Falha ao sincronizar denúncia no doc do grupo:', e));
+        }
 
         if (alsoBlock && targetType === 'user' && targetUid && !blockedContactsSet.has(targetUid)) {
             await toggleBlockContact({ uid: targetUid, name: targetName });
@@ -8963,6 +8986,7 @@ if (typeof window !== 'undefined') {
     window.openMessageInfoModal = openMessageInfoModal;
     window.closeMessageInfoModal = closeMessageInfoModal;
     window.openGroupChat = openGroupChat;
+    window.openGroupProfile = openGroupProfile;
     window.closeChat = closeChat;
     window.cleanupActiveGroupListeners = cleanupActiveGroupListeners;
     window.updateGroupChatHeaderStatus = updateGroupChatHeaderStatus;
@@ -14249,15 +14273,20 @@ document.getElementById('toggle-group-pause')?.addEventListener('click', async (
     }
 });
 
-document.getElementById('report-group-btn')?.addEventListener('click', async () => {
-    if (!managedGroup || !currentUser) return;
-    try {
-        await updateDoc(doc(db, 'groups', managedGroup.groupId), { reports: arrayUnion({ uid: currentUser.uid, createdAt: Date.now() }) });
-        showToast('Denúncia enviada', 'Obrigado por informar o problema.', 'green');
-    } catch (error) {
-        console.error('Erro ao denunciar grupo:', error);
-        showToast('Erro', 'Não foi possível enviar a denúncia.', 'red');
+document.getElementById('report-group-btn')?.addEventListener('click', () => {
+    const currentGrp = managedGroup || (activeChatContact && activeChatContact.isGroup ? activeChatContact : null);
+    const targetId = currentGrp?.groupId || currentGrp?.id || currentGrp?.uid || '';
+    const targetName = currentGrp?.name || 'Grupo VIP';
+    if (!targetId) {
+        showToast('Aviso', 'Não foi possível identificar o grupo para denunciar.', 'red');
+        return;
     }
+    openReportModal({
+        type: 'group',
+        targetUid: targetId,
+        targetName: targetName,
+        isGroup: true
+    });
 });
 
 document.getElementById('leave-group-btn')?.addEventListener('click', () => {

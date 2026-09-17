@@ -328,6 +328,9 @@ function createTestEnvironment() {
       if (sel.includes('wallpaper-scope')) {
         return { value: 'chat', checked: true };
       }
+      if (sel.includes('report-reason')) {
+        return { value: 'spam', checked: true };
+      }
       if (sel.includes('.chat-card[data-uid=')) {
         const uidMatch = sel.match(/data-uid="([^"]+)"/);
         if (uidMatch) {
@@ -5191,6 +5194,72 @@ test('Formatação de Horário com AM e PM (12h): formatMessageTime exibe AM e P
   // Testar timestamp numérico
   assert.strictEqual(formatMessageTime(date2153.getTime()), '09:53 PM', 'Timestamp numérico de 21:53 deve retornar 09:53 PM');
 });
+
+test('Denúncia de Grupo: Botão no painel de perfil do grupo abre o modal oficial de denúncia e registra no Firestore reports e groups', async () => {
+  const env = createTestEnvironment();
+  const openGroupProfile = env.sandbox.openGroupProfile || env.sandbox.window.openGroupProfile;
+  const openReportModal = env.sandbox.openReportModal || env.sandbox.window.openReportModal;
+  const closeReportModal = env.sandbox.closeReportModal || env.sandbox.window.closeReportModal;
+  const submitGeneralReport = env.sandbox.submitGeneralReport || env.sandbox.window.submitGeneralReport;
+
+  assert.ok(typeof openGroupProfile === 'function', 'openGroupProfile deve ser uma função');
+  assert.ok(typeof openReportModal === 'function', 'openReportModal deve ser uma função');
+  assert.ok(typeof submitGeneralReport === 'function', 'submitGeneralReport deve ser uma função');
+
+  const currentUser = { uid: 'user_denunciante_1', displayName: 'Membro Denunciante', name: 'Membro Denunciante' };
+  env.sandbox.window.setCurrentUser(currentUser);
+  env.sandbox.window.setCurrentProfile(currentUser);
+
+  const testGroup = {
+    id: 'grp_suspeito_777',
+    groupId: 'grp_suspeito_777',
+    name: 'Grupo Suspeito de Spam',
+    description: 'Grupo para teste de denúncia',
+    creatorUid: 'user_criador_999',
+    members: ['user_criador_999', currentUser.uid],
+    admins: ['user_criador_999']
+  };
+  env.firestoreDocs['groups/grp_suspeito_777'] = { ...testGroup };
+
+  // 1. Abrir perfil do grupo
+  await openGroupProfile(testGroup);
+  assert.ok(env.elements['group-profile-panel'].classList.contains('active'), 'Painel de perfil do grupo deve ser aberto');
+  assert.strictEqual(env.elements['group-profile-title'].innerText, 'Grupo Suspeito de Spam');
+
+  const reportBtn = env.elements['report-group-btn'];
+  assert.ok(reportBtn, 'Botão #report-group-btn deve existir no DOM');
+
+  // 2. Clicar no botão #report-group-btn deve abrir o modal #report-contact-modal configurado para grupo
+  await reportBtn.click();
+
+  const reportModal = env.elements['report-contact-modal'];
+  assert.ok(reportModal.classList.contains('active'), 'Modal de denúncia (#report-contact-modal) deve abrir ao clicar em denunciar grupo');
+  assert.strictEqual(env.elements['report-modal-header-title'].innerText, 'Denunciar Grupo', 'Título do modal deve ser "Denunciar Grupo"');
+  assert.ok(env.elements['report-modal-subtitle'].innerText.includes('Grupo Suspeito de Spam'), 'Subtítulo deve mencionar o nome do grupo');
+  assert.strictEqual(env.elements['report-block-option-box'].style.display, 'none', 'Caixa de bloquear contato deve estar oculta para grupos');
+
+  // 3. Preencher detalhes adicionais
+  env.elements['report-contact-details'].value = 'Grupo enviando links maliciosos em massa';
+
+  // 4. Clicar no botão de submeter a denúncia (#submit-report-contact-btn)
+  await env.elements['submit-report-contact-btn'].click();
+
+  // Modal deve ser fechado após submissão
+  assert.strictEqual(reportModal.classList.contains('active'), false, 'Modal de denúncia deve fechar após envio');
+
+  // 5. Verificar gravação na coleção 'reports'
+  const groupReports = Object.entries(env.firestoreDocs)
+    .filter(([path, data]) => path.startsWith('reports/') && data.targetType === 'group')
+    .map(([path, data]) => ({ id: path.replace('reports/', ''), ...data }));
+
+  assert.ok(groupReports.length >= 1, 'Deve existir pelo menos um registro de denúncia de grupo na coleção reports');
+  const lastReport = groupReports[groupReports.length - 1];
+  assert.strictEqual(lastReport.targetUid, 'grp_suspeito_777', 'targetUid da denúncia deve ser o ID do grupo');
+  assert.strictEqual(lastReport.targetName, 'Grupo Suspeito de Spam', 'targetName deve ser o nome do grupo');
+  assert.strictEqual(lastReport.reporterUid, currentUser.uid, 'reporterUid deve ser o usuário logado');
+  assert.strictEqual(lastReport.details, 'Grupo enviando links maliciosos em massa');
+});
+
 
 
 
