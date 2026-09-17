@@ -1942,7 +1942,7 @@ header h1 span {
 #chat-send-btn-main:active { transform: scale(0.92); }
 
 .msg-status { display: flex; align-items: center; justify-content: flex-end; gap: 4px; margin-top: 3px; }
-.msg-time { font-size: 0.65rem; color: rgba(255, 255, 255, 0.55); }
+.msg-time { font-size: 0.65rem; color: rgba(255, 255, 255, 0.55); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .seen-icon { width: 14px; height: 14px; transition: color 0.2s ease; }
 .seen-pending { color: rgba(255, 255, 255, 0.55) !important; }
 .seen-confirmed { color: #34b7f1 !important; }

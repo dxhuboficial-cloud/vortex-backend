@@ -445,6 +445,18 @@ function formatLastSeen(timestamp) {
     return `em ${day}/${month} às ${timeStr} ${period}`;
 }
 
+export function formatMessageTime(dateInput) {
+    if (!dateInput) return '';
+    const d = dateInput instanceof Date ? dateInput : new Date(dateInput);
+    if (isNaN(d.getTime())) return '';
+    const hours24 = d.getHours();
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    const ampm = hours24 >= 12 ? 'PM' : 'AM';
+    const hours12 = hours24 % 12 || 12;
+    const formattedHours = String(hours12).padStart(2, '0');
+    return `${formattedHours}:${minutes} ${ampm}`;
+}
+
 function normalizeUsername(value) {
     return value.trim().replace(/^@+/, '').toLowerCase();
 }
@@ -4072,8 +4084,7 @@ function listenToContacts() {
                         }
                     }
                     if (timeEl && lastData.createdAt) {
-                        const d = new Date(lastData.createdAt);
-                        timeEl.innerText = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+                        timeEl.innerText = formatMessageTime(lastData.createdAt);
                     }
 
                     // Contar mensagens não lidas enviadas pelo outro contato
@@ -4217,7 +4228,7 @@ function listenToContacts() {
                             </span>
                         </span>
                         <div class="chat-meta">
-                            <span class="time">${group.lastUpdated ? new Date(group.lastUpdated).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Agora'}</span>
+                            <span class="time">${group.lastUpdated ? formatMessageTime(group.lastUpdated) : 'Agora'}</span>
                             <span class="chat-bell-badge" id="chat-bell-group-${groupId}" style="display:none;" title="Nova mensagem">
                                 <i data-lucide="bell"></i>
                                 <span class="chat-bell-count" id="bell-count-group-${groupId}">1</span>
@@ -6061,7 +6072,7 @@ function loadRealtimeMessages() {
                 textHTML = formatChatMessageText(msg.text, isSenderVip, msg.vipTextStyle);
             }
             const d = msg.createdAt ? new Date(msg.createdAt) : new Date();
-            const timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+            const timeStr = formatMessageTime(d);
 
             let reactionsHTML = '';
             if (msg.reactions && Object.keys(msg.reactions).length > 0 && !msg.deletedForEveryone) {
@@ -6669,7 +6680,7 @@ async function openMessageInfoModal(msg) {
     }
 
     if (metaEl) {
-        const timeStr = msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : (msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '');
+        const timeStr = formatMessageTime(msg.createdAt || msg.timestamp);
         const dateStr = msg.createdAt ? new Date(msg.createdAt).toLocaleDateString([]) : (msg.timestamp ? new Date(msg.timestamp).toLocaleDateString([]) : '');
         metaEl.innerText = `Enviada em ${dateStr} às ${timeStr}`;
     }
@@ -6718,7 +6729,7 @@ async function openMessageInfoModal(msg) {
 
     listEl.innerHTML = readersData.map(r => {
         const readTimeStr = r.readAt 
-            ? `às ${new Date(r.readAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+            ? `às ${formatMessageTime(r.readAt)}`
             : 'Lida';
 
         return `
@@ -15750,6 +15761,7 @@ if (typeof window !== 'undefined') {
     window.setupEphemeralMessagesModal = setupEphemeralMessagesModal;
     window.getCurrentChatEphemeralDuration = () => currentChatEphemeralDuration;
     window.getIsSendingChatMessage = () => isSendingChatMessage;
+    window.formatMessageTime = formatMessageTime;
 }
 
 if (typeof window !== 'undefined') {

@@ -5158,6 +5158,41 @@ test('Novas Contas Criadas: Nunca recebem selo verificado grátis nem status VIP
   assert.strictEqual(checkIsVipUser(adminUserDoc), true, 'checkIsVipUser deve retornar true para conta admin oficial');
 });
 
+test('Formatação de Horário com AM e PM (12h): formatMessageTime exibe AM e PM em mensagens, chats e cards', () => {
+  const env = createTestEnvironment();
+  const formatMessageTime = env.sandbox.window.formatMessageTime || env.sandbox.formatMessageTime;
+
+  assert.ok(typeof formatMessageTime === 'function', 'formatMessageTime deve ser uma função exportada');
+
+  // Testar 21:53 (exemplo exato enviado pelo usuário) -> deve exibir 09:53 PM
+  const date2153 = new Date(2026, 8, 16, 21, 53, 0);
+  assert.strictEqual(formatMessageTime(date2153), '09:53 PM', '21:53 deve ser formatado como 09:53 PM');
+
+  // Testar meio-dia (12:00) -> 12:00 PM
+  const date1200 = new Date(2026, 8, 16, 12, 0, 0);
+  assert.strictEqual(formatMessageTime(date1200), '12:00 PM', '12:00 deve ser formatado como 12:00 PM');
+
+  // Testar tarde (14:05) -> 02:05 PM
+  const date1405 = new Date(2026, 8, 16, 14, 5, 0);
+  assert.strictEqual(formatMessageTime(date1405), '02:05 PM', '14:05 deve ser formatado como 02:05 PM');
+
+  // Testar meia-noite (00:00) -> 12:00 AM
+  const date0000 = new Date(2026, 8, 16, 0, 0, 0);
+  assert.strictEqual(formatMessageTime(date0000), '12:00 AM', '00:00 deve ser formatado como 12:00 AM');
+
+  // Testar manhã (08:30) -> 08:30 AM
+  const date0830 = new Date(2026, 8, 16, 8, 30, 0);
+  assert.strictEqual(formatMessageTime(date0830), '08:30 AM', '08:30 deve ser formatado como 08:30 AM');
+
+  // Testar 11:59 AM
+  const date1159 = new Date(2026, 8, 16, 11, 59, 0);
+  assert.strictEqual(formatMessageTime(date1159), '11:59 AM', '11:59 deve ser formatado como 11:59 AM');
+
+  // Testar timestamp numérico
+  assert.strictEqual(formatMessageTime(date2153.getTime()), '09:53 PM', 'Timestamp numérico de 21:53 deve retornar 09:53 PM');
+});
+
+
 
 
 
