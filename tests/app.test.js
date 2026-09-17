@@ -5282,11 +5282,31 @@ test('Selo de Verificado Único para Administradores VORTEX VIP (Vermelho Choque
   assert.ok(typeof showAdminBadgeToast === 'function', 'showAdminBadgeToast deve ser uma função exportada');
 
   // 1. Validar identificação de Administrador vs Usuário Comum
-  const adminAccount = {
+  const adminAccount1 = {
     uid: 'admin-dxhub-01',
     email: 'dxhub.oficial@gmail.com',
     username: 'dxhuboficial',
     name: 'DX Hub Oficial Admin'
+  };
+  const adminAccount2 = {
+    uid: 'admin-vortex-02',
+    email: 'vortex.dx.oficial@gmail.com',
+    username: 'vortexoficial',
+    name: 'VORTEX Oficial'
+  };
+  const adminAccount3 = {
+    uid: 'admin-suporte-03',
+    email: 'dxhubdigitalsuporte@gmail.com',
+    username: 'dxhubsuporte',
+    name: 'DX Hub Suporte'
+  };
+  const impostorAccount = {
+    uid: 'impostor-04',
+    email: 'hacker.admin@gmail.com',
+    username: 'hackeradmin',
+    name: 'DX Hub Fake',
+    isAdmin: true,
+    role: 'admin'
   };
   const regularVipAccount = {
     uid: 'vip-user-02',
@@ -5305,7 +5325,10 @@ test('Selo de Verificado Único para Administradores VORTEX VIP (Vermelho Choque
     isVerified: false
   };
 
-  assert.strictEqual(checkIsAdminUser(adminAccount), true, 'Conta de administrador deve retornar true para checkIsAdminUser');
+  assert.strictEqual(checkIsAdminUser(adminAccount1), true, 'dxhub.oficial@gmail.com deve retornar true para checkIsAdminUser');
+  assert.strictEqual(checkIsAdminUser(adminAccount2), true, 'vortex.dx.oficial@gmail.com deve retornar true para checkIsAdminUser');
+  assert.strictEqual(checkIsAdminUser(adminAccount3), true, 'dxhubdigitalsuporte@gmail.com deve retornar true para checkIsAdminUser');
+  assert.strictEqual(checkIsAdminUser(impostorAccount), false, 'Qualquer outro email mesmo com isAdmin/role: admin NÃO deve ter selo de admin');
   assert.strictEqual(checkIsAdminUser(regularVipAccount), false, 'Usuário VIP comum NÃO deve retornar true para checkIsAdminUser');
   assert.strictEqual(checkIsAdminUser(regularUserAccount), false, 'Usuário normal NÃO deve retornar true para checkIsAdminUser');
 
@@ -5324,12 +5347,14 @@ test('Selo de Verificado Único para Administradores VORTEX VIP (Vermelho Choque
     removeAttribute(k) { delete this.attributes[k]; }
   };
 
-  // Testar para Administrador
-  updateVerifiedBadgeElement(mockBadgeEl, adminAccount);
-  assert.strictEqual(mockBadgeEl.style.display, 'inline-flex', 'Badge de administrador deve ser exibido');
-  assert.ok(mockBadgeEl.classList.contains('verified-badge-admin'), 'Badge de administrador deve conter a classe .verified-badge-admin');
-  assert.strictEqual(mockBadgeEl.attributes['data-admin-badge'], 'true', 'Badge de administrador deve ter data-admin-badge="true"');
-  assert.strictEqual(mockBadgeEl.attributes['title'], '💥Admin⚡', 'Badge de administrador deve ter title="💥Admin⚡"');
+  // Testar para Administradores
+  [adminAccount1, adminAccount2, adminAccount3].forEach(adm => {
+    updateVerifiedBadgeElement(mockBadgeEl, adm);
+    assert.strictEqual(mockBadgeEl.style.display, 'inline-flex', `Badge de administrador (${adm.email}) deve ser exibido`);
+    assert.ok(mockBadgeEl.classList.contains('verified-badge-admin'), `Badge (${adm.email}) deve conter a classe .verified-badge-admin`);
+    assert.strictEqual(mockBadgeEl.attributes['data-admin-badge'], 'true', `Badge (${adm.email}) deve ter data-admin-badge="true"`);
+    assert.strictEqual(mockBadgeEl.attributes['title'], '💥Admin⚡', `Badge (${adm.email}) deve ter title="💥Admin⚡"`);
+  });
 
   // Testar para Usuário VIP Comum (não deve ter .verified-badge-admin)
   updateVerifiedBadgeElement(mockBadgeEl, regularVipAccount);

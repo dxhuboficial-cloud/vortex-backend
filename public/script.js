@@ -507,7 +507,7 @@ onAuthStateChanged(auth, async (user) => {
             const rawEmailPrefix = user.email ? user.email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '') : 'user';
             const autoUsername = `@${rawEmailPrefix}_${Math.floor(1000 + Math.random() * 9000)}`;
             const nameParts = (user.displayName || 'Membro').split(' ');
-            const isAdmin = !!(user.email && user.email.toLowerCase() === 'dxhub.oficial@gmail.com');
+            const isAdmin = !!(user.email && ['dxhub.oficial@gmail.com', 'vortex.dx.oficial@gmail.com', 'dxhubdigitalsuporte@gmail.com'].includes(user.email.toLowerCase()));
 
             currentProfile = {
                 uid: user.uid,
@@ -818,12 +818,20 @@ function applyPrivacyModeState() {
     });
 }
 
+export const VORTEX_ADMIN_EMAILS = [
+    'dxhub.oficial@gmail.com',
+    'vortex.dx.oficial@gmail.com',
+    'dxhubdigitalsuporte@gmail.com'
+];
+
+export const adminUidsSet = new Set();
+
 export function getVipSubscriptionState(user) {
     if (!user) return { status: 'none', isVip: false, daysRemaining: 0, graceDaysRemaining: 0 };
     const email = (user.email || '').toLowerCase().trim();
     const username = (user.username || '').toLowerCase().trim().replace(/^@/, '');
     const name = (user.name || '').trim();
-    if (email === 'dxhub.oficial@gmail.com' || username === 'dxhuboficial' || user.role === 'admin' || name.includes('DX Hub')) {
+    if (VORTEX_ADMIN_EMAILS.includes(email) || username === 'dxhuboficial' || user.role === 'admin' || name.includes('DX Hub')) {
         return { status: 'active', isVip: true, daysRemaining: 9999, graceDaysRemaining: 0 };
     }
 
@@ -875,28 +883,49 @@ export function checkIsVipUser(user) {
 
 export function checkIsAdminUser(userOrData) {
     if (!userOrData) return false;
-    const email = (userOrData.email || userOrData.senderEmail || userOrData.authorEmail || '').toLowerCase().trim();
-    const username = (userOrData.username || userOrData.senderUsername || userOrData.authorUsername || '').toLowerCase().trim().replace(/^@/, '');
-    const name = (userOrData.name || userOrData.displayName || userOrData.senderName || userOrData.authorName || '').trim();
-    const role = (userOrData.role || '').toLowerCase().trim();
+
+    // Extrai o email de qualquer propriedade conhecida do objeto
+    const email = (
+        userOrData.email || 
+        userOrData.senderEmail || 
+        userOrData.authorEmail || 
+        userOrData.userEmail || 
+        userOrData.contactEmail || 
+        ''
+    ).toLowerCase().trim();
+
     const uid = userOrData.uid || userOrData.userId || userOrData.authorUid || userOrData.senderUid || '';
 
-    if (email === 'dxhub.oficial@gmail.com' || username === 'dxhuboficial' || userOrData.isAdmin === true || role === 'admin' || name.includes('DX Hub')) {
+    // Regra estrita: Se o email estiver presente, ele DEVE ser um dos 3 emails autorizados (e ninguém mais)
+    if (email) {
+        const isMatch = VORTEX_ADMIN_EMAILS.includes(email);
+        if (isMatch && uid) adminUidsSet.add(uid);
+        return isMatch;
+    }
+
+    // Se for o próprio usuário logado no cliente
+    if (typeof currentUser !== 'undefined' && currentUser) {
+        const myEmail = (currentUser.email || (typeof currentProfile !== 'undefined' && currentProfile?.email) || '').toLowerCase().trim();
+        if ((userOrData === currentUser || (typeof currentProfile !== 'undefined' && userOrData === currentProfile) || (uid && uid === currentUser.uid))) {
+            const isMatch = VORTEX_ADMIN_EMAILS.includes(myEmail);
+            if (isMatch && currentUser.uid) adminUidsSet.add(currentUser.uid);
+            return isMatch;
+        }
+    }
+
+    // Se o UID foi previamente autenticado como pertencente a um dos 3 emails
+    if (uid && adminUidsSet.has(uid)) {
         return true;
     }
-    if (typeof isUserAdmin === 'function' && isUserAdmin(userOrData)) {
-        return true;
-    }
-    if (currentUser && uid && (uid === currentUser.uid) && typeof isUserAdmin === 'function' && isUserAdmin(currentUser, currentProfile)) {
-        return true;
-    }
+
+    // Ninguém mais tem o selo de administrador
     return false;
 }
 
 export function updateVerifiedBadgeElement(badgeEl, userOrData) {
     if (!badgeEl) return;
-    const isVip = !!(userOrData && (checkIsVipUser(userOrData) || userOrData.isVip || userOrData.isVerified));
     const isAdmin = !!(userOrData && checkIsAdminUser(userOrData));
+    const isVip = !!(userOrData && (checkIsVipUser(userOrData) || userOrData.isVip || userOrData.isVerified || isAdmin));
     const displayVal = (badgeEl.id === 'user-verified-badge' || badgeEl.id === 'story-verified-badge') ? 'inline-block' : 'inline-flex';
 
     if (isAdmin) {
@@ -4006,7 +4035,7 @@ function listenToContacts() {
                     <div class="chat-header">
                         <span class="name">
                             <span class="name-text">${contact.name || 'Contato'}</span>
-                            <i data-lucide="badge-check" class="verified-badge chat-card-verified-badge${checkIsAdminUser(contact) ? ' verified-badge-admin' : ''}" id="chat-card-verified-badge-${contactUid}" ${checkIsAdminUser(contact) ? 'data-admin-badge="true" title="💥Admin⚡"' : ''} style="display:${(contact.isVip || contact.isVerified || checkIsVipUser(contact)) ? 'inline-flex' : 'none'};"></i>
+                            <i data-lucide="badge-check" class="verified-badge chat-card-verified-badge${checkIsAdminUser(contact) ? ' verified-badge-admin' : ''}" id="chat-card-verified-badge-${contactUid}" ${checkIsAdminUser(contact) ? 'data-admin-badge="true" title="💥Admin⚡"' : ''} style="display:${(contact.isVip || contact.isVerified || checkIsVipUser(contact) || checkIsAdminUser(contact)) ? 'inline-flex' : 'none'};"></i>
                             <span class="pinned-chat-badge" id="pinned-badge-${contactUid}" style="display:${isPinned ? 'inline-flex' : 'none'};" title="Conversa fixada">
                                 <i data-lucide="pin"></i>
                             </span>
@@ -4540,7 +4569,7 @@ export async function openContactProfile(contact) {
         checkIsVipUser(contact) ||
         contact.isVip ||
         contact.isVerified ||
-        (contact.email && contact.email.toLowerCase() === 'dxhub.oficial@gmail.com') ||
+        (contact.email && VORTEX_ADMIN_EMAILS.includes(contact.email.toLowerCase())) ||
         (contact.username && contact.username.toLowerCase().replace(/^@/, '') === 'dxhuboficial') ||
         (contact.name && contact.name.includes('DX Hub'))
     );
@@ -4575,8 +4604,8 @@ export async function openContactProfile(contact) {
             checkIsVipUser(contact) ||
             contact.isVip ||
             contact.isVerified ||
-            (uData.email && uData.email.toLowerCase() === 'dxhub.oficial@gmail.com') ||
-            (contact.email && contact.email.toLowerCase() === 'dxhub.oficial@gmail.com') ||
+            (uData.email && VORTEX_ADMIN_EMAILS.includes(uData.email.toLowerCase())) ||
+            (contact.email && VORTEX_ADMIN_EMAILS.includes(contact.email.toLowerCase())) ||
             (uData.username && uData.username.toLowerCase().replace(/^@/, '') === 'dxhuboficial') ||
             (contact.username && contact.username.toLowerCase().replace(/^@/, '') === 'dxhuboficial') ||
             (uData.name && uData.name.includes('DX Hub')) ||
@@ -6161,7 +6190,7 @@ function loadRealtimeMessages() {
             if (msg.text && !msg.deletedForEveryone && msg.type !== 'poll') {
                 const isSenderVip = isMe
                     ? checkIsVipUser(currentProfile)
-                    : !!(msg.isVip || msg.isVerified || (msg.senderEmail === 'dxhub.oficial@gmail.com') || (msg.senderUsername === 'dxhuboficial') || checkIsVipUser(msg));
+                    : !!(msg.isVip || msg.isVerified || (msg.senderEmail && VORTEX_ADMIN_EMAILS.includes(msg.senderEmail.toLowerCase())) || (msg.senderUsername === 'dxhuboficial') || checkIsVipUser(msg));
                 textHTML = formatChatMessageText(msg.text, isSenderVip, msg.vipTextStyle);
             }
             const d = msg.createdAt ? new Date(msg.createdAt) : new Date();
@@ -6193,7 +6222,7 @@ function loadRealtimeMessages() {
                 } else {
                     const color = getGroupSenderColor(msg.senderUid);
                     const isSenderAdm = checkIsAdminUser(msg);
-                    const isSenderVip = !!(msg.isVip || msg.isVerified || (msg.senderEmail === 'dxhub.oficial@gmail.com') || (msg.senderUsername === 'dxhuboficial') || isSenderAdm);
+                    const isSenderVip = !!(msg.isVip || msg.isVerified || (msg.senderEmail && VORTEX_ADMIN_EMAILS.includes(msg.senderEmail.toLowerCase())) || (msg.senderUsername === 'dxhuboficial') || isSenderAdm);
                     groupSenderHTML = `
                         <div class="group-sender-name" style="color: ${color};" title="Enviado por ${escapeHTML(resolvedName)}">
                             <span class="group-sender-name-text">${escapeHTML(resolvedName)}</span>
@@ -7584,11 +7613,12 @@ document.getElementById('cancel-report-modal-btn')?.addEventListener('click', ()
 /* ==========================================================================
    PAINEL DE ADMINISTRAÇÃO ADM & MODERAÇÃO (VORTEX VIP)
    ========================================================================== */
+export const AUTHORIZED_ADMIN_EMAILS = VORTEX_ADMIN_EMAILS;
 export const AUTHORIZED_ADMIN_EMAIL = 'dxhub.oficial@gmail.com';
 
 export function isUserAdmin(user = currentUser, profile = currentProfile) {
     const email = (user?.email || profile?.email || '').toLowerCase().trim();
-    return email === AUTHORIZED_ADMIN_EMAIL.toLowerCase();
+    return VORTEX_ADMIN_EMAILS.includes(email);
 }
 
 export function updateAdminUIVisibility() {
@@ -9013,6 +9043,8 @@ export function getAdminReports() {
 }
 
 if (typeof window !== 'undefined') {
+    window.VORTEX_ADMIN_EMAILS = VORTEX_ADMIN_EMAILS;
+    window.AUTHORIZED_ADMIN_EMAILS = AUTHORIZED_ADMIN_EMAILS;
     window.AUTHORIZED_ADMIN_EMAIL = AUTHORIZED_ADMIN_EMAIL;
     window.isUserAdmin = isUserAdmin;
     window.checkIsVipUser = checkIsVipUser;
@@ -11920,7 +11952,7 @@ export function isAuthorVipUser(authorUid, data = {}) {
     }
     const username = (data.authorUsername || data.username || '').toLowerCase().replace('@', '');
     const email = (data.authorEmail || data.email || '').toLowerCase();
-    if (username === 'dxhuboficial' || email === 'dxhub.oficial@gmail.com') {
+    if (username === 'dxhuboficial' || (email && VORTEX_ADMIN_EMAILS.includes(email))) {
         return true;
     }
     return false;
