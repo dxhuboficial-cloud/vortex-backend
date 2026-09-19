@@ -18,6 +18,7 @@ const MERCADO_PAGO_PUBLIC_KEY = process.env.MERCADO_PAGO_PUBLIC_KEY || 'APP_USR-
 
 // Configuração opcional do Firebase Admin SDK caso as credenciais estejam disponíveis
 let db = null;
+let adminAuth = null;
 try {
     const serviceAccountPath = path.join(__dirname, 'serviceAccountKey.json');
     if (fs.existsSync(serviceAccountPath)) {
@@ -29,6 +30,7 @@ try {
             });
         }
         db = admin.firestore();
+        adminAuth = admin.auth();
         console.log('✅ Firebase Admin SDK conectado com sucesso ao projeto:', serviceAccount.project_id);
     }
 } catch (err) {
@@ -334,8 +336,126 @@ app.post('/api/mercadopago-webhook', async (req, res) => {
                 }
             }
         }
+// 6. Exclusão Total de Conta de Usuário (Admin ou Próprio Usuário no VORTEX VIP)
+app.post('/api/delete-user-account', async (req, res) => {
+    try {
+        const { targetUid, requesterUid, requesterEmail, deletedBy } = req.body || {};
+        if (!targetUid) {
+            return res.status(400).json({ error: 'UID do usuário a ser excluído é obrigatório.' });
+        }
+
+        const adminEmails = [
+            'dxhub.oficial@gmail.com',
+            'vortex.dx.oficial@gmail.com',
+            'dxhubdigitalsuporte@gmail.com'
+        ];
+
+        const reqEmail = (requesterEmail || '').toLowerCase().trim();
+        const isRequesterAdmin = adminEmails.includes(reqEmail);
+        const isSelf = requesterUid && (requesterUid === targetUid);
+
+        if (!isRequesterAdmin && !isSelf) {
+            return res.status(403).json({ error: 'Acesso negado. Apenas o próprio usuário ou administradores podem apagar a conta.' });
+        }
+
+        console.log(`[DELETE-ACCOUNT] Iniciando exclusão completa da conta ${targetUid} solicitada por ${requesterEmail || requesterUid} (tipo: ${deletedBy || (isSelf ? 'self' : 'admin')})`);
+
+        // 1. Deletar do Firebase Authentication (se Admin SDK disponível)
+        if (adminAuth) {
+            try {
+                await adminAuth.deleteUser(targetUid);
+                console.log(`[DELETE-ACCOUNT] Usuário ${targetUid} removido do Firebase Auth.`);
+            } catch (authErr) {
+                console.warn(`[DELETE-ACCOUNT] Aviso Firebase Auth deleteUser:`, authErr.message);
+            }
+        }
+
+        // 2. Limpeza física no Firestore (se Firestore Admin SDK disponível)
+        if (db) {
+            try {
+                const batch = db.batch();
+
+                // Gravar tombstone definitivo em deleted_users para bloquear imediatamente em tempo real
+                const deletedUserRef = db.collection('deleted_users').doc(targetUid);
+                batch.set(deletedUserRef, {
+                    uid: targetUid,
+                    deleted: true,
+                    deletedAt: Date.now(),
+                    deletedBy: deletedBy || (isSelf ? 'self' : 'admin'),
+                    requesterEmail: reqEmail || null
+                }, { merge: true });
+
+                // Deletar o documento do usuário
+                const userRef = db.collection('users').doc(targetUid);
+                batch.delete(userRef);
+
+                await batch.commit().catch(e => console.warn('[DELETE-ACCOUNT] Erro no batch inicial:', e.message));
+
+                // Excluir postagens do feed deste autor
+                const postsSnap = await db.collection('posts').where('authorUid', '==', targetUid).get().catch(() => null);
+                if (postsSnap && !postsSnap.empty) {
+                    const pBatch = db.batch();
+                    postsSnap.docs.forEach(d => pBatch.delete(d.ref));
+                    await pBatch.commit().catch(() => {});
+                }
+
+                // Excluir stories do autor
+                const storiesSnap = await db.collection('stories').where('authorUid', '==', targetUid).get().catch(() => null);
+                if (storiesSnap && !storiesSnap.empty) {
+                    const sBatch = db.batch();
+                    storiesSnap.docs.forEach(d => sBatch.delete(d.ref));
+                    await sBatch.commit().catch(() => {});
+                }
+
+                // Excluir grupos onde ele é criador
+                const groupsSnap = await db.collection('groups').where('creatorUid', '==', targetUid).get().catch(() => null);
+                if (groupsSnap && !groupsSnap.empty) {
+                    const gBatch = db.batch();
+                    groupsSnap.docs.forEach(d => gBatch.delete(d.ref));
+                    await gBatch.commit().catch(() => {});
+                }
+
+                // Excluir solicitações de amizade
+                const reqFromSnap = await db.collection('requests').where('fromUid', '==', targetUid).get().catch(() => null);
+                if (reqFromSnap && !reqFromSnap.empty) {
+                    const rBatch = db.batch();
+                    reqFromSnap.docs.forEach(d => rBatch.delete(d.ref));
+                    await rBatch.commit().catch(() => {});
+                }
+                const reqToSnap = await db.collection('requests').where('toUid', '==', targetUid).get().catch(() => null);
+                if (reqToSnap && !reqToSnap.empty) {
+                    const rBatch = db.batch();
+                    reqToSnap.docs.forEach(d => rBatch.delete(d.ref));
+                    await rBatch.commit().catch(() => {});
+                }
+
+                // Excluir notificações
+                const notifsToSnap = await db.collection('notifications').where('toUid', '==', targetUid).get().catch(() => null);
+                if (notifsToSnap && !notifsToSnap.empty) {
+                    const nBatch = db.batch();
+                    notifsToSnap.docs.forEach(d => nBatch.delete(d.ref));
+                    await nBatch.commit().catch(() => {});
+                }
+
+                // Excluir reserva de usernames
+                const uNamesSnap = await db.collection('usernames').where('uid', '==', targetUid).get().catch(() => null);
+                if (uNamesSnap && !uNamesSnap.empty) {
+                    const unBatch = db.batch();
+                    uNamesSnap.docs.forEach(d => unBatch.delete(d.ref));
+                    await unBatch.commit().catch(() => {});
+                }
+            } catch (dbErr) {
+                console.error('[DELETE-ACCOUNT] Erro ao limpar coleções no Firestore:', dbErr);
+            }
+        }
+
+        res.json({
+            success: true,
+            message: `Conta ${targetUid} apagada com sucesso para todos no VORTEX VIP ⚡.`
+        });
     } catch (err) {
-        console.warn('Erro ao processar webhook do Mercado Pago:', err.message);
+        console.error('Erro na rota /api/delete-user-account:', err);
+        res.status(500).json({ error: 'Erro interno ao apagar conta do usuário.' });
     }
 });
 

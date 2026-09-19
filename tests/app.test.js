@@ -5480,6 +5480,78 @@ test('Instalabilidade da VORTEX VIP no Navegador (PWA Completo: Manifest, Servic
   assert.ok(cssContent.includes('.pwa-ios-modal'), 'style.css deve conter estilos do modal do iOS');
 });
 
+test('Exclusão Completa de Conta do Usuário e Ocultação Total no VORTEX VIP ⚡', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window || env.sandbox;
+
+  // 1. Verificar existência dos elementos no DOM e Estilos no CSS
+  assert.ok(env.elements['delete-account-btn'], 'Botão de apagar conta deve existir no DOM');
+  assert.ok(env.elements['user-delete-account-modal'], 'Modal de apagar própria conta deve existir no DOM');
+  assert.ok(env.elements['confirm-user-delete-account-btn'], 'Botão de confirmar exclusão de conta deve existir');
+  assert.ok(env.elements['cancel-user-delete-account-btn'], 'Botão de cancelar exclusão de conta deve existir');
+  assert.ok(env.elements['admin-purge-modal'], 'Modal de exclusão do ADM deve existir');
+  assert.ok(cssContent.includes('.delete-account-action-btn'), 'style.css deve conter estilos do botão de apagar conta');
+  assert.ok(cssContent.includes('.delete-account-setting-row'), 'style.css deve conter estilos da linha de apagar conta');
+
+  // 2. Testar abertura e fechamento do modal do usuário
+  const userModal = env.elements['user-delete-account-modal'];
+  win.openUserDeleteAccountModal();
+  assert.strictEqual(userModal.classList.contains('active'), true, 'Modal do usuário deve abrir com classe active');
+  win.closeUserDeleteAccountModal();
+  assert.strictEqual(userModal.classList.contains('active'), false, 'Modal do usuário deve fechar ao cancelar');
+
+  // 3. Testar exclusão da própria conta pelo usuário logado
+  await env.triggerAuthStateChange({ uid: 'user-self', email: 'me@vortex.vip', displayName: 'Meu Nome' });
+  await new Promise(r => setTimeout(r, 20));
+
+  // Cadastrar dados do usuário
+  env.firestoreDocs['users/user-self'] = { name: 'Meu Nome', email: 'me@vortex.vip', banned: false };
+  env.firestoreDocs['posts/post-self'] = { authorUid: 'user-self', caption: 'Post pessoal' };
+  env.firestoreDocs['stories/story-self'] = { authorUid: 'user-self', text: 'Story pessoal' };
+  env.firestoreDocs['groups/group-self'] = { creatorUid: 'user-self', name: 'Meu Grupo' };
+
+  await win.deleteUserAccountEntirely('user-self', { deletedBy: 'self' });
+
+  assert.strictEqual(win.isUserAccountDeleted('user-self'), true, 'Usuário deve constar como deletado em isUserAccountDeleted');
+  assert.ok(env.firestoreDocs['deleted_users/user-self'], 'Tombstone deve ser criado em deleted_users');
+  assert.strictEqual(env.firestoreDocs['deleted_users/user-self'].deleted, true, 'Tombstone deve ter deleted: true');
+  assert.strictEqual(env.firestoreDocs['posts/post-self'], undefined, 'Posts do usuário devem ser apagados');
+  assert.strictEqual(env.firestoreDocs['stories/story-self'], undefined, 'Stories do usuário devem ser apagados');
+  assert.strictEqual(env.firestoreDocs['groups/group-self'], undefined, 'Grupos do usuário devem ser apagados');
+  assert.strictEqual(env.firestoreDocs['users/user-self'].isDeleted, true, 'users/user-self deve ser marcado como isDeleted');
+
+  // 4. Testar exclusão total de conta pelo Administrador (ADM)
+  env.firestoreDocs['users/victim-user'] = { name: 'Alvo ADM', username: '@alvo', email: 'alvo@teste.com', banned: false };
+  env.firestoreDocs['posts/post-victim'] = { authorUid: 'victim-user', caption: 'Post alvo' };
+  env.firestoreDocs['stories/story-victim'] = { authorUid: 'victim-user', text: 'Story alvo' };
+  env.firestoreDocs['groups/group-victim'] = { creatorUid: 'victim-user', name: 'Grupo alvo' };
+
+  await win.adminPurgeUserData('victim-user');
+
+  assert.strictEqual(win.isUserAccountDeleted('victim-user'), true, 'Usuário excluído pelo Admin deve constar em isUserAccountDeleted');
+  assert.strictEqual(env.firestoreDocs['posts/post-victim'], undefined, 'Posts do usuário alvo devem ser excluídos pelo ADM');
+  assert.strictEqual(env.firestoreDocs['stories/story-victim'], undefined, 'Stories do usuário alvo devem ser excluídos pelo ADM');
+  assert.strictEqual(env.firestoreDocs['groups/group-victim'], undefined, 'Grupos do usuário alvo devem ser excluídos pelo ADM');
+  assert.strictEqual(env.firestoreDocs['users/victim-user'].banned, true, 'Usuário deve ser banido e marcado como apagado');
+  assert.strictEqual(env.firestoreDocs['users/victim-user'].isDeleted, true, 'Usuário deve ter isDeleted: true');
+
+  // 5. Garantir que o usuário apagado NÃO aparece para ninguém
+  // A) Bloqueio na abertura direta de chat
+  win.openDirectChat({ uid: 'victim-user', name: 'Alvo' });
+
+  // B) Busca de usuários
+  env.firestoreDocs['users/other-good-user'] = { name: 'Usuario Bom', username: '@bom', isDeleted: false };
+  await win.loadUsersForSearch('alvo');
+  const searchContainer = env.elements['search-results-container'];
+  assert.ok(!searchContainer.innerHTML.includes('alvo@teste.com'), 'Usuário apagado não deve aparecer nos resultados de busca');
+
+  // C) Painel Admin
+  win.renderAdminUsers();
+  const adminUsersList = env.elements['admin-users-list'];
+  assert.ok(!adminUsersList.innerHTML.includes('victim-user'), 'Usuário apagado não deve constar na listagem de usuários do ADM');
+});
+
+
 
 
 

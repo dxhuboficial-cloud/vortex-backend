@@ -2387,6 +2387,45 @@ header h1 span {
     border-radius: 10px !important;
 }
 
+.delete-account-setting-row {
+    border-top: 1px solid rgba(255, 59, 48, 0.15);
+    padding-top: 14px !important;
+    margin-top: 6px;
+}
+
+.delete-account-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: #ff453a !important;
+    font-weight: 600 !important;
+}
+
+.delete-inline-icon {
+    width: 17px;
+    height: 17px;
+    color: #ff453a;
+}
+
+.delete-account-action-btn {
+    background: linear-gradient(135deg, rgba(255, 59, 48, 0.25), rgba(255, 69, 58, 0.12)) !important;
+    border: 1.5px solid #ff3b30 !important;
+    color: #ffffff !important;
+    padding: 6px 14px !important;
+    border-radius: 10px !important;
+    font-weight: 600 !important;
+    font-size: 0.8rem !important;
+    box-shadow: 0 0 10px rgba(255, 59, 48, 0.25);
+    transition: all 0.2s ease;
+}
+
+.delete-account-action-btn:hover {
+    background: #ff3b30 !important;
+    color: #fff !important;
+    box-shadow: 0 0 16px rgba(255, 59, 48, 0.6);
+    transform: scale(1.02);
+}
+
 .setting-info { display: flex; flex-direction: column; gap: 3px; }
 .setting-info span { font-size: 0.92rem; font-weight: 500; color: #ffffff; }
 .setting-info small { color: var(--text-dim); font-size: 0.75rem; }

@@ -1420,6 +1420,14 @@
                     <button id="signout-btn" class="danger-btn signout-action-btn">Sair</button>
                 </div>
 
+                <div class="setting-item delete-account-setting-row" id="delete-account-setting-item">
+                    <div class="setting-info">
+                        <span class="delete-account-label"><i data-lucide="user-x" class="delete-inline-icon"></i> Apagar Minha Conta</span>
+                        <small>Excluir permanentemente todos os seus dados do VORTEX VIP</small>
+                    </div>
+                    <button id="delete-account-btn" type="button" class="danger-btn delete-account-action-btn">Apagar Conta</button>
+                </div>
+
                 <button id="close-settings" class="close-btn drawer-cancel-btn">Voltar</button>
             </div>
         </div>
@@ -1705,17 +1713,35 @@
             </div>
         </div>
 
-        <!-- Modal de Confirmação: Excluir Tudo da Conta do Infrator (Purge) -->
+        <!-- Modal de Confirmação: Apagar a Própria Conta Inteira (Usuário) -->
+        <div id="user-delete-account-modal" class="custom-modal-overlay">
+            <div class="custom-modal-card modal-center-align">
+                <div class="modal-icon-badge danger">
+                    <i data-lucide="user-x"></i>
+                </div>
+                <h3 class="modal-title danger-text" id="user-delete-modal-title">Apagar Minha Conta Definitivamente?</h3>
+                <p class="modal-subtitle" id="user-delete-modal-desc" style="color: #ff6b6b; font-weight:600; line-height: 1.4;">
+                    Esta ação é <span style="text-decoration: underline;">IRREVERSÍVEL</span>.
+                    Sua conta, fotos, mensagens, conversas, contatos, publicações e stories serão permanentemente apagados do <strong>VORTEX VIP ⚡</strong> e você deixará de existir para todos na plataforma.
+                </p>
+                <div class="modal-actions-col">
+                    <button id="confirm-user-delete-account-btn" type="button" class="danger-btn btn-delete-everyone">Sim, Apagar Minha Conta</button>
+                    <button id="cancel-user-delete-account-btn" type="button" class="close-btn modal-cancel-btn">Cancelar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Confirmação: Excluir Conta Inteira pelo Administrador (ADM) -->
         <div id="admin-purge-modal" class="custom-modal-overlay">
             <div class="custom-modal-card modal-center-align">
                 <div class="modal-icon-badge danger">
                     <i data-lucide="trash-2"></i>
                 </div>
-                <h3 class="modal-title danger-text" id="admin-purge-modal-title">Excluir Tudo da Conta?</h3>
-                <p class="modal-subtitle" id="admin-purge-modal-desc" style="color: #ff6b6b; font-weight:600;">Esta ação é IRREVERSÍVEL. Todas as postagens no feed, stories e grupos criados por este usuário serão apagados imediatamente do sistema.</p>
+                <h3 class="modal-title danger-text" id="admin-purge-modal-title">Apagar Conta Inteira Definitivamente?</h3>
+                <p class="modal-subtitle" id="admin-purge-modal-desc" style="color: #ff6b6b; font-weight:600; line-height: 1.4;">Esta ação é IRREVERSÍVEL. A conta deste usuário será completamente apagada do sistema, excluída para todos os usuários do VORTEX VIP ⚡ e ele não aparecerá para mais ninguém.</p>
                 <div class="modal-actions-col">
-                    <button id="admin-confirm-purge-btn" class="danger-btn btn-delete-everyone">Sim, Excluir Todo Conteúdo</button>
-                    <button id="admin-cancel-purge-btn" class="close-btn modal-cancel-btn">Cancelar</button>
+                    <button id="admin-confirm-purge-btn" type="button" class="danger-btn btn-delete-everyone">Sim, Apagar Conta Definitivamente</button>
+                    <button id="admin-cancel-purge-btn" type="button" class="close-btn modal-cancel-btn">Cancelar</button>
                 </div>
             </div>
         </div>

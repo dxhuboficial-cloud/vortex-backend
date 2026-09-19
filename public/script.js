@@ -362,7 +362,7 @@ window.addEventListener('pointerdown', () => { hasUserInteracted = true; }, { on
 window.addEventListener('keydown', () => { hasUserInteracted = true; }, { once: true, passive: true });
 
 function playSound(snd) {
-    if (currentProfile.soundEnabled && snd) {
+    if (currentProfile && currentProfile.soundEnabled && snd) {
         snd.currentTime = 0;
         snd.play().catch(() => {});
     }
@@ -570,6 +570,7 @@ onAuthStateChanged(auth, async (user) => {
         listenToIncomingCalls();
         listenToNotifications();
         listenToAdminReports();
+        listenToDeletedUsers();
         loadUserFavoriteTracks();
         showToast("Conectado", `Bem-vindo, ${currentProfile.name}!`, "green");
     } else {
@@ -825,6 +826,12 @@ export const VORTEX_ADMIN_EMAILS = [
 ];
 
 export const adminUidsSet = new Set();
+export const deletedUsersSet = new Set();
+
+export function isUserAccountDeleted(uid) {
+    if (!uid) return false;
+    return deletedUsersSet.has(uid);
+}
 
 export function getVipSubscriptionState(user) {
     if (!user) return { status: 'none', isVip: false, daysRemaining: 0, graceDaysRemaining: 0 };
@@ -1903,6 +1910,7 @@ function detachListeners() {
     if (blockedUnsubscribe) blockedUnsubscribe();
     if (adminReportsUnsubscribe) adminReportsUnsubscribe();
     if (adminVipRequestsUnsubscribe) adminVipRequestsUnsubscribe();
+    if (deletedUsersUnsubscribe) deletedUsersUnsubscribe();
 }
 
 /* ==========================================================================
@@ -2107,6 +2115,7 @@ function listenToStories() {
         }
 
         Object.keys(userStoriesMap).forEach(uid => {
+            if (isUserAccountDeleted(uid)) return;
             if (currentUser && uid === currentUser.uid) return;
 
             const list = userStoriesMap[uid];
@@ -4014,6 +4023,7 @@ function listenToContacts() {
             const contact = docSnap.data();
             const contactUid = contact.uid || docSnap.id;
             contact.uid = contactUid;
+            if (isUserAccountDeleted(contactUid) || contact.isDeleted || contact.deleted) return;
             const chatId = [currentUser.uid, contactUid].sort().join('_');
 
             const isPinned = isChatPinned(contactUid);
@@ -5446,7 +5456,14 @@ function refreshDirectChatStatus() {
     }
 }
 
-function openDirectChat(contact) {
+export function openDirectChat(contact) {
+    if (!contact) return;
+    const targetUid = contact.uid || contact.id;
+    if (isUserAccountDeleted(targetUid) || contact.isDeleted || contact.deleted) {
+        showToast("Contato Indisponível", "Esta conta foi apagada e não está mais disponível no VORTEX VIP ⚡.", "red");
+        return;
+    }
+
     cleanupActiveGroupListeners();
     const leaveGroupTrigger = document.getElementById('chat-leave-group-trigger');
     if (leaveGroupTrigger) leaveGroupTrigger.style.display = 'none';
@@ -8009,7 +8026,9 @@ export function renderAdminReports() {
 export async function loadAdminUsers() {
     try {
         const snap = await getDocs(collection(db, 'users'));
-        adminUsers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        adminUsers = snap.docs
+            .map(d => ({ id: d.id, ...d.data() }))
+            .filter(u => !isUserAccountDeleted(u.id) && !u.isDeleted && !u.deleted);
         if (currentAdminTab === 'users') renderAdminUsers();
     } catch (e) {
         console.warn('Erro ao carregar usuários para admin:', e);
@@ -8023,6 +8042,7 @@ export function renderAdminUsers() {
     const searchTerm = (document.getElementById('admin-users-search-input')?.value || '').toLowerCase().trim();
 
     let filtered = adminUsers.filter(u => {
+        if (isUserAccountDeleted(u.id) || u.isDeleted || u.deleted) return false;
         if (!searchTerm) return true;
         const name = (u.name || '').toLowerCase();
         const username = (u.username || '').toLowerCase();
@@ -8098,7 +8118,7 @@ export function renderAdminUsers() {
                         <i data-lucide="badge-check"></i> ${isVip ? 'Remover VIP' : 'Conceder VIP'}
                     </button>
                     <button type="button" class="admin-btn-action btn-danger admin-purge-action-btn" data-uid="${u.id}" data-name="${escapeHTML(u.name || 'Usuário')}">
-                        <i data-lucide="trash-2"></i> Excluir Tudo da Conta
+                        <i data-lucide="trash-2"></i> Apagar Conta Inteira
                     </button>
                 </div>
             </div>
@@ -8833,47 +8853,263 @@ export async function adminUnrestrictUser(uid) {
     }
 }
 
-export async function adminPurgeUserData(uid) {
-    if (!uid) return;
+let deletedUsersUnsubscribe = null;
+
+export function listenToDeletedUsers() {
+    if (deletedUsersUnsubscribe) {
+        try { deletedUsersUnsubscribe(); } catch(e) {}
+        deletedUsersUnsubscribe = null;
+    }
     try {
+        const deletedCol = collection(db, 'deleted_users');
+        deletedUsersUnsubscribe = onSnapshot(deletedCol, (snapshot) => {
+            if (snapshot && typeof snapshot.forEach === 'function') {
+                snapshot.forEach(docSnap => {
+                    const uid = docSnap.id;
+                    if (uid) {
+                        deletedUsersSet.add(uid);
+                        if (currentUser && currentUser.uid === uid) {
+                            handleAccountDeletedRealtime(uid);
+                        }
+                    }
+                });
+            }
+            if (snapshot && typeof snapshot.docChanges === 'function') {
+                try {
+                    snapshot.docChanges().forEach(change => {
+                        const uid = change.doc ? change.doc.id : null;
+                        if (!uid) return;
+                        if (change.type === 'added' || change.type === 'modified') {
+                            deletedUsersSet.add(uid);
+                            handleAccountDeletedRealtime(uid);
+                        } else if (change.type === 'removed') {
+                            deletedUsersSet.delete(uid);
+                        }
+                    });
+                } catch (e) {}
+            }
+        }, (err) => {
+            console.warn('Aviso deleted_users onSnapshot:', err);
+        });
+    } catch (err) {
+        console.warn('Erro ao inicializar listenToDeletedUsers:', err);
+    }
+}
+
+export function handleAccountDeletedRealtime(uid) {
+    if (!uid) return;
+    deletedUsersSet.add(uid);
+
+    // 1. Se for o próprio usuário atualmente logado
+    if (currentUser && currentUser.uid === uid) {
+        try { signOut(auth); } catch(e) {}
+        currentUser = null;
+        currentProfile = null;
+        try { localStorage.clear(); } catch(e) {}
+        try { sessionStorage.clear(); } catch(e) {}
+        const authScreen = document.getElementById('auth-screen');
+        if (authScreen) authScreen.classList.remove('unlocked');
+        showToast("Conta Apagada", "Sua conta foi permanentemente apagada do VORTEX VIP ⚡.", "red");
+        setTimeout(() => {
+            if (typeof location !== 'undefined' && location.reload) location.reload();
+        }, 1200);
+        return;
+    }
+
+    // 2. Se a conversa aberta for com o usuário deletado
+    if (activeChatContact && activeChatContact.uid === uid) {
+        if (typeof closeChat === 'function') closeChat();
+        showToast("Contato Indisponível", "Esta conta foi apagada e não está mais disponível no VORTEX VIP ⚡.", "red");
+    }
+
+    // 3. Se os dados de perfil do contato estiverem abertos
+    if (activeContactUserData && activeContactUserData.uid === uid) {
+        const panel = document.getElementById('contact-profile-panel');
+        if (panel) panel.classList.remove('active');
+    }
+
+    // 4. Remover da lista de conversas
+    const card = document.querySelector(`.chat-card[data-uid="${uid}"]`);
+    if (card) card.remove();
+
+    // 5. Remover da lista de usuários admin
+    adminUsers = adminUsers.filter(u => u.id !== uid);
+    if (typeof currentAdminTab !== 'undefined' && currentAdminTab === 'users') {
+        renderAdminUsers();
+    }
+
+    // 6. Remover postagens do usuário na tela
+    const postCards = document.querySelectorAll(`[data-author-uid="${uid}"]`);
+    postCards.forEach(c => c.remove());
+}
+
+export async function deleteUserAccountEntirely(targetUid, options = { deletedBy: 'self' }) {
+    if (!targetUid) return;
+    try {
+        const isSelf = currentUser && currentUser.uid === targetUid;
+        const isAdmin = (options && options.deletedBy === 'admin') || (currentProfile && checkIsAdminUser(currentProfile));
+
+        // 1. Adicionar imediatamente ao conjunto de deletados para proteção instantânea
+        deletedUsersSet.add(targetUid);
+
+        // 2. Disparar rota backend para exclusão total no Firebase Auth e Firestore (se disponível)
+        try {
+            if (typeof fetch === 'function') {
+                fetch('/api/delete-user-account', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        targetUid,
+                        requesterUid: currentUser ? currentUser.uid : targetUid,
+                        requesterEmail: (currentUser && currentUser.email) || (currentProfile && currentProfile.email) || '',
+                        deletedBy: options.deletedBy || (isSelf ? 'self' : 'admin')
+                    })
+                }).catch(() => {});
+            }
+        } catch (apiErr) {
+            console.warn('[VORTEX] Aviso chamada API delete-user-account:', apiErr);
+        }
+
+        // 3. Gravar tombstone definitivo em deleted_users no Firestore
+        try {
+            await setDoc(doc(db, 'deleted_users', targetUid), {
+                uid: targetUid,
+                deleted: true,
+                isDeleted: true,
+                deletedAt: Date.now(),
+                deletedBy: options.deletedBy || (isSelf ? 'self' : 'admin')
+            }, { merge: true });
+        } catch (e) {
+            console.warn('Erro ao gravar tombstone em deleted_users:', e);
+        }
+
+        // 4. Banir e marcar conta como apagada no Firestore
+        await adminBanUser(targetUid, 'Conta permanentemente apagada do VORTEX VIP ⚡').catch(() => {});
+        try {
+            await setDoc(doc(db, 'users', targetUid), {
+                isDeleted: true,
+                deleted: true,
+                banned: true,
+                banReason: 'Conta permanentemente apagada do VORTEX VIP ⚡',
+                name: 'Conta Excluída',
+                username: 'conta_excluida',
+                avatar: '',
+                status: 'Conta apagada.',
+                deletedAt: Date.now()
+            }, { merge: true });
+        } catch (e) {
+            console.warn('Erro ao atualizar doc users:', e);
+        }
+
         let deletedPostsCount = 0;
         let deletedStoriesCount = 0;
         let deletedGroupsCount = 0;
 
-        // 1. Excluir todas as postagens no feed deste autor
-        const postsSnap = await getDocs(query(collection(db, 'posts'), where('authorUid', '==', uid)));
-        const postPromises = postsSnap.docs.map(docSnap => deleteDoc(docSnap.ref));
-        await Promise.all(postPromises);
-        deletedPostsCount = postsSnap.docs.length;
+        // 5. Excluir postagens no feed deste autor
+        try {
+            const postsSnap = await getDocs(query(collection(db, 'posts'), where('authorUid', '==', targetUid)));
+            if (postsSnap && postsSnap.docs) {
+                await Promise.all(postsSnap.docs.map(docSnap => deleteDoc(docSnap.ref)));
+                deletedPostsCount = postsSnap.docs.length;
+            }
+        } catch (e) {
+            console.warn('Erro ao deletar posts:', e);
+        }
 
-        // 2. Excluir todos os stories deste autor
-        const storiesSnap = await getDocs(query(collection(db, 'stories'), where('authorUid', '==', uid)));
-        const storyPromises = storiesSnap.docs.map(docSnap => deleteDoc(docSnap.ref));
-        await Promise.all(storyPromises);
-        deletedStoriesCount = storiesSnap.docs.length;
+        // 6. Excluir stories deste autor
+        try {
+            const storiesSnap = await getDocs(query(collection(db, 'stories'), where('authorUid', '==', targetUid)));
+            if (storiesSnap && storiesSnap.docs) {
+                await Promise.all(storiesSnap.docs.map(docSnap => deleteDoc(docSnap.ref)));
+                deletedStoriesCount = storiesSnap.docs.length;
+            }
+        } catch (e) {
+            console.warn('Erro ao deletar stories:', e);
+        }
 
-        // 3. Excluir todos os grupos onde ele é criador
-        const groupsSnap = await getDocs(query(collection(db, 'groups'), where('creatorUid', '==', uid)));
-        const groupPromises = groupsSnap.docs.map(docSnap => deleteDoc(docSnap.ref));
-        await Promise.all(groupPromises);
-        deletedGroupsCount = groupsSnap.docs.length;
+        // 7. Excluir grupos onde ele é criador
+        try {
+            const groupsSnap = await getDocs(query(collection(db, 'groups'), where('creatorUid', '==', targetUid)));
+            if (groupsSnap && groupsSnap.docs) {
+                await Promise.all(groupsSnap.docs.map(docSnap => deleteDoc(docSnap.ref)));
+                deletedGroupsCount = groupsSnap.docs.length;
+            }
+        } catch (e) {
+            console.warn('Erro ao deletar grupos:', e);
+        }
 
-        // 4. Banir o usuário para segurança da plataforma
-        await adminBanUser(uid, 'Conta limpa e banida por violações graves das regras');
+        // 8. Excluir solicitações de amizade
+        try {
+            const reqsFromSnap = await getDocs(query(collection(db, 'requests'), where('fromUid', '==', targetUid)));
+            const reqsToSnap = await getDocs(query(collection(db, 'requests'), where('toUid', '==', targetUid)));
+            const allReqs = [...(reqsFromSnap?.docs || []), ...(reqsToSnap?.docs || [])];
+            await Promise.all(allReqs.map(d => deleteDoc(d.ref)));
+        } catch (e) {}
 
-        // 5. Atualizar listas locais
-        adminPosts = adminPosts.filter(p => p.authorUid !== uid);
-        adminGroups = adminGroups.filter(g => g.creatorUid !== uid);
+        // 9. Excluir notificações
+        try {
+            const notifsToSnap = await getDocs(query(collection(db, 'notifications'), where('toUid', '==', targetUid)));
+            const notifsFromSnap = await getDocs(query(collection(db, 'notifications'), where('fromUid', '==', targetUid)));
+            const allNotifs = [...(notifsToSnap?.docs || []), ...(notifsFromSnap?.docs || [])];
+            await Promise.all(allNotifs.map(d => deleteDoc(d.ref)));
+        } catch (e) {}
 
-        if (currentAdminTab === 'posts') renderAdminPosts();
-        if (currentAdminTab === 'groups') renderAdminGroups();
-        if (currentAdminTab === 'users') renderAdminUsers();
+        // 10. Excluir usernames
+        try {
+            const uNamesSnap = await getDocs(query(collection(db, 'usernames'), where('uid', '==', targetUid)));
+            if (uNamesSnap && uNamesSnap.docs) {
+                await Promise.all(uNamesSnap.docs.map(d => deleteDoc(d.ref)));
+            }
+        } catch (e) {}
 
-        showToast("Limpeza Concluída", `Removidos: ${deletedPostsCount} posts, ${deletedStoriesCount} stories e ${deletedGroupsCount} grupos.`, "green");
+        // 11. Atualizar listas locais de administração
+        adminPosts = adminPosts.filter(p => p.authorUid !== targetUid);
+        adminGroups = adminGroups.filter(g => g.creatorUid !== targetUid);
+        adminUsers = adminUsers.filter(u => u.id !== targetUid);
+
+        if (typeof currentAdminTab !== 'undefined') {
+            if (currentAdminTab === 'posts') renderAdminPosts();
+            if (currentAdminTab === 'groups') renderAdminGroups();
+            if (currentAdminTab === 'users') renderAdminUsers();
+        }
+
+        // 12. Propagar em tempo real na interface
+        handleAccountDeletedRealtime(targetUid);
+
+        if (isSelf) {
+            showToast("Conta Apagada", "Sua conta foi apagada com sucesso do VORTEX VIP ⚡.", "blue");
+            try { await signOut(auth); } catch(e) {}
+            try { localStorage.clear(); } catch(e) {}
+            try { sessionStorage.clear(); } catch(e) {}
+            setTimeout(() => {
+                if (typeof location !== 'undefined' && location.reload) location.reload();
+            }, 800);
+            return;
+        }
+
+        showToast("Conta Apagada", `A conta foi totalmente apagada para todos no VORTEX VIP ⚡.`, "green");
     } catch (err) {
-        console.error('Erro ao excluir dados do usuário:', err);
-        showToast("Erro", "Falha ao limpar dados do usuário.", "red");
+        console.error('Erro ao apagar conta inteira:', err);
+        showToast("Erro", "Não foi possível apagar a conta do usuário.", "red");
     }
+}
+
+export async function adminPurgeUserData(uid) {
+    if (!uid) return;
+    return await deleteUserAccountEntirely(uid, { deletedBy: 'admin' });
+}
+
+export function openUserDeleteAccountModal() {
+    const modal = document.getElementById('user-delete-account-modal');
+    if (modal) {
+        modal.classList.add('active');
+        if (window.lucide) lucide.createIcons();
+    }
+}
+
+export function closeUserDeleteAccountModal() {
+    const modal = document.getElementById('user-delete-account-modal');
+    if (modal) modal.classList.remove('active');
 }
 
 export async function adminDeletePost(postId) {
@@ -9031,7 +9267,7 @@ function openAdminRestrictModal(uid, name) {
 function openAdminPurgeModal(uid, name) {
     targetPurgeUser = { uid, name };
     const titleEl = document.getElementById('admin-purge-modal-title');
-    if (titleEl) titleEl.innerText = `Excluir Tudo de ${name || 'Usuário'}?`;
+    if (titleEl) titleEl.innerText = `Apagar Conta Inteira de ${name || 'Usuário'}?`;
     document.getElementById('admin-purge-modal')?.classList.add('active');
 }
 
@@ -9207,6 +9443,17 @@ if (typeof window !== 'undefined') {
     window.adminRestrictUser = adminRestrictUser;
     window.adminUnrestrictUser = adminUnrestrictUser;
     window.adminPurgeUserData = adminPurgeUserData;
+    window.deleteUserAccountEntirely = deleteUserAccountEntirely;
+    window.deletedUsersSet = deletedUsersSet;
+    window.isUserAccountDeleted = isUserAccountDeleted;
+    window.listenToDeletedUsers = listenToDeletedUsers;
+    window.handleAccountDeletedRealtime = handleAccountDeletedRealtime;
+    window.openUserDeleteAccountModal = openUserDeleteAccountModal;
+    window.closeUserDeleteAccountModal = closeUserDeleteAccountModal;
+    window.openDirectChat = openDirectChat;
+    window.loadUsersForSearch = loadUsersForSearch;
+    window.renderAdminUsers = renderAdminUsers;
+    window.loadAdminUsers = loadAdminUsers;
     window.adminDeletePost = adminDeletePost;
     window.adminDeleteGroup = adminDeleteGroup;
     window.adminTogglePauseGroup = adminTogglePauseGroup;
@@ -9382,6 +9629,22 @@ document.getElementById('admin-confirm-purge-btn')?.addEventListener('click', as
 document.getElementById('admin-cancel-purge-btn')?.addEventListener('click', () => {
     document.getElementById('admin-purge-modal')?.classList.remove('active');
     targetPurgeUser = null;
+});
+
+// Eventos de Exclusão da Própria Conta (Configurações VIP)
+document.getElementById('delete-account-btn')?.addEventListener('click', () => {
+    openUserDeleteAccountModal();
+});
+
+document.getElementById('cancel-user-delete-account-btn')?.addEventListener('click', () => {
+    closeUserDeleteAccountModal();
+});
+
+document.getElementById('confirm-user-delete-account-btn')?.addEventListener('click', async () => {
+    if (!currentUser) return;
+    const uidToDelete = currentUser.uid;
+    closeUserDeleteAccountModal();
+    await deleteUserAccountEntirely(uidToDelete, { deletedBy: 'self' });
 });
 
 document.getElementById('banned-logout-btn')?.addEventListener('click', async () => {
@@ -11326,7 +11589,7 @@ document.getElementById('switch-camera-btn')?.addEventListener('click', async ()
 /* ==========================================================================
    BUSCA, SOLICITAÇÕES, PERFIL & CONFIGURAÇÕES
    ========================================================================== */
-async function loadUsersForSearch(qText = '') {
+export async function loadUsersForSearch(qText = '') {
     const container = document.getElementById('search-results-container');
     if (!container) return;
 
@@ -11343,6 +11606,7 @@ async function loadUsersForSearch(qText = '') {
         snap.forEach(d => {
             const u = d.data();
             const uid = d.id;
+            if (isUserAccountDeleted(uid) || u.isDeleted || u.deleted || u.banned) return;
             if (!currentUser || uid !== currentUser.uid) {
                 const uName = (u.name + ' ' + (u.surname || '')).toLowerCase();
                 const uUsername = (u.username || '').toLowerCase().replace('@', '');
@@ -11488,7 +11752,12 @@ function listenToRequests() {
         const listContainer = document.getElementById('requests-list-container');
         const reqs = [];
 
-        snapshot.forEach(d => reqs.push({ id: d.id, ...d.data() }));
+        snapshot.forEach(d => {
+            const data = d.data();
+            if (!isUserAccountDeleted(data.fromUid)) {
+                reqs.push({ id: d.id, ...data });
+            }
+        });
 
         if (badge) {
             badge.innerText = reqs.length;
@@ -12172,7 +12441,9 @@ function renderPostsFeed(posts = []) {
     const countLabel = document.getElementById('posts-count-label');
     const previewFeed = document.getElementById('posts-feed-list');
 
-    const sorted = [...posts].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    const sorted = [...posts]
+        .filter(p => !isUserAccountDeleted(p.authorUid) && !p.isDeleted && !p.deleted)
+        .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
     if (countLabel) countLabel.innerText = `${sorted.length} ${sorted.length === 1 ? 'postagem' : 'postagens'}`;
 
     syncFeedAuthorsVipStatus(sorted);
@@ -12187,7 +12458,7 @@ function renderPostsFeed(posts = []) {
                 const isPostAuthorAdmin = checkIsAdminUser({ uid: post.authorUid, name: authorName, email: post.authorEmail, username: post.authorUsername });
                 const avatar = post.authorAvatar ? `style="background-image: url('${post.authorAvatar}')"` : '';
                 const likes = Array.isArray(post.likes) ? post.likes.length : 0;
-                const comments = Array.isArray(post.comments) ? post.comments : [];
+                const comments = (Array.isArray(post.comments) ? post.comments : []).filter(c => !isUserAccountDeleted(c.authorUid) && !c.isDeleted && !c.deleted);
                 const caption = post.caption || '';
                 const rawMedia = post.mediaData || (post.hasChunks && post.id && mediaChunkCache.get(`posts_${post.id}`)) || '';
                 const isChunkPending = post.hasChunks && !rawMedia && post.id;
@@ -12276,7 +12547,7 @@ function renderPostsFeed(posts = []) {
         const isPostAuthorAdmin = checkIsAdminUser({ uid: post.authorUid, name: authorName, email: post.authorEmail, username: post.authorUsername });
         const avatar = post.authorAvatar ? `style="background-image: url('${post.authorAvatar}')"` : '';
         const likes = Array.isArray(post.likes) ? post.likes.length : 0;
-        const rawComments = Array.isArray(post.comments) ? post.comments : [];
+        const rawComments = (Array.isArray(post.comments) ? post.comments : []).filter(c => !isUserAccountDeleted(c.authorUid) && !c.isDeleted && !c.deleted);
         const sortedComments = getSortedPostComments(rawComments);
         const caption = post.caption || '';
         const rawMedia = post.mediaData || (post.hasChunks && post.id && mediaChunkCache.get(`posts_${post.id}`)) || '';
