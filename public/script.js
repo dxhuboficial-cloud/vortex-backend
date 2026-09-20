@@ -462,13 +462,13 @@ function normalizeUsername(value) {
 }
 
 function isValidUsername(value) {
-    return /^[a-zA-Z0-9_.]+$/.test(value) && value.length >= 3 && value.length <= 30;
+    return /^[a-z0-9_.]+$/.test(value) && value.length >= 3 && value.length <= 30;
 }
 
 function usernameValidationMessage(value) {
     if (!value) return 'O nome de usuário é obrigatório.';
     if (value.length < 3 || value.length > 30) return 'Use entre 3 e 30 caracteres.';
-    if (!isValidUsername(value)) return 'Use apenas letras, números, ponto e sublinhado.';
+    if (!isValidUsername(value)) return 'Use apenas letras minúsculas, números, ponto e sublinhado.';
     return '';
 }
 
@@ -2907,6 +2907,15 @@ document.querySelectorAll('.story-emoji-btn').forEach(btn => {
             .then(() => {
                 playSound(replySendSound);
                 showToast("Reação Enviada", `Reagiu com ${emoji}!`, "green");
+                // Notificar o dono do story sobre a reação (se não for o próprio)
+                if (story.authorUid && story.authorUid !== currentUser.uid) {
+                    sendActivityNotification(story.authorUid, 'like_story', {
+                        storyId: story.id,
+                        senderName: currentProfile?.name || 'Alguém',
+                        senderAvatar: currentProfile?.avatar || '',
+                        emoji
+                    });
+                }
             })
             .catch((err) => console.error("Erro ao registrar reação:", err));
         }
@@ -4710,7 +4719,8 @@ async function openGroupProfile(group) {
     }, (err) => {
         console.warn('Erro ao carregar dados do grupo em tempo real:', err);
     });
-    const isAdmin = managedGroup.creatorUid === currentUser.uid;
+    const isAdmin = managedGroup.creatorUid === currentUser.uid ||
+        (Array.isArray(managedGroup.admins) && managedGroup.admins.includes(currentUser.uid));
     const panel = document.getElementById('group-profile-panel');
     const avatar = document.getElementById('group-profile-avatar');
     const title = document.getElementById('group-profile-title');
@@ -4728,6 +4738,20 @@ async function openGroupProfile(group) {
     if (count) count.innerText = `${(managedGroup.members || []).length} membros`;
     if (nameInput) nameInput.value = managedGroup.name || '';
     if (descriptionInput) descriptionInput.value = managedGroup.description || '';
+
+    // Mostrar descrição para todos os membros (somente leitura)
+    const descView = document.getElementById('group-profile-desc-view');
+    if (descView) {
+        const desc = managedGroup.description || '';
+        if (desc) {
+            descView.innerText = desc;
+            descView.style.display = 'block';
+        } else {
+            descView.style.display = 'none';
+        }
+    }
+
+    // Admins promovidos têm acesso total igual ao criador
     if (adminFields) adminFields.style.display = isAdmin ? 'flex' : 'none';
     if (deleteButton) deleteButton.style.display = isAdmin ? 'flex' : 'none';
     if (avatarInputLabel) avatarInputLabel.style.display = isAdmin ? 'inline-flex' : 'none';
@@ -4865,6 +4889,53 @@ async function notifyUser(userUid, title, message) {
     });
 }
 
+/* Notificações de atividade: likes e comentários em posts e stories */
+async function sendActivityNotification(toUid, type, context = {}) {
+    try {
+        if (!toUid || !currentUser) return;
+        if (isUserAccountDeleted(toUid)) return;
+
+        let title = '';
+        let message = '';
+        let icon = '';
+
+        const sender = context.senderName || 'Alguém';
+
+        if (type === 'like_post') {
+            title = `❤️ ${sender} curtiu seu post`;
+            message = `${sender} curtiu a sua publicação no VORTEX VIP ⚡`;
+            icon = 'heart';
+        } else if (type === 'comment_post') {
+            title = `💬 ${sender} comentou no seu post`;
+            message = `${sender} comentou na sua publicação no VORTEX VIP ⚡`;
+            icon = 'message-circle';
+        } else if (type === 'like_story') {
+            const emoji = context.emoji || '❤️';
+            title = `${emoji} ${sender} reagiu ao seu story`;
+            message = `${sender} reagiu com ${emoji} ao seu story no VORTEX VIP ⚡`;
+            icon = 'smile';
+        } else {
+            return;
+        }
+
+        await addDoc(collection(db, 'notifications'), {
+            toUid,
+            title,
+            message,
+            type,
+            icon,
+            fromUid: currentUser.uid,
+            fromAvatar: context.senderAvatar || '',
+            postId: context.postId || null,
+            storyId: context.storyId || null,
+            createdAt: Date.now()
+        });
+    } catch (e) {
+        // Notificações são silenciosas — não bloquear a ação principal
+        console.warn('Erro ao enviar notificação de atividade:', e);
+    }
+}
+
 async function addGroupMember(memberUid) {
     if (!managedGroup || managedGroup.creatorUid !== currentUser?.uid || !memberUid) return;
     if ((managedGroup.members || []).includes(memberUid)) return;
@@ -4909,18 +4980,48 @@ async function removeGroupMember(memberUid) {
 }
 
 async function promoteGroupMember(memberUid) {
-    if (!managedGroup || managedGroup.creatorUid !== currentUser?.uid || !memberUid) return;
+    if (!managedGroup || !currentUser || !memberUid) return;
+    // Apenas criador pode promover admins
+    if (managedGroup.creatorUid !== currentUser.uid) {
+        showToast('Sem permissão', 'Somente o criador do grupo pode promover administradores.', 'red');
+        return;
+    }
     try {
+        // Verificar limite de admins (excluindo o criador)
+        const currentAdmins = (managedGroup.admins || []).filter(uid => uid !== managedGroup.creatorUid);
+        // Buscar se o criador é VIP verificado para definir o limite
+        let maxAdmins = 3;
+        try {
+            const creatorSnap = await getDoc(doc(db, 'users', managedGroup.creatorUid));
+            if (creatorSnap.exists()) {
+                const creatorData = creatorSnap.data();
+                if (checkIsVipUser(creatorData)) maxAdmins = 5;
+            }
+        } catch (e) { /* usa limite padrão */ }
+
+        if (currentAdmins.includes(memberUid)) {
+            showToast('Já é admin', 'Este usuário já é administrador do grupo.', 'blue');
+            return;
+        }
+        if (currentAdmins.length >= maxAdmins) {
+            showToast('Limite atingido', `Este grupo permite no máximo ${maxAdmins} administrador${maxAdmins > 1 ? 'es' : ''} (${maxAdmins === 5 ? 'VIP verificado' : 'conta normal'}). Remova um admin para promover outro.`, 'red');
+            return;
+        }
+
         managedGroup.admins = [...new Set([...(managedGroup.admins || []), memberUid])];
         await updateDoc(doc(db, 'groups', managedGroup.groupId), { admins: managedGroup.admins, updatedAt: Date.now() });
         await syncGroupReferences(managedGroup);
+        // Notificar o usuário promovido
+        await notifyUser(memberUid, '🛡️ Você é admin do grupo!', `Você foi promovido a administrador do grupo "${managedGroup.name || 'Grupo VIP'}". Agora você tem acesso total ao grupo.`);
         await openGroupProfile(managedGroup);
-        showToast('Novo admin', 'O usuário foi promovido como administrador.', 'green');
+        showToast('Novo admin', 'O usuário foi promovido como administrador e notificado.', 'green');
     } catch (error) {
         console.error('Erro ao promover membro:', error);
         showToast('Erro', 'Não foi possível promover o usuário.', 'red');
     }
 }
+
+
 
 // Variáveis e estado para Presença e Digitação em Tempo Real em Grupos
 let currentGroupPresenceHeartbeat = null;
@@ -7984,6 +8085,9 @@ export function renderAdminReports() {
                     ${isResolved ? `<div style="color:#34c759; font-weight:700; font-size:0.75rem; margin-top:4px;">✓ Resolvido</div>` : ''}
                 </div>
                 <div class="admin-card-actions">
+                    <button type="button" class="admin-btn-action btn-info admin-analyze-report-btn" data-report-id="${r.id}">
+                        <i data-lucide="search"></i> Analisar
+                    </button>
                     ${!isResolved ? `
                         <button type="button" class="admin-btn-action btn-success admin-resolve-btn" data-id="${r.id}">
                             <i data-lucide="check"></i> Resolver
@@ -8007,6 +8111,13 @@ export function renderAdminReports() {
     }).join('');
 
     // Wire up events
+    container.querySelectorAll('.admin-analyze-report-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const reportId = btn.dataset.reportId;
+            const report = adminReports.find(r => r.id === reportId);
+            if (report) adminAnalyzeReport(report);
+        });
+    });
     container.querySelectorAll('.admin-resolve-btn').forEach(btn => {
         btn.addEventListener('click', () => adminResolveReport(btn.dataset.id));
     });
@@ -8208,6 +8319,9 @@ export function renderAdminPosts() {
                     </div>
                 </div>
                 <div class="admin-card-actions">
+                    <button type="button" class="admin-btn-action btn-accent admin-preview-post-action-btn" data-id="${p.id}">
+                        <i data-lucide="eye"></i> Ver Preview
+                    </button>
                     <button type="button" class="admin-btn-action btn-danger admin-delete-post-action-btn" data-id="${p.id}">
                         <i data-lucide="trash-2"></i> Excluir Publicação
                     </button>
@@ -8224,6 +8338,9 @@ export function renderAdminPosts() {
     });
     container.querySelectorAll('.admin-purge-post-author-btn').forEach(btn => {
         btn.addEventListener('click', () => openAdminPurgeModal(btn.dataset.uid, btn.dataset.name));
+    });
+    container.querySelectorAll('.admin-preview-post-action-btn').forEach(btn => {
+        btn.addEventListener('click', () => adminOpenPostPreview(btn.dataset.id));
     });
 
     if (window.lucide) lucide.createIcons();
@@ -8265,7 +8382,9 @@ export function renderAdminGroups() {
 
     container.innerHTML = filtered.map(g => {
         const isPaused = !!g.paused;
+        const isBanned = g.bannedUntil && g.bannedUntil > Date.now();
         const membersCount = (g.members || []).length;
+        const bannedUntilDate = isBanned ? new Date(g.bannedUntil).toLocaleDateString('pt-BR') : '';
 
         return `
             <div class="admin-card" data-group-id="${g.id}">
@@ -8277,9 +8396,10 @@ export function renderAdminGroups() {
                             <span class="admin-card-subtitle">${membersCount} membro(s)</span>
                         </div>
                     </div>
-                    <span class="admin-badge ${isPaused ? 'admin-badge-banned' : 'admin-badge-active'}">
-                        ${isPaused ? 'PAUSADO' : 'ATIVO'}
-                    </span>
+                    ${isBanned
+                        ? `<span class="admin-badge-banned-timed">BANIDO até ${bannedUntilDate}</span>`
+                        : `<span class="admin-badge ${isPaused ? 'admin-badge-banned' : 'admin-badge-active'}">${isPaused ? 'PAUSADO' : 'ATIVO'}</span>`
+                    }
                 </div>
                 <div class="admin-card-body">
                     <div>Descrição: ${g.description || 'Sem descrição'}</div>
@@ -8288,6 +8408,9 @@ export function renderAdminGroups() {
                 <div class="admin-card-actions">
                     <button type="button" class="admin-btn-action btn-accent admin-toggle-pause-group-action-btn" data-id="${g.id}" data-paused="${!isPaused}">
                         <i data-lucide="${isPaused ? 'play' : 'pause'}"></i> ${isPaused ? 'Despausar Grupo' : 'Pausar Grupo'}
+                    </button>
+                    <button type="button" class="admin-btn-action ${isBanned ? 'btn-accent' : 'btn-danger'} admin-ban-group-action-btn" data-id="${g.id}">
+                        <i data-lucide="${isBanned ? 'shield-off' : 'shield-ban'}"></i> ${isBanned ? 'Desbanir Grupo' : 'Banir por 30 dias'}
                     </button>
                     <button type="button" class="admin-btn-action btn-danger admin-delete-group-action-btn" data-id="${g.id}">
                         <i data-lucide="trash-2"></i> Excluir Grupo
@@ -8299,6 +8422,9 @@ export function renderAdminGroups() {
 
     container.querySelectorAll('.admin-toggle-pause-group-action-btn').forEach(btn => {
         btn.addEventListener('click', () => adminTogglePauseGroup(btn.dataset.id, btn.dataset.paused === 'true'));
+    });
+    container.querySelectorAll('.admin-ban-group-action-btn').forEach(btn => {
+        btn.addEventListener('click', () => adminBanGroup(btn.dataset.id));
     });
     container.querySelectorAll('.admin-delete-group-action-btn').forEach(btn => {
         btn.addEventListener('click', () => adminDeleteGroup(btn.dataset.id));
@@ -9169,6 +9295,354 @@ export async function adminTogglePauseGroup(groupId, paused) {
     }
 }
 
+/* ===== ADMIN: Banir Grupo por 30 dias ===== */
+export async function adminBanGroup(groupId) {
+    if (!groupId) return;
+    const g = adminGroups.find(x => x.id === groupId);
+    const isBanned = g && g.bannedUntil && g.bannedUntil > Date.now();
+
+    try {
+        if (isBanned) {
+            // Desbanir
+            await updateDoc(doc(db, 'groups', groupId), { bannedUntil: null, banned: false });
+            if (g) { g.bannedUntil = null; g.banned = false; }
+            if (currentAdminTab === 'groups') renderAdminGroups();
+            showToast("Grupo Desbanido", "O grupo foi desbanido e voltou ao normal.", "green");
+        } else {
+            // Banir por 30 dias
+            const bannedUntil = Date.now() + 30 * 24 * 60 * 60 * 1000;
+            await updateDoc(doc(db, 'groups', groupId), { bannedUntil, banned: true, paused: true });
+            if (g) { g.bannedUntil = bannedUntil; g.banned = true; g.paused = true; }
+            if (currentAdminTab === 'groups') renderAdminGroups();
+            showToast("Grupo Banido", "O grupo foi banido por 30 dias. Mensagens bloqueadas.", "red");
+        }
+    } catch (err) {
+        console.error('Erro ao banir/desbanir grupo:', err);
+        showToast("Erro", "Não foi possível atualizar o status do grupo.", "red");
+    }
+}
+
+/* ===== ADMIN: Preview de Post no Painel Posts & Feed ===== */
+export async function adminOpenPostPreview(postId) {
+    const post = adminPosts.find(p => p.id === postId);
+    if (!post) {
+        showToast('Erro', 'Post não encontrado.', 'red');
+        return;
+    }
+
+    const modal = document.getElementById('admin-post-preview-modal');
+    const content = document.getElementById('admin-post-preview-content');
+    if (!modal || !content) return;
+
+    // Mostrar modal com loading enquanto carrega mídia
+    content.innerHTML = `
+        <div class="admin-post-preview-author-row">
+            <div class="avatar sm" style="background-image:url('${post.authorAvatar || ''}');"></div>
+            <div>
+                <strong style="color:var(--text-main);">${escapeHTML(post.authorName || 'Autor')}</strong>
+                <div style="font-size:0.75rem; color:var(--text-dim);">${post.createdAt ? new Date(post.createdAt).toLocaleString('pt-BR') : ''}</div>
+            </div>
+        </div>
+        <div id="admin-preview-media-slot" style="text-align:center; padding:12px 0; color:var(--text-dim); font-size:0.85rem;">⏳ Carregando mídia...</div>
+        <p class="admin-post-preview-caption">${escapeHTML(post.caption || 'Sem legenda')}</p>
+        <div class="admin-post-preview-stats">
+            <span>❤️ ${(post.likes || []).length} curtidas</span>
+            <span>💬 ${(post.comments || []).length} comentários</span>
+        </div>
+        ${(post.comments || []).length > 0 ? `
+        <div class="admin-post-preview-comments">
+            <strong style="font-size:0.78rem; color:var(--text-dim);">Comentários recentes:</strong>
+            ${(post.comments || []).slice(0, 6).map(c => `<div class="admin-post-preview-comment-item"><strong>${escapeHTML(c.author || 'Usuário')}:</strong> ${escapeHTML(c.text || '')}</div>`).join('')}
+        </div>` : '<p style="color:var(--text-dim); font-size:0.8rem;">Nenhum comentário ainda.</p>'}
+    `;
+
+    modal.style.display = 'flex';
+
+    // Carregar mídia assincronamente (mediaData ou chunks)
+    const isVideo = post.type === 'video';
+    let mediaSrc = post.mediaData || '';
+
+    if (!mediaSrc && post.hasChunks && post.id) {
+        try {
+            mediaSrc = await loadMediaWithChunks('posts', post.id, '');
+        } catch (e) {
+            console.warn('[adminOpenPostPreview] Erro ao carregar chunks:', e);
+        }
+    }
+
+    const mediaSlot = document.getElementById('admin-preview-media-slot');
+    if (mediaSlot) {
+        if (mediaSrc) {
+            const mediaSrcFinal = isVideo && post.isTrimmed && !mediaSrc.includes('#t=')
+                ? `${mediaSrc}#t=0,${post.videoDuration || 120}`
+                : mediaSrc;
+
+            mediaSlot.innerHTML = isVideo
+                ? `<video class="admin-post-preview-media-video" controls playsinline src="${mediaSrcFinal}"></video>`
+                : `<img class="admin-post-preview-media" src="${mediaSrcFinal}" alt="Mídia do post">`;
+        } else {
+            mediaSlot.innerHTML = '<p style="color:var(--text-dim); font-size:0.8rem; padding:8px 0;">📷 Post sem mídia</p>';
+        }
+    }
+
+    if (window.lucide) lucide.createIcons();
+
+    document.getElementById('close-admin-post-preview-modal')?.addEventListener('click', () => {
+        modal.style.display = 'none';
+        content.innerHTML = '';
+    }, { once: true });
+
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.style.display = 'none';
+            content.innerHTML = '';
+        }
+    }, { once: true });
+}
+
+
+/* ===== ADMIN: Analisar Denúncia (Preview de Conteúdo ou Perfil de Conta/Grupo) ===== */
+export async function adminAnalyzeReport(report) {
+    if (!report) return;
+
+    const modal = document.getElementById('admin-analyze-modal');
+    const content = document.getElementById('admin-analyze-content');
+    const titleEl = document.getElementById('admin-analyze-modal-title');
+    if (!modal || !content) return;
+
+    content.innerHTML = '<p style="color:var(--text-dim); padding:20px 0; text-align:center;">Carregando...</p>';
+    modal.style.display = 'flex';
+
+    const type = report.targetType || 'user';
+    let html = '';
+
+    try {
+        if (type === 'post') {
+            if (titleEl) titleEl.innerHTML = '<i data-lucide="image"></i> Analisando Post Denunciado';
+            // O campo correto é report.postId (não targetId)
+            const postLookupId = report.postId || report.targetId || report.targetUid;
+            let post = adminPosts.find(p => p.id === postLookupId);
+            if (!post && postLookupId) {
+                try {
+                    const snap = await getDoc(doc(db, 'posts', postLookupId));
+                    if (snap.exists()) post = { id: snap.id, ...snap.data() };
+                } catch (e) {}
+            }
+            if (post) {
+                const isVideo = post.type === 'video';
+                // Carregar mídia (mediaData ou chunks)
+                let mediaSrc = post.mediaData || '';
+                if (!mediaSrc && post.hasChunks && post.id) {
+                    try { mediaSrc = await loadMediaWithChunks('posts', post.id, ''); } catch (e) {}
+                }
+                const mediaSrcFinal = mediaSrc && isVideo && post.isTrimmed && !mediaSrc.includes('#t=')
+                    ? `${mediaSrc}#t=0,${post.videoDuration || 120}`
+                    : mediaSrc;
+
+                const mediaHtml = mediaSrc
+                    ? (isVideo
+                        ? `<video class="admin-post-preview-media-video" controls playsinline src="${mediaSrcFinal}"></video>`
+                        : `<img class="admin-post-preview-media" src="${mediaSrcFinal}" alt="Mídia do post">`)
+                    : '<p style="color:var(--text-dim); font-size:0.8rem;">📷 Post sem mídia</p>';
+
+                const commentsArr = (post.comments || []).slice(0, 5);
+                html = `
+                    <div class="admin-post-preview-author-row">
+                        <div class="avatar sm" style="background-image:url('${post.authorAvatar || ''}');"></div>
+                        <div>
+                            <strong>${escapeHTML(post.authorName || 'Autor')}</strong>
+                            <div style="font-size:0.72rem; color:var(--text-dim);">${post.createdAt ? new Date(post.createdAt).toLocaleString('pt-BR') : ''}</div>
+                        </div>
+                    </div>
+                    ${mediaHtml}
+                    ${post.caption ? `<p class="admin-post-preview-caption">${escapeHTML(post.caption)}</p>` : ''}
+                    <div class="admin-post-preview-stats">
+                        <span>❤️ ${(post.likes || []).length} curtidas</span>
+                        <span>💬 ${(post.comments || []).length} comentários</span>
+                    </div>
+                    ${commentsArr.length > 0 ? `
+                    <div class="admin-post-preview-comments">
+                        <strong style="font-size:0.78rem; color:var(--text-dim);">Comentários:</strong>
+                        ${commentsArr.map(c => `<div class="admin-post-preview-comment-item"><strong>${escapeHTML(c.author || 'Usuário')}:</strong> ${escapeHTML(c.text || '')}</div>`).join('')}
+                    </div>` : ''}
+                `;
+            } else {
+                html = '<p style="color:#ff6b6b;">Post não encontrado (pode ter sido removido).</p>';
+                if (report.contentSnippet) {
+                    html += `<div class="admin-analyze-content-snippet">"${escapeHTML(report.contentSnippet)}"</div>`;
+                }
+            }
+        } else if (type === 'comment') {
+            if (titleEl) titleEl.innerHTML = '<i data-lucide="message-circle"></i> Analisando Comentário Denunciado';
+            // Tentar buscar o post pai para ver o contexto completo
+            const postLookupId = report.postId || report.targetId;
+            let parentPost = postLookupId ? adminPosts.find(p => p.id === postLookupId) : null;
+            if (!parentPost && postLookupId) {
+                try {
+                    const snap = await getDoc(doc(db, 'posts', postLookupId));
+                    if (snap.exists()) parentPost = { id: snap.id, ...snap.data() };
+                } catch (e) {}
+            }
+            html = `
+                <p class="admin-analyze-label">Comentário denunciado:</p>
+                <div class="admin-analyze-content-snippet">${escapeHTML(report.contentSnippet || report.details || 'Conteúdo não disponível')}</div>
+                ${parentPost ? `<p style="color:var(--text-dim); font-size:0.78rem; margin-top:8px;">📝 Post do(a) <strong>${escapeHTML(parentPost.authorName || 'Autor')}</strong>: "${escapeHTML((parentPost.caption || '').substring(0, 80))}..."</p>` : ''}
+                <p style="color:var(--text-dim); font-size:0.78rem; margin-top:4px;">Denunciado por: <strong>${escapeHTML(report.reporterName || 'Anônimo')}</strong></p>
+                <p style="color:var(--text-dim); font-size:0.78rem;">Autor do comentário: <strong>${escapeHTML(report.targetName || 'N/A')}</strong></p>
+            `;
+        } else if (type === 'story') {
+            if (titleEl) titleEl.innerHTML = '<i data-lucide="play-circle"></i> Analisando Story Denunciado';
+            // O campo correto é report.storyId (não targetId)
+            const storyLookupId = report.storyId || report.targetId;
+            let story = null;
+            if (storyLookupId) {
+                try {
+                    const snap = await getDoc(doc(db, 'stories', storyLookupId));
+                    if (snap.exists()) story = { id: snap.id, ...snap.data() };
+                } catch (e) {}
+            }
+            if (story) {
+                const isVideo = story.type === 'video';
+                const mediaSrc = story.src || story.mediaData || '';
+                const mediaHtml = mediaSrc
+                    ? (isVideo
+                        ? `<video class="admin-post-preview-media-video" controls playsinline src="${mediaSrc}"></video>`
+                        : `<img class="admin-post-preview-media" src="${mediaSrc}" alt="Story">`)
+                    : '<p style="color:var(--text-dim); font-size:0.8rem;">📷 Story sem mídia</p>';
+                html = `
+                    <div class="admin-post-preview-author-row">
+                        <div class="avatar sm" style="background-image:url('${story.authorAvatar || ''}');"></div>
+                        <strong>${escapeHTML(story.authorName || report.targetName || 'Autor')}</strong>
+                    </div>
+                    ${mediaHtml}
+                    ${story.caption ? `<p class="admin-post-preview-caption">${escapeHTML(story.caption)}</p>` : ''}
+                `;
+            } else {
+                html = `<p style="color:#ff6b6b;">Story não encontrado ou já expirou.</p>`;
+                if (report.contentSnippet) html += `<div class="admin-analyze-content-snippet">"${escapeHTML(report.contentSnippet)}"</div>`;
+            }
+        } else if (type === 'user') {
+            if (titleEl) titleEl.innerHTML = '<i data-lucide="user"></i> Analisando Conta Denunciada';
+            let userData = adminUsers.find(u => u.id === report.targetUid);
+            if (!userData && report.targetUid) {
+                try {
+                    const snap = await getDoc(doc(db, 'users', report.targetUid));
+                    if (snap.exists()) userData = { id: snap.id, ...snap.data() };
+                } catch (e) {}
+            }
+            if (userData) {
+                const isBanned = Boolean(userData.banned);
+                const isRestricted = isUserRestricted(userData);
+                const isVip = checkIsVipUser(userData);
+                // Buscar quantidade de posts do usuário
+                let postCount = 0;
+                try {
+                    const postsSnap = await getDocs(query(collection(db, 'posts'), where('authorUid', '==', report.targetUid)));
+                    postCount = postsSnap.size;
+                } catch (e) {}
+
+                html = `
+                    <div class="admin-analyze-user-card">
+                        <div class="admin-analyze-user-header">
+                            <div class="avatar md" style="background-image:url('${userData.avatar || ''}'); width:52px; height:52px; border-radius:50%; background-size:cover; background-position:center; flex-shrink:0;"></div>
+                            <div class="admin-analyze-user-meta">
+                                <span class="admin-analyze-user-name">${escapeHTML(userData.name || 'Usuário')} ${isVip ? '⭐' : ''}</span>
+                                <span class="admin-analyze-user-username">@${escapeHTML(userData.username || 'sem_username')}</span>
+                                <span style="font-size:0.72rem; color:var(--text-dim);">${userData.email || 'Sem e-mail'}</span>
+                            </div>
+                        </div>
+                        ${userData.bio || userData.status ? `<p class="admin-analyze-user-bio">"${escapeHTML(userData.bio || userData.status || '')}"</p>` : ''}
+                        <div class="admin-analyze-user-stats">
+                            <span>📝 ${postCount} posts</span>
+                            <span>🤝 ${(userData.contactCount || 0)} contatos</span>
+                            <span>${isVip ? '⭐ VIP verificado' : '👤 Conta normal'}</span>
+                        </div>
+                        ${isBanned ? `<div class="admin-analyze-user-banned-info">🚫 Conta banida permanentemente</div>` : ''}
+                        ${isRestricted ? `<div class="admin-analyze-user-banned-info">⏳ Em restrição temporária (${getRemainingRestrictionTimeFormatted(userData)})</div>` : ''}
+                        ${!isBanned && !isRestricted ? `<div style="font-size:0.78rem; color:#34c759; font-weight:600; padding: 4px 0;">✅ Conta ativa sem restrições</div>` : ''}
+                        <div style="font-size:0.72rem; color:var(--text-dim); margin-top:4px;">UID: ${report.targetUid}</div>
+                    </div>
+                `;
+            } else {
+                html = `<p style="color:#ff6b6b;">Conta não encontrada (pode ter sido deletada).</p><div style="font-size:0.78rem; color:var(--text-dim);">UID: ${report.targetUid}</div>`;
+            }
+        } else if (type === 'group') {
+            if (titleEl) titleEl.innerHTML = '<i data-lucide="users"></i> Analisando Grupo Denunciado';
+            let groupData = adminGroups.find(g => g.id === report.targetUid || g.id === report.targetId);
+            if (!groupData && (report.targetUid || report.targetId)) {
+                try {
+                    const snap = await getDoc(doc(db, 'groups', report.targetUid || report.targetId));
+                    if (snap.exists()) groupData = { id: snap.id, ...snap.data() };
+                } catch (e) {}
+            }
+            if (groupData) {
+                const membersCount = (groupData.members || []).length;
+                const isPaused = !!groupData.paused;
+                const isBanned = groupData.bannedUntil && groupData.bannedUntil > Date.now();
+                html = `
+                    <div class="admin-analyze-group-card">
+                        <div class="admin-analyze-group-header">
+                            <div class="avatar sm" style="background-image:url('${groupData.avatar || ''}'); border-radius:50%; flex-shrink:0;"></div>
+                            <div>
+                                <span class="admin-analyze-group-name">${escapeHTML(groupData.name || 'Grupo VIP')}</span>
+                                <div style="font-size:0.72rem; color:var(--text-dim); margin-top:2px;">Criador UID: ${groupData.creatorUid || 'N/A'}</div>
+                            </div>
+                        </div>
+                        ${groupData.description ? `<p class="admin-analyze-group-desc">"${escapeHTML(groupData.description)}"</p>` : ''}
+                        <div class="admin-analyze-group-stats">
+                            <span>👥 ${membersCount} membros</span>
+                            <span>🛡️ ${(groupData.admins || []).length} admins</span>
+                            <span>${isPaused ? '⏸️ Pausado' : '✅ Ativo'}</span>
+                            ${isBanned ? '<span style="color:#ff6b6b; font-weight:700;">🚫 Banido</span>' : ''}
+                        </div>
+                    </div>
+                `;
+            } else {
+                html = `<p style="color:#ff6b6b;">Grupo não encontrado (pode ter sido excluído).</p>`;
+            }
+        } else {
+            if (titleEl) titleEl.innerHTML = '<i data-lucide="search"></i> Analisando Denúncia';
+            html = `
+                <p class="admin-analyze-label">Conteúdo denunciado:</p>
+                <div class="admin-analyze-content-snippet">${escapeHTML(report.contentSnippet || report.details || 'Sem conteúdo disponível')}</div>
+                <p style="color:var(--text-dim); font-size:0.78rem; margin-top:8px;">Tipo: ${report.targetType || 'N/A'}</p>
+            `;
+        }
+    } catch (e) {
+        console.error('Erro ao analisar denúncia:', e);
+        html = `<p style="color:#ff6b6b;">Erro ao carregar dados: ${e.message}</p>`;
+    }
+
+    // Adicionar motivo e detalhes da denúncia no final
+    const reasonText = reportReasonLabels?.[report.reason] || report.reason || 'Não informado';
+    html += `
+        <div style="margin-top:12px; padding-top:12px; border-top: 1px solid rgba(255,255,255,0.07);">
+            <p class="admin-analyze-label" style="margin-bottom:6px;">Detalhes da denúncia:</p>
+            <div style="display:flex; flex-direction:column; gap:4px; font-size:0.8rem; color:var(--text-dim);">
+                <span>📋 Motivo: <strong style="color:#ff6b6b;">${escapeHTML(reasonText)}</strong></span>
+                ${report.details ? `<span>📝 Descrição: "${escapeHTML(report.details)}"</span>` : ''}
+                <span>👤 Denunciante: <strong>${escapeHTML(report.reporterName || 'Anônimo')}</strong></span>
+            </div>
+        </div>
+    `;
+
+    content.innerHTML = html;
+    if (window.lucide) lucide.createIcons();
+
+    document.getElementById('close-admin-analyze-modal')?.addEventListener('click', () => {
+        modal.style.display = 'none';
+        content.innerHTML = '';
+    }, { once: true });
+
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.style.display = 'none';
+            content.innerHTML = '';
+        }
+    }, { once: true });
+}
+
+
 export async function adminToggleUserVip(uid, isVip) {
     if (!uid) return;
     try {
@@ -9457,6 +9931,9 @@ if (typeof window !== 'undefined') {
     window.adminDeletePost = adminDeletePost;
     window.adminDeleteGroup = adminDeleteGroup;
     window.adminTogglePauseGroup = adminTogglePauseGroup;
+    window.adminBanGroup = adminBanGroup;
+    window.adminOpenPostPreview = adminOpenPostPreview;
+    window.adminAnalyzeReport = adminAnalyzeReport;
     window.adminToggleUserVip = adminToggleUserVip;
     window.adminResolveReport = adminResolveReport;
     window.setAdminReports = setAdminReports;
@@ -10053,6 +10530,15 @@ async function sendChatMessage(type = 'text', payload = {}) {
         if (activeChatContact.isGroup && activeChatContact.paused) {
             showToast('Grupo pausado', 'O administrador pausou o envio de mensagens.', 'red');
             return;
+        }
+        // Verificar se o grupo está banido pelo ADM
+        if (activeChatContact.isGroup && activeGroupDoc) {
+            const bannedUntil = activeGroupDoc.bannedUntil || (activeGroupDoc.data && activeGroupDoc.data().bannedUntil);
+            if (bannedUntil && bannedUntil > Date.now()) {
+                const until = new Date(bannedUntil).toLocaleDateString('pt-BR');
+                showToast('Grupo Banido', `Este grupo foi banido pelos administradores até ${until}. Mensagens bloqueadas.`, 'red');
+                return;
+            }
         }
         if (activeChatContact.isGroup) {
             const groupSnap = await getDoc(doc(db, 'groups', activeChatContact.uid));
@@ -12159,6 +12645,14 @@ export async function submitInlineComment(postId, text) {
             activeCommentPost.comments = comments;
             renderCommentsModalList();
         }
+        // Notificar o dono do post sobre o novo comentário
+        if (postData.authorUid && postData.authorUid !== currentUser.uid) {
+            sendActivityNotification(postData.authorUid, 'comment_post', {
+                postId,
+                senderName: currentProfile?.name || currentUser.displayName || 'Alguém',
+                senderAvatar: currentProfile?.avatar || ''
+            });
+        }
         showToast('Comentário publicado', 'Seu comentário foi adicionado!', 'green');
         playSound(clickSound);
     } catch (err) {
@@ -12741,6 +13235,14 @@ function renderPostsFeed(posts = []) {
                 ? currentLikes.filter(uid => uid !== currentUser.uid)
                 : [...currentLikes, currentUser.uid];
             await updateDoc(doc(db, 'posts', postId), { likes: updatedLikes });
+            // Notificar o dono do post quando recebe uma curtida (apenas na primeira curtida)
+            if (!liked && post.authorUid && post.authorUid !== currentUser.uid) {
+                sendActivityNotification(post.authorUid, 'like_post', {
+                    postId,
+                    senderName: currentProfile?.name || currentUser.displayName || 'Alguém',
+                    senderAvatar: currentProfile?.avatar || ''
+                });
+            }
         });
     });
 
@@ -13279,6 +13781,14 @@ export async function submitPostComment() {
 
     try {
         await updateDoc(doc(db, 'posts', activeCommentPost.id), { comments: updated });
+        // Notificar o dono do post sobre o novo comentário
+        if (activeCommentPost.authorUid && activeCommentPost.authorUid !== currentUser.uid) {
+            sendActivityNotification(activeCommentPost.authorUid, 'comment_post', {
+                postId: activeCommentPost.id,
+                senderName: currentProfile?.name || currentUser.displayName || 'Alguém',
+                senderAvatar: currentProfile?.avatar || ''
+            });
+        }
         if (input) input.value = '';
         renderCommentsModalList();
         showToast('Comentário publicado', 'Seu comentário foi adicionado!', 'green');
@@ -13906,7 +14416,7 @@ document.getElementById('close-profile-edit')?.addEventListener('click', () => {
 
 const profileUsernameInput = document.getElementById('profile-username-input');
 profileUsernameInput?.addEventListener('input', () => {
-    const cleanValue = profileUsernameInput.value.replace(/[^a-zA-Z0-9_.]/g, '');
+    const cleanValue = profileUsernameInput.value.toLowerCase().replace(/[^a-z0-9_.]/g, '');
     if (profileUsernameInput.value !== cleanValue) profileUsernameInput.value = cleanValue;
     profileUsernameInput.setCustomValidity(usernameValidationMessage(cleanValue));
 });

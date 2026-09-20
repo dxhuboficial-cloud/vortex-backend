@@ -3895,6 +3895,17 @@ input:checked + .slider:before { transform: translateX(22px); }
     color: #000;
 }
 
+.admin-btn-action.btn-info {
+    background: rgba(255, 165, 0, 0.12);
+    border: 1px solid rgba(255, 165, 0, 0.35);
+    color: #ffa500;
+}
+
+.admin-btn-action.btn-info:hover {
+    background: #ffa500;
+    color: #000;
+}
+
 .admin-btn-action.btn-ghost {
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);
@@ -8988,3 +8999,226 @@ body.theme-rgb .ephemeral-save-btn {
     transform: translateY(-1px);
     box-shadow: 0 6px 22px rgba(255, 240, 31, 0.6) !important;
 }
+
+/* ===== ADMIN: Preview de Post ===== */
+.admin-post-preview-card {
+    max-width: 520px;
+    width: 95%;
+    max-height: 90vh;
+    overflow-y: auto;
+    border-radius: 16px;
+    background: var(--bg-secondary, #1a1a2e);
+    border: 1px solid rgba(255,68,68,0.25);
+}
+.admin-post-preview-content {
+    padding: 0 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.admin-post-preview-author-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+.admin-post-preview-media {
+    width: 100%;
+    max-height: 320px;
+    object-fit: contain;
+    border-radius: 10px;
+    background: #000;
+}
+.admin-post-preview-media-video {
+    width: 100%;
+    max-height: 320px;
+    border-radius: 10px;
+    background: #000;
+}
+.admin-post-preview-caption {
+    font-size: 0.92rem;
+    color: var(--text-main, #e0e0e0);
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+.admin-post-preview-stats {
+    display: flex;
+    gap: 18px;
+    font-size: 0.8rem;
+    color: var(--text-dim, #888);
+}
+.admin-post-preview-comments {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    border-top: 1px solid rgba(255,255,255,0.07);
+    padding-top: 10px;
+}
+.admin-post-preview-comment-item {
+    font-size: 0.8rem;
+    color: var(--text-main, #e0e0e0);
+    padding: 5px 8px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 8px;
+}
+.admin-post-preview-comment-item strong {
+    color: var(--accent, #ff4444);
+    margin-right: 4px;
+}
+
+/* ===== ADMIN: Analisar Denúncia ===== */
+.admin-analyze-card {
+    max-width: 540px;
+    width: 95%;
+    max-height: 90vh;
+    overflow-y: auto;
+    border-radius: 16px;
+    background: var(--bg-secondary, #1a1a2e);
+    border: 1px solid rgba(255,165,0,0.3);
+}
+.admin-analyze-content {
+    padding: 0 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.admin-analyze-user-card {
+    background: rgba(255,255,255,0.04);
+    border-radius: 12px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.admin-analyze-user-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.admin-analyze-user-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.admin-analyze-user-name {
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--text-main, #e0e0e0);
+}
+.admin-analyze-user-username {
+    font-size: 0.8rem;
+    color: var(--text-dim, #888);
+}
+.admin-analyze-user-bio {
+    font-size: 0.82rem;
+    color: var(--text-dim, #aaa);
+    font-style: italic;
+    padding: 6px 0;
+    border-top: 1px solid rgba(255,255,255,0.07);
+}
+.admin-analyze-user-stats {
+    display: flex;
+    gap: 16px;
+    font-size: 0.78rem;
+    color: var(--text-dim, #888);
+}
+.admin-analyze-user-banned-info {
+    font-size: 0.78rem;
+    color: #ff6b6b;
+    font-weight: 600;
+    padding: 4px 0;
+}
+.admin-analyze-group-card {
+    background: rgba(255,255,255,0.04);
+    border-radius: 12px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.admin-analyze-group-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.admin-analyze-group-name {
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--text-main, #e0e0e0);
+}
+.admin-analyze-group-desc {
+    font-size: 0.82rem;
+    color: var(--text-dim, #aaa);
+    font-style: italic;
+}
+.admin-analyze-group-stats {
+    display: flex;
+    gap: 16px;
+    font-size: 0.78rem;
+    color: var(--text-dim, #888);
+}
+.admin-analyze-content-snippet {
+    background: rgba(255,165,0,0.08);
+    border: 1px solid rgba(255,165,0,0.2);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 0.85rem;
+    color: var(--text-main, #e0e0e0);
+    font-style: italic;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+.admin-analyze-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-dim, #888);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: -6px;
+}
+
+/* ===== GRUPO: Descrição visível para membros ===== */
+.group-desc-view {
+    font-size: 0.85rem;
+    color: var(--text-dim, #aaa);
+    text-align: center;
+    padding: 6px 12px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.06);
+    width: 100%;
+    box-sizing: border-box;
+    line-height: 1.4;
+    margin: 4px 0;
+    word-break: break-word;
+    font-style: italic;
+}
+
+/* ===== ADMIN: Badge de Grupo Banido ===== */
+.admin-badge-banned-timed {
+    background: linear-gradient(135deg, #7b0000, #ff2222);
+    color: #fff;
+    font-size: 0.65rem;
+    font-weight: 800;
+    padding: 3px 10px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    box-shadow: 0 0 8px rgba(255,0,0,0.45);
+}
+
+/* ===== NOTIFICAÇÕES: Ícones de interação ===== */
+.notif-activity-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+.notif-activity-like { background: rgba(255, 59, 48, 0.15); }
+.notif-activity-comment { background: rgba(52, 199, 89, 0.15); }

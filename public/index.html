@@ -1166,6 +1166,7 @@
                 <label for="group-avatar-input" id="group-avatar-input-label" class="danger-btn group-avatar-change-btn">Alterar imagem</label>
                 <h3 id="group-profile-title">Grupo</h3>
                 <p id="group-profile-member-count" class="group-profile-member-count"></p>
+                <p id="group-profile-desc-view" class="group-desc-view" style="display:none;"></p>
 
                 <div id="group-admin-fields" class="group-admin-fields">
                     <div class="setting-item">
@@ -2256,8 +2257,38 @@
             </div>
         </div>
 
+        <!-- Modal de Preview de Post (Painel ADM) -->
+        <div id="admin-post-preview-modal" class="custom-modal-overlay" style="display:none;" aria-hidden="true">
+            <div class="custom-modal-card admin-post-preview-card">
+                <div class="panel-top-bar" style="padding:12px 16px;">
+                    <h3 class="modal-title" style="font-size:1rem;"><i data-lucide="eye"></i> Preview do Post</h3>
+                    <div class="header-icon-btn" id="close-admin-post-preview-modal" title="Fechar" aria-label="Fechar">
+                        <i data-lucide="x"></i>
+                    </div>
+                </div>
+                <div id="admin-post-preview-content" class="admin-post-preview-content">
+                    <!-- Conteúdo injetado via JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Análise de Denúncia (Painel ADM) -->
+        <div id="admin-analyze-modal" class="custom-modal-overlay" style="display:none;" aria-hidden="true">
+            <div class="custom-modal-card admin-analyze-card">
+                <div class="panel-top-bar" style="padding:12px 16px;">
+                    <h3 class="modal-title" id="admin-analyze-modal-title" style="font-size:1rem;"><i data-lucide="search"></i> Analisando Denúncia</h3>
+                    <div class="header-icon-btn" id="close-admin-analyze-modal" title="Fechar" aria-label="Fechar">
+                        <i data-lucide="x"></i>
+                    </div>
+                </div>
+                <div id="admin-analyze-content" class="admin-analyze-content">
+                    <!-- Conteúdo injetado via JS -->
+                </div>
+            </div>
+        </div>
+
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.81" defer></script>
+    <script type="module" src="script.js?v=1.0.83" defer></script>
 </body>
 </html>
