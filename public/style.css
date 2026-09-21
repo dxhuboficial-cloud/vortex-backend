@@ -2128,6 +2128,30 @@ header h1 span {
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.9);
 }
 
+
+.custom-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.custom-modal-header .custom-modal-title {
+    flex: 1;
+    margin-bottom: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1.05rem;
+    color: #fff;
+}
+
+.custom-modal-header .header-icon-btn {
+    flex-shrink: 0;
+    margin-left: auto;
+}
+
 .modal-center-align { text-align: center; }
 .modal-title { color: #fff; font-size: 1.1rem; margin-bottom: 10px; }
 .modal-title.danger-text { color: #ff3b30; }
