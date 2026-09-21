@@ -14771,9 +14771,41 @@ export async function generatePixPayment() {
         return;
     }
 
-    const name = document.getElementById('pix-payer-name')?.value?.trim() || currentProfile.name || 'Cliente';
-    const cpf = document.getElementById('pix-payer-cpf')?.value?.replace(/\D/g, '') || '11144477735';
-    const email = document.getElementById('pix-payer-email')?.value?.trim() || currentUser.email || 'cliente@vortex.vip';
+    const nameInput  = document.getElementById('pix-payer-name');
+    const cpfInput   = document.getElementById('pix-payer-cpf');
+    const emailInput = document.getElementById('pix-payer-email');
+
+    const name  = nameInput?.value?.trim() || '';
+    const cpfRaw = cpfInput?.value?.replace(/\D/g, '') || '';
+    const email = emailInput?.value?.trim() || '';
+
+    // ── Validação obrigatória de todos os campos ──────────────────────────────
+    if (!name) {
+        showToast('Campo obrigatório', 'Preencha seu Nome Completo.', 'red');
+        nameInput?.focus();
+        nameInput?.classList.add('input-error');
+        return;
+    }
+
+    if (!cpfRaw || cpfRaw.length !== 11) {
+        showToast('CPF obrigatório', 'Preencha seu CPF completo no formato 000.000.000-00.', 'red');
+        cpfInput?.focus();
+        cpfInput?.classList.add('input-error');
+        return;
+    }
+
+    if (!email || !email.includes('@') || !email.includes('.')) {
+        showToast('E-mail obrigatório', 'Preencha um e-mail válido para comprovante.', 'red');
+        emailInput?.focus();
+        emailInput?.classList.add('input-error');
+        return;
+    }
+
+    // Remover marcação de erro ao validar
+    nameInput?.classList.remove('input-error');
+    cpfInput?.classList.remove('input-error');
+    emailInput?.classList.remove('input-error');
+    // ──────────────────────────────────────────────────────────────────────────
 
     const btn = document.getElementById('generate-pix-btn');
     if (btn) {
@@ -14788,7 +14820,7 @@ export async function generatePixPayment() {
             body: JSON.stringify({
                 uid: currentUser.uid,
                 name,
-                cpf,
+                cpf: cpfRaw,
                 email
             })
         });
@@ -14834,6 +14866,7 @@ export async function generatePixPayment() {
         }
     }
 }
+
 
 export function startPixStatusPolling(paymentId) {
     if (pixStatusPollInterval) clearInterval(pixStatusPollInterval);
@@ -15130,7 +15163,17 @@ document.getElementById('pix-payer-cpf')?.addEventListener('input', (e) => {
     else if (v.length > 6) e.target.value = v.replace(/(\d{3})(\d{3})(\d{1,3})/, '$1.$2.$3');
     else if (v.length > 3) e.target.value = v.replace(/(\d{3})(\d{1,3})/, '$1.$2');
     else e.target.value = v;
+    e.target.classList.remove('input-error');
 });
+
+// Limpar marcação de erro ao digitar em campos obrigatórios do Pix
+document.getElementById('pix-payer-name')?.addEventListener('input', (e) => {
+    e.target.classList.remove('input-error');
+});
+document.getElementById('pix-payer-email')?.addEventListener('input', (e) => {
+    e.target.classList.remove('input-error');
+});
+
 document.getElementById('card-doc-number')?.addEventListener('input', (e) => {
     let v = e.target.value.replace(/\D/g, '').slice(0, 11);
     if (v.length > 9) e.target.value = v.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, '$1.$2.$3-$4');

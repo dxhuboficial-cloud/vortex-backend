@@ -5982,7 +5982,24 @@ input:checked + .slider:before { transform: translateX(22px); }
     color: #fff;
 }
 
+
+/* Campo obrigatório não preenchido */
+.input-error {
+    border-color: #ff4444 !important;
+    box-shadow: 0 0 0 2px rgba(255, 68, 68, 0.3) !important;
+    animation: inputShake 0.35s ease;
+}
+
+@keyframes inputShake {
+    0%, 100% { transform: translateX(0); }
+    20%       { transform: translateX(-5px); }
+    40%       { transform: translateX(5px); }
+    60%       { transform: translateX(-4px); }
+    80%       { transform: translateX(4px); }
+}
+
 /* Cartão Crédito/Débito */
+
 .card-type-toggle {
     display: flex;
     gap: 8px;
