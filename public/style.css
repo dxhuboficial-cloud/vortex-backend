@@ -216,9 +216,9 @@ header h1 span {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 10px;
-    padding: 10px 12px;
-    background: rgba(18, 18, 18, 0.84);
+    gap: 6px;
+    padding: 8px 10px;
+    background: rgba(18, 18, 18, 0.88);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 20px;
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.35);
@@ -235,14 +235,16 @@ header h1 span {
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
     gap: 4px;
-    padding: 8px 10px;
+    padding: 7px 6px;
     border-radius: 14px;
     cursor: pointer;
     transition: all 0.2s ease;
-    font-size: 0.68rem;
+    font-size: 0.65rem;
     font-weight: 700;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
 }
 
 .bottom-nav-item i {
@@ -250,10 +252,24 @@ header h1 span {
     height: 18px;
 }
 
+.bottom-nav-item .post-nav-icon {
+    width: 18px;
+    height: 18px;
+    stroke: currentColor;
+    flex-shrink: 0;
+    transition: transform 0.2s ease, stroke 0.2s ease;
+}
+
 .bottom-nav-item:hover,
 .bottom-nav-item.active {
     color: var(--accent-color);
     background: rgba(255, 255, 255, 0.06);
+}
+
+.bottom-nav-item:hover .post-nav-icon,
+.bottom-nav-item.active .post-nav-icon {
+    stroke: var(--accent-color);
+    transform: scale(1.08);
 }
 
 .header-icons {
@@ -9263,3 +9279,159 @@ body.theme-rgb .ephemeral-save-btn {
 }
 .notif-activity-like { background: rgba(255, 59, 48, 0.15); }
 .notif-activity-comment { background: rgba(52, 199, 89, 0.15); }
+
+/* ===== MODAL: Catálogo & Loja Online (Contas Empresa - Em Breve) ===== */
+.business-catalog-card {
+    max-width: 420px;
+    width: 95%;
+    border-radius: 20px;
+    background: #12151c !important;
+    border: 1px solid rgba(0, 243, 255, 0.3) !important;
+    box-shadow: 0 16px 45px rgba(0, 0, 0, 0.9), 0 0 25px rgba(0, 243, 255, 0.12) !important;
+    padding: 20px;
+    box-sizing: border-box;
+    text-align: center;
+}
+
+.business-catalog-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 2px;
+}
+
+.business-catalog-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(0, 243, 255, 0.12);
+    border: 1px solid rgba(0, 243, 255, 0.4);
+    color: var(--accent-color, #00f3ff);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    padding: 4px 12px;
+    border-radius: 20px;
+    text-transform: uppercase;
+}
+
+.business-pulse-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent-color, #00f3ff);
+    box-shadow: 0 0 8px var(--accent-color, #00f3ff);
+    animation: businessPulse 1.6s infinite ease-in-out;
+}
+
+@keyframes businessPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.7); }
+}
+
+.business-catalog-icon-wrap {
+    width: 62px;
+    height: 62px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, rgba(0, 243, 255, 0.15), rgba(0, 255, 136, 0.08));
+    border: 1px solid rgba(0, 243, 255, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 4px 0;
+    box-shadow: 0 0 20px rgba(0, 243, 255, 0.2);
+}
+
+.business-hero-icon {
+    width: 30px;
+    height: 30px;
+    color: var(--accent-color, #00f3ff);
+}
+
+.business-catalog-headline {
+    color: #fff;
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.business-catalog-description {
+    color: var(--text-dim, #a0a0a0);
+    font-size: 0.82rem;
+    line-height: 1.5;
+    margin: 0;
+    max-width: 360px;
+}
+
+.business-catalog-features {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    margin-top: 6px;
+    text-align: left;
+}
+
+.business-feature-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    padding: 10px 12px;
+    border-radius: 12px;
+}
+
+.business-feature-item .feature-icon {
+    width: 18px;
+    height: 18px;
+    color: var(--accent-color, #00f3ff);
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.business-feature-item div {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.business-feature-item strong {
+    font-size: 0.82rem;
+    color: #fff;
+}
+
+.business-feature-item small {
+    font-size: 0.72rem;
+    color: var(--text-dim, #888);
+    line-height: 1.35;
+}
+
+.business-notify-action-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: linear-gradient(135deg, var(--accent-color, #00f3ff), #00b4d8);
+    color: #000;
+    border: none;
+    border-radius: 12px;
+    padding: 12px;
+    font-size: 0.85rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.2s ease;
+    margin-top: 8px;
+    box-shadow: 0 4px 15px rgba(0, 243, 255, 0.25);
+}
+
+.business-notify-action-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(0, 243, 255, 0.4);
+}
+
+.business-notify-action-btn:active {
+    transform: scale(0.98);
+}

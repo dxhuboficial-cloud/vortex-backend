@@ -9973,6 +9973,8 @@ if (typeof window !== 'undefined') {
     window.showPwaBannerIfEligible = showPwaBannerIfEligible;
     window.setDeferredPrompt = setDeferredPrompt;
     window.getDeferredPrompt = getDeferredPrompt;
+    window.openBusinessCatalogModal = openBusinessCatalogModal;
+    window.closeBusinessCatalogModal = closeBusinessCatalogModal;
 }
 
 // Listeners de Instalação PWA
@@ -14324,9 +14326,31 @@ document.getElementById('publish-post-btn')?.addEventListener('click', async () 
 
 const feedNavItem = document.getElementById('feed-btn');
 const galleryNavItem = document.getElementById('gallery-btn');
+const newPostNavItem = document.getElementById('new-post-nav-btn');
 
 function setBottomNavActive(itemId) {
-    [feedNavItem, galleryNavItem].forEach((item) => item?.classList.toggle('active', item && item.id === itemId));
+    [feedNavItem, galleryNavItem, newPostNavItem].forEach((item) => item?.classList.toggle('active', item && item.id === itemId));
+}
+
+export function openBusinessCatalogModal() {
+    const modal = document.getElementById('business-catalog-modal');
+    if (modal) {
+        modal.style.display = 'flex';
+        modal.classList.add('active');
+        if (window.lucide) lucide.createIcons();
+    }
+}
+
+export function closeBusinessCatalogModal() {
+    const modal = document.getElementById('business-catalog-modal');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.classList.remove('active');
+    }
+    if (!document.getElementById('screenshot-gallery-overlay')?.classList.contains('active') &&
+        !document.getElementById('feed-overlay')?.classList.contains('active')) {
+        setBottomNavActive('');
+    }
 }
 
 function closeFeedOverlay() {
@@ -14367,6 +14391,7 @@ document.getElementById('feed-btn')?.addEventListener('click', () => {
     playSound(clickSound);
     setBottomNavActive('feed-btn');
     listenToPosts();
+    closeBusinessCatalogModal();
     document.getElementById('feed-overlay')?.classList.add('active');
     document.getElementById('screenshot-gallery-overlay')?.classList.remove('active');
     if (typeof initBinaryMatrixCanvas === 'function') {
@@ -14376,16 +14401,47 @@ document.getElementById('feed-btn')?.addEventListener('click', () => {
 
 document.getElementById('open-post-from-feed-btn')?.addEventListener('click', () => {
     closeFeedOverlay();
+    setBottomNavActive('new-post-nav-btn');
     document.getElementById('screenshot-gallery-overlay')?.classList.add('active');
 });
 
+// Novo Botão: Nova Postagem (abre tela de publicação)
+document.getElementById('new-post-nav-btn')?.addEventListener('click', () => {
+    playSound(clickSound);
+    setBottomNavActive('new-post-nav-btn');
+    resetPostComposer();
+    listenToPosts();
+    closeBusinessCatalogModal();
+    document.getElementById('feed-overlay')?.classList.remove('active');
+    document.getElementById('screenshot-gallery-overlay')?.classList.add('active');
+});
+
+// Antigo Botão: Catálogo & Loja Online (Em Breve para contas empresa)
 document.getElementById('gallery-btn')?.addEventListener('click', () => {
     playSound(clickSound);
     setBottomNavActive('gallery-btn');
-    resetPostComposer();
-    listenToPosts();
     document.getElementById('feed-overlay')?.classList.remove('active');
-    document.getElementById('screenshot-gallery-overlay')?.classList.add('active');
+    document.getElementById('screenshot-gallery-overlay')?.classList.remove('active');
+    openBusinessCatalogModal();
+});
+
+document.getElementById('close-business-catalog-modal')?.addEventListener('click', () => {
+    playSound(clickSound);
+    closeBusinessCatalogModal();
+});
+
+document.getElementById('business-catalog-modal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'business-catalog-modal') {
+        closeBusinessCatalogModal();
+    }
+});
+
+document.getElementById('business-catalog-notify-btn')?.addEventListener('click', () => {
+    playSound(clickSound);
+    showToast('Inscrição confirmada! ⚡', 'Você receberá prioridade no lançamento do Catálogo e Loja Online.', 'green');
+    setTimeout(() => {
+        closeBusinessCatalogModal();
+    }, 1200);
 });
 
 bindSocialOverlayCloseButtons();
