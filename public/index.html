@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E⚡%3C/text%3E%3C/svg%3E">
-    <link rel="stylesheet" href="style.css?v=1.0.86">
+    <link rel="stylesheet" href="style.css?v=1.0.88">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#fff01f">
@@ -1082,7 +1082,7 @@
                     <input type="text" id="status-caption-input" placeholder="O que está acontecendo?" title="Legenda do Status">
                 </div>
                 <div class="setting-item">
-                    <label class="setting-info"><span>Foto ou Vídeo (até 15s)</span></label>
+                    <label class="setting-info" id="status-media-label-text"><span>Foto ou Vídeo (15s a 1 min)</span></label>
                     <input type="file" id="status-file-input" accept="image/*,video/*" class="hidden-file-input" title="Selecionar mídia" aria-label="Selecionar mídia">
                     <label for="status-file-input" class="danger-btn choose-media-btn" id="choose-status-media-label">Escolher Mídia</label>
                     
@@ -1106,6 +1106,28 @@
                             <i data-lucide="x"></i>
                         </button>
                     </div>
+                </div>
+
+                <div class="setting-item story-duration-setting-item">
+                    <label class="setting-info">
+                        <i data-lucide="timer" style="color: var(--accent-color); width: 16px; height: 16px;"></i>
+                        <span>Duração do Story</span>
+                    </label>
+                    <div class="story-duration-chips" id="story-duration-chips">
+                        <button type="button" class="story-duration-chip active" data-duration="15">
+                            <i data-lucide="clock"></i> 15s
+                        </button>
+                        <button type="button" class="story-duration-chip" data-duration="30">
+                            <i data-lucide="clock"></i> 30s
+                        </button>
+                        <button type="button" class="story-duration-chip" data-duration="45">
+                            <i data-lucide="clock"></i> 45s
+                        </button>
+                        <button type="button" class="story-duration-chip" data-duration="60">
+                            <i data-lucide="clock"></i> 1 min
+                        </button>
+                    </div>
+                    <small class="story-duration-hint" id="story-duration-hint">A imagem ou vídeo será exibido por até <strong>15 segundos</strong> no story.</small>
                 </div>
                 <div class="setting-item music-setting-item">
                     <label class="setting-info"><span>Trilha Sonora (Música)</span></label>
@@ -2358,6 +2380,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.87" defer></script>
+    <script type="module" src="script.js?v=1.0.88" defer></script>
 </body>
 </html>

@@ -90,6 +90,7 @@ let wasStoryHoldAction = false;
 let currentStoryDocUnsubscribe = null;
 let storyMusicAudio = null;
 let isStoryMusicMuted = false;
+let selectedStoryDuration = 15; // Duração configurável do Story (15s, 30s, 45s, 60s)
 
 let currentChatUnsubscribe = null;
 let currentChatDocUnsubscribe = null;
@@ -2342,7 +2343,8 @@ async function displayCurrentStory() {
     }
 
     storyStartTime = Date.now();
-    storyDuration = 5000;
+    const customDurSec = Number(story.customDuration) || 15;
+    storyDuration = customDurSec * 1000;
 
     let mediaSrc = story.src;
     if ((story.hasChunks || !mediaSrc) && story.id && !story.isPreview) {
@@ -2355,7 +2357,7 @@ async function displayCurrentStory() {
     }
 
     if (story.type === 'video' && story.isTrimmed && mediaSrc && typeof mediaSrc === 'string' && !mediaSrc.includes('#t=')) {
-        mediaSrc = `${mediaSrc}#t=0,15`;
+        mediaSrc = `${mediaSrc}#t=0,${customDurSec}`;
     }
 
     // Prefetch próximo story se houver
@@ -2368,12 +2370,12 @@ async function displayCurrentStory() {
         contentDiv.innerHTML = `<video src="${mediaSrc}" autoplay playsinline style="width:100%;height:100%;object-fit:contain;"></video>`;
         const video = contentDiv.querySelector('video');
         video.onloadedmetadata = () => {
-            const rawDur = (video.duration && !isNaN(video.duration)) ? video.duration * 1000 : 5000;
-            storyDuration = story.isTrimmed ? Math.min(rawDur, 15000) : rawDur;
+            const rawDur = (video.duration && !isNaN(video.duration)) ? video.duration * 1000 : storyDuration;
+            storyDuration = story.isTrimmed ? Math.min(rawDur, customDurSec * 1000) : rawDur;
             startProgressBarAnimation();
         };
         video.ontimeupdate = () => {
-            if (story.isTrimmed && video.currentTime >= 15.0) {
+            if (story.isTrimmed && video.currentTime >= customDurSec) {
                 goToNextStory();
             }
         };
@@ -2926,7 +2928,53 @@ document.querySelectorAll('.story-emoji-btn').forEach(btn => {
 function openStatusCreator() {
     playSound(clickSound);
     document.getElementById('post-status-overlay')?.classList.add('active');
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+    }
 }
+
+// Seletor de Duração do Story (15s, 30s, 45s, 60s / 1 min)
+function initStoryDurationSelector() {
+    const chips = document.querySelectorAll('.story-duration-chip');
+    const hint = document.getElementById('story-duration-hint');
+    const mediaLabel = document.getElementById('status-media-label-text');
+
+    chips.forEach(chip => {
+        chip.addEventListener('click', () => {
+            playSound(clickSound);
+            chips.forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+
+            const dur = Number(chip.dataset.duration) || 15;
+            selectedStoryDuration = dur;
+
+            const durLabel = dur === 60 ? '1 minuto' : `${dur} segundos`;
+            if (hint) {
+                hint.innerHTML = `A imagem ou vídeo será exibido por até <strong>${durLabel}</strong> no story.`;
+            }
+            if (mediaLabel) {
+                mediaLabel.innerHTML = `<span>Foto ou Vídeo (até ${dur === 60 ? '1 min' : dur + 's'})</span>`;
+            }
+
+            // Se já tiver uma mídia de vídeo selecionada, revalida o trim para a nova duração
+            if (pendingStatusFile && pendingStatusFile.type && pendingStatusFile.type.startsWith('video')) {
+                const durVal = pendingStatusFile.originalDuration || pendingStatusFile.duration || 0;
+                if (durVal > dur) {
+                    pendingStatusFile.duration = dur;
+                    pendingStatusFile.isTrimmed = true;
+                    setPendingStatusMedia(pendingStatusFile, 'video');
+                    showToast("Vídeo Ajustado", `Vídeo ajustado para o limite de ${durLabel}.`, "blue");
+                } else {
+                    pendingStatusFile.duration = durVal;
+                    pendingStatusFile.isTrimmed = false;
+                    setPendingStatusMedia(pendingStatusFile, 'video');
+                }
+            }
+        });
+    });
+}
+
+initStoryDurationSelector();
 
 document.getElementById('open-post-status')?.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -3520,11 +3568,12 @@ function setPendingStatusMedia(file, type) {
     }
 
     // Informação de mídia síncrona inicial
+    const maxDur = selectedStoryDuration || 15;
     const rawBytes = file.size || 102400;
     const isVideoTrimmed = isVideo && (
         file.isTrimmed === true ||
-        (typeof file.originalDuration === 'number' && file.originalDuration > 15.0) ||
-        (typeof file.duration === 'number' && file.duration > 15.0)
+        (typeof file.originalDuration === 'number' && file.originalDuration > maxDur) ||
+        (typeof file.duration === 'number' && file.duration > maxDur)
     );
     const initialSizeKB = formatBytesToKB(rawBytes);
     pendingStatusMediaInfo = {
@@ -3532,11 +3581,11 @@ function setPendingStatusMedia(file, type) {
         sizeBytes: rawBytes,
         sizeFormatted: initialSizeKB,
         isTrimmed: isVideoTrimmed,
-        duration: isVideoTrimmed ? 15 : (file.duration || (isVideo ? 15 : 0))
+        duration: isVideoTrimmed ? maxDur : (file.duration || maxDur)
     };
 
     if (isVideoTrimmed && pendingStatusFileSrc && !pendingStatusFileSrc.includes('#t=')) {
-        pendingStatusFileSrc = `${pendingStatusFileSrc}#t=0,15`;
+        pendingStatusFileSrc = `${pendingStatusFileSrc}#t=0,${maxDur}`;
     }
 
     if (!pendingStatusFileSrc) {
@@ -3609,7 +3658,9 @@ function updateStatusPreviewDOM(file, isVideo, src, mediaInfo = pendingStatusMed
     if (trimmedBadge) {
         if (isVideo && mediaInfo?.isTrimmed) {
             trimmedBadge.style.display = 'inline-flex';
-            trimmedBadge.innerHTML = `<i data-lucide="scissors"></i> <span>Cortado (15s)</span>`;
+            const dur = mediaInfo?.duration || selectedStoryDuration || 15;
+            const durText = dur === 60 ? '1 min' : `${dur}s`;
+            trimmedBadge.innerHTML = `<i data-lucide="scissors"></i> <span>Cortado (${durText})</span>`;
         } else {
             trimmedBadge.style.display = 'none';
         }
@@ -3700,6 +3751,7 @@ function openStoryPreview() {
         type: isVideo ? 'video' : 'image',
         src: pendingStatusFileSrc,
         isTrimmed: !!(pendingStatusMediaInfo && pendingStatusMediaInfo.isTrimmed) || !!pendingStatusFile.isTrimmed,
+        customDuration: selectedStoryDuration || 15,
         caption: captionVal,
         views: {},
         reactions: {},
@@ -3741,11 +3793,13 @@ if (statusFileInput) {
                 const dur = Number(video.duration) || 0;
                 file.originalDuration = dur;
                 file.duration = dur;
-                if (dur > 15.0) {
-                    file.duration = 15;
+                const maxDur = selectedStoryDuration || 15;
+                const durLabel = maxDur === 60 ? '1 minuto' : `${maxDur} segundos`;
+                if (dur > maxDur) {
+                    file.duration = maxDur;
                     file.isTrimmed = true;
                     setPendingStatusMedia(file, 'video');
-                    showToast("Vídeo Cortado", "Vídeo com mais de 15s foi ajustado automaticamente para 15 segundos.", "blue");
+                    showToast("Vídeo Cortado", `Vídeo com mais de ${maxDur}s foi ajustado automaticamente para ${durLabel}.`, "blue");
                 } else {
                     file.duration = dur;
                     file.isTrimmed = false;
@@ -3825,6 +3879,7 @@ document.getElementById('publish-status-btn')?.addEventListener('click', async (
                 authorAvatar: currentProfile.avatar,
                 type: isVideo ? 'video' : 'image',
                 isTrimmed: !!(pendingStatusMediaInfo && pendingStatusMediaInfo.isTrimmed) || !!pendingStatusFile.isTrimmed,
+                customDuration: selectedStoryDuration || 15,
                 mediaSizeKB: pendingStatusMediaInfo?.sizeFormatted || formatBytesToKB(pendingStatusFile.size || 102400),
                 caption: document.getElementById('status-caption-input')?.value || '',
                 views: {},
@@ -3858,6 +3913,14 @@ document.getElementById('publish-status-btn')?.addEventListener('click', async (
                 try { composerPreviewAudio.pause(); } catch(e) {}
                 composerPreviewAudio = null;
             }
+            selectedStoryDuration = 15;
+            document.querySelectorAll('.story-duration-chip').forEach(c => {
+                c.classList.toggle('active', c.dataset.duration === '15');
+            });
+            const hint = document.getElementById('story-duration-hint');
+            if (hint) hint.innerHTML = 'A imagem ou vídeo será exibido por até <strong>15 segundos</strong> no story.';
+            const mediaLabel = document.getElementById('status-media-label-text');
+            if (mediaLabel) mediaLabel.innerHTML = '<span>Foto ou Vídeo (15s a 1 min)</span>';
         } catch (pubErr) {
             console.error('Erro ao publicar status:', pubErr);
             showToast("Erro", "Não foi possível publicar o status.", "red");

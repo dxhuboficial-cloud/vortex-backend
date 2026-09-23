@@ -9477,3 +9477,64 @@ body.theme-rgb .ephemeral-save-btn {
     border: 1px solid rgba(0, 243, 255, 0.25);
     white-space: nowrap;
 }
+
+/* ===== SELETOR DE DURAÇÃO DE STORY (15s a 1 min) ===== */
+.story-duration-setting-item {
+    margin-bottom: 12px;
+}
+
+.story-duration-chips {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+}
+
+.story-duration-chip {
+    flex: 1;
+    min-width: 65px;
+    padding: 8px 10px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: var(--text-dim, #ccc);
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.story-duration-chip i {
+    width: 13px;
+    height: 13px;
+}
+
+.story-duration-chip:hover {
+    background: rgba(0, 243, 255, 0.1);
+    border-color: rgba(0, 243, 255, 0.4);
+    color: #fff;
+    transform: translateY(-1px);
+}
+
+.story-duration-chip.active {
+    background: linear-gradient(135deg, rgba(0, 243, 255, 0.22), rgba(0, 255, 136, 0.18));
+    border-color: var(--accent-color, #00f3ff);
+    color: var(--accent-color, #00f3ff);
+    box-shadow: 0 0 12px rgba(0, 243, 255, 0.25);
+}
+
+.story-duration-hint {
+    display: block;
+    margin-top: 6px;
+    font-size: 0.72rem;
+    color: var(--text-dim, #888);
+}
+
+.story-duration-hint strong {
+    color: #fff;
+}
