@@ -9435,3 +9435,45 @@ body.theme-rgb .ephemeral-save-btn {
 .business-notify-action-btn:active {
     transform: scale(0.98);
 }
+
+/* ===== RECOMENDAÇÃO DE MÚSICA ESTILO INSTAGRAM ("PARA VOCÊ") ===== */
+.music-recommendation-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(135deg, rgba(0, 243, 255, 0.12), rgba(168, 85, 247, 0.12));
+    border: 1px solid rgba(0, 243, 255, 0.3);
+    border-radius: 12px;
+    padding: 8px 12px;
+    margin-bottom: 10px;
+    font-size: 0.74rem;
+    color: #e5e5e5;
+    line-height: 1.4;
+}
+
+.music-recommendation-banner i {
+    width: 16px;
+    height: 16px;
+    color: var(--accent-color, #00f3ff);
+    flex-shrink: 0;
+}
+
+.music-recommendation-banner strong {
+    color: #fff;
+    font-weight: 700;
+}
+
+.track-recommended-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.62rem;
+    color: var(--accent-color, #00f3ff);
+    font-weight: 700;
+    margin-left: 6px;
+    background: rgba(0, 243, 255, 0.12);
+    padding: 1px 6px;
+    border-radius: 6px;
+    border: 1px solid rgba(0, 243, 255, 0.25);
+    white-space: nowrap;
+}

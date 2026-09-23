@@ -15834,6 +15834,9 @@ export async function toggleFavoriteTrack(track) {
     if (activeMusicGenre === 'favorites') {
         const searchInput = document.getElementById('music-search-input');
         loadMusicPickerResults(searchInput?.value || '', 'favorites');
+    } else if (activeMusicGenre === 'for-you') {
+        const searchInput = document.getElementById('music-search-input');
+        loadMusicPickerResults(searchInput?.value || '', 'for-you');
     }
 }
 
@@ -15850,6 +15853,114 @@ export function updateFavoriteIconsUI() {
     });
 }
 
+// Algoritmo de recomendação inteligente de músicas estilo Instagram
+export async function getRecommendedTracks(query = '') {
+    const q = (query || '').trim().toLowerCase();
+
+    // Se o usuário digitou uma busca dentro de 'Para Você', busca diretamente
+    if (q) {
+        return searchMusicTracks(q, '');
+    }
+
+    // Se o usuário já favoritou músicas, analisa o gosto musical e recomenda
+    if (userFavoriteTracks && userFavoriteTracks.length > 0) {
+        try {
+            // 1. Artistas favoritos únicos mais recentes (até 3)
+            const favArtists = [...new Set(userFavoriteTracks.map(t => t.artist?.trim()).filter(Boolean))].slice(0, 3);
+
+            // 2. Gêneros musicais detectados nos títulos e artistas favoritados
+            const GENRE_KEYWORDS = [
+                'sertanejo', 'funk', 'pop', 'trap', 'rap', 'hip hop', 'rock', 'lofi', 'lo-fi',
+                'eletronica', 'electronic', 'pagode', 'forro', 'forró', 'gospel', 'reggae',
+                'mpb', 'dance', 'acoustic', 'anime', 'kpop', 'piseiro', 'axe', 'drill', 'r&b'
+            ];
+            const detectedGenres = [];
+            userFavoriteTracks.forEach(t => {
+                const combined = `${t.title || ''} ${t.artist || ''}`.toLowerCase();
+                GENRE_KEYWORDS.forEach(kw => {
+                    if (combined.includes(kw) && !detectedGenres.includes(kw)) {
+                        detectedGenres.push(kw);
+                    }
+                });
+            });
+
+            // 3. Montar buscas paralelas para compor o feed 'Para Você'
+            const searchPromises = [];
+
+            // Músicas dos artistas favoritos
+            favArtists.forEach(artist => {
+                const url = `https://itunes.apple.com/search?term=${encodeURIComponent(artist)}&media=music&entity=song&limit=10`;
+                searchPromises.push(
+                    fetch(url)
+                        .then(r => r.ok ? r.json() : { results: [] })
+                        .then(data => (data.results || []).filter(item => item.previewUrl))
+                        .catch(() => [])
+                );
+            });
+
+            // Se detectou algum estilo específico (ex: funk, sertanejo, trap)
+            if (detectedGenres.length > 0) {
+                const topGenre = detectedGenres[0];
+                const genreUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(topGenre + ' hits')}&media=music&entity=song&limit=10`;
+                searchPromises.push(
+                    fetch(genreUrl)
+                        .then(r => r.ok ? r.json() : { results: [] })
+                        .then(data => (data.results || []).filter(item => item.previewUrl))
+                        .catch(() => [])
+                );
+            }
+
+            // Hits recomendados gerais para dar variedade
+            const trendingUrl = `https://itunes.apple.com/search?term=brasil+hits&media=music&entity=song&limit=10`;
+            searchPromises.push(
+                fetch(trendingUrl)
+                    .then(r => r.ok ? r.json() : { results: [] })
+                    .then(data => (data.results || []).filter(item => item.previewUrl))
+                    .catch(() => [])
+            );
+
+            const resultsArrays = await Promise.all(searchPromises);
+            const rawTracks = resultsArrays.flat();
+
+            if (rawTracks.length > 0) {
+                const seenIds = new Set();
+                const recommended = [];
+
+                rawTracks.forEach(item => {
+                    const id = String(item.trackId || Math.random());
+                    if (seenIds.has(id)) return;
+                    seenIds.add(id);
+
+                    recommended.push({
+                        id,
+                        title: item.trackName || 'Música',
+                        artist: item.artistName || 'Artista',
+                        cover: item.artworkUrl100 ? item.artworkUrl100.replace('100x100bb', '300x300bb') : 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&h=300&fit=crop',
+                        audioUrl: item.previewUrl,
+                        duration: item.trackTimeMillis ? Math.round(item.trackTimeMillis / 1000) : 30,
+                        isRecommended: true
+                    });
+                });
+
+                // Prioriza faixas não favoritadas para descoberta (estilo Instagram) e embaralha levemente
+                recommended.sort((a, b) => {
+                    const aFav = isTrackFavorited(a.id) ? 1 : 0;
+                    const bFav = isTrackFavorited(b.id) ? 1 : 0;
+                    return aFav - bFav;
+                });
+
+                return recommended.slice(0, 30);
+            }
+        } catch (err) {
+            console.warn('Erro ao gerar recomendações de música personalizadas:', err);
+        }
+    }
+
+    // Fallback: se ainda não houver favoritos, recomenda os maiores sucessos
+    const defaultHits = await searchMusicTracks('', 'trending');
+    return defaultHits.map(t => ({ ...t, isRecommended: true }));
+}
+
 export async function searchMusicTracks(query = '', genre = '') {
     const q = (query || '').trim().toLowerCase();
     const g = (genre || '').trim();
@@ -15862,6 +15973,10 @@ export async function searchMusicTracks(query = '', genre = '') {
             );
         }
         return [...userFavoriteTracks];
+    }
+
+    if (g === 'for-you') {
+        return getRecommendedTracks(q);
     }
 
     const searchTerm = q || (g && g !== 'trending' ? `${g} hits` : 'top hits');
@@ -15913,12 +16028,13 @@ export function openMusicPicker(target = 'status') {
     const clearBtn = document.getElementById('music-clear-search-btn');
     if (clearBtn) clearBtn.style.display = 'none';
 
-    activeMusicGenre = 'trending';
+    // Abre direto na aba de recomendações 'Para Você' igual ao Instagram
+    activeMusicGenre = 'for-you';
     document.querySelectorAll('.music-chip').forEach(chip => {
-        chip.classList.toggle('active', chip.dataset.genre === 'trending');
+        chip.classList.toggle('active', chip.dataset.genre === 'for-you');
     });
 
-    loadMusicPickerResults('', 'trending');
+    loadMusicPickerResults('', 'for-you');
 }
 
 export function closeMusicPicker() {
@@ -16019,9 +16135,32 @@ async function loadMusicPickerResults(query = '', genre = '') {
     }
 
     if (list) {
-        list.innerHTML = tracks.map(track => {
+        // Banner de Recomendação personalizado estilo Instagram quando estiver no "Para Você"
+        let recommendationHeader = '';
+        if (genre === 'for-you' && !query) {
+            if (userFavoriteTracks && userFavoriteTracks.length > 0) {
+                const favArtists = [...new Set(userFavoriteTracks.map(t => t.artist?.trim()).filter(Boolean))];
+                const artistListStr = favArtists.slice(0, 2).join(', ') + (favArtists.length > 2 ? ' e mais' : '');
+                recommendationHeader = `
+                    <div class="music-recommendation-banner">
+                        <i data-lucide="sparkles"></i>
+                        <span>Recomendadas com base no seu gosto por <strong>${escapeHTML(artistListStr)}</strong></span>
+                    </div>
+                `;
+            } else {
+                recommendationHeader = `
+                    <div class="music-recommendation-banner">
+                        <i data-lucide="sparkles"></i>
+                        <span>Toque no <strong>coração ❤️</strong> para personalizar suas recomendações musicais!</span>
+                    </div>
+                `;
+            }
+        }
+
+        const cardsHtml = tracks.map(track => {
             const isCurrentPlaying = currentlyPlayingPreviewTrackId === track.id;
             const isFav = isTrackFavorited(track.id);
+            const isRec = genre === 'for-you' && track.isRecommended;
             return `
                 <div class="music-track-card ${isCurrentPlaying ? 'playing' : ''}" data-track-id="${escapeHTML(track.id)}">
                     <div class="track-cover-wrap">
@@ -16031,7 +16170,10 @@ async function loadMusicPickerResults(query = '', genre = '') {
                         </button>
                     </div>
                     <div class="track-info">
-                        <span class="track-title">${escapeHTML(track.title)}</span>
+                        <div style="display:flex; align-items:center; gap:4px; flex-wrap:wrap;">
+                            <span class="track-title">${escapeHTML(track.title)}</span>
+                            ${isRec ? `<span class="track-recommended-badge"><i data-lucide="sparkles" style="width:10px;height:10px;"></i> Para Você</span>` : ''}
+                        </div>
                         <span class="track-artist">${escapeHTML(track.artist)}</span>
                         <span class="track-meta-tag"><i data-lucide="music-2" style="width:11px;height:11px;"></i> ${formatMusicDuration(track.duration)}</span>
                     </div>
@@ -16046,6 +16188,8 @@ async function loadMusicPickerResults(query = '', genre = '') {
                 </div>
             `;
         }).join('');
+
+        list.innerHTML = recommendationHeader + cardsHtml;
 
         if (window.lucide) lucide.createIcons();
 
