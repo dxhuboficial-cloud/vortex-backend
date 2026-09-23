@@ -5121,14 +5121,133 @@ input:checked + .slider:before { transform: translateX(22px); }
 /* Card de Música Selecionada dentro do Compositor (Post / Status) */
 .composer-selected-music-card {
     display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 14px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 12px 14px;
     background: rgba(0, 243, 255, 0.08);
     border: 1px solid rgba(0, 243, 255, 0.35);
-    border-radius: 12px;
+    border-radius: 14px;
     margin-top: 10px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.composer-music-main-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+}
+
+/* Seletor de Trecho da Música */
+.music-snippet-trimmer {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 12px;
+    background: rgba(0, 0, 0, 0.35);
+    border-radius: 10px;
+    border: 1px dashed rgba(0, 243, 255, 0.28);
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.snippet-trimmer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.snippet-trimmer-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.85);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.snippet-trimmer-title i {
+    width: 14px;
+    height: 14px;
+    color: var(--accent-color, #00f3ff);
+}
+
+.snippet-time-badge {
+    font-size: 0.76rem;
+    font-weight: 800;
+    font-family: monospace, monospace;
+    background: linear-gradient(135deg, rgba(0, 243, 255, 0.2), rgba(0, 243, 255, 0.08));
+    color: #00f3ff;
+    border: 1px solid rgba(0, 243, 255, 0.4);
+    padding: 2px 8px;
+    border-radius: 6px;
+    letter-spacing: 0.5px;
+}
+
+.snippet-slider-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.snippet-time-label {
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.6);
+    font-family: monospace, monospace;
+    min-width: 32px;
+    text-align: center;
+}
+
+.music-snippet-range {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.15);
+    outline: none;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.music-snippet-range:hover {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+.music-snippet-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #00f3ff;
+    box-shadow: 0 0 10px rgba(0, 243, 255, 0.8), 0 0 2px #fff;
+    cursor: pointer;
+    border: 2px solid #fff;
+    transition: transform 0.1s ease;
+}
+
+.music-snippet-range::-webkit-slider-thumb:hover,
+.music-snippet-range::-webkit-slider-thumb:active {
+    transform: scale(1.2);
+}
+
+.music-snippet-range::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #00f3ff;
+    box-shadow: 0 0 10px rgba(0, 243, 255, 0.8), 0 0 2px #fff;
+    cursor: pointer;
+    border: 2px solid #fff;
+    transition: transform 0.1s ease;
 }
 
 .music-card-cover {

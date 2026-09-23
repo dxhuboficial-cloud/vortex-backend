@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E⚡%3C/text%3E%3C/svg%3E">
-    <link rel="stylesheet" href="style.css?v=1.0.88">
+    <link rel="stylesheet" href="style.css?v=1.0.89">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#fff01f">
@@ -1135,18 +1135,31 @@
                         <i data-lucide="music"></i> <span>Adicionar Música</span>
                     </button>
                     <div id="status-selected-music-card" class="composer-selected-music-card" style="display: none;">
-                        <img id="status-selected-music-cover" src="" alt="Capa" class="music-card-cover">
-                        <div class="music-card-details">
-                            <div id="status-selected-music-title" class="music-card-title">Título</div>
-                            <div id="status-selected-music-artist" class="music-card-artist">Artista</div>
+                        <div class="composer-music-main-row">
+                            <img id="status-selected-music-cover" src="" alt="Capa" class="music-card-cover">
+                            <div class="music-card-details">
+                                <div id="status-selected-music-title" class="music-card-title">Título</div>
+                                <div id="status-selected-music-artist" class="music-card-artist">Artista</div>
+                            </div>
+                            <div class="music-card-actions">
+                                <button type="button" id="status-preview-music-btn" class="music-preview-toggle-btn" title="Ouvir prévia do trecho">
+                                    <i data-lucide="play" id="status-preview-music-icon"></i>
+                                </button>
+                                <button type="button" id="status-remove-music-btn" class="music-remove-btn" title="Remover música">
+                                    <i data-lucide="x"></i>
+                                </button>
+                            </div>
                         </div>
-                        <div class="music-card-actions">
-                            <button type="button" id="status-preview-music-btn" class="music-preview-toggle-btn" title="Ouvir prévia">
-                                <i data-lucide="play" id="status-preview-music-icon"></i>
-                            </button>
-                            <button type="button" id="status-remove-music-btn" class="music-remove-btn" title="Remover música">
-                                <i data-lucide="x"></i>
-                            </button>
+                        <div class="music-snippet-trimmer" id="status-music-snippet-trimmer">
+                            <div class="snippet-trimmer-header">
+                                <span class="snippet-trimmer-title"><i data-lucide="scissors"></i> Trecho da Música</span>
+                                <span class="snippet-time-badge" id="status-snippet-time-badge">0:00 - 0:15 (15s)</span>
+                            </div>
+                            <div class="snippet-slider-container">
+                                <span class="snippet-time-label" id="status-snippet-start-label">0:00</span>
+                                <input type="range" id="status-music-snippet-range" class="music-snippet-range" min="0" max="15" value="0" step="1" aria-label="Ajustar início do trecho da música">
+                                <span class="snippet-time-label" id="status-snippet-end-label">0:30</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1854,18 +1867,31 @@
                         <i data-lucide="music"></i> <span>Adicionar Música ao Post</span>
                     </button>
                     <div id="post-selected-music-card" class="composer-selected-music-card" style="display: none;">
-                        <img id="post-selected-music-cover" src="" alt="Capa" class="music-card-cover">
-                        <div class="music-card-details">
-                            <div id="post-selected-music-title" class="music-card-title">Título</div>
-                            <div id="post-selected-music-artist" class="music-card-artist">Artista</div>
+                        <div class="composer-music-main-row">
+                            <img id="post-selected-music-cover" src="" alt="Capa" class="music-card-cover">
+                            <div class="music-card-details">
+                                <div id="post-selected-music-title" class="music-card-title">Título</div>
+                                <div id="post-selected-music-artist" class="music-card-artist">Artista</div>
+                            </div>
+                            <div class="music-card-actions">
+                                <button type="button" id="post-preview-music-btn" class="music-preview-toggle-btn" title="Ouvir prévia do trecho">
+                                    <i data-lucide="play" id="post-preview-music-icon"></i>
+                                </button>
+                                <button type="button" id="post-remove-music-btn" class="music-remove-btn" title="Remover música">
+                                    <i data-lucide="x"></i>
+                                </button>
+                            </div>
                         </div>
-                        <div class="music-card-actions">
-                            <button type="button" id="post-preview-music-btn" class="music-preview-toggle-btn" title="Ouvir prévia">
-                                <i data-lucide="play" id="post-preview-music-icon"></i>
-                            </button>
-                            <button type="button" id="post-remove-music-btn" class="music-remove-btn" title="Remover música">
-                                <i data-lucide="x"></i>
-                            </button>
+                        <div class="music-snippet-trimmer" id="post-music-snippet-trimmer">
+                            <div class="snippet-trimmer-header">
+                                <span class="snippet-trimmer-title"><i data-lucide="scissors"></i> Trecho da Música</span>
+                                <span class="snippet-time-badge" id="post-snippet-time-badge">0:00 - 0:15 (15s)</span>
+                            </div>
+                            <div class="snippet-slider-container">
+                                <span class="snippet-time-label" id="post-snippet-start-label">0:00</span>
+                                <input type="range" id="post-music-snippet-range" class="music-snippet-range" min="0" max="15" value="0" step="1" aria-label="Ajustar início do trecho da música">
+                                <span class="snippet-time-label" id="post-snippet-end-label">0:30</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2380,6 +2406,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.88" defer></script>
+    <script type="module" src="script.js?v=1.0.89" defer></script>
 </body>
 </html>
