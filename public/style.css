@@ -716,7 +716,7 @@ header h1 span {
 .chat-list {
     flex: 1;
     min-height: 0;
-    padding: 10px 14px max(90px, calc(80px + env(safe-area-inset-bottom, 20px)));
+    padding: 10px 14px max(165px, calc(150px + env(safe-area-inset-bottom, 20px)));
     overflow-y: auto;
     position: relative;
 }
@@ -1090,7 +1090,7 @@ header h1 span {
 /* Botão FAB */
 .fab {
     position: absolute;
-    bottom: max(24px, calc(16px + env(safe-area-inset-bottom, 20px)));
+    bottom: max(98px, calc(84px + env(safe-area-inset-bottom, 20px)));
     right: 20px;
     width: 54px;
     height: 54px;
