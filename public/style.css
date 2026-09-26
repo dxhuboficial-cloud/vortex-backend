@@ -9655,3 +9655,139 @@ body.theme-rgb .ephemeral-save-btn {
     color: var(--accent-color, #00f3ff);
     box-shadow: 0 0 12px rgba(0, 243, 255, 0.25);
 }
+
+/* ===== CARREGAR MÚSICA COMPLETA DO APARELHO (MP3/M4A/WAV) ===== */
+.music-upload-device-section {
+    margin: 8px 0 10px 0;
+}
+
+.music-upload-device-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 14px;
+    background: linear-gradient(135deg, rgba(0, 243, 255, 0.12), rgba(168, 85, 247, 0.12));
+    border: 1.5px dashed rgba(0, 243, 255, 0.5);
+    border-radius: 14px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    user-select: none;
+    text-decoration: none;
+}
+
+.music-upload-device-card:hover {
+    background: linear-gradient(135deg, rgba(0, 243, 255, 0.2), rgba(168, 85, 247, 0.2));
+    border-color: var(--accent-color, #00f3ff);
+    box-shadow: 0 4px 20px rgba(0, 243, 255, 0.25);
+    transform: translateY(-1px);
+}
+
+.music-upload-icon-wrap {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: rgba(0, 243, 255, 0.18);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent-color, #00f3ff);
+    flex-shrink: 0;
+    box-shadow: 0 0 12px rgba(0, 243, 255, 0.25);
+}
+
+.music-upload-icon-wrap svg,
+.music-upload-icon-wrap i {
+    width: 20px;
+    height: 20px;
+}
+
+.music-upload-text-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+}
+
+.music-upload-title {
+    font-size: 0.86rem;
+    font-weight: 700;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.music-upload-sub {
+    font-size: 0.72rem;
+    color: var(--text-dim, #aaa);
+    line-height: 1.25;
+}
+
+.music-upload-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 13px;
+    border-radius: 20px;
+    background: var(--accent-color, #00f3ff);
+    color: #0b0e14;
+    font-size: 0.76rem;
+    font-weight: 800;
+    flex-shrink: 0;
+    box-shadow: 0 0 10px rgba(0, 243, 255, 0.35);
+    transition: all 0.2s ease;
+}
+
+.music-upload-action-btn svg,
+.music-upload-action-btn i {
+    width: 13px;
+    height: 13px;
+}
+
+.music-upload-device-card:hover .music-upload-action-btn {
+    background: #fff;
+    transform: scale(1.04);
+}
+
+.music-modal-divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    margin: 4px 0 2px 0;
+    color: rgba(255, 255, 255, 0.35);
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.music-modal-divider::before,
+.music-modal-divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.music-modal-divider span {
+    padding: 0 10px;
+}
+
+/* Banner de Aviso de Trecho / Dica de Prévia */
+.snippet-hint-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: rgba(255, 170, 0, 0.1);
+    border: 1px solid rgba(255, 170, 0, 0.25);
+    border-radius: 10px;
+    font-size: 0.74rem;
+    color: #ffcc66;
+    line-height: 1.35;
+    margin-top: 8px;
+}
+
+.snippet-hint-banner strong {
+    color: #ffa500;
+}

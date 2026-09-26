@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E⚡%3C/text%3E%3C/svg%3E">
-    <link rel="stylesheet" href="style.css?v=1.0.95">
+    <link rel="stylesheet" href="style.css?v=1.0.96">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#fff01f">
@@ -871,6 +871,29 @@
                     </div>
                 </div>
 
+                <!-- Opção de Carregar Música do Aparelho (MP3 Completo) -->
+                <div class="music-upload-device-section">
+                    <label for="music-file-upload-input" class="music-upload-device-card" role="button" tabindex="0">
+                        <div class="music-upload-icon-wrap">
+                            <i data-lucide="folder-audio"></i>
+                        </div>
+                        <div class="music-upload-text-wrap">
+                            <strong class="music-upload-title">Carregar Música do Aparelho (MP3 Completo)</strong>
+                            <span class="music-upload-sub">Toque qualquer música inteira (15s, 30s, 45s ou 1 min contínuo)</span>
+                        </div>
+                        <div class="music-upload-action-btn">
+                            <i data-lucide="upload-cloud"></i>
+                            <span>Escolher MP3</span>
+                        </div>
+                    </label>
+                    <input type="file" id="music-file-upload-input" accept="audio/*,.mp3,.m4a,.wav,.ogg,.aac" style="display: none;">
+                </div>
+
+                <!-- Divisor Visual -->
+                <div class="music-modal-divider">
+                    <span>ou busque online (catálogo)</span>
+                </div>
+
                 <!-- Campo de Busca com Ícone -->
                 <div class="music-search-box">
                     <i data-lucide="search" class="music-search-icon"></i>
@@ -1159,6 +1182,7 @@
                                 <input type="range" id="status-music-snippet-range" class="music-snippet-range" min="0" max="15" value="0" step="1" aria-label="Ajustar início do trecho da música">
                                 <span class="snippet-time-label" id="status-snippet-end-label">0:30</span>
                             </div>
+                            <div id="status-snippet-hint" class="snippet-hint-banner" style="display: none;"></div>
                         </div>
                     </div>
                 </div>
@@ -1891,6 +1915,7 @@
                                 <input type="range" id="post-music-snippet-range" class="music-snippet-range" min="0" max="15" value="0" step="1" aria-label="Ajustar início do trecho da música">
                                 <span class="snippet-time-label" id="post-snippet-end-label">0:30</span>
                             </div>
+                            <div id="post-snippet-hint" class="snippet-hint-banner" style="display: none;"></div>
                         </div>
                     </div>
                 </div>
@@ -2405,6 +2430,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.95" defer></script>
+    <script type="module" src="script.js?v=1.0.96" defer></script>
 </body>
 </html>

@@ -2395,37 +2395,55 @@ async function displayCurrentStory() {
         storyMusicAudio = null;
     }
 
-    if (story.music && story.music.audioUrl) {
+    if (story.music && (story.music.audioUrl || story.music.hasAudioChunks)) {
         if (musicBadge) musicBadge.style.display = 'flex';
         if (musicTitle) musicTitle.innerText = story.music.title || 'Música';
         if (musicArtist) musicArtist.innerText = story.music.artist ? `• ${story.music.artist}` : '';
 
         try {
-            storyMusicAudio = new Audio(story.music.audioUrl);
-            storyMusicAudio.muted = isStoryMusicMuted;
-            storyMusicAudio.loop = true; // Loop contínuo nativo para tocar todo o tempo do story (15s, 30s, 45s ou 1 min) sem cortar aos 30s
+            let finalAudioUrl = story.music.audioUrl;
+            if (story.music.hasAudioChunks && story.id && !story.isPreview) {
+                const cachedAudio = mediaChunkCache.get(`story_audio_${story.id}`);
+                if (cachedAudio) {
+                    finalAudioUrl = cachedAudio;
+                } else {
+                    const loaded = await loadMediaWithChunks('story_audio', story.id);
+                    if (loaded) {
+                        finalAudioUrl = loaded;
+                        story.music.audioUrl = loaded;
+                    }
+                }
+            }
 
-            const start = Number(story.music.snippetStart) || 0;
+            if (!finalAudioUrl) return;
+
+            storyMusicAudio = new Audio(finalAudioUrl);
+            storyMusicAudio.muted = isStoryMusicMuted;
+            storyMusicAudio.loop = true; // Loop contínuo nativo para tocar todo o tempo do story sem cortar aos 30s
+
+            const start = story.music.hasAudioChunks ? 0 : (Number(story.music.snippetStart) || 0);
             const dur = Number(story.music.snippetDuration) || Number(story.customDuration) || 15;
 
+            let hasInitialSeekDone = false;
             const applyStartTime = () => {
                 try {
-                    if (start > 0 && Math.abs(storyMusicAudio.currentTime - start) > 0.5) {
+                    if (!hasInitialSeekDone && start > 0 && Math.abs(storyMusicAudio.currentTime - start) > 0.5) {
                         storyMusicAudio.currentTime = start;
+                        hasInitialSeekDone = true;
                     }
                 } catch (e) {}
             };
             storyMusicAudio.addEventListener('loadedmetadata', applyStartTime, { once: true });
             storyMusicAudio.addEventListener('canplay', applyStartTime, { once: true });
-            try { storyMusicAudio.currentTime = start; } catch(e) {}
+            if (start > 0) {
+                try { storyMusicAudio.currentTime = start; hasInitialSeekDone = true; } catch(e) {}
+            }
 
             storyMusicAudio.ontimeupdate = () => {
                 if (storyMusicAudio) {
                     const cur = storyMusicAudio.currentTime;
                     // Se o arquivo for maior que a duração solicitada e passar do trecho, reinicia
                     if (dur < (storyMusicAudio.duration || 9999) && cur >= start + dur) {
-                        storyMusicAudio.currentTime = start;
-                    } else if (cur < start) {
                         storyMusicAudio.currentTime = start;
                     }
                 }
@@ -3912,6 +3930,21 @@ document.getElementById('publish-status-btn')?.addEventListener('click', async (
     const saveStoryWithSrc = async (mediaSrc) => {
         try {
             const isVideo = pendingStatusFile.type ? pendingStatusFile.type.startsWith('video') : false;
+
+            let localAudioPayload = null;
+            if (pendingStatusMusic?.isLocal && pendingStatusMusic.file) {
+                try {
+                    showToast("Processando Áudio", "Cortando trecho da música...", "blue");
+                    localAudioPayload = await extractAudioSnippetAsWav(
+                        pendingStatusMusic.file,
+                        Number(pendingStatusMusic.snippetStart) || 0,
+                        Number(selectedStoryDuration) || 15
+                    );
+                } catch (audioErr) {
+                    console.warn("Erro ao extrair snippet de áudio local:", audioErr);
+                }
+            }
+
             const storyData = {
                 authorUid: currentUser.uid,
                 authorName: currentProfile.name,
@@ -3931,15 +3964,22 @@ document.getElementById('publish-status-btn')?.addEventListener('click', async (
                     title: pendingStatusMusic.title,
                     artist: pendingStatusMusic.artist,
                     cover: pendingStatusMusic.cover,
-                    audioUrl: pendingStatusMusic.audioUrl,
-                    duration: pendingStatusMusic.duration || 30,
-                    snippetStart: pendingStatusMusic.snippetStart || 0,
-                    snippetDuration: pendingStatusMusic.snippetDuration || selectedStoryDuration || 15
+                    audioUrl: localAudioPayload ? '' : (pendingStatusMusic.audioUrl || ''),
+                    hasAudioChunks: !!localAudioPayload,
+                    duration: pendingStatusMusic.snippetDuration || selectedStoryDuration || 15,
+                    snippetStart: localAudioPayload ? 0 : (pendingStatusMusic.snippetStart || 0),
+                    snippetDuration: pendingStatusMusic.snippetDuration || selectedStoryDuration || 15,
+                    isLocal: !!pendingStatusMusic.isLocal
                 } : null,
                 createdAt: Date.now()
             };
 
-            await saveMediaWithChunks('stories', storyData, 'src', mediaSrc);
+            const storyDocRef = await saveMediaWithChunks('stories', storyData, 'src', mediaSrc);
+
+            if (localAudioPayload && storyDocRef && storyDocRef.id) {
+                await saveMediaWithChunks('story_audio', { storyId: storyDocRef.id }, 'audioData', localAudioPayload, storyDocRef.id);
+                mediaChunkCache.set(`story_audio_${storyDocRef.id}`, localAudioPayload);
+            }
 
             showToast("Status Publicado", "Seu status de 24 horas está visível para seus contatos aceitos!", "green");
             document.getElementById('post-status-overlay')?.classList.remove('active');
@@ -14378,6 +14418,19 @@ document.getElementById('publish-post-btn')?.addEventListener('click', async () 
 
     const savePostToFirestore = async (mediaPayload) => {
         try {
+            let localPostAudioPayload = null;
+            if (pendingPostMusic?.isLocal && pendingPostMusic.file) {
+                try {
+                    localPostAudioPayload = await extractAudioSnippetAsWav(
+                        pendingPostMusic.file,
+                        Number(pendingPostMusic.snippetStart) || 0,
+                        Number(pendingPostMusic.snippetDuration) || 15
+                    );
+                } catch (audioErr) {
+                    console.warn("Erro ao extrair áudio de post:", audioErr);
+                }
+            }
+
             const postDoc = {
                 authorUid: currentUser.uid,
                 authorName: currentProfile.name,
@@ -14399,14 +14452,21 @@ document.getElementById('publish-post-btn')?.addEventListener('click', async () 
                     title: pendingPostMusic.title,
                     artist: pendingPostMusic.artist,
                     cover: pendingPostMusic.cover,
-                    audioUrl: pendingPostMusic.audioUrl,
-                    duration: pendingPostMusic.duration || 30,
-                    snippetStart: pendingPostMusic.snippetStart || 0,
-                    snippetDuration: pendingPostMusic.snippetDuration || 15
+                    audioUrl: localPostAudioPayload ? '' : (pendingPostMusic.audioUrl || ''),
+                    hasAudioChunks: !!localPostAudioPayload,
+                    duration: pendingPostMusic.snippetDuration || 15,
+                    snippetStart: localPostAudioPayload ? 0 : (pendingPostMusic.snippetStart || 0),
+                    snippetDuration: pendingPostMusic.snippetDuration || 15,
+                    isLocal: !!pendingPostMusic.isLocal
                 } : null
             };
 
-            await saveMediaWithChunks('posts', postDoc, 'mediaData', mediaPayload);
+            const postDocRef = await saveMediaWithChunks('posts', postDoc, 'mediaData', mediaPayload);
+
+            if (localPostAudioPayload && postDocRef && postDocRef.id) {
+                await saveMediaWithChunks('post_audio', { postId: postDocRef.id }, 'audioData', localPostAudioPayload, postDocRef.id);
+                mediaChunkCache.set(`post_audio_${postDocRef.id}`, localPostAudioPayload);
+            }
 
             showToast('Post publicado', 'Sua foto ou vídeo foi enviado com sucesso.', 'green');
             resetPostComposer();
@@ -16071,7 +16131,10 @@ export async function getRecommendedTracks(query = '') {
                         artist: item.artistName || 'Artista',
                         cover: item.artworkUrl100 ? item.artworkUrl100.replace('100x100bb', '300x300bb') : 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&h=300&fit=crop',
                         audioUrl: item.previewUrl,
-                        duration: item.trackTimeMillis ? Math.round(item.trackTimeMillis / 1000) : 30,
+                        duration: 30, // Preview oficial do catálogo da Apple é de 30s
+                        actualDuration: 30,
+                        fullDuration: item.trackTimeMillis ? Math.round(item.trackTimeMillis / 1000) : 30,
+                        isApplePreview: true,
                         isRecommended: true
                     });
                 });
@@ -16129,7 +16192,10 @@ export async function searchMusicTracks(query = '', genre = '') {
                         artist: item.artistName || 'Artista',
                         cover: item.artworkUrl100 ? item.artworkUrl100.replace('100x100bb', '300x300bb') : 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&h=300&fit=crop',
                         audioUrl: item.previewUrl,
-                        duration: item.trackTimeMillis ? Math.round(item.trackTimeMillis / 1000) : 30
+                        duration: 30, // Preview oficial do catálogo da Apple é de 30s
+                        actualDuration: 30,
+                        fullDuration: item.trackTimeMillis ? Math.round(item.trackTimeMillis / 1000) : 30,
+                        isApplePreview: true
                     }));
                 if (tracks.length > 0) return tracks;
             }
@@ -16309,7 +16375,7 @@ async function loadMusicPickerResults(query = '', genre = '') {
                             ${isRec ? `<span class="track-recommended-badge"><i data-lucide="sparkles" style="width:10px;height:10px;"></i> Para Você</span>` : ''}
                         </div>
                         <span class="track-artist">${escapeHTML(track.artist)}</span>
-                        <span class="track-meta-tag"><i data-lucide="music-2" style="width:11px;height:11px;"></i> ${formatMusicDuration(track.duration)}</span>
+                        <span class="track-meta-tag"><i data-lucide="music-2" style="width:11px;height:11px;"></i> ${escapeHTML(track.isLocal ? `Música Completa (${formatMusicDuration(track.actualDuration || track.duration)})` : (track.isApplePreview ? `Prévia 30s • Original ${formatMusicDuration(track.fullDuration || track.duration)}` : formatMusicDuration(track.duration)))}</span>
                     </div>
                     <div class="track-actions-wrap">
                         <button type="button" class="track-fav-btn ${isFav ? 'favorited' : ''}" data-action="toggle-fav-track" data-track-id="${escapeHTML(track.id)}" title="${isFav ? 'Remover dos favoritos' : 'Salvar nos favoritos'}" aria-label="Favoritar">
@@ -16354,6 +16420,119 @@ async function loadMusicPickerResults(query = '', genre = '') {
             });
         });
     }
+}
+
+export function audioBufferToWavBlob(audioBuffer) {
+    const numChannels = audioBuffer.numberOfChannels;
+    const sampleRate = audioBuffer.sampleRate;
+    const format = 1; // PCM
+    const bitDepth = 16;
+    const bytesPerSample = bitDepth / 8;
+    const blockAlign = numChannels * bytesPerSample;
+
+    const channelData = [];
+    for (let i = 0; i < numChannels; i++) {
+        channelData.push(audioBuffer.getChannelData(i));
+    }
+
+    const numSamples = audioBuffer.length;
+    const dataSize = numSamples * blockAlign;
+    const headerSize = 44;
+    const totalSize = headerSize + dataSize;
+
+    const buffer = new ArrayBuffer(totalSize);
+    const view = new DataView(buffer);
+
+    function writeString(offset, string) {
+        for (let i = 0; i < string.length; i++) {
+            view.setUint8(offset + i, string.charCodeAt(i));
+        }
+    }
+
+    // RIFF chunk descriptor
+    writeString(0, 'RIFF');
+    view.setUint32(4, 36 + dataSize, true);
+    writeString(8, 'WAVE');
+
+    // fmt sub-chunk
+    writeString(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, format, true);
+    view.setUint16(22, numChannels, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * blockAlign, true);
+    view.setUint16(32, blockAlign, true);
+    view.setUint16(34, bitDepth, true);
+
+    // data sub-chunk
+    writeString(36, 'data');
+    view.setUint32(40, dataSize, true);
+
+    // Write PCM samples
+    let offset = 44;
+    for (let i = 0; i < numSamples; i++) {
+        for (let ch = 0; ch < numChannels; ch++) {
+            let sample = channelData[ch][i];
+            sample = Math.max(-1, Math.min(1, sample));
+            const intSample = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
+            view.setInt16(offset, intSample, true);
+            offset += 2;
+        }
+    }
+
+    return new Blob([view], { type: 'audio/wav' });
+}
+
+export async function extractAudioSnippetAsWav(fileOrBlob, startSec = 0, durationSec = 15) {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    const OfflineAudioContextClass = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+    if (!AudioContextClass || !OfflineAudioContextClass) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(fileOrBlob);
+        });
+    }
+
+    const arrayBuffer = await fileOrBlob.arrayBuffer();
+    const audioCtx = new AudioContextClass();
+    let audioBuffer;
+    try {
+        audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+    } finally {
+        try { audioCtx.close(); } catch(e) {}
+    }
+
+    const origSampleRate = audioBuffer.sampleRate;
+    const totalFrames = audioBuffer.length;
+    const safeStartSec = Math.max(0, Number(startSec) || 0);
+    const safeDurSec = Math.max(1, Number(durationSec) || 15);
+
+    const startFrame = Math.max(0, Math.floor(safeStartSec * origSampleRate));
+    const maxFrames = Math.floor(safeDurSec * origSampleRate);
+    const endFrame = Math.min(totalFrames, startFrame + maxFrames);
+    const sliceFrames = Math.max(1, endFrame - startFrame);
+
+    const targetSampleRate = 22050;
+    const targetFrames = Math.max(1, Math.round(sliceFrames * (targetSampleRate / origSampleRate)));
+    const targetChannels = 1;
+
+    const offlineCtx = new OfflineAudioContextClass(targetChannels, targetFrames, targetSampleRate);
+    const sourceNode = offlineCtx.createBufferSource();
+    sourceNode.buffer = audioBuffer;
+    sourceNode.connect(offlineCtx.destination);
+    sourceNode.start(0, safeStartSec, safeDurSec);
+
+    const renderedBuffer = await offlineCtx.startRendering();
+    const wavBlob = audioBufferToWavBlob(renderedBuffer);
+
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(wavBlob);
+    });
 }
 
 export function formatSnippetSeconds(sec) {
@@ -16404,19 +16583,18 @@ export function updateMusicSnippetUI(target) {
     track.snippetDuration = snippetDuration;
 
     let maxStart = 0;
-    if (target === 'status') {
-        if (totalDuration > snippetDuration) {
-            maxStart = totalDuration - snippetDuration;
-        } else {
-            maxStart = Math.max(0, totalDuration - 5);
-        }
+    if (totalDuration > snippetDuration) {
+        maxStart = totalDuration - snippetDuration;
     } else {
-        maxStart = Math.max(0, totalDuration - snippetDuration);
+        // Se a mídia de áudio for menor ou igual à duração selecionada (ex: prévia 30s para story de 30s/45s/60s),
+        // travamos o início em 0:00 para tocar a música inteira disponível sem cortar após alguns segundos!
+        maxStart = 0;
     }
 
     rangeEl.min = 0;
     rangeEl.max = maxStart;
     rangeEl.step = 1;
+    rangeEl.disabled = maxStart <= 0;
 
     let currentStart = Number(track.snippetStart) || 0;
     if (currentStart > maxStart) {
@@ -16427,9 +16605,37 @@ export function updateMusicSnippetUI(target) {
 
     const durLabel = snippetDuration === 60 ? '1 min' : `${snippetDuration}s`;
     const endSec = currentStart + snippetDuration;
-    badgeEl.innerText = `${formatSnippetSeconds(currentStart)} - ${formatSnippetSeconds(endSec)} (${durLabel})`;
+
+    if (!track.isLocal && totalDuration <= 35 && snippetDuration > totalDuration) {
+        badgeEl.innerText = `${formatSnippetSeconds(currentStart)} - ${formatSnippetSeconds(totalDuration)} (Prévia 30s repete até ${durLabel})`;
+    } else {
+        badgeEl.innerText = `${formatSnippetSeconds(currentStart)} - ${formatSnippetSeconds(endSec)} (${durLabel})`;
+    }
+
     if (startLbl) startLbl.innerText = formatSnippetSeconds(currentStart);
     if (endLbl) endLbl.innerText = formatSnippetSeconds(Math.max(totalDuration, endSec));
+
+    // Exibir ou ocultar dica de prévia online vs música completa
+    const hintEl = document.getElementById(`${target}-snippet-hint`);
+    if (hintEl) {
+        if (!track.isLocal && totalDuration <= 35 && snippetDuration > totalDuration) {
+            hintEl.style.display = 'flex';
+            hintEl.style.background = 'rgba(255, 170, 0, 0.1)';
+            hintEl.style.borderColor = 'rgba(255, 170, 0, 0.25)';
+            hintEl.style.color = '#ffcc66';
+            hintEl.innerHTML = `<i data-lucide="info" style="width:14px;height:14px;flex-shrink:0;"></i><span><strong>Prévia oficial de 30s da Apple</strong>: Este áudio online tem 30s e irá repetir para cobrir os ${durLabel}. Dica: Para tocar 1 min contínuo da música original, carregue o MP3 do seu aparelho!</span>`;
+            if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+        } else if (track.isLocal) {
+            hintEl.style.display = 'flex';
+            hintEl.style.background = 'rgba(0, 243, 255, 0.1)';
+            hintEl.style.borderColor = 'rgba(0, 243, 255, 0.3)';
+            hintEl.style.color = '#00f3ff';
+            hintEl.innerHTML = `<i data-lucide="check-circle" style="width:14px;height:14px;flex-shrink:0;"></i><span><strong>Música Completa do Aparelho</strong>: Tocará continuamente por ${durLabel} do trecho selecionado!</span>`;
+            if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+        } else {
+            hintEl.style.display = 'none';
+        }
+    }
 }
 
 export function initMusicSnippetListeners() {
@@ -16587,24 +16793,26 @@ function toggleComposerMusicPreview(target) {
         const start = Number(track.snippetStart) || 0;
         const dur = Number(track.snippetDuration) || (target === 'status' ? (Number(selectedStoryDuration) || 15) : 15);
 
+        let hasInitialSeek = false;
         const applySeek = () => {
             try {
-                if (start > 0 && Math.abs(audio.currentTime - start) > 0.5) {
+                if (!hasInitialSeek && start > 0 && Math.abs(audio.currentTime - start) > 0.5) {
                     audio.currentTime = start;
+                    hasInitialSeek = true;
                 }
             } catch (e) {}
         };
         audio.addEventListener('loadedmetadata', applySeek, { once: true });
         audio.addEventListener('canplay', applySeek, { once: true });
-        try { audio.currentTime = start; } catch(e) {}
+        if (start > 0) {
+            try { audio.currentTime = start; hasInitialSeek = true; } catch(e) {}
+        }
 
         // Se dur for menor que a duração do arquivo, reinicia ao final do trecho
         audio.ontimeupdate = () => {
             if (composerPreviewAudio === audio) {
                 const cur = audio.currentTime;
                 if (dur < (audio.duration || 9999) && cur >= start + dur) {
-                    audio.currentTime = start;
-                } else if (cur < start) {
                     audio.currentTime = start;
                 }
             }
@@ -16677,32 +16885,41 @@ export async function toggleFeedPostMusic(postId, audioUrl, snippetStart = 0, sn
         storyMusicAudio = null;
     }
 
-    if (!audioUrl) {
+    let finalAudio = audioUrl;
+    if (!finalAudio && postId) {
+        finalAudio = mediaChunkCache.get(`post_audio_${postId}`) || await loadMediaWithChunks('post_audio', postId);
+    }
+
+    if (!finalAudio) {
         showToast('Áudio indisponível', 'Não foi possível encontrar a faixa desta postagem.', 'red');
         return;
     }
 
     try {
-        const audio = new Audio(audioUrl);
+        const audio = new Audio(finalAudio);
         const start = Number(snippetStart) || 0;
         const dur = Number(snippetDuration) || 0;
 
+        let hasInitialSeek = false;
         const applyStartTime = () => {
             try {
-                if (start > 0 && Math.abs(audio.currentTime - start) > 0.5) {
+                if (!hasInitialSeek && start > 0 && Math.abs(audio.currentTime - start) > 0.5) {
                     audio.currentTime = start;
+                    hasInitialSeek = true;
                 }
             } catch (e) {}
         };
         audio.addEventListener('loadedmetadata', applyStartTime, { once: true });
         audio.addEventListener('canplay', applyStartTime, { once: true });
-        try { audio.currentTime = start; } catch(e) {}
+        if (start > 0) {
+            try { audio.currentTime = start; hasInitialSeek = true; } catch(e) {}
+        }
 
         if (dur > 0) {
             audio.ontimeupdate = () => {
                 if (currentFeedMusicAudio === audio) {
                     const cur = audio.currentTime;
-                    if (cur >= start + dur || cur < start) {
+                    if (dur < (audio.duration || 9999) && cur >= start + dur) {
                         audio.currentTime = start;
                     }
                 }
@@ -16771,6 +16988,64 @@ function initMusicFeatureListeners() {
         playSound(clickSound);
         closeMusicPicker();
     });
+
+    const musicFileInput = document.getElementById('music-file-upload-input');
+    if (musicFileInput) {
+        musicFileInput.addEventListener('change', async (e) => {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+
+            // Reset do input para permitir selecionar novamente
+            e.target.value = '';
+
+            try {
+                let rawName = file.name.replace(/\.[^/.]+$/, "").trim();
+                let artist = 'Música do Aparelho';
+                let title = rawName;
+                if (rawName.includes(' - ')) {
+                    const parts = rawName.split(' - ');
+                    artist = parts[0].trim();
+                    title = parts.slice(1).join(' - ').trim();
+                } else if (rawName.includes('_-_')) {
+                    const parts = rawName.split('_-_');
+                    artist = parts[0].trim();
+                    title = parts.slice(1).join('_-_').trim();
+                }
+
+                const objectUrl = URL.createObjectURL(file);
+
+                // Carrega metadados reais da música com timeout de segurança
+                const probe = new Audio(objectUrl);
+                const realDuration = await new Promise(resolve => {
+                    probe.onloadedmetadata = () => {
+                        const d = (probe.duration && !isNaN(probe.duration) && isFinite(probe.duration)) ? Math.round(probe.duration) : 180;
+                        resolve(d);
+                    };
+                    probe.onerror = () => resolve(180);
+                    setTimeout(() => resolve(180), 2500);
+                });
+
+                const localTrack = {
+                    id: 'local_' + Date.now(),
+                    title: title || 'Música do Aparelho',
+                    artist: artist || 'Áudio Local',
+                    cover: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&h=300&fit=crop',
+                    audioUrl: objectUrl,
+                    duration: realDuration,
+                    actualDuration: realDuration,
+                    fullDuration: realDuration,
+                    isLocal: true,
+                    file: file
+                };
+
+                selectMusicTrack(localTrack);
+                showToast("Música Carregada", `Música completa carregada (${formatMusicDuration(realDuration)})! Selecione o trecho desejado.`, "green");
+            } catch (err) {
+                console.error("Erro ao carregar música do aparelho:", err);
+                showToast("Erro ao carregar", "Não foi possível carregar o arquivo de áudio.", "red");
+            }
+        });
+    }
 
     document.getElementById('music-picker-modal')?.addEventListener('click', (e) => {
         if (e.target.id === 'music-picker-modal') {
@@ -17314,6 +17589,8 @@ if (typeof window !== 'undefined') {
     window.updateMusicSnippetUI = updateMusicSnippetUI;
     window.initMusicSnippetListeners = initMusicSnippetListeners;
     window.formatSnippetSeconds = formatSnippetSeconds;
+    window.extractAudioSnippetAsWav = extractAudioSnippetAsWav;
+    window.audioBufferToWavBlob = audioBufferToWavBlob;
     window.getPendingStatusMusic = () => pendingStatusMusic;
     window.getPendingPostMusic = () => pendingPostMusic;
     window.setPendingStatusMusic = (m) => { pendingStatusMusic = m; };
