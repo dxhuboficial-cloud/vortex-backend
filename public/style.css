@@ -253,8 +253,8 @@ header h1 span {
 }
 
 .bottom-nav-item .post-nav-icon {
-    width: 18px;
-    height: 18px;
+    width: 24px;
+    height: 24px;
     stroke: currentColor;
     flex-shrink: 0;
     transition: transform 0.2s ease, stroke 0.2s ease;
