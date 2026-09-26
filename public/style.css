@@ -3870,6 +3870,12 @@ input:checked + .slider:before { transform: translateX(22px); }
     color: var(--accent-color);
 }
 
+.admin-badge-role {
+    background: rgba(255, 165, 0, 0.18);
+    border: 1px solid rgba(255, 165, 0, 0.45);
+    color: #ffa500;
+}
+
 .admin-card-body {
     background: rgba(0, 0, 0, 0.35);
     border-radius: 10px;

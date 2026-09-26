@@ -14470,6 +14470,8 @@ export function closeBusinessCatalogModal() {
 function closeFeedOverlay() {
     const feedOverlay = document.getElementById('feed-overlay');
     if (feedOverlay) feedOverlay.classList.remove('active');
+    // Fecha o painel de anexos para não vazar acima do feed (z-index)
+    document.getElementById('attachment-panel')?.classList.remove('active');
     setBottomNavActive('');
     if (currentFeedMusicAudio) {
         try { currentFeedMusicAudio.pause(); } catch(e) {}
@@ -14482,6 +14484,8 @@ function closeFeedOverlay() {
 function closePostComposerOverlay() {
     const composerOverlay = document.getElementById('screenshot-gallery-overlay');
     if (composerOverlay) composerOverlay.classList.remove('active');
+    // Fecha o painel de anexos para não vazar acima do compositor (z-index)
+    document.getElementById('attachment-panel')?.classList.remove('active');
     setBottomNavActive('');
     resetPostComposer();
 }
