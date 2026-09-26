@@ -9605,20 +9605,23 @@ body.theme-rgb .ephemeral-save-btn {
 
 /* ===== SELETOR DE DURAÇÃO DE STORY (15s a 1 min) ===== */
 .story-duration-setting-item {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px;
     margin-bottom: 12px;
 }
 
 .story-duration-chips {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
     gap: 8px;
-    margin-top: 8px;
-    flex-wrap: wrap;
+    width: 100%;
+    margin-top: 0;
 }
 
 .story-duration-chip {
-    flex: 1;
-    min-width: 65px;
-    padding: 8px 10px;
+    padding: 9px 4px;
     border-radius: 12px;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.12);
@@ -9629,7 +9632,7 @@ body.theme-rgb .ephemeral-save-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 5px;
+    gap: 4px;
     transition: all 0.2s ease;
     white-space: nowrap;
 }
@@ -9651,15 +9654,4 @@ body.theme-rgb .ephemeral-save-btn {
     border-color: var(--accent-color, #00f3ff);
     color: var(--accent-color, #00f3ff);
     box-shadow: 0 0 12px rgba(0, 243, 255, 0.25);
-}
-
-.story-duration-hint {
-    display: block;
-    margin-top: 6px;
-    font-size: 0.72rem;
-    color: var(--text-dim, #888);
-}
-
-.story-duration-hint strong {
-    color: #fff;
 }

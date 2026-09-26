@@ -2421,9 +2421,22 @@ async function displayCurrentStory() {
             storyMusicAudio.ontimeupdate = () => {
                 if (storyMusicAudio) {
                     const cur = storyMusicAudio.currentTime;
-                    if (cur >= start + dur || cur < start) {
+                    // Se o arquivo for maior que a duração solicitada e passar do trecho, reinicia
+                    if (dur < (storyMusicAudio.duration || 9999) && cur >= start + dur) {
+                        storyMusicAudio.currentTime = start;
+                    } else if (cur < start) {
                         storyMusicAudio.currentTime = start;
                     }
+                }
+            };
+
+            // Se o arquivo de áudio chegar ao fim antes de completar os 15s/30s/45s/60s do story, faz loop contínuo
+            storyMusicAudio.onended = () => {
+                if (storyMusicAudio) {
+                    try {
+                        storyMusicAudio.currentTime = start;
+                        storyMusicAudio.play().catch(() => {});
+                    } catch (e) {}
                 }
             };
 
@@ -2959,7 +2972,6 @@ function openStatusCreator() {
 // Seletor de Duração do Story (15s, 30s, 45s, 60s / 1 min)
 function initStoryDurationSelector() {
     const chips = document.querySelectorAll('.story-duration-chip');
-    const hint = document.getElementById('story-duration-hint');
     const mediaLabel = document.getElementById('status-media-label-text');
 
     chips.forEach(chip => {
@@ -2972,14 +2984,12 @@ function initStoryDurationSelector() {
             selectedStoryDuration = dur;
 
             const durLabel = dur === 60 ? '1 minuto' : `${dur} segundos`;
-            if (hint) {
-                hint.innerHTML = `A imagem ou vídeo será exibido por até <strong>${durLabel}</strong> no story.`;
-            }
             if (mediaLabel) {
                 mediaLabel.innerHTML = `<span>Foto ou Vídeo (até ${dur === 60 ? '1 min' : dur + 's'})</span>`;
             }
 
             if (pendingStatusMusic) {
+                pendingStatusMusic.snippetDuration = dur;
                 updateMusicSnippetUI('status');
             }
 
@@ -3948,8 +3958,6 @@ document.getElementById('publish-status-btn')?.addEventListener('click', async (
             document.querySelectorAll('.story-duration-chip').forEach(c => {
                 c.classList.toggle('active', c.dataset.duration === '15');
             });
-            const hint = document.getElementById('story-duration-hint');
-            if (hint) hint.innerHTML = 'A imagem ou vídeo será exibido por até <strong>15 segundos</strong> no story.';
             const mediaLabel = document.getElementById('status-media-label-text');
             if (mediaLabel) mediaLabel.innerHTML = '<span>Foto ou Vídeo (15s a 1 min)</span>';
         } catch (pubErr) {
@@ -16383,17 +16391,27 @@ export function updateMusicSnippetUI(target) {
 
     let snippetDuration = 15;
     if (target === 'status') {
+        // Conforme a categoria selecionada (15s, 30s, 45s ou 1 min / 60s)
         snippetDuration = Number(selectedStoryDuration) || 15;
     } else {
         const vidDur = pendingPostMediaInfo?.duration || 0;
         snippetDuration = vidDur > 0 ? Math.round(vidDur) : 15;
+        snippetDuration = Math.min(snippetDuration, totalDuration);
     }
 
-    // A duração do trecho não pode ultrapassar a duração total do áudio
-    snippetDuration = Math.min(snippetDuration, totalDuration);
     track.snippetDuration = snippetDuration;
 
-    const maxStart = Math.max(0, totalDuration - snippetDuration);
+    let maxStart = 0;
+    if (target === 'status') {
+        if (totalDuration > snippetDuration) {
+            maxStart = totalDuration - snippetDuration;
+        } else {
+            maxStart = Math.max(0, totalDuration - 5);
+        }
+    } else {
+        maxStart = Math.max(0, totalDuration - snippetDuration);
+    }
+
     rangeEl.min = 0;
     rangeEl.max = maxStart;
     rangeEl.step = 1;
@@ -16405,10 +16423,11 @@ export function updateMusicSnippetUI(target) {
     }
     rangeEl.value = currentStart;
 
+    const durLabel = snippetDuration === 60 ? '1 min' : `${snippetDuration}s`;
     const endSec = currentStart + snippetDuration;
-    badgeEl.innerText = `${formatSnippetSeconds(currentStart)} - ${formatSnippetSeconds(endSec)} (${snippetDuration}s)`;
+    badgeEl.innerText = `${formatSnippetSeconds(currentStart)} - ${formatSnippetSeconds(endSec)} (${durLabel})`;
     if (startLbl) startLbl.innerText = formatSnippetSeconds(currentStart);
-    if (endLbl) endLbl.innerText = formatSnippetSeconds(totalDuration);
+    if (endLbl) endLbl.innerText = formatSnippetSeconds(Math.max(totalDuration, endSec));
 }
 
 export function initMusicSnippetListeners() {
@@ -16422,12 +16441,13 @@ export function initMusicSnippetListeners() {
             if (!track) return;
 
             track.snippetStart = start;
-            const dur = Number(track.snippetDuration) || 15;
+            const dur = Number(track.snippetDuration) || (target === 'status' ? (Number(selectedStoryDuration) || 15) : 15);
             const badgeEl = document.getElementById(`${target}-snippet-time-badge`);
             const startLbl = document.getElementById(`${target}-snippet-start-label`);
 
+            const durLabel = dur === 60 ? '1 min' : `${dur}s`;
             if (badgeEl) {
-                badgeEl.innerText = `${formatSnippetSeconds(start)} - ${formatSnippetSeconds(start + dur)} (${dur}s)`;
+                badgeEl.innerText = `${formatSnippetSeconds(start)} - ${formatSnippetSeconds(start + dur)} (${durLabel})`;
             }
             if (startLbl) {
                 startLbl.innerText = formatSnippetSeconds(start);
@@ -16556,7 +16576,7 @@ function toggleComposerMusicPreview(target) {
         }
 
         const start = Number(track.snippetStart) || 0;
-        const dur = Number(track.snippetDuration) || 15;
+        const dur = Number(track.snippetDuration) || (target === 'status' ? (Number(selectedStoryDuration) || 15) : 15);
 
         const applySeek = () => {
             try {
@@ -16569,11 +16589,31 @@ function toggleComposerMusicPreview(target) {
         audio.addEventListener('canplay', applySeek, { once: true });
         try { audio.currentTime = start; } catch(e) {}
 
-        // Loop contínuo dentro do trecho selecionado
+        let previewElapsed = 0;
+        let lastTimestamp = Date.now();
+
+        // Reprodução e loop contínuo pelo tempo exato selecionado (15s, 30s, 45s, 60s)
         audio.ontimeupdate = () => {
             if (composerPreviewAudio === audio) {
+                const now = Date.now();
+                previewElapsed += (now - lastTimestamp);
+                lastTimestamp = now;
+
+                if (previewElapsed >= dur * 1000) {
+                    audio.pause();
+                    if (iconEl) {
+                        iconEl.setAttribute('data-lucide', 'play');
+                        if (window.lucide) lucide.createIcons();
+                    }
+                    composerPreviewAudio = null;
+                    currentlyPlayingComposerTarget = null;
+                    return;
+                }
+
                 const cur = audio.currentTime;
-                if (cur >= start + dur || cur < start) {
+                if (dur < (audio.duration || 9999) && cur >= start + dur) {
+                    audio.currentTime = start;
+                } else if (cur < start) {
                     audio.currentTime = start;
                 }
             }
@@ -16588,13 +16628,21 @@ function toggleComposerMusicPreview(target) {
         });
 
         audio.onended = () => {
-            if (iconEl) {
-                iconEl.setAttribute('data-lucide', 'play');
-                if (window.lucide) lucide.createIcons();
-            }
             if (composerPreviewAudio === audio) {
-                composerPreviewAudio = null;
-                currentlyPlayingComposerTarget = null;
+                if (previewElapsed < dur * 1000) {
+                    try {
+                        audio.currentTime = start;
+                        lastTimestamp = Date.now();
+                        audio.play().catch(() => {});
+                    } catch (e) {}
+                } else {
+                    if (iconEl) {
+                        iconEl.setAttribute('data-lucide', 'play');
+                        if (window.lucide) lucide.createIcons();
+                    }
+                    composerPreviewAudio = null;
+                    currentlyPlayingComposerTarget = null;
+                }
             }
         };
     } catch(err) {
