@@ -14507,6 +14507,8 @@ function bindSocialOverlayCloseButtons() {
 
 document.getElementById('feed-btn')?.addEventListener('click', () => {
     playSound(clickSound);
+    // Fecha o painel de anexos para não vazar sobre o Feed (z-index)
+    document.getElementById('attachment-panel')?.classList.remove('active');
     setBottomNavActive('feed-btn');
     listenToPosts();
     closeBusinessCatalogModal();
@@ -14526,6 +14528,8 @@ document.getElementById('open-post-from-feed-btn')?.addEventListener('click', ()
 // Novo Botão: Nova Postagem (abre tela de publicação)
 document.getElementById('new-post-nav-btn')?.addEventListener('click', () => {
     playSound(clickSound);
+    // Fecha o painel de anexos para não vazar sobre o compositor (z-index)
+    document.getElementById('attachment-panel')?.classList.remove('active');
     setBottomNavActive('new-post-nav-btn');
     resetPostComposer();
     listenToPosts();
@@ -14537,6 +14541,8 @@ document.getElementById('new-post-nav-btn')?.addEventListener('click', () => {
 // Antigo Botão: Catálogo & Loja Online (Em Breve para contas empresa)
 document.getElementById('gallery-btn')?.addEventListener('click', () => {
     playSound(clickSound);
+    // Fecha o painel de anexos ao navegar para o catálogo
+    document.getElementById('attachment-panel')?.classList.remove('active');
     setBottomNavActive('gallery-btn');
     document.getElementById('feed-overlay')?.classList.remove('active');
     document.getElementById('screenshot-gallery-overlay')?.classList.remove('active');
