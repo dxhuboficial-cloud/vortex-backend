@@ -2403,6 +2403,7 @@ async function displayCurrentStory() {
         try {
             storyMusicAudio = new Audio(story.music.audioUrl);
             storyMusicAudio.muted = isStoryMusicMuted;
+            storyMusicAudio.loop = true; // Loop contínuo nativo para tocar todo o tempo do story (15s, 30s, 45s ou 1 min) sem cortar aos 30s
 
             const start = Number(story.music.snippetStart) || 0;
             const dur = Number(story.music.snippetDuration) || Number(story.customDuration) || 15;
@@ -15810,6 +15811,7 @@ let musicPreviewAudio = null;
 let currentlyPlayingPreviewTrackId = null;
 let composerPreviewAudio = null;
 let currentlyPlayingComposerTarget = null;
+let composerPreviewTimer = null;
 let currentFeedMusicAudio = null;
 let currentFeedMusicPostId = null;
 let musicSearchDebounceTimer = null;
@@ -16523,6 +16525,8 @@ export function selectMusicTrack(track) {
 
 export function removeSelectedMusic(target) {
     if (composerPreviewAudio) {
+        clearTimeout(composerPreviewTimer);
+        composerPreviewTimer = null;
         try { composerPreviewAudio.pause(); } catch(e) {}
         composerPreviewAudio = null;
         currentlyPlayingComposerTarget = null;
@@ -16555,6 +16559,8 @@ function toggleComposerMusicPreview(target) {
         composerPreviewAudio = null;
         currentlyPlayingComposerTarget = null;
         if (iconEl) {
+            clearTimeout(composerPreviewTimer);
+            composerPreviewTimer = null;
             iconEl.setAttribute('data-lucide', 'play');
             if (window.lucide) lucide.createIcons();
         }
@@ -16562,12 +16568,15 @@ function toggleComposerMusicPreview(target) {
     }
 
     if (composerPreviewAudio) {
+        clearTimeout(composerPreviewTimer);
+        composerPreviewTimer = null;
         try { composerPreviewAudio.pause(); } catch(e) {}
         composerPreviewAudio = null;
     }
 
     try {
         const audio = new Audio(track.audioUrl);
+        audio.loop = true; // Loop contínuo nativo do navegador para 15s, 30s, 45s ou 1 min
         composerPreviewAudio = audio;
         currentlyPlayingComposerTarget = target;
         if (iconEl) {
@@ -16589,27 +16598,9 @@ function toggleComposerMusicPreview(target) {
         audio.addEventListener('canplay', applySeek, { once: true });
         try { audio.currentTime = start; } catch(e) {}
 
-        let previewElapsed = 0;
-        let lastTimestamp = Date.now();
-
-        // Reprodução e loop contínuo pelo tempo exato selecionado (15s, 30s, 45s, 60s)
+        // Se dur for menor que a duração do arquivo, reinicia ao final do trecho
         audio.ontimeupdate = () => {
             if (composerPreviewAudio === audio) {
-                const now = Date.now();
-                previewElapsed += (now - lastTimestamp);
-                lastTimestamp = now;
-
-                if (previewElapsed >= dur * 1000) {
-                    audio.pause();
-                    if (iconEl) {
-                        iconEl.setAttribute('data-lucide', 'play');
-                        if (window.lucide) lucide.createIcons();
-                    }
-                    composerPreviewAudio = null;
-                    currentlyPlayingComposerTarget = null;
-                    return;
-                }
-
                 const cur = audio.currentTime;
                 if (dur < (audio.duration || 9999) && cur >= start + dur) {
                     audio.currentTime = start;
@@ -16619,8 +16610,25 @@ function toggleComposerMusicPreview(target) {
             }
         };
 
+        // Temporizador para parar no tempo exato da categoria selecionada (15s, 30s, 45s ou 60s / 1 min)
+        clearTimeout(composerPreviewTimer);
+        composerPreviewTimer = setTimeout(() => {
+            if (composerPreviewAudio === audio) {
+                audio.pause();
+                if (iconEl) {
+                    iconEl.setAttribute('data-lucide', 'play');
+                    if (window.lucide) lucide.createIcons();
+                }
+                composerPreviewAudio = null;
+                currentlyPlayingComposerTarget = null;
+                composerPreviewTimer = null;
+            }
+        }, dur * 1000);
+
         audio.play().catch(err => {
             console.warn("Erro ao tocar preview do compositor:", err);
+            clearTimeout(composerPreviewTimer);
+            composerPreviewTimer = null;
             if (iconEl) {
                 iconEl.setAttribute('data-lucide', 'play');
                 if (window.lucide) lucide.createIcons();
@@ -16629,20 +16637,10 @@ function toggleComposerMusicPreview(target) {
 
         audio.onended = () => {
             if (composerPreviewAudio === audio) {
-                if (previewElapsed < dur * 1000) {
-                    try {
-                        audio.currentTime = start;
-                        lastTimestamp = Date.now();
-                        audio.play().catch(() => {});
-                    } catch (e) {}
-                } else {
-                    if (iconEl) {
-                        iconEl.setAttribute('data-lucide', 'play');
-                        if (window.lucide) lucide.createIcons();
-                    }
-                    composerPreviewAudio = null;
-                    currentlyPlayingComposerTarget = null;
-                }
+                try {
+                    audio.currentTime = start;
+                    audio.play().catch(() => {});
+                } catch (e) {}
             }
         };
     } catch(err) {
