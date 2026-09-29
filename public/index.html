@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E⚡%3C/text%3E%3C/svg%3E">
-    <link rel="stylesheet" href="style.css?v=1.0.96">
+    <link rel="stylesheet" href="style.css?v=1.0.97">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#fff01f">
@@ -1924,6 +1924,30 @@
                     <label for="post-caption-input" class="post-caption-label">Legenda</label>
                     <textarea id="post-caption-input" rows="4" placeholder="Escreva algo incrível..."></textarea>
                 </div>
+
+                <!-- Opção Exclusiva de Botão com Link (Conta Empresa) -->
+                <div id="post-business-link-section" class="post-business-link-section" style="display: none;">
+                    <div class="business-link-header">
+                        <div class="business-link-badge">
+                            <i data-lucide="briefcase"></i>
+                            <span>Conta Empresa</span>
+                        </div>
+                        <span class="business-link-hint">Adicionar botão de link à postagem</span>
+                    </div>
+                    <div class="business-link-fields">
+                        <div class="business-link-input-group">
+                            <label for="post-business-btn-text">Texto do Botão</label>
+                            <input type="text" id="post-business-btn-text" placeholder="Ex: Saiba Mais, Comprar, Acessar Site..." maxlength="30">
+                        </div>
+                        <div class="business-link-input-group">
+                            <label for="post-business-btn-url">Link de Destino</label>
+                            <div class="business-link-url-input-wrap">
+                                <i data-lucide="link"></i>
+                                <input type="url" id="post-business-btn-url" placeholder="https://seusite.com.br ou https://wa.me/..." autocomplete="off">
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="posts-feed-section">
@@ -2430,6 +2454,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.96" defer></script>
+    <script type="module" src="script.js?v=1.0.97" defer></script>
 </body>
 </html>

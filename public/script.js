@@ -7882,6 +7882,16 @@ export function isUserAdmin(user = currentUser, profile = currentProfile) {
     return VORTEX_ADMIN_EMAILS.includes(email);
 }
 
+export function updateCompanyLinkSectionVisibility() {
+    const bizSection = document.getElementById('post-business-link-section');
+    if (!bizSection) return;
+    const isCompany = isUserAdmin();
+    bizSection.style.display = isCompany ? 'block' : 'none';
+    if (isCompany && window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+    }
+}
+
 export function updateAdminUIVisibility() {
     const isAdmin = isUserAdmin();
     const adminBtn = document.getElementById('admin-panel-btn');
@@ -7897,6 +7907,8 @@ export function updateAdminUIVisibility() {
     if (!isAdmin && adminPanel && adminPanel.classList.contains('active')) {
         adminPanel.classList.remove('active');
     }
+
+    updateCompanyLinkSectionVisibility();
 }
 
 let adminReports = [];
@@ -9488,6 +9500,14 @@ export async function adminOpenPostPreview(postId) {
         </div>
         <div id="admin-preview-media-slot" style="text-align:center; padding:12px 0; color:var(--text-dim); font-size:0.85rem;">⏳ Carregando mídia...</div>
         <p class="admin-post-preview-caption">${escapeHTML(post.caption || 'Sem legenda')}</p>
+        ${post.actionButton && post.actionButton.url ? `
+            <div class="feed-cta-wrapper" style="margin: 8px 0;">
+                <a href="${escapeHTML(post.actionButton.url)}" target="_blank" rel="noopener noreferrer" class="feed-cta-btn" style="text-decoration:none;">
+                    <i data-lucide="external-link"></i>
+                    <span>${escapeHTML(post.actionButton.text || 'Saiba Mais')}</span>
+                </a>
+            </div>
+        ` : ''}
         <div class="admin-post-preview-stats">
             <span>❤️ ${(post.likes || []).length} curtidas</span>
             <span>💬 ${(post.comments || []).length} comentários</span>
@@ -9500,6 +9520,9 @@ export async function adminOpenPostPreview(postId) {
     `;
 
     modal.style.display = 'flex';
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+    }
 
     // Carregar mídia assincronamente (mediaData ou chunks)
     const isVideo = post.type === 'video';
@@ -12620,6 +12643,14 @@ function resetPostComposer() {
     if (postPreview) postPreview.innerHTML = '';
     if (postPreviewBox) postPreviewBox.classList.add('hidden');
     if (postCaptionInput) postCaptionInput.value = '';
+
+    const bizBtnText = document.getElementById('post-business-btn-text');
+    const bizBtnUrl = document.getElementById('post-business-btn-url');
+    if (bizBtnText) bizBtnText.value = '';
+    if (bizBtnUrl) bizBtnUrl.value = '';
+    if (typeof updateCompanyLinkSectionVisibility === 'function') {
+        updateCompanyLinkSectionVisibility();
+    }
     pendingPostFile = null;
     pendingPostMusic = null;
     pendingPostMediaData = null;
@@ -13150,6 +13181,14 @@ function renderPostsFeed(posts = []) {
                             </div>
                         ` : ''}
                         ${caption ? `<p class="post-caption">${escapeHTML(caption)}</p>` : ''}
+                        ${post.actionButton && post.actionButton.url ? `
+                            <div class="feed-cta-wrapper">
+                                <a href="${escapeHTML(post.actionButton.url)}" target="_blank" rel="noopener noreferrer" class="feed-cta-btn" onclick="event.stopPropagation();">
+                                    <i data-lucide="external-link"></i>
+                                    <span>${escapeHTML(post.actionButton.text || 'Saiba Mais')}</span>
+                                </a>
+                            </div>
+                        ` : ''}
                         <div class="post-actions">
                             <button class="post-action-btn" type="button">❤ ${likes}</button>
                             <button class="post-action-btn" type="button" data-action="open-comment-modal" data-post-id="${post.id}">💬 ${comments.length}</button>
@@ -13170,6 +13209,10 @@ function renderPostsFeed(posts = []) {
                     if (post) openPostCommentModal(post);
                 });
             });
+
+            if (window.lucide && typeof window.lucide.createIcons === 'function') {
+                window.lucide.createIcons();
+            }
         }
     }
 
@@ -13242,6 +13285,14 @@ function renderPostsFeed(posts = []) {
                 ` : ''}
                 <div class="feed-body">
                     ${caption ? `<p class="feed-caption">${escapeHTML(caption)}</p>` : ''}
+                    ${post.actionButton && post.actionButton.url ? `
+                        <div class="feed-cta-wrapper">
+                            <a href="${escapeHTML(post.actionButton.url)}" target="_blank" rel="noopener noreferrer" class="feed-cta-btn" onclick="event.stopPropagation();">
+                                <i data-lucide="external-link"></i>
+                                <span>${escapeHTML(post.actionButton.text || 'Saiba Mais')}</span>
+                            </a>
+                        </div>
+                    ` : ''}
                     <div class="feed-actions">
                         <button class="feed-action-btn ${liked ? 'liked' : ''}" type="button" data-post-id="${post.id}" data-action="like" title="Curtir">
                             <i data-lucide="heart"></i>
@@ -14431,6 +14482,22 @@ document.getElementById('publish-post-btn')?.addEventListener('click', async () 
                 }
             }
 
+            const isCompany = isUserAdmin();
+            const bizBtnText = document.getElementById('post-business-btn-text')?.value?.trim() || '';
+            const bizBtnUrl = document.getElementById('post-business-btn-url')?.value?.trim() || '';
+
+            let actionButtonPayload = null;
+            if (isCompany && bizBtnUrl) {
+                let formattedUrl = bizBtnUrl;
+                if (!/^https?:\/\//i.test(formattedUrl)) {
+                    formattedUrl = 'https://' + formattedUrl;
+                }
+                actionButtonPayload = {
+                    text: bizBtnText || 'Saiba Mais',
+                    url: formattedUrl
+                };
+            }
+
             const postDoc = {
                 authorUid: currentUser.uid,
                 authorName: currentProfile.name,
@@ -14444,6 +14511,7 @@ document.getElementById('publish-post-btn')?.addEventListener('click', async () 
                 isTrimmed: !!(pendingPostMediaInfo && pendingPostMediaInfo.isTrimmed) || !!(file && file.isTrimmed),
                 videoDuration: isVideo ? (pendingPostMediaInfo?.duration || (file && file.duration) || 0) : null,
                 caption: postCaptionInput?.value?.trim() || '',
+                actionButton: actionButtonPayload,
                 createdAt: Date.now(),
                 likes: [],
                 comments: [],
@@ -14591,7 +14659,9 @@ document.getElementById('feed-btn')?.addEventListener('click', () => {
 document.getElementById('open-post-from-feed-btn')?.addEventListener('click', () => {
     closeFeedOverlay();
     setBottomNavActive('new-post-nav-btn');
+    resetPostComposer();
     document.getElementById('screenshot-gallery-overlay')?.classList.add('active');
+    updateCompanyLinkSectionVisibility();
 });
 
 // Novo Botão: Nova Postagem (abre tela de publicação)
@@ -17689,6 +17759,7 @@ if (typeof window !== 'undefined') {
     window.trimAndCompressVideoToKB = trimAndCompressVideoToKB;
     window.handlePostMediaSelection = handlePostMediaSelection;
     window.resetPostComposer = resetPostComposer;
+    window.updateCompanyLinkSectionVisibility = updateCompanyLinkSectionVisibility;
     window.getPendingPostMediaData = getPendingPostMediaData;
     window.getPendingPostMediaInfo = getPendingPostMediaInfo;
     window.getPendingStatusMediaInfo = () => pendingStatusMediaInfo;

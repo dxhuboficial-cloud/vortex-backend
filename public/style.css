@@ -9791,3 +9791,160 @@ body.theme-rgb .ephemeral-save-btn {
 .snippet-hint-banner strong {
     color: #ffa500;
 }
+
+/* ===== POST COMPOSER: BOTÃO DE LINK PARA CONTA EMPRESA ===== */
+.post-business-link-section {
+    background: rgba(255, 240, 31, 0.04);
+    border: 1px solid rgba(255, 240, 31, 0.25);
+    border-radius: 14px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 6px;
+}
+
+.business-link-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.business-link-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.76rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--accent-color, #fff01f);
+    background: rgba(255, 240, 31, 0.12);
+    padding: 3px 8px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 240, 31, 0.2);
+}
+
+.business-link-badge i,
+.business-link-badge svg {
+    width: 14px;
+    height: 14px;
+}
+
+.business-link-hint {
+    font-size: 0.74rem;
+    color: var(--text-dim, #8e8e93);
+}
+
+.business-link-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.business-link-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.business-link-input-group label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-dim, #8e8e93);
+}
+
+.business-link-input-group input[type="text"] {
+    width: 100%;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-main, #fff);
+    padding: 8px 12px;
+    font-size: 0.85rem;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.business-link-input-group input[type="text"]:focus {
+    border-color: var(--accent-color, #fff01f);
+}
+
+.business-link-url-input-wrap {
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 0 10px;
+    gap: 8px;
+    transition: border-color 0.2s;
+}
+
+.business-link-url-input-wrap:focus-within {
+    border-color: var(--accent-color, #fff01f);
+}
+
+.business-link-url-input-wrap i,
+.business-link-url-input-wrap svg {
+    width: 16px;
+    height: 16px;
+    color: var(--accent-color, #fff01f);
+    flex-shrink: 0;
+}
+
+.business-link-url-input-wrap input[type="url"] {
+    width: 100%;
+    border: none;
+    background: transparent;
+    color: var(--text-main, #fff);
+    padding: 8px 0;
+    font-size: 0.85rem;
+    outline: none;
+}
+
+/* ===== FEED POSTS: BOTÃO DE AÇÃO / LINK EXTERNO ===== */
+.feed-cta-wrapper {
+    margin: 8px 0 10px 0;
+    width: 100%;
+}
+
+.feed-cta-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 10px 16px;
+    background: linear-gradient(135deg, rgba(255, 240, 31, 0.18), rgba(255, 240, 31, 0.06));
+    border: 1px solid var(--accent-color, #fff01f);
+    border-radius: 12px;
+    color: var(--accent-color, #fff01f);
+    font-size: 0.86rem;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    box-shadow: 0 0 14px rgba(255, 240, 31, 0.14);
+    box-sizing: border-box;
+}
+
+.feed-cta-btn:hover {
+    background: var(--accent-color, #fff01f);
+    color: #000000;
+    box-shadow: 0 0 22px rgba(255, 240, 31, 0.4);
+    transform: translateY(-1px);
+}
+
+.feed-cta-btn:active {
+    transform: scale(0.98);
+}
+
+.feed-cta-btn i,
+.feed-cta-btn svg {
+    width: 17px;
+    height: 17px;
+    flex-shrink: 0;
+}
