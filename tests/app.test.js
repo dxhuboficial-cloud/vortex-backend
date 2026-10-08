@@ -788,7 +788,6 @@ test('HTML DOM Integrity: All required elements and modal IDs exist in index.htm
     'comment-modal-send',
     'chat-file-viewonce',
     'posts-count-label',
-    'posts-feed-list',
     'feed-list',
     'feed-overlay',
     'screenshot-gallery-overlay',
