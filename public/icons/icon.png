@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#141419" />
+      <stop offset="50%" stop-color="#0a0a0c" />
+      <stop offset="100%" stop-color="#050507" />
+    </linearGradient>
+    <linearGradient id="boltGrad" x1="0%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="25%" stop-color="#fffb00" />
+      <stop offset="70%" stop-color="#fff01f" />
+      <stop offset="100%" stop-color="#ff9100" />
+    </linearGradient>
+    <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fff01f" />
+      <stop offset="50%" stop-color="#ff1744" />
+      <stop offset="100%" stop-color="#00e5ff" />
+    </linearGradient>
+    <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="12" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="512" height="512" rx="108" fill="url(#bgGrad)" />
+  <circle cx="256" cy="256" r="216" fill="none" stroke="url(#ringGrad)" stroke-width="8" opacity="0.85" />
+  <circle cx="256" cy="256" r="226" fill="none" stroke="#fff01f" stroke-width="2" opacity="0.4" stroke-dasharray="8,12" />
+
+  <path d="M 284,54 L 138,274 L 244,274 L 210,458 L 382,216 L 274,216 Z"
+        fill="url(#boltGrad)"
+        filter="url(#neonGlow)"
+        stroke="#ffffff"
+        stroke-width="3"
+        stroke-linejoin="round" />
+
+  <text x="256" y="475" text-anchor="middle" font-family="'Segoe UI', -apple-system, Roboto, sans-serif" font-weight="900" font-size="34" fill="#fff01f" letter-spacing="6">VORTEX VIP</text>
+</svg>
