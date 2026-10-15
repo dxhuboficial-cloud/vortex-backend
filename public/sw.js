@@ -2,18 +2,23 @@
    VORTEX VIP ⚡ - Service Worker Oficial PWA
    ========================================================================== */
 
-const CACHE_NAME = 'vortex-vip-v1.0.104';
+const CACHE_NAME = 'vortex-vip-v1.0.105';
 
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
-  '/style.css?v=1.0.104',
-  '/script.js?v=1.0.104',
+  '/style.css?v=1.0.105',
+  '/script.js?v=1.0.105',
   '/manifest.json',
+  '/icons/vortex-vip-192.png',
+  '/icons/vortex-vip-512.png',
+  '/icons/vortex-vip-maskable-512.png',
+  '/icons/vortex-vip.svg',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
   '/icons/icon-maskable-512.png',
-  '/icons/icon.svg'
+  '/icons/icon.svg',
+  '/favicon.ico'
 ];
 
 // Instalação: Pré-carrega o App Shell no Cache e ativa imediatamente
@@ -134,8 +139,8 @@ self.addEventListener('push', (event) => {
 
   const options = {
     body: data.body,
-    icon: '/icons/icon-192.png',
-    badge: '/icons/icon-192.png',
+    icon: '/icons/vortex-vip-192.png',
+    badge: '/icons/vortex-vip-192.png',
     vibrate: [100, 50, 100],
     data: {
       url: data.url || '/'
