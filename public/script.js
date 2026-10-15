@@ -54,13 +54,24 @@ let currentProfile = {
     username: '',
     status: 'Disponível no VORTEX ⚡',
     phone: '',
+    accountType: 'personal',
+    whatsapp: '',
+    facebook: '',
+    website1: '',
+    website2: '',
+    website3: '',
     youtube: '',
     instagram: '',
     tiktok: '',
     socialLinks: {
         youtube: '',
         instagram: '',
-        tiktok: ''
+        tiktok: '',
+        whatsapp: '',
+        facebook: '',
+        website1: '',
+        website2: '',
+        website3: ''
     },
     avatar: '',
     accentColor: '#fff01f',
@@ -4716,6 +4727,28 @@ export function closeContactProfile() {
     playSound(clickSound);
 }
 
+export function formatWebsiteLink(val) {
+    if (!val || typeof val !== 'string') return '';
+    let clean = val.trim();
+    if (!clean) return '';
+
+    if (clean.toLowerCase().startsWith('http://')) {
+        clean = 'https://' + clean.slice(7);
+    } else if (!clean.toLowerCase().startsWith('https://')) {
+        clean = 'https://' + clean;
+    }
+
+    try {
+        const urlObj = new URL(clean);
+        if (urlObj.protocol !== 'https:') {
+            urlObj.protocol = 'https:';
+        }
+        return urlObj.href.replace(/\/$/, '');
+    } catch (e) {
+        return clean;
+    }
+}
+
 export function formatSocialLink(network, val) {
     if (!val || typeof val !== 'string') return '';
     const clean = val.trim();
@@ -4742,14 +4775,51 @@ export function formatSocialLink(network, val) {
         return `https://www.tiktok.com/@${user}`;
     }
 
+    if (network === 'facebook') {
+        if (clean.startsWith('http://') || clean.startsWith('https://')) return clean;
+        if (clean.startsWith('facebook.com') || clean.startsWith('www.facebook.com')) return `https://${clean}`;
+        const user = clean.replace(/^@/, '');
+        return `https://www.facebook.com/${user}`;
+    }
+
+    if (network === 'whatsapp') {
+        if (clean.startsWith('http://') || clean.startsWith('https://')) {
+            return clean.replace(/^http:\/\//, 'https://');
+        }
+        if (clean.startsWith('wa.me/')) return `https://${clean}`;
+        let digits = clean.replace(/\D/g, '');
+        if (!digits) return '';
+        if (digits.length === 10 || digits.length === 11) {
+            digits = `55${digits}`;
+        }
+        return `https://wa.me/${digits}`;
+    }
+
+    if (network === 'website') {
+        return formatWebsiteLink(clean);
+    }
+
     return clean;
 }
 
 export function updateContactProfileSocialUI(data) {
+    const isBusiness = data?.accountType === 'business';
+    const businessBadge = document.getElementById('contact-profile-business-badge');
+    if (businessBadge) {
+        businessBadge.style.display = isBusiness ? 'inline-flex' : 'none';
+    }
+
     const phone = data?.phone || '';
     const youtube = data?.youtube || data?.socialLinks?.youtube || '';
     const instagram = data?.instagram || data?.socialLinks?.instagram || '';
     const tiktok = data?.tiktok || data?.socialLinks?.tiktok || '';
+
+    // Recursos de Conta Empresa
+    const whatsapp = isBusiness ? (data?.whatsapp || data?.socialLinks?.whatsapp || '') : '';
+    const facebook = isBusiness ? (data?.facebook || data?.socialLinks?.facebook || '') : '';
+    const website1 = isBusiness ? (data?.website1 || data?.socialLinks?.website1 || '') : '';
+    const website2 = isBusiness ? (data?.website2 || data?.socialLinks?.website2 || '') : '';
+    const website3 = isBusiness ? (data?.website3 || data?.socialLinks?.website3 || '') : '';
 
     const phoneCard = document.getElementById('contact-profile-phone-card');
     const phoneText = document.getElementById('contact-profile-phone-text');
@@ -4766,17 +4836,24 @@ export function updateContactProfileSocialUI(data) {
     const ytLink = document.getElementById('contact-profile-youtube-link');
     const instaLink = document.getElementById('contact-profile-instagram-link');
     const ttLink = document.getElementById('contact-profile-tiktok-link');
+    const waLink = document.getElementById('contact-profile-whatsapp-link');
+    const fbLink = document.getElementById('contact-profile-facebook-link');
+    const w1Link = document.getElementById('contact-profile-website1-link');
+    const w2Link = document.getElementById('contact-profile-website2-link');
+    const w3Link = document.getElementById('contact-profile-website3-link');
 
     let hasAnySocial = false;
-    if (ytLink) {
-        if (youtube) {
-            ytLink.href = formatSocialLink('youtube', youtube);
-            ytLink.style.display = 'inline-flex';
+
+    if (waLink) {
+        if (whatsapp) {
+            waLink.href = formatSocialLink('whatsapp', whatsapp);
+            waLink.style.display = 'inline-flex';
             hasAnySocial = true;
         } else {
-            ytLink.style.display = 'none';
+            waLink.style.display = 'none';
         }
     }
+
     if (instaLink) {
         if (instagram) {
             instaLink.href = formatSocialLink('instagram', instagram);
@@ -4786,6 +4863,17 @@ export function updateContactProfileSocialUI(data) {
             instaLink.style.display = 'none';
         }
     }
+
+    if (fbLink) {
+        if (facebook) {
+            fbLink.href = formatSocialLink('facebook', facebook);
+            fbLink.style.display = 'inline-flex';
+            hasAnySocial = true;
+        } else {
+            fbLink.style.display = 'none';
+        }
+    }
+
     if (ttLink) {
         if (tiktok) {
             ttLink.href = formatSocialLink('tiktok', tiktok);
@@ -4795,6 +4883,62 @@ export function updateContactProfileSocialUI(data) {
             ttLink.style.display = 'none';
         }
     }
+
+    if (ytLink) {
+        if (youtube) {
+            ytLink.href = formatSocialLink('youtube', youtube);
+            ytLink.style.display = 'inline-flex';
+            hasAnySocial = true;
+        } else {
+            ytLink.style.display = 'none';
+        }
+    }
+
+    if (w1Link) {
+        if (website1) {
+            w1Link.href = formatWebsiteLink(website1);
+            const w1Label = document.getElementById('contact-profile-website1-label');
+            if (w1Label) {
+                const d = website1.replace(/^https?:\/\//i, '').replace(/^www\./i, '').split('/')[0];
+                w1Label.innerText = d.length > 20 ? 'Site 1' : (d || 'Site 1');
+            }
+            w1Link.style.display = 'inline-flex';
+            hasAnySocial = true;
+        } else {
+            w1Link.style.display = 'none';
+        }
+    }
+
+    if (w2Link) {
+        if (website2) {
+            w2Link.href = formatWebsiteLink(website2);
+            const w2Label = document.getElementById('contact-profile-website2-label');
+            if (w2Label) {
+                const d = website2.replace(/^https?:\/\//i, '').replace(/^www\./i, '').split('/')[0];
+                w2Label.innerText = d.length > 20 ? 'Site 2' : (d || 'Site 2');
+            }
+            w2Link.style.display = 'inline-flex';
+            hasAnySocial = true;
+        } else {
+            w2Link.style.display = 'none';
+        }
+    }
+
+    if (w3Link) {
+        if (website3) {
+            w3Link.href = formatWebsiteLink(website3);
+            const w3Label = document.getElementById('contact-profile-website3-label');
+            if (w3Label) {
+                const d = website3.replace(/^https?:\/\//i, '').replace(/^www\./i, '').split('/')[0];
+                w3Label.innerText = d.length > 20 ? 'Site 3' : (d || 'Site 3');
+            }
+            w3Link.style.display = 'inline-flex';
+            hasAnySocial = true;
+        } else {
+            w3Link.style.display = 'none';
+        }
+    }
+
     if (socialSec) {
         socialSec.style.display = hasAnySocial ? 'block' : 'none';
     }
@@ -10438,6 +10582,7 @@ if (typeof window !== 'undefined') {
     window.openBusinessCatalogModal = openBusinessCatalogModal;
     window.closeBusinessCatalogModal = closeBusinessCatalogModal;
     window.formatSocialLink = formatSocialLink;
+    window.formatWebsiteLink = formatWebsiteLink;
     window.updateContactProfileSocialUI = updateContactProfileSocialUI;
     window.CURRENT_APP_VERSION = CURRENT_APP_VERSION;
     window.isPwaUpdateAvailable = isPwaUpdateAvailable;
@@ -15034,6 +15179,35 @@ document.getElementById('profile-btn')?.addEventListener('click', () => {
     if (instaInp) instaInp.value = currentProfile.instagram || currentProfile.socialLinks?.instagram || '';
     if (tiktokInp) tiktokInp.value = currentProfile.tiktok || currentProfile.socialLinks?.tiktok || '';
 
+    // Configuração do Tipo de Conta (Pessoal vs Empresa)
+    const isBusiness = currentProfile.accountType === 'business';
+    const personalRadio = document.getElementById('profile-type-personal');
+    const businessRadio = document.getElementById('profile-type-business');
+    if (personalRadio && businessRadio) {
+        if (isBusiness) {
+            businessRadio.checked = true;
+        } else {
+            personalRadio.checked = true;
+        }
+    }
+    const businessFields = document.getElementById('profile-business-fields');
+    if (businessFields) {
+        businessFields.style.display = isBusiness ? 'flex' : 'none';
+    }
+
+    // Campos de Empresa
+    const whatsappInp = document.getElementById('profile-whatsapp-input');
+    const facebookInp = document.getElementById('profile-facebook-input');
+    const website1Inp = document.getElementById('profile-website1-input');
+    const website2Inp = document.getElementById('profile-website2-input');
+    const website3Inp = document.getElementById('profile-website3-input');
+
+    if (whatsappInp) whatsappInp.value = currentProfile.whatsapp || currentProfile.socialLinks?.whatsapp || '';
+    if (facebookInp) facebookInp.value = currentProfile.facebook || currentProfile.socialLinks?.facebook || '';
+    if (website1Inp) website1Inp.value = currentProfile.website1 || currentProfile.socialLinks?.website1 || '';
+    if (website2Inp) website2Inp.value = currentProfile.website2 || currentProfile.socialLinks?.website2 || '';
+    if (website3Inp) website3Inp.value = currentProfile.website3 || currentProfile.socialLinks?.website3 || '';
+
     const prev = document.getElementById('profile-edit-avatar-preview');
     if (prev) {
         prev.style.backgroundImage = currentProfile.avatar ? `url('${currentProfile.avatar}')` : '';
@@ -15044,6 +15218,20 @@ document.getElementById('profile-btn')?.addEventListener('click', () => {
         window.lucide.createIcons();
     }
 });
+
+const handleAccountTypeChange = () => {
+    const isBiz = document.getElementById('profile-type-business')?.checked;
+    const bFields = document.getElementById('profile-business-fields');
+    if (bFields) {
+        bFields.style.display = isBiz ? 'flex' : 'none';
+    }
+    if (typeof window !== 'undefined' && window.lucide) {
+        window.lucide.createIcons();
+    }
+};
+document.getElementById('profile-type-personal')?.addEventListener('change', handleAccountTypeChange);
+document.getElementById('profile-type-business')?.addEventListener('change', handleAccountTypeChange);
+
 document.getElementById('close-profile-edit')?.addEventListener('click', () => {
     playSound(clickSound);
     document.getElementById('profile-edit-panel')?.classList.remove('active');
@@ -15103,9 +15291,23 @@ document.getElementById('save-profile-btn')?.addEventListener('click', async () 
     const rawInstagram = document.getElementById('profile-instagram-input')?.value.trim() || '';
     const rawTiktok = document.getElementById('profile-tiktok-input')?.value.trim() || '';
 
+    const isBusiness = document.getElementById('profile-type-business')?.checked || false;
+    const accountType = isBusiness ? 'business' : 'personal';
+
+    const rawWhatsapp = document.getElementById('profile-whatsapp-input')?.value.trim() || '';
+    const rawFacebook = document.getElementById('profile-facebook-input')?.value.trim() || '';
+    const rawWebsite1 = document.getElementById('profile-website1-input')?.value.trim() || '';
+    const rawWebsite2 = document.getElementById('profile-website2-input')?.value.trim() || '';
+    const rawWebsite3 = document.getElementById('profile-website3-input')?.value.trim() || '';
+
     const youtube = formatSocialLink('youtube', rawYoutube);
     const instagram = formatSocialLink('instagram', rawInstagram);
     const tiktok = formatSocialLink('tiktok', rawTiktok);
+    const whatsapp = formatSocialLink('whatsapp', rawWhatsapp);
+    const facebook = formatSocialLink('facebook', rawFacebook);
+    const website1 = formatWebsiteLink(rawWebsite1);
+    const website2 = formatWebsiteLink(rawWebsite2);
+    const website3 = formatWebsiteLink(rawWebsite3);
 
     const usernameKey = normalizeUsername(usernameInputValue);
     const usernameError = usernameValidationMessage(usernameKey);
@@ -15159,13 +15361,24 @@ document.getElementById('save-profile-btn')?.addEventListener('click', async () 
                 username,
                 status: bio,
                 phone,
+                accountType,
+                whatsapp,
+                facebook,
+                website1,
+                website2,
+                website3,
                 youtube,
                 instagram,
                 tiktok,
                 socialLinks: {
                     youtube,
                     instagram,
-                    tiktok
+                    tiktok,
+                    whatsapp,
+                    facebook,
+                    website1,
+                    website2,
+                    website3
                 }
             };
             if (currentProfile.avatar !== undefined) {
@@ -15188,10 +15401,25 @@ document.getElementById('save-profile-btn')?.addEventListener('click', async () 
     currentProfile.username = username;
     currentProfile.status = bio;
     currentProfile.phone = phone;
+    currentProfile.accountType = accountType;
+    currentProfile.whatsapp = whatsapp;
+    currentProfile.facebook = facebook;
+    currentProfile.website1 = website1;
+    currentProfile.website2 = website2;
+    currentProfile.website3 = website3;
     currentProfile.youtube = youtube;
     currentProfile.instagram = instagram;
     currentProfile.tiktok = tiktok;
-    currentProfile.socialLinks = { youtube, instagram, tiktok };
+    currentProfile.socialLinks = {
+        youtube,
+        instagram,
+        tiktok,
+        whatsapp,
+        facebook,
+        website1,
+        website2,
+        website3
+    };
     updateProfileDOM();
     showToast("Perfil Salvo", "Dados atualizados com sucesso!", "green");
     document.getElementById('profile-edit-panel')?.classList.remove('active');

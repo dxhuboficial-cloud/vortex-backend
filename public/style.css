@@ -10302,3 +10302,172 @@ body.theme-rgb .ephemeral-save-btn {
     align-items: center;
     justify-content: center;
 }
+
+/* ===== CONTA EMPRESA & TIPO DE CONTA (EDITAR PERFIL VIP) ===== */
+.profile-account-type-group {
+    margin-bottom: 6px;
+}
+
+.account-type-toggle-container {
+    display: flex;
+    gap: 10px;
+    margin-top: 8px;
+    width: 100%;
+}
+
+.account-type-option {
+    flex: 1;
+    cursor: pointer;
+    position: relative;
+    user-select: none;
+}
+
+.account-type-option input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+}
+
+.account-type-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 11px 14px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: var(--text-dim, #888);
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: all 0.25s ease;
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05);
+}
+
+.account-type-btn i,
+.account-type-btn svg {
+    width: 16px;
+    height: 16px;
+    stroke-width: 2.2px;
+    transition: transform 0.2s ease;
+}
+
+.account-type-option input[type="radio"]:checked + .account-type-btn {
+    background: linear-gradient(135deg, rgba(255, 240, 31, 0.15), rgba(255, 68, 68, 0.15));
+    border-color: #fff01f;
+    color: #ffffff;
+    box-shadow: 0 0 12px rgba(255, 240, 31, 0.35);
+}
+
+.account-type-option#account-type-option-business input[type="radio"]:checked + .account-type-btn {
+    background: linear-gradient(135deg, rgba(0, 242, 254, 0.2), rgba(79, 172, 254, 0.1));
+    border-color: #00f2fe;
+    color: #ffffff;
+    box-shadow: 0 0 14px rgba(0, 242, 254, 0.4);
+}
+
+.profile-business-fields-box {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px;
+    background: rgba(0, 242, 254, 0.03);
+    border: 1px solid rgba(0, 242, 254, 0.22);
+    border-radius: 14px;
+    margin: 8px 0;
+    animation: fadeIn 0.3s ease;
+}
+
+.business-section-header {
+    border-bottom: 1px solid rgba(0, 242, 254, 0.25);
+    padding-bottom: 8px;
+    margin-bottom: 4px;
+}
+
+.business-section-title {
+    color: #00f2fe !important;
+    font-size: 0.9rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.social-icon-whatsapp {
+    color: #25d366;
+}
+
+.social-icon-facebook {
+    color: #1877f2;
+}
+
+.social-icon-website {
+    color: #a855f7;
+}
+
+/* Badge de Conta Empresa em Dados do Contato */
+.business-account-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: linear-gradient(135deg, rgba(0, 242, 254, 0.15), rgba(79, 172, 254, 0.25));
+    border: 1px solid rgba(0, 242, 254, 0.5);
+    color: #00f2fe;
+    box-shadow: 0 0 12px rgba(0, 242, 254, 0.3);
+    margin-top: 6px;
+}
+
+.business-account-badge i,
+.business-account-badge svg {
+    width: 14px;
+    height: 14px;
+    stroke: #00f2fe;
+}
+
+/* Novos botões sociais em Dados do Contato */
+.social-pill-whatsapp {
+    background: rgba(37, 211, 102, 0.12);
+    border: 1px solid rgba(37, 211, 102, 0.35);
+    color: #25d366;
+}
+
+.social-pill-whatsapp:hover {
+    background: #25d366;
+    color: #ffffff;
+    box-shadow: 0 0 14px rgba(37, 211, 102, 0.5);
+    transform: translateY(-1px);
+}
+
+.social-pill-facebook {
+    background: rgba(24, 119, 242, 0.12);
+    border: 1px solid rgba(24, 119, 242, 0.35);
+    color: #1877f2;
+}
+
+.social-pill-facebook:hover {
+    background: #1877f2;
+    color: #ffffff;
+    box-shadow: 0 0 14px rgba(24, 119, 242, 0.5);
+    transform: translateY(-1px);
+}
+
+.social-pill-website {
+    background: rgba(168, 85, 247, 0.12);
+    border: 1px solid rgba(168, 85, 247, 0.35);
+    color: #c084fc;
+}
+
+.social-pill-website:hover {
+    background: linear-gradient(135deg, #a855f7, #6366f1);
+    color: #ffffff;
+    box-shadow: 0 0 14px rgba(168, 85, 247, 0.5);
+    transform: translateY(-1px);
+}

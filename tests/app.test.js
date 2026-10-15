@@ -5618,6 +5618,131 @@ test('Exclusão Completa de Conta do Usuário e Ocultação Total no VORTEX VIP 
   assert.ok(!adminUsersList.innerHTML.includes('victim-user'), 'Usuário apagado não deve constar na listagem de usuários do ADM');
 });
 
+test('Conta Empresa no Editar Perfil VIP: Alternância Pessoal vs Empresa, validação de 3 sites https://, WhatsApp, Facebook e exibição nos Dados do Contato', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window || env.sandbox;
+
+  // 1. Verificar elementos no DOM e CSS
+  assert.ok(env.elements['profile-type-personal'], 'Radio Conta Pessoal deve existir');
+  assert.ok(env.elements['profile-type-business'], 'Radio Conta Empresa deve existir');
+  assert.ok(env.elements['profile-business-fields'], 'Container de campos de empresa deve existir');
+  assert.ok(env.elements['profile-whatsapp-input'], 'Input WhatsApp deve existir');
+  assert.ok(env.elements['profile-facebook-input'], 'Input Facebook deve existir');
+  assert.ok(env.elements['profile-website1-input'], 'Input Site 1 deve existir');
+  assert.ok(env.elements['profile-website2-input'], 'Input Site 2 deve existir');
+  assert.ok(env.elements['profile-website3-input'], 'Input Site 3 deve existir');
+  assert.ok(env.elements['contact-profile-business-badge'], 'Badge de Conta Empresa nos Dados do Contato deve existir');
+  assert.ok(env.elements['contact-profile-whatsapp-link'], 'Pill WhatsApp nos Dados do Contato deve existir');
+  assert.ok(env.elements['contact-profile-facebook-link'], 'Pill Facebook nos Dados do Contato deve existir');
+  assert.ok(env.elements['contact-profile-website1-link'], 'Pill Site 1 nos Dados do Contato deve existir');
+  assert.ok(env.elements['contact-profile-website2-link'], 'Pill Site 2 nos Dados do Contato deve existir');
+  assert.ok(env.elements['contact-profile-website3-link'], 'Pill Site 3 nos Dados do Contato deve existir');
+
+  // 2. Testar funções de formatação
+  const formatWebsiteLink = win.formatWebsiteLink;
+  assert.ok(typeof formatWebsiteLink === 'function', 'formatWebsiteLink deve ser uma função');
+  assert.strictEqual(formatWebsiteLink(''), '', 'Vazio deve retornar vazio');
+  assert.strictEqual(formatWebsiteLink('meusite.com'), 'https://meusite.com', 'Deve prefixar https://');
+  assert.strictEqual(formatWebsiteLink('http://inseguro.com/loja'), 'https://inseguro.com/loja', 'Deve converter http para https');
+  assert.strictEqual(formatWebsiteLink('https://seguro.com.br'), 'https://seguro.com.br', 'Deve manter https://');
+
+  const formatSocialLink = win.formatSocialLink;
+  assert.strictEqual(formatSocialLink('facebook', '@empresa_vip'), 'https://www.facebook.com/empresa_vip');
+  assert.strictEqual(formatSocialLink('facebook', 'facebook.com/loja'), 'https://facebook.com/loja');
+  assert.strictEqual(formatSocialLink('whatsapp', '11988887777'), 'https://wa.me/5511988887777');
+  assert.strictEqual(formatSocialLink('whatsapp', 'https://wa.me/5511999998888'), 'https://wa.me/5511999998888');
+
+  // 3. Testar alternância entre Conta Pessoal e Conta Empresa no formulário
+  const bizFields = env.elements['profile-business-fields'];
+  const personalRadio = env.elements['profile-type-personal'];
+  const businessRadio = env.elements['profile-type-business'];
+
+  // Alterna para Empresa
+  businessRadio.checked = true;
+  personalRadio.checked = false;
+  await businessRadio.dispatchEvent('change');
+  assert.strictEqual(bizFields.style.display, 'flex', 'Campos de empresa devem ficar visíveis (flex) ao marcar Conta Empresa');
+
+  // Alterna de volta para Pessoal
+  personalRadio.checked = true;
+  businessRadio.checked = false;
+  await personalRadio.dispatchEvent('change');
+  assert.strictEqual(bizFields.style.display, 'none', 'Campos de empresa devem ficar ocultos (none) ao marcar Conta Pessoal');
+
+  // 4. Testar salvamento de perfil como Conta Empresa
+  const user = { uid: 'biz_user_123', email: 'empresa@vortex.vip', displayName: 'Vortex Store' };
+  await env.triggerAuthStateChange(user);
+  await new Promise(r => setTimeout(r, 20));
+
+  env.elements['profile-name-input'].value = 'Vortex Store';
+  env.elements['profile-username-input'].value = 'vortexstore';
+  env.elements['profile-status-input'].value = 'Loja Oficial VORTEX VIP';
+  env.elements['profile-phone-input'].value = '(11) 97777-6666';
+
+  // Selecionar Empresa e preencher os novos campos
+  businessRadio.checked = true;
+  personalRadio.checked = false;
+  await businessRadio.dispatchEvent('change');
+
+  env.elements['profile-whatsapp-input'].value = '(11) 98888-7777';
+  env.elements['profile-facebook-input'].value = '@vortexstore';
+  env.elements['profile-instagram-input'].value = '@vortexstore';
+  env.elements['profile-tiktok-input'].value = '@vortexstore';
+  env.elements['profile-youtube-input'].value = '@vortexchannel';
+  env.elements['profile-website1-input'].value = 'vortexstore.com.br';
+  env.elements['profile-website2-input'].value = 'http://loja.vortexstore.com.br';
+  env.elements['profile-website3-input'].value = 'https://catalogo.vortexstore.com.br';
+
+  await env.elements['save-profile-btn'].click();
+
+  const savedUserDoc = env.firestoreDocs['users/biz_user_123'];
+  assert.ok(savedUserDoc, 'Documento da empresa deve estar salvo no Firestore');
+  assert.strictEqual(savedUserDoc.accountType, 'business', 'accountType deve ser business');
+  assert.strictEqual(savedUserDoc.whatsapp, 'https://wa.me/5511988887777', 'WhatsApp deve estar formatado com wa.me');
+  assert.strictEqual(savedUserDoc.facebook, 'https://www.facebook.com/vortexstore', 'Facebook deve estar formatado');
+  assert.strictEqual(savedUserDoc.website1, 'https://vortexstore.com.br', 'Site 1 deve ter https://');
+  assert.strictEqual(savedUserDoc.website2, 'https://loja.vortexstore.com.br', 'Site 2 deve ter sido convertido para https://');
+  assert.strictEqual(savedUserDoc.website3, 'https://catalogo.vortexstore.com.br', 'Site 3 deve manter https://');
+  assert.strictEqual(savedUserDoc.socialLinks.website1, 'https://vortexstore.com.br', 'socialLinks.website1 deve estar sincronizado');
+
+  // 5. Testar renderização nos Dados do Contato
+  const updateContactProfileSocialUI = win.updateContactProfileSocialUI;
+
+  // A) Renderizar contato como Empresa
+  updateContactProfileSocialUI({
+    accountType: 'business',
+    phone: '(11) 97777-6666',
+    whatsapp: 'https://wa.me/5511988887777',
+    facebook: 'https://www.facebook.com/vortexstore',
+    instagram: 'https://www.instagram.com/vortexstore',
+    tiktok: 'https://www.tiktok.com/@vortexstore',
+    website1: 'https://vortexstore.com.br',
+    website2: 'https://loja.vortexstore.com.br',
+    website3: 'https://catalogo.vortexstore.com.br'
+  });
+
+  assert.strictEqual(env.elements['contact-profile-business-badge'].style.display, 'inline-flex', 'Badge de Conta Empresa deve estar visível');
+  assert.strictEqual(env.elements['contact-profile-whatsapp-link'].style.display, 'inline-flex', 'Pill WhatsApp deve estar visível');
+  assert.strictEqual(env.elements['contact-profile-facebook-link'].style.display, 'inline-flex', 'Pill Facebook deve estar visível');
+  assert.strictEqual(env.elements['contact-profile-website1-link'].style.display, 'inline-flex', 'Pill Site 1 deve estar visível');
+  assert.strictEqual(env.elements['contact-profile-website2-link'].style.display, 'inline-flex', 'Pill Site 2 deve estar visível');
+  assert.strictEqual(env.elements['contact-profile-website3-link'].style.display, 'inline-flex', 'Pill Site 3 deve estar visível');
+  assert.strictEqual(env.elements['contact-profile-website1-link'].href, 'https://vortexstore.com.br', 'href do Site 1 deve ser o link https://');
+
+  // B) Renderizar contato como Pessoal
+  updateContactProfileSocialUI({
+    accountType: 'personal',
+    phone: '(11) 99999-0000',
+    instagram: 'https://www.instagram.com/pessoal'
+  });
+
+  assert.strictEqual(env.elements['contact-profile-business-badge'].style.display, 'none', 'Badge de Conta Empresa deve estar oculto para conta pessoal');
+  assert.strictEqual(env.elements['contact-profile-whatsapp-link'].style.display, 'none', 'Pill WhatsApp de empresa deve estar oculto para conta pessoal');
+  assert.strictEqual(env.elements['contact-profile-facebook-link'].style.display, 'none', 'Pill Facebook de empresa deve estar oculto para conta pessoal');
+  assert.strictEqual(env.elements['contact-profile-website1-link'].style.display, 'none', 'Pill Site 1 deve estar oculto para conta pessoal');
+});
+
+
 
 
 
