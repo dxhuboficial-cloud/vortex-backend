@@ -10304,14 +10304,42 @@ body.theme-rgb .ephemeral-save-btn {
 }
 
 /* ===== CONTA EMPRESA & TIPO DE CONTA (EDITAR PERFIL VIP) ===== */
-.profile-account-type-group {
-    margin-bottom: 6px;
+.setting-item.profile-account-type-group {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+    margin-bottom: 12px;
+}
+
+.setting-item.profile-account-type-group .setting-info {
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 4px !important;
+}
+
+.setting-item.profile-account-type-group .profile-field-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-main, #e0e0e0);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.setting-item.profile-account-type-group .setting-info small {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--text-dim, #888);
+    line-height: 1.35;
 }
 
 .account-type-toggle-container {
     display: flex;
     gap: 10px;
-    margin-top: 8px;
+    margin-top: 4px;
     width: 100%;
 }
 
