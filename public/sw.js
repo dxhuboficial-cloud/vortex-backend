@@ -2,13 +2,13 @@
    VORTEX VIP ⚡ - Service Worker Oficial PWA
    ========================================================================== */
 
-const CACHE_NAME = 'vortex-vip-v1.0.105';
+const CACHE_NAME = 'vortex-vip-v1.0.106';
 
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
-  '/style.css?v=1.0.105',
-  '/script.js?v=1.0.105',
+  '/style.css?v=1.0.106',
+  '/script.js?v=1.0.106',
   '/manifest.json',
   '/icons/vortex-vip-192.png',
   '/icons/vortex-vip-512.png',
@@ -61,7 +61,9 @@ self.addEventListener('fetch', (event) => {
     url.hostname.includes('identitytoolkit.googleapis.com') ||
     url.hostname.includes('mercadopago.com') ||
     url.protocol === 'chrome-extension:' ||
-    url.pathname.startsWith('/api/')
+    url.pathname.startsWith('/api/') ||
+    url.pathname === '/version.json' ||
+    url.pathname === '/sw.js'
   ) {
     return;
   }
@@ -168,3 +170,11 @@ self.addEventListener('notificationclick', (event) => {
     })
   );
 });
+
+// Ativação Imediata solicitada pelo aplicativo (Botão Atualizar)
+self.addEventListener('message', (event) => {
+  if (event.data && (event.data.type === 'SKIP_WAITING' || event.data === 'skipWaiting')) {
+    self.skipWaiting();
+  }
+});
+

@@ -10035,6 +10035,10 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
+export const CURRENT_APP_VERSION = '1.0.106';
+export let pwaUpdateAvailable = false;
+export let pwaWaitingWorker = null;
+export let pwaRegistration = null;
 
 export function setDeferredPrompt(promptEvent) {
     pwaDeferredPrompt = promptEvent;
@@ -10042,6 +10046,24 @@ export function setDeferredPrompt(promptEvent) {
 
 export function getDeferredPrompt() {
     return pwaDeferredPrompt;
+}
+
+export function setPwaIsInstalled(val) {
+    pwaIsInstalled = !!val;
+    updateInstallUIVisibility();
+}
+
+export function getPwaIsInstalled() {
+    return pwaIsInstalled;
+}
+
+export function isPwaUpdateAvailable() {
+    return pwaUpdateAvailable;
+}
+
+export function setPwaUpdateAvailable(val) {
+    pwaUpdateAvailable = !!val;
+    updateInstallUIVisibility();
 }
 
 export function isAppInstalledPwa() {
@@ -10066,17 +10088,80 @@ export function updateInstallUIVisibility() {
     const headerBtn = document.getElementById('install-app-header-btn');
     const settingRow = document.getElementById('install-app-setting-item');
     const banner = document.getElementById('pwa-install-banner');
+    const installBtn = document.getElementById('install-pwa-btn');
+    const settingDesc = document.getElementById('install-setting-desc');
+    const settingLabel = settingRow?.querySelector?.('.install-setting-label');
 
     if (isInstalled) {
-        if (headerBtn) headerBtn.style.display = 'none';
-        if (settingRow) settingRow.style.display = 'none';
         if (banner) banner.style.display = 'none';
+
+        if (pwaUpdateAvailable) {
+            // Nova versão disponível para quem tem o app instalado no Celular ou PC!
+            if (headerBtn) {
+                headerBtn.style.display = 'flex';
+                headerBtn.title = 'Atualizar VORTEX VIP (Nova Versão Disponível)';
+                headerBtn.setAttribute('aria-label', 'Atualizar Aplicativo');
+                headerBtn.innerHTML = '<i data-lucide="refresh-cw" class="install-inline-icon rotating-update-icon"></i>';
+            }
+            if (settingRow) {
+                settingRow.style.display = 'flex';
+                settingRow.classList.add('update-available-row');
+                if (settingLabel) {
+                    settingLabel.innerHTML = '<i data-lucide="refresh-cw" class="install-inline-icon rotating-update-icon"></i> Atualizar Aplicativo ⚡';
+                }
+                if (settingDesc) {
+                    settingDesc.textContent = 'Nova versão disponível! Toque em Atualizar para aplicar as novidades.';
+                }
+            }
+            if (installBtn) {
+                installBtn.textContent = 'Atualizar';
+                installBtn.title = 'Atualizar aplicativo para a versão mais recente';
+                installBtn.classList.add('btn-update-pulse');
+            }
+            if (typeof window !== 'undefined' && window.lucide) {
+                window.lucide.createIcons();
+            }
+            return;
+        }
+
+        // Instalado e sem atualização pendente
+        if (headerBtn) headerBtn.style.display = 'none';
+        if (settingRow) {
+            settingRow.style.display = 'none';
+            settingRow.classList.remove('update-available-row');
+        }
+        if (installBtn) {
+            installBtn.classList.remove('btn-update-pulse');
+        }
         return;
     }
 
+    // Não instalado: fluxo padrão de instalação
     const canInstall = !!pwaDeferredPrompt || isIosSafari();
-    if (headerBtn) headerBtn.style.display = canInstall ? 'flex' : 'none';
-    if (settingRow) settingRow.style.display = 'flex';
+    if (headerBtn) {
+        headerBtn.style.display = canInstall ? 'flex' : 'none';
+        headerBtn.title = 'Instalar VORTEX VIP no Dispositivo';
+        headerBtn.setAttribute('aria-label', 'Instalar Aplicativo');
+        headerBtn.innerHTML = '<i data-lucide="download"></i>';
+    }
+    if (settingRow) {
+        settingRow.style.display = 'flex';
+        settingRow.classList.remove('update-available-row');
+        if (settingLabel) {
+            settingLabel.innerHTML = '<i data-lucide="download" class="install-inline-icon"></i> Instalar Aplicativo ⚡';
+        }
+        if (settingDesc) {
+            settingDesc.textContent = 'Instalar o VORTEX VIP no navegador ou na tela inicial';
+        }
+    }
+    if (installBtn) {
+        installBtn.textContent = 'Instalar';
+        installBtn.title = 'Instalar aplicativo no dispositivo';
+        installBtn.classList.remove('btn-update-pulse');
+    }
+    if (typeof window !== 'undefined' && window.lucide) {
+        window.lucide.createIcons();
+    }
 }
 
 export function showPwaBannerIfEligible() {
@@ -10112,7 +10197,66 @@ export function closePwaIosModal() {
     if (modal) modal.style.display = 'none';
 }
 
+export async function triggerPwaUpdate() {
+    showToast('Atualizando VORTEX VIP ⚡', 'Baixando a versão mais recente e reiniciando o aplicativo...', 'yellow');
+
+    try {
+        if (pwaWaitingWorker) {
+            pwaWaitingWorker.postMessage({ type: 'SKIP_WAITING' });
+        }
+        if (pwaRegistration && typeof pwaRegistration.update === 'function') {
+            await pwaRegistration.update();
+        }
+        if (typeof window !== 'undefined' && 'caches' in window) {
+            const keys = await caches.keys();
+            await Promise.all(keys.map(k => caches.delete(k)));
+        }
+    } catch (err) {
+        console.warn('[PWA] Erro durante atualização:', err);
+    }
+
+    setTimeout(() => {
+        if (typeof window !== 'undefined' && window.location) {
+            window.location.reload(true);
+        }
+    }, 600);
+}
+
+export async function checkForAppUpdates(manual = false) {
+    if (typeof window === 'undefined' || typeof fetch === 'undefined') return false;
+    try {
+        if (pwaRegistration && typeof pwaRegistration.update === 'function') {
+            await pwaRegistration.update();
+        }
+
+        const res = await fetch('/version.json?t=' + Date.now(), { cache: 'no-store' });
+        if (res.ok) {
+            const data = await res.json();
+            if (data && data.version && data.version !== CURRENT_APP_VERSION) {
+                pwaUpdateAvailable = true;
+                updateInstallUIVisibility();
+                if (manual) {
+                    showToast('Nova Versão Encontrada! ⚡', 'Versão ' + data.version + ' disponível. Toque em Atualizar!', 'yellow');
+                }
+                return true;
+            }
+        }
+    } catch (err) {
+        console.warn('[PWA] Falha ao verificar atualizações:', err);
+    }
+
+    if (manual) {
+        showToast('Aplicativo Atualizado ✅', 'Você já está utilizando a versão mais recente do VORTEX VIP (v' + CURRENT_APP_VERSION + ').', 'green');
+    }
+    return false;
+}
+
 export async function triggerPwaInstall() {
+    if (isAppInstalledPwa() && pwaUpdateAvailable) {
+        await triggerPwaUpdate();
+        return;
+    }
+
     if (isIosSafari()) {
         openPwaIosModal();
         return;
@@ -10142,10 +10286,45 @@ if (typeof window !== 'undefined') {
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('/sw.js').then((reg) => {
+                pwaRegistration = reg;
                 console.log('[VORTEX VIP] Service Worker ativo com sucesso! Escopo:', reg.scope);
+
+                // 1. Se já existe um worker em espera
+                if (reg.waiting) {
+                    pwaWaitingWorker = reg.waiting;
+                    pwaUpdateAvailable = true;
+                    updateInstallUIVisibility();
+                }
+
+                // 2. Se um novo worker for baixado
+                reg.addEventListener('updatefound', () => {
+                    const newWorker = reg.installing;
+                    if (newWorker) {
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                pwaWaitingWorker = newWorker;
+                                pwaUpdateAvailable = true;
+                                updateInstallUIVisibility();
+                                showToast('Nova Versão Disponível ⚡', 'Uma atualização do VORTEX VIP está pronta. Vá em Configurações para Atualizar!', 'yellow');
+                            }
+                        });
+                    }
+                });
+
+                // 3. Checar imediatamente se há nova versão no servidor
+                checkForAppUpdates();
             }).catch((err) => {
                 console.warn('[VORTEX VIP] Erro ao registrar Service Worker:', err);
             });
+        });
+
+        // Recarregar quando o novo worker assumir o controle
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (!refreshing) {
+                refreshing = true;
+                window.location.reload();
+            }
         });
     }
 
@@ -10162,6 +10341,12 @@ if (typeof window !== 'undefined') {
         updateInstallUIVisibility();
         dismissPwaInstallBanner();
         showToast('Aplicativo Instalado! ⚡', 'VORTEX VIP foi instalado com sucesso. Agora você pode abrir diretamente pela tela inicial!', 'green');
+    });
+
+    window.addEventListener('focus', () => {
+        if (isAppInstalledPwa()) {
+            checkForAppUpdates();
+        }
     });
 }
 
@@ -10254,6 +10439,13 @@ if (typeof window !== 'undefined') {
     window.closeBusinessCatalogModal = closeBusinessCatalogModal;
     window.formatSocialLink = formatSocialLink;
     window.updateContactProfileSocialUI = updateContactProfileSocialUI;
+    window.CURRENT_APP_VERSION = CURRENT_APP_VERSION;
+    window.isPwaUpdateAvailable = isPwaUpdateAvailable;
+    window.setPwaUpdateAvailable = setPwaUpdateAvailable;
+    window.setPwaIsInstalled = setPwaIsInstalled;
+    window.getPwaIsInstalled = getPwaIsInstalled;
+    window.checkForAppUpdates = checkForAppUpdates;
+    window.triggerPwaUpdate = triggerPwaUpdate;
 }
 
 // Listeners de Instalação PWA
@@ -15115,6 +15307,10 @@ window.updateProfileAvatar = updateProfileAvatar;
 document.getElementById('settings-btn')?.addEventListener('click', () => {
     playSound(clickSound);
     document.getElementById('settings-panel')?.classList.add('active');
+    updateInstallUIVisibility();
+    if (isAppInstalledPwa()) {
+        checkForAppUpdates();
+    }
 });
 document.getElementById('close-settings')?.addEventListener('click', () => {
     playSound(clickSound);

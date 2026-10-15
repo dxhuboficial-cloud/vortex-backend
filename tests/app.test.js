@@ -5514,6 +5514,37 @@ test('Instalabilidade da VORTEX VIP no Navegador (PWA Completo: Manifest, Servic
   assert.ok(cssContent.includes('.install-header-btn'), 'style.css deve conter estilos do botão de instalação');
   assert.ok(cssContent.includes('.pwa-install-banner'), 'style.css deve conter estilos do banner de instalação');
   assert.ok(cssContent.includes('.pwa-ios-modal'), 'style.css deve conter estilos do modal do iOS');
+  assert.ok(cssContent.includes('.btn-update-pulse'), 'style.css deve conter estilos de animação do botão de atualização');
+  assert.ok(cssContent.includes('.update-available-row'), 'style.css deve conter estilos de destaque da linha de atualização');
+
+  // 6. Validar Comportamento de Atualização (Botão muda de Instalar para Atualizar quando instalado e há nova versão)
+  const setPwaIsInstalled = env.sandbox.setPwaIsInstalled || env.sandbox.window.setPwaIsInstalled;
+  const setPwaUpdateAvailable = env.sandbox.setPwaUpdateAvailable || env.sandbox.window.setPwaUpdateAvailable;
+  const settingRow = env.elements['install-app-setting-item'];
+  const installBtn = env.elements['install-pwa-btn'];
+
+  assert.ok(typeof setPwaIsInstalled === 'function', 'setPwaIsInstalled deve ser uma função');
+  assert.ok(typeof setPwaUpdateAvailable === 'function', 'setPwaUpdateAvailable deve ser uma função');
+
+  // Caso A: App instalado e sem atualização disponível -> Oculta linha de instalação
+  setPwaIsInstalled(true);
+  setPwaUpdateAvailable(false);
+  updateInstallUIVisibility();
+  assert.strictEqual(settingRow.style.display, 'none', 'Linha de configuração deve ficar oculta se app já está instalado e sem nova versão');
+
+  // Caso B: App instalado e com nova versão disponível -> Exibe linha com botão "Atualizar"
+  setPwaUpdateAvailable(true);
+  updateInstallUIVisibility();
+  assert.strictEqual(settingRow.style.display, 'flex', 'Linha de configuração deve ficar visível quando houver nova versão para o app instalado');
+  assert.strictEqual(installBtn.textContent, 'Atualizar', 'Texto do botão nas configurações deve mudar de Instalar para Atualizar');
+  assert.strictEqual(headerBtn.style.display, 'flex', 'Botão no cabeçalho deve ficar visível para atualizar');
+
+  // Caso C: App não instalado -> Botão volta a exibir "Instalar"
+  setPwaIsInstalled(false);
+  setPwaUpdateAvailable(false);
+  setDeferredPrompt(fakePrompt);
+  updateInstallUIVisibility();
+  assert.strictEqual(installBtn.textContent, 'Instalar', 'Texto do botão deve voltar para Instalar quando app não estiver instalado');
 });
 
 test('Exclusão Completa de Conta do Usuário e Ocultação Total no VORTEX VIP ⚡', async () => {
