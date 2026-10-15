@@ -10120,6 +10120,10 @@ body.theme-rgb .ephemeral-save-btn {
     color: #00f2fe !important;
 }
 
+.social-icon-pix {
+    color: #32bcad !important;
+}
+
 /* ===== DADOS DO CONTATO: Telefone & Redes Sociais ===== */
 .contact-profile-info-card {
     background: rgba(255, 255, 255, 0.04);
@@ -10156,6 +10160,17 @@ body.theme-rgb .ephemeral-save-btn {
     background: rgba(48, 209, 88, 0.15);
     color: #30d158;
     border: 1px solid rgba(48, 209, 88, 0.3);
+}
+
+.contact-info-card-icon.pix-icon-wrap {
+    background: rgba(50, 188, 173, 0.15);
+    color: #32bcad;
+    border: 1px solid rgba(50, 188, 173, 0.3);
+}
+
+.contact-info-card-icon.pix-icon-wrap svg {
+    width: 18px;
+    height: 18px;
 }
 
 .contact-info-card-icon i {
@@ -10301,6 +10316,20 @@ body.theme-rgb .ephemeral-save-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+}
+
+.social-pill-pix {
+    background: rgba(50, 188, 173, 0.12);
+    border: 1px solid rgba(50, 188, 173, 0.35);
+    color: #32bcad;
+    cursor: pointer;
+}
+
+.social-pill-pix:hover {
+    background: #32bcad;
+    color: #000000;
+    box-shadow: 0 0 14px rgba(50, 188, 173, 0.5);
+    transform: translateY(-1px);
 }
 
 /* ===== CONTA EMPRESA & TIPO DE CONTA (EDITAR PERFIL VIP) ===== */

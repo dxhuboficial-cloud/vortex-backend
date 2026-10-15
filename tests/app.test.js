@@ -5742,6 +5742,71 @@ test('Conta Empresa no Editar Perfil VIP: Alternância Pessoal vs Empresa, valid
   assert.strictEqual(env.elements['contact-profile-website1-link'].style.display, 'none', 'Pill Site 1 deve estar oculto para conta pessoal');
 });
 
+test('Chave Pix no Perfil VIP: Cadastro no Editar Perfil, persistência no Firestore, carregamento e exibição/cópia nos Dados do Contato', async (t) => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window || env.sandbox;
+
+  // 1. Elementos essenciais no HTML
+  assert.ok(env.elements['profile-pix-input'], 'Input de chave pix deve existir no painel de edição de perfil');
+  assert.ok(env.elements['contact-profile-pix-card'], 'Card de exibição de chave pix deve existir no painel de contato');
+  assert.ok(env.elements['contact-profile-pix-text'], 'Texto da chave pix deve existir no painel de contato');
+  assert.ok(env.elements['contact-profile-copy-pix-btn'], 'Botão de copiar chave pix deve existir no card');
+  assert.ok(env.elements['contact-profile-pix-pill'], 'Pill de chave pix deve existir nas redes sociais do contato');
+
+  // 2. Login de usuário
+  const user = { uid: 'pix_user_999', email: 'pixuser@vortex.vip', displayName: 'Lucas VIP' };
+  await env.triggerAuthStateChange(user);
+  await new Promise(r => setTimeout(r, 20));
+
+  // 3. Cadastrar e salvar Chave Pix no perfil
+  env.elements['profile-name-input'].value = 'Lucas VIP';
+  env.elements['profile-username-input'].value = 'lucasvip';
+  env.elements['profile-status-input'].value = 'Transferências via Pix';
+  env.elements['profile-pix-input'].value = 'lucas.vip@pagamentos.com.br';
+
+  await env.elements['save-profile-btn'].click();
+
+  const savedUserDoc = env.firestoreDocs['users/pix_user_999'];
+  assert.ok(savedUserDoc, 'Documento do usuário deve estar salvo no Firestore');
+  assert.strictEqual(savedUserDoc.pixKey, 'lucas.vip@pagamentos.com.br', 'pixKey deve estar salvo no Firestore');
+
+  // 4. Testar carregamento no painel de edição
+  env.elements['profile-pix-input'].value = '';
+  await env.elements['profile-btn'].click();
+  assert.strictEqual(env.elements['profile-pix-input'].value, 'lucas.vip@pagamentos.com.br', 'Ao abrir editar perfil, chave pix cadastrada deve ser carregada no input');
+
+  // 5. Testar exibição nos Dados do Contato com Chave Pix
+  const updateContactProfileSocialUI = win.updateContactProfileSocialUI;
+  updateContactProfileSocialUI({
+    name: 'Amanda Tech',
+    accountType: 'personal',
+    pixKey: '11999887766'
+  });
+
+  assert.strictEqual(env.elements['contact-profile-pix-card'].style.display, 'flex', 'Card de chave Pix deve estar visível');
+  assert.strictEqual(env.elements['contact-profile-pix-text'].innerText, '11999887766', 'Texto da chave Pix deve exibir o valor correto');
+  assert.strictEqual(env.elements['contact-profile-pix-pill'].style.display, 'inline-flex', 'Pill de chave Pix deve estar visível nas badges sociais');
+
+  // 6. Testar cópia para a área de transferência
+  env.sandbox._copiedText = '';
+  await env.elements['contact-profile-copy-pix-btn'].click();
+  assert.strictEqual(env.sandbox._copiedText, '11999887766', 'Clique no botão de copiar chave Pix deve copiar o texto para a área de transferência');
+
+  env.sandbox._copiedText = '';
+  await env.elements['contact-profile-pix-pill'].click();
+  assert.strictEqual(env.sandbox._copiedText, '11999887766', 'Clique na pill de chave Pix deve copiar o texto para a área de transferência');
+
+  // 7. Testar contato SEM chave Pix
+  updateContactProfileSocialUI({
+    name: 'Contato Sem Pix',
+    accountType: 'personal',
+    pixKey: ''
+  });
+
+  assert.strictEqual(env.elements['contact-profile-pix-card'].style.display, 'none', 'Card de chave Pix deve ficar oculto quando contato não tiver chave Pix');
+  assert.strictEqual(env.elements['contact-profile-pix-pill'].style.display, 'none', 'Pill de chave Pix deve ficar oculta quando contato não tiver chave Pix');
+});
+
 
 
 

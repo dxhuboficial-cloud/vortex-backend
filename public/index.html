@@ -4,20 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.108">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.108">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.108">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.108">
-    <link rel="stylesheet" href="style.css?v=1.0.108">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.109">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.109">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.109">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.109">
+    <link rel="stylesheet" href="style.css?v=1.0.109">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.108">
+    <link rel="manifest" href="manifest.json?v=1.0.109">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.108">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.108">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.109">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.109">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -1098,6 +1098,18 @@
                     <input type="tel" id="profile-phone-input" placeholder="(11) 99999-9999" title="Número de Telefone" autocomplete="tel">
                 </div>
 
+                <div class="setting-item">
+                    <label for="profile-pix-input" class="setting-info">
+                        <span class="profile-field-title">
+                            <span class="profile-field-icon social-icon-pix">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M17.07 14.66l-3.32-3.32a2.47 2.47 0 0 0-3.5 0L6.93 14.66a2.47 2.47 0 0 0 0 3.5l3.32 3.32a2.47 2.47 0 0 0 3.5 0l3.32-3.32a2.47 2.47 0 0 0 0-3.5zm-5.07 5.07a.35.35 0 0 1-.5 0L8.18 16.4a.35.35 0 0 1 0-.5l3.32-3.32a.35.35 0 0 1 .5 0l3.32 3.32a.35.35 0 0 1 0 .5l-3.32 3.33zM6.93 9.34l3.32 3.32a2.47 2.47 0 0 0 3.5 0l3.32-3.32a2.47 2.47 0 0 0 0-3.5L13.75 2.52a2.47 2.47 0 0 0-3.5 0L6.93 5.84a2.47 2.47 0 0 0 0 3.5zm5.07-5.07a.35.35 0 0 1 .5 0l3.32 3.33a.35.35 0 0 1 0 .5l-3.32 3.32a.35.35 0 0 1-.5 0L8.18 8.1a.35.35 0 0 1 0-.5L11.5 4.27z"/></svg>
+                            </span> Chave Pix
+                        </span>
+                        <small>Para receber pagamentos e transferências</small>
+                    </label>
+                    <input type="text" id="profile-pix-input" placeholder="CPF, Celular, E-mail ou Aleatória" title="Chave Pix para pagamentos e transferências">
+                </div>
+
                 <div class="setting-item profile-account-type-group">
                     <label class="setting-info">
                         <span class="profile-field-title"><i data-lucide="briefcase" class="profile-field-icon"></i> Tipo de Conta</span>
@@ -1452,10 +1464,32 @@
                     </div>
                 </div>
 
+                <!-- Chave Pix do Contato -->
+                <div class="contact-profile-info-card" id="contact-profile-pix-card" style="display: none;">
+                    <div class="contact-info-card-header">
+                        <div class="contact-info-card-icon pix-icon-wrap">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M17.07 14.66l-3.32-3.32a2.47 2.47 0 0 0-3.5 0L6.93 14.66a2.47 2.47 0 0 0 0 3.5l3.32 3.32a2.47 2.47 0 0 0 3.5 0l3.32-3.32a2.47 2.47 0 0 0 0-3.5zm-5.07 5.07a.35.35 0 0 1-.5 0L8.18 16.4a.35.35 0 0 1 0-.5l3.32-3.32a.35.35 0 0 1 .5 0l3.32 3.32a.35.35 0 0 1 0 .5l-3.32 3.33zM6.93 9.34l3.32 3.32a2.47 2.47 0 0 0 3.5 0l3.32-3.32a2.47 2.47 0 0 0 0-3.5L13.75 2.52a2.47 2.47 0 0 0-3.5 0L6.93 5.84a2.47 2.47 0 0 0 0 3.5zm5.07-5.07a.35.35 0 0 1 .5 0l3.32 3.33a.35.35 0 0 1 0 .5l-3.32 3.32a.35.35 0 0 1-.5 0L8.18 8.1a.35.35 0 0 1 0-.5L11.5 4.27z"/></svg>
+                        </div>
+                        <div class="contact-info-card-details">
+                            <span class="contact-info-card-label">Chave Pix</span>
+                            <span id="contact-profile-pix-text" class="contact-info-card-value"></span>
+                        </div>
+                    </div>
+                    <div class="contact-info-card-actions">
+                        <button type="button" class="contact-info-mini-btn" id="contact-profile-copy-pix-btn" title="Copiar Chave Pix" aria-label="Copiar Chave Pix">
+                            <i data-lucide="copy"></i>
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Redes Sociais do Contato -->
                 <div class="contact-profile-social-section" id="contact-profile-social-section" style="display: none;">
                     <span class="contact-social-heading">Redes Sociais</span>
                     <div class="contact-social-badges">
+                        <button type="button" class="contact-social-pill social-pill-pix" id="contact-profile-pix-pill" style="display: none;" title="Copiar Chave Pix">
+                            <span class="social-tiktok-svg"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M17.07 14.66l-3.32-3.32a2.47 2.47 0 0 0-3.5 0L6.93 14.66a2.47 2.47 0 0 0 0 3.5l3.32 3.32a2.47 2.47 0 0 0 3.5 0l3.32-3.32a2.47 2.47 0 0 0 0-3.5zm-5.07 5.07a.35.35 0 0 1-.5 0L8.18 16.4a.35.35 0 0 1 0-.5l3.32-3.32a.35.35 0 0 1 .5 0l3.32 3.32a.35.35 0 0 1 0 .5l-3.32 3.33zM6.93 9.34l3.32 3.32a2.47 2.47 0 0 0 3.5 0l3.32-3.32a2.47 2.47 0 0 0 0-3.5L13.75 2.52a2.47 2.47 0 0 0-3.5 0L6.93 5.84a2.47 2.47 0 0 0 0 3.5zm5.07-5.07a.35.35 0 0 1 .5 0l3.32 3.33a.35.35 0 0 1 0 .5l-3.32 3.32a.35.35 0 0 1-.5 0L8.18 8.1a.35.35 0 0 1 0-.5L11.5 4.27z"/></svg></span>
+                            <span>Pix</span>
+                        </button>
                         <a href="#" target="_blank" rel="noopener noreferrer" class="contact-social-pill social-pill-whatsapp" id="contact-profile-whatsapp-link" style="display: none;" title="Chamar no WhatsApp">
                             <span class="social-tiktok-svg"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M17.472 14.382c-.301-.15-1.78-.879-2.056-.98-.276-.1-.476-.15-.677.15-.2.301-.776.98-.952 1.18-.175.2-.35.226-.651.076-.301-.15-1.27-.468-2.42-1.493-.895-.798-1.5-1.784-1.675-2.085-.175-.301-.019-.464.132-.614.136-.134.301-.35.451-.525.15-.176.2-.301.3-.501.1-.2.05-.376-.025-.526-.075-.15-.677-1.631-.927-2.234-.244-.587-.492-.507-.677-.516-.175-.008-.376-.01-.577-.01-.2 0-.526.075-.802.376-.276.301-1.052 1.028-1.052 2.508 0 1.48 1.077 2.909 1.228 3.109.15.2 2.12 3.238 5.136 4.542.718.31 1.278.496 1.716.635.722.23 1.378.197 1.9.12.58-.087 1.78-.727 2.03-1.428.25-.702.25-1.303.175-1.429-.075-.125-.276-.201-.577-.35zM12.04 2C6.51 2 2.03 6.47 2.03 12c0 1.94.55 3.75 1.51 5.28L2 22l4.88-1.51c1.48.9 3.23 1.43 5.12 1.43 5.53 0 10.01-4.47 10.01-10S17.57 2 12.04 2zm0 18.25c-1.63 0-3.15-.47-4.43-1.3l-.32-.2-2.91.9.91-2.84-.21-.34A8.17 8.17 0 0 1 3.86 12c0-4.51 3.67-8.18 8.18-8.18s8.18 3.67 8.18 8.18-3.67 8.25-8.18 8.25z"/></svg></span>
                             <span>WhatsApp</span>
@@ -2634,6 +2668,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.108" defer></script>
+    <script type="module" src="script.js?v=1.0.109" defer></script>
 </body>
 </html>

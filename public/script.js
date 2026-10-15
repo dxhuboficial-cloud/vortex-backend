@@ -54,6 +54,7 @@ let currentProfile = {
     username: '',
     status: 'Disponível no VORTEX ⚡',
     phone: '',
+    pixKey: '',
     accountType: 'personal',
     whatsapp: '',
     facebook: '',
@@ -538,6 +539,7 @@ onAuthStateChanged(auth, async (user) => {
                 username: autoUsername,
                 status: 'Disponível no VORTEX ⚡',
                 phone: '',
+                pixKey: '',
                 youtube: '',
                 instagram: '',
                 tiktok: '',
@@ -4810,6 +4812,7 @@ export function updateContactProfileSocialUI(data) {
     }
 
     const phone = data?.phone || '';
+    const pixKey = data?.pixKey || '';
     const youtube = data?.youtube || data?.socialLinks?.youtube || '';
     const instagram = data?.instagram || data?.socialLinks?.instagram || '';
     const tiktok = data?.tiktok || data?.socialLinks?.tiktok || '';
@@ -4832,7 +4835,19 @@ export function updateContactProfileSocialUI(data) {
         }
     }
 
+    const pixCard = document.getElementById('contact-profile-pix-card');
+    const pixText = document.getElementById('contact-profile-pix-text');
+    if (pixCard && pixText) {
+        if (pixKey) {
+            pixText.innerText = pixKey;
+            pixCard.style.display = 'flex';
+        } else {
+            pixCard.style.display = 'none';
+        }
+    }
+
     const socialSec = document.getElementById('contact-profile-social-section');
+    const pixPill = document.getElementById('contact-profile-pix-pill');
     const ytLink = document.getElementById('contact-profile-youtube-link');
     const instaLink = document.getElementById('contact-profile-instagram-link');
     const ttLink = document.getElementById('contact-profile-tiktok-link');
@@ -4843,6 +4858,15 @@ export function updateContactProfileSocialUI(data) {
     const w3Link = document.getElementById('contact-profile-website3-link');
 
     let hasAnySocial = false;
+
+    if (pixPill) {
+        if (pixKey) {
+            pixPill.style.display = 'inline-flex';
+            hasAnySocial = true;
+        } else {
+            pixPill.style.display = 'none';
+        }
+    }
 
     if (waLink) {
         if (whatsapp) {
@@ -15166,6 +15190,7 @@ document.getElementById('profile-btn')?.addEventListener('click', () => {
     const usernameInp = document.getElementById('profile-username-input');
     const statusInp = document.getElementById('profile-status-input');
     const phoneInp = document.getElementById('profile-phone-input');
+    const pixInp = document.getElementById('profile-pix-input');
     const youtubeInp = document.getElementById('profile-youtube-input');
     const instaInp = document.getElementById('profile-instagram-input');
     const tiktokInp = document.getElementById('profile-tiktok-input');
@@ -15175,6 +15200,7 @@ document.getElementById('profile-btn')?.addEventListener('click', () => {
     if (usernameInp) usernameInp.value = (currentProfile.username || '').replace('@', '');
     if (statusInp) statusInp.value = currentProfile.status || '';
     if (phoneInp) phoneInp.value = currentProfile.phone || '';
+    if (pixInp) pixInp.value = currentProfile.pixKey || '';
     if (youtubeInp) youtubeInp.value = currentProfile.youtube || currentProfile.socialLinks?.youtube || '';
     if (instaInp) instaInp.value = currentProfile.instagram || currentProfile.socialLinks?.instagram || '';
     if (tiktokInp) tiktokInp.value = currentProfile.tiktok || currentProfile.socialLinks?.tiktok || '';
@@ -15280,6 +15306,18 @@ document.getElementById('contact-profile-call-phone-btn')?.addEventListener('cli
     }
 });
 
+const copyPixKeyToClipboard = () => {
+    const pixKey = document.getElementById('contact-profile-pix-text')?.innerText?.trim() || activeContactProfileData?.pixKey;
+    if (pixKey) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(pixKey);
+        }
+        showToast('Chave Pix Copiada! ⚡', 'Chave copiada para a área de transferência.', 'green');
+    }
+};
+document.getElementById('contact-profile-copy-pix-btn')?.addEventListener('click', copyPixKeyToClipboard);
+document.getElementById('contact-profile-pix-pill')?.addEventListener('click', copyPixKeyToClipboard);
+
 document.getElementById('save-profile-btn')?.addEventListener('click', async () => {
     if (!currentUser) return;
     const name = document.getElementById('profile-name-input')?.value.trim() || 'Usuário';
@@ -15287,6 +15325,7 @@ document.getElementById('save-profile-btn')?.addEventListener('click', async () 
     const usernameInputValue = profileUsernameInput?.value.trim() || '';
     const bio = document.getElementById('profile-status-input')?.value.trim() || 'Online';
     const phone = document.getElementById('profile-phone-input')?.value.trim() || '';
+    const pixKey = document.getElementById('profile-pix-input')?.value.trim() || '';
     const rawYoutube = document.getElementById('profile-youtube-input')?.value.trim() || '';
     const rawInstagram = document.getElementById('profile-instagram-input')?.value.trim() || '';
     const rawTiktok = document.getElementById('profile-tiktok-input')?.value.trim() || '';
@@ -15361,6 +15400,7 @@ document.getElementById('save-profile-btn')?.addEventListener('click', async () 
                 username,
                 status: bio,
                 phone,
+                pixKey,
                 accountType,
                 whatsapp,
                 facebook,
@@ -15401,6 +15441,7 @@ document.getElementById('save-profile-btn')?.addEventListener('click', async () 
     currentProfile.username = username;
     currentProfile.status = bio;
     currentProfile.phone = phone;
+    currentProfile.pixKey = pixKey;
     currentProfile.accountType = accountType;
     currentProfile.whatsapp = whatsapp;
     currentProfile.facebook = facebook;
