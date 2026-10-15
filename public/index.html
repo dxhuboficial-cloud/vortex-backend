@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E⚡%3C/text%3E%3C/svg%3E">
-    <link rel="stylesheet" href="style.css?v=1.0.100">
+    <link rel="stylesheet" href="style.css?v=1.0.101">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#fff01f">
@@ -1087,6 +1087,42 @@
                     <input type="text" id="profile-status-input" placeholder="Online no VORTEX" title="Bio">
                 </div>
 
+                <div class="setting-item">
+                    <label for="profile-phone-input" class="setting-info">
+                        <span class="profile-field-title"><i data-lucide="phone" class="profile-field-icon social-icon-phone"></i> Telefone</span>
+                        <small>DDD + Número</small>
+                    </label>
+                    <input type="tel" id="profile-phone-input" placeholder="(11) 99999-9999" title="Número de Telefone" autocomplete="tel">
+                </div>
+
+                <div class="profile-edit-section-header">
+                    <span class="profile-edit-section-title"><i data-lucide="share-2"></i> Redes Sociais</span>
+                </div>
+
+                <div class="setting-item">
+                    <label for="profile-youtube-input" class="setting-info">
+                        <span class="profile-field-title"><i data-lucide="youtube" class="profile-field-icon social-icon-youtube"></i> YouTube</span>
+                        <small>Canal ou link</small>
+                    </label>
+                    <input type="text" id="profile-youtube-input" placeholder="@canal ou link" title="Link do YouTube">
+                </div>
+
+                <div class="setting-item">
+                    <label for="profile-instagram-input" class="setting-info">
+                        <span class="profile-field-title"><i data-lucide="instagram" class="profile-field-icon social-icon-instagram"></i> Instagram</span>
+                        <small>Perfil ou link</small>
+                    </label>
+                    <input type="text" id="profile-instagram-input" placeholder="@usuario ou link" title="Link do Instagram">
+                </div>
+
+                <div class="setting-item">
+                    <label for="profile-tiktok-input" class="setting-info">
+                        <span class="profile-field-title"><span class="profile-field-icon social-icon-tiktok"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.24 1.07-.14 1.61.24 1.64 1.82 2.89 3.5 2.73 1.25-.04 2.42-.76 2.98-1.85.34-.64.44-1.38.43-2.11V.02Z"/></svg></span> TikTok</span>
+                        <small>Perfil ou link</small>
+                    </label>
+                    <input type="text" id="profile-tiktok-input" placeholder="@usuario ou link" title="Link do TikTok">
+                </div>
+
                 <button id="save-profile-btn" class="danger-btn save-profile-action-btn">Salvar Perfil</button>
             </div>
         </div>
@@ -1302,6 +1338,44 @@
                     </div>
                     <p id="contact-profile-bio-text" class="contact-bio-text">"Online no VORTEX"</p>
                     <span id="contact-profile-bio-date" class="contact-bio-date">Recado do perfil</span>
+                </div>
+
+                <!-- Telefone do Contato -->
+                <div class="contact-profile-info-card" id="contact-profile-phone-card" style="display: none;">
+                    <div class="contact-info-card-header">
+                        <div class="contact-info-card-icon phone-icon-wrap"><i data-lucide="phone"></i></div>
+                        <div class="contact-info-card-details">
+                            <span class="contact-info-card-label">Telefone</span>
+                            <span id="contact-profile-phone-text" class="contact-info-card-value"></span>
+                        </div>
+                    </div>
+                    <div class="contact-info-card-actions">
+                        <button type="button" class="contact-info-mini-btn" id="contact-profile-call-phone-btn" title="Ligar / Abrir WhatsApp" aria-label="Ligar ou chamar no WhatsApp">
+                            <i data-lucide="phone-call"></i>
+                        </button>
+                        <button type="button" class="contact-info-mini-btn" id="contact-profile-copy-phone-btn" title="Copiar número" aria-label="Copiar número">
+                            <i data-lucide="copy"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Redes Sociais do Contato -->
+                <div class="contact-profile-social-section" id="contact-profile-social-section" style="display: none;">
+                    <span class="contact-social-heading">Redes Sociais</span>
+                    <div class="contact-social-badges">
+                        <a href="#" target="_blank" rel="noopener noreferrer" class="contact-social-pill social-pill-youtube" id="contact-profile-youtube-link" style="display: none;" title="Abrir YouTube">
+                            <i data-lucide="youtube"></i>
+                            <span>YouTube</span>
+                        </a>
+                        <a href="#" target="_blank" rel="noopener noreferrer" class="contact-social-pill social-pill-instagram" id="contact-profile-instagram-link" style="display: none;" title="Abrir Instagram">
+                            <i data-lucide="instagram"></i>
+                            <span>Instagram</span>
+                        </a>
+                        <a href="#" target="_blank" rel="noopener noreferrer" class="contact-social-pill social-pill-tiktok" id="contact-profile-tiktok-link" style="display: none;" title="Abrir TikTok">
+                            <span class="social-tiktok-svg"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.24 1.07-.14 1.61.24 1.64 1.82 2.89 3.5 2.73 1.25-.04 2.42-.76 2.98-1.85.34-.64.44-1.38.43-2.11V.02Z"/></svg></span>
+                            <span>TikTok</span>
+                        </a>
+                    </div>
                 </div>
 
                 <!-- Ações Rápidas do Contato -->
@@ -2447,6 +2521,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.100" defer></script>
+    <script type="module" src="script.js?v=1.0.101" defer></script>
 </body>
 </html>

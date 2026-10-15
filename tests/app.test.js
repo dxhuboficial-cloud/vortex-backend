@@ -837,7 +837,13 @@ test('HTML DOM Integrity: All required elements and modal IDs exist in index.htm
     'vip-theme-selector',
     'vip-font-selector',
     'desktop-chat-placeholder',
-    'main-sidebar'
+    'main-sidebar',
+    'profile-phone-input',
+    'profile-youtube-input',
+    'profile-instagram-input',
+    'profile-tiktok-input',
+    'contact-profile-phone-card',
+    'contact-profile-social-section'
   ];
 
   for (const id of requiredIds) {
@@ -2296,11 +2302,15 @@ test('Profile Avatar Update & Persistence: Compression, preview sync, auto-save 
   assert.strictEqual(env.firestoreDocs[`users/${alice.uid}`].avatar, fileEventData, 'Avatar from file input change event must be auto-saved');
   assert.strictEqual(editPreview.style.backgroundImage, `url('${fileEventData}')`, 'Preview background should reflect file input change');
 
-  // 5. Saving profile via #save-profile-btn keeps avatar intact in Firestore
+  // 5. Saving profile via #save-profile-btn keeps avatar intact in Firestore & saves phone and social links
   env.elements['profile-name-input'].value = 'Alice Updated';
   env.elements['profile-lastname-input'].value = 'Silva VIP';
   env.elements['profile-username-input'].value = 'alicesilva';
   env.elements['profile-status-input'].value = 'Novo status VIP';
+  env.elements['profile-phone-input'].value = '(11) 98888-7777';
+  env.elements['profile-youtube-input'].value = '@alicevip';
+  env.elements['profile-instagram-input'].value = '@alicesilva';
+  env.elements['profile-tiktok-input'].value = '@alice.tok';
 
   await saveBtn.click();
 
@@ -2308,7 +2318,18 @@ test('Profile Avatar Update & Persistence: Compression, preview sync, auto-save 
   assert.ok(savedUserDoc, 'User doc must exist in Firestore');
   assert.strictEqual(savedUserDoc.name, 'Alice Updated', 'Name must be updated');
   assert.strictEqual(savedUserDoc.avatar, fileEventData, 'CRITICAL: Avatar must be preserved in Firestore when saving profile');
+  assert.strictEqual(savedUserDoc.phone, '(11) 98888-7777', 'Phone must be saved in Firestore');
+  assert.strictEqual(savedUserDoc.youtube, 'https://www.youtube.com/@alicevip', 'YouTube URL must be formatted and saved');
+  assert.strictEqual(savedUserDoc.instagram, 'https://www.instagram.com/alicesilva', 'Instagram URL must be formatted and saved');
+  assert.strictEqual(savedUserDoc.tiktok, 'https://www.tiktok.com/@alice.tok', 'TikTok URL must be formatted and saved');
   assert.strictEqual(env.elements['user-display-name'].innerText, 'Alice Updated Silva VIP', 'Display name in header must be refreshed');
+
+  // 6. Opening profile edit panel again reloads saved phone and social links
+  profileBtn.click();
+  assert.strictEqual(env.elements['profile-phone-input'].value, '(11) 98888-7777', 'Phone input must reload saved value');
+  assert.strictEqual(env.elements['profile-youtube-input'].value, 'https://www.youtube.com/@alicevip', 'YouTube input must reload saved value');
+  assert.strictEqual(env.elements['profile-instagram-input'].value, 'https://www.instagram.com/alicesilva', 'Instagram input must reload saved value');
+  assert.strictEqual(env.elements['profile-tiktok-input'].value, 'https://www.tiktok.com/@alice.tok', 'TikTok input must reload saved value');
 });
 
 test('Feed Post Music Playback: Toggle play/pause, UI state update, pausing previous track, and stopping audio when closing feed', async () => {
@@ -3895,8 +3916,16 @@ test('Recado / Bio do Contato: Exibição no cabeçalho do chat, cartão de intr
     username: contactMock.username,
     avatar: contactMock.avatar,
     status: contactMock.status,
-    isVerified: contactMock.isVerified
+    isVerified: contactMock.isVerified,
+    phone: '(11) 97777-6666',
+    youtube: '@marianasouza',
+    instagram: '@marianas',
+    tiktok: '@mari.tiktok'
   };
+  contactMock.phone = '(11) 97777-6666';
+  contactMock.youtube = '@marianasouza';
+  contactMock.instagram = '@marianas';
+  contactMock.tiktok = '@mari.tiktok';
 
   await openContactProfile(contactMock);
   assert.strictEqual(env.elements['contact-profile-panel'].classList.contains('active'), true, 'Painel Dados do Contato deve abrir com classe active');
@@ -3905,10 +3934,18 @@ test('Recado / Bio do Contato: Exibição no cabeçalho do chat, cartão de intr
   assert.ok(env.elements['contact-profile-username'].innerText.includes('marianas'), 'Username do contato deve conter marianas');
   assert.ok(env.elements['contact-profile-bio-text'].innerText.includes('Vivendo e aprendendo todo dia!'), 'Recado/Bio deve estar preenchido no painel');
   assert.ok(env.elements['contact-profile-avatar'].style.backgroundImage.includes('mariana.jpg'), 'Avatar deve exibir imagem do contato');
+  assert.strictEqual(env.elements['contact-profile-phone-card'].style.display, 'flex', 'Phone card deve estar visível');
+  assert.strictEqual(env.elements['contact-profile-phone-text'].innerText, '(11) 97777-6666', 'Phone deve exibir o número do contato');
+  assert.strictEqual(env.elements['contact-profile-social-section'].style.display, 'block', 'Seção de redes sociais deve estar visível');
+  assert.strictEqual(env.elements['contact-profile-youtube-link'].href, 'https://www.youtube.com/@marianasouza', 'Link do YouTube deve ser formatado');
+  assert.strictEqual(env.elements['contact-profile-instagram-link'].href, 'https://www.instagram.com/marianas', 'Link do Instagram deve ser formatado');
+  assert.strictEqual(env.elements['contact-profile-tiktok-link'].href, 'https://www.tiktok.com/@mari.tiktok', 'Link do TikTok deve ser formatado');
 
   // Fechamento manual
   closeContactProfile();
   assert.strictEqual(env.elements['contact-profile-panel'].classList.contains('active'), false, 'Painel Dados do Contato deve fechar');
+  assert.strictEqual(env.elements['contact-profile-phone-card'].style.display, 'none', 'Phone card deve ser ocultado no fechamento');
+  assert.strictEqual(env.elements['contact-profile-social-section'].style.display, 'none', 'Seção de redes sociais deve ser ocultada no fechamento');
 
   // Testar selo de verificado para conta DX Hub Digital (@dxhuboficial)
   const dxHubMock = {

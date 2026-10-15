@@ -53,6 +53,15 @@ let currentProfile = {
     surname: '',
     username: '',
     status: 'Disponível no VORTEX ⚡',
+    phone: '',
+    youtube: '',
+    instagram: '',
+    tiktok: '',
+    socialLinks: {
+        youtube: '',
+        instagram: '',
+        tiktok: ''
+    },
     avatar: '',
     accentColor: '#fff01f',
     pin: '1234',
@@ -517,6 +526,15 @@ onAuthStateChanged(auth, async (user) => {
                 surname: nameParts.slice(1).join(' ') || '',
                 username: autoUsername,
                 status: 'Disponível no VORTEX ⚡',
+                phone: '',
+                youtube: '',
+                instagram: '',
+                tiktok: '',
+                socialLinks: {
+                    youtube: '',
+                    instagram: '',
+                    tiktok: ''
+                },
                 avatar: user.photoURL || '',
                 accentColor: '#fff01f',
                 pin: '1234',
@@ -4686,12 +4704,103 @@ export function closeContactProfile() {
     if (panel) {
         panel.classList.remove('active');
     }
+    const phoneCard = document.getElementById('contact-profile-phone-card');
+    if (phoneCard) phoneCard.style.display = 'none';
+    const socialSec = document.getElementById('contact-profile-social-section');
+    if (socialSec) socialSec.style.display = 'none';
     if (activeContactProfileUnsubscribe) {
         activeContactProfileUnsubscribe();
         activeContactProfileUnsubscribe = null;
     }
     activeContactProfileData = null;
     playSound(clickSound);
+}
+
+export function formatSocialLink(network, val) {
+    if (!val || typeof val !== 'string') return '';
+    const clean = val.trim();
+    if (!clean) return '';
+
+    if (network === 'youtube') {
+        if (clean.startsWith('http://') || clean.startsWith('https://')) return clean;
+        if (clean.startsWith('youtube.com') || clean.startsWith('www.youtube.com')) return `https://${clean}`;
+        if (clean.startsWith('@')) return `https://www.youtube.com/${clean}`;
+        return `https://www.youtube.com/@${clean}`;
+    }
+
+    if (network === 'instagram') {
+        if (clean.startsWith('http://') || clean.startsWith('https://')) return clean;
+        if (clean.startsWith('instagram.com') || clean.startsWith('www.instagram.com')) return `https://${clean}`;
+        const user = clean.replace(/^@/, '');
+        return `https://www.instagram.com/${user}`;
+    }
+
+    if (network === 'tiktok') {
+        if (clean.startsWith('http://') || clean.startsWith('https://')) return clean;
+        if (clean.startsWith('tiktok.com') || clean.startsWith('www.tiktok.com')) return `https://${clean}`;
+        const user = clean.replace(/^@/, '');
+        return `https://www.tiktok.com/@${user}`;
+    }
+
+    return clean;
+}
+
+export function updateContactProfileSocialUI(data) {
+    const phone = data?.phone || '';
+    const youtube = data?.youtube || data?.socialLinks?.youtube || '';
+    const instagram = data?.instagram || data?.socialLinks?.instagram || '';
+    const tiktok = data?.tiktok || data?.socialLinks?.tiktok || '';
+
+    const phoneCard = document.getElementById('contact-profile-phone-card');
+    const phoneText = document.getElementById('contact-profile-phone-text');
+    if (phoneCard && phoneText) {
+        if (phone) {
+            phoneText.innerText = phone;
+            phoneCard.style.display = 'flex';
+        } else {
+            phoneCard.style.display = 'none';
+        }
+    }
+
+    const socialSec = document.getElementById('contact-profile-social-section');
+    const ytLink = document.getElementById('contact-profile-youtube-link');
+    const instaLink = document.getElementById('contact-profile-instagram-link');
+    const ttLink = document.getElementById('contact-profile-tiktok-link');
+
+    let hasAnySocial = false;
+    if (ytLink) {
+        if (youtube) {
+            ytLink.href = formatSocialLink('youtube', youtube);
+            ytLink.style.display = 'inline-flex';
+            hasAnySocial = true;
+        } else {
+            ytLink.style.display = 'none';
+        }
+    }
+    if (instaLink) {
+        if (instagram) {
+            instaLink.href = formatSocialLink('instagram', instagram);
+            instaLink.style.display = 'inline-flex';
+            hasAnySocial = true;
+        } else {
+            instaLink.style.display = 'none';
+        }
+    }
+    if (ttLink) {
+        if (tiktok) {
+            ttLink.href = formatSocialLink('tiktok', tiktok);
+            ttLink.style.display = 'inline-flex';
+            hasAnySocial = true;
+        } else {
+            ttLink.style.display = 'none';
+        }
+    }
+    if (socialSec) {
+        socialSec.style.display = hasAnySocial ? 'block' : 'none';
+    }
+    if (typeof window !== 'undefined' && window.lucide) {
+        window.lucide.createIcons();
+    }
 }
 
 export async function openContactProfile(contact) {
@@ -4747,6 +4856,7 @@ export async function openContactProfile(contact) {
         setAvatarContent(avatarEl, contact.avatar, initName, 'contact-profile-avatar-initial');
     }
 
+    updateContactProfileSocialUI(contact);
     updateContactProfileBlockedUI(contactUid);
 
     // Listener em tempo real dos dados do contato (sincroniza Recado / Bio instantaneamente)
@@ -4793,6 +4903,7 @@ export async function openContactProfile(contact) {
                 presenceEl.innerText = isOnline ? 'Online agora' : (uData.lastSeen ? `Visto por último: ${formatLastSeen(uData.lastSeen)}` : 'Visto recentemente');
             }
         }
+        updateContactProfileSocialUI(uData);
         updateContactProfileBlockedUI(contactUid);
     }, (error) => console.error('Erro ao ouvir perfil do contato:', error));
 
@@ -10141,6 +10252,8 @@ if (typeof window !== 'undefined') {
     window.getDeferredPrompt = getDeferredPrompt;
     window.openBusinessCatalogModal = openBusinessCatalogModal;
     window.closeBusinessCatalogModal = closeBusinessCatalogModal;
+    window.formatSocialLink = formatSocialLink;
+    window.updateContactProfileSocialUI = updateContactProfileSocialUI;
 }
 
 // Listeners de Instalação PWA
@@ -14715,11 +14828,19 @@ document.getElementById('profile-btn')?.addEventListener('click', () => {
     const surnameInp = document.getElementById('profile-lastname-input');
     const usernameInp = document.getElementById('profile-username-input');
     const statusInp = document.getElementById('profile-status-input');
+    const phoneInp = document.getElementById('profile-phone-input');
+    const youtubeInp = document.getElementById('profile-youtube-input');
+    const instaInp = document.getElementById('profile-instagram-input');
+    const tiktokInp = document.getElementById('profile-tiktok-input');
 
     if (nameInp) nameInp.value = currentProfile.name || '';
     if (surnameInp) surnameInp.value = currentProfile.surname || '';
     if (usernameInp) usernameInp.value = (currentProfile.username || '').replace('@', '');
     if (statusInp) statusInp.value = currentProfile.status || '';
+    if (phoneInp) phoneInp.value = currentProfile.phone || '';
+    if (youtubeInp) youtubeInp.value = currentProfile.youtube || currentProfile.socialLinks?.youtube || '';
+    if (instaInp) instaInp.value = currentProfile.instagram || currentProfile.socialLinks?.instagram || '';
+    if (tiktokInp) tiktokInp.value = currentProfile.tiktok || currentProfile.socialLinks?.tiktok || '';
 
     const prev = document.getElementById('profile-edit-avatar-preview');
     if (prev) {
@@ -14727,6 +14848,9 @@ document.getElementById('profile-btn')?.addEventListener('click', () => {
     }
 
     document.getElementById('profile-edit-panel')?.classList.add('active');
+    if (typeof window !== 'undefined' && window.lucide) {
+        window.lucide.createIcons();
+    }
 });
 document.getElementById('close-profile-edit')?.addEventListener('click', () => {
     playSound(clickSound);
@@ -14740,12 +14864,57 @@ profileUsernameInput?.addEventListener('input', () => {
     profileUsernameInput.setCustomValidity(usernameValidationMessage(cleanValue));
 });
 
+const profilePhoneInput = document.getElementById('profile-phone-input');
+profilePhoneInput?.addEventListener('input', () => {
+    let val = profilePhoneInput.value;
+    if (!val.startsWith('+')) {
+        const digits = val.replace(/\D/g, '').slice(0, 11);
+        if (digits.length > 10) {
+            val = `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+        } else if (digits.length > 6) {
+            val = `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+        } else if (digits.length > 2) {
+            val = `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+        } else if (digits.length > 0) {
+            val = `(${digits}`;
+        }
+        profilePhoneInput.value = val;
+    }
+});
+
+document.getElementById('contact-profile-copy-phone-btn')?.addEventListener('click', () => {
+    const phone = document.getElementById('contact-profile-phone-text')?.innerText?.trim();
+    if (phone) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(phone);
+        }
+        showToast('Telefone Copiado', 'Número copiado para a área de transferência!', 'green');
+    }
+});
+
+document.getElementById('contact-profile-call-phone-btn')?.addEventListener('click', () => {
+    const phone = document.getElementById('contact-profile-phone-text')?.innerText?.trim();
+    if (phone) {
+        const raw = phone.replace(/\D/g, '');
+        window.open(`https://wa.me/55${raw.replace(/^55/, '')}`, '_blank');
+    }
+});
+
 document.getElementById('save-profile-btn')?.addEventListener('click', async () => {
     if (!currentUser) return;
     const name = document.getElementById('profile-name-input')?.value.trim() || 'Usuário';
     const surname = document.getElementById('profile-lastname-input')?.value.trim() || '';
     const usernameInputValue = profileUsernameInput?.value.trim() || '';
     const bio = document.getElementById('profile-status-input')?.value.trim() || 'Online';
+    const phone = document.getElementById('profile-phone-input')?.value.trim() || '';
+    const rawYoutube = document.getElementById('profile-youtube-input')?.value.trim() || '';
+    const rawInstagram = document.getElementById('profile-instagram-input')?.value.trim() || '';
+    const rawTiktok = document.getElementById('profile-tiktok-input')?.value.trim() || '';
+
+    const youtube = formatSocialLink('youtube', rawYoutube);
+    const instagram = formatSocialLink('instagram', rawInstagram);
+    const tiktok = formatSocialLink('tiktok', rawTiktok);
+
     const usernameKey = normalizeUsername(usernameInputValue);
     const usernameError = usernameValidationMessage(usernameKey);
 
@@ -14796,7 +14965,16 @@ document.getElementById('save-profile-btn')?.addEventListener('click', async () 
                 name,
                 surname,
                 username,
-                status: bio
+                status: bio,
+                phone,
+                youtube,
+                instagram,
+                tiktok,
+                socialLinks: {
+                    youtube,
+                    instagram,
+                    tiktok
+                }
             };
             if (currentProfile.avatar !== undefined) {
                 userUpdatePayload.avatar = currentProfile.avatar;
@@ -14817,6 +14995,11 @@ document.getElementById('save-profile-btn')?.addEventListener('click', async () 
     currentProfile.surname = surname;
     currentProfile.username = username;
     currentProfile.status = bio;
+    currentProfile.phone = phone;
+    currentProfile.youtube = youtube;
+    currentProfile.instagram = instagram;
+    currentProfile.tiktok = tiktok;
+    currentProfile.socialLinks = { youtube, instagram, tiktok };
     updateProfileDOM();
     showToast("Perfil Salvo", "Dados atualizados com sucesso!", "green");
     document.getElementById('profile-edit-panel')?.classList.remove('active');
