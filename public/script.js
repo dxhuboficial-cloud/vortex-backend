@@ -2490,6 +2490,9 @@ function updateProfileDOM() {
     if (userBadge) {
         updateVerifiedBadgeElement(userBadge, currentProfile);
     }
+    if (typeof updateCompanyLinkSectionVisibility === 'function') {
+        updateCompanyLinkSectionVisibility(currentProfile);
+    }
     if (window.lucide) lucide.createIcons();
     if (subscribeBtn) {
         if (sub.status === 'active') {
@@ -2717,7 +2720,7 @@ export function parseBRL(val) {
 }
 
 export function isBusinessAccount(profile = currentProfile) {
-    return !!(profile && profile.accountType === 'business');
+    return !!(profile && (profile.accountType === 'business' || profile.isBusiness === true));
 }
 
 // Carrinho de Compras (persistido por usuário no localStorage)
@@ -10983,11 +10986,11 @@ export function isUserAdmin(user = currentUser, profile = currentProfile) {
     return VORTEX_ADMIN_EMAILS.includes(email);
 }
 
-export function updateCompanyLinkSectionVisibility() {
+export function updateCompanyLinkSectionVisibility(profile = currentProfile) {
     const bizSection = document.getElementById('post-business-link-section');
     if (!bizSection) return;
-    const isCompany = isUserAdmin();
-    bizSection.style.display = isCompany ? 'block' : 'none';
+    const isCompany = isBusinessAccount(profile) || isUserAdmin(currentUser, profile);
+    bizSection.style.display = isCompany ? 'flex' : 'none';
     if (isCompany && window.lucide && typeof window.lucide.createIcons === 'function') {
         window.lucide.createIcons();
     }
@@ -17986,7 +17989,7 @@ document.getElementById('publish-post-btn')?.addEventListener('click', async () 
                 }
             }
 
-            const isCompany = isUserAdmin();
+            const isCompany = isBusinessAccount(currentProfile) || isUserAdmin(currentUser, currentProfile);
             const bizBtnText = document.getElementById('post-business-btn-text')?.value?.trim() || '';
             const bizBtnUrl = document.getElementById('post-business-btn-url')?.value?.trim() || '';
 

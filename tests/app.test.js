@@ -6684,6 +6684,68 @@ test('Catálogo de Produtos & Loja Online: CRUD de produtos, categorias, carrinh
   assert.ok(formatBRL(49.9).includes('49,90'));
 });
 
+test('Botão de Link da Postagem para Conta Empresa: Exibição para conta empresa e admin, ocultação para conta pessoal, inputs e validação', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window || env.sandbox;
+
+  // 1. Verificar elementos do bloco de link no index.html
+  assert.ok(env.elements['post-business-link-section'], 'Container post-business-link-section deve existir no DOM');
+  assert.ok(env.elements['post-business-btn-text'], 'Input post-business-btn-text deve existir no DOM');
+  assert.ok(env.elements['post-business-btn-url'], 'Input post-business-btn-url deve existir no DOM');
+
+  const bizSection = env.elements['post-business-link-section'];
+  const updateVisibility = win.updateCompanyLinkSectionVisibility;
+  const isBusinessAccount = win.isBusinessAccount;
+  assert.strictEqual(typeof updateVisibility, 'function', 'updateCompanyLinkSectionVisibility deve ser uma função');
+  assert.strictEqual(typeof isBusinessAccount, 'function', 'isBusinessAccount deve ser uma função');
+
+  // 2. Conta pessoal normal (não admin): deve ficar oculto
+  win.setCurrentProfile({
+    uid: 'user_personal_123',
+    name: 'Usuário Pessoal',
+    email: 'cliente@exemplo.com',
+    accountType: 'personal'
+  });
+  env.triggerAuthStateChange({ uid: 'user_personal_123', email: 'cliente@exemplo.com' });
+
+  assert.strictEqual(isBusinessAccount(win.getCurrentProfile()), false, 'Conta pessoal não deve ser business');
+  updateVisibility();
+  assert.strictEqual(bizSection.style.display, 'none', 'Seção de link deve ficar oculta (none) para conta pessoal');
+
+  // 3. Conta empresa (não admin): deve ficar visível (flex)
+  win.setCurrentProfile({
+    uid: 'empresa_vip_456',
+    name: 'Loja Oficial VORTEX',
+    email: 'contato@lojaoficial.com',
+    accountType: 'business'
+  });
+  env.triggerAuthStateChange({ uid: 'empresa_vip_456', email: 'contato@lojaoficial.com' });
+
+  assert.strictEqual(isBusinessAccount(win.getCurrentProfile()), true, 'Conta empresa deve ser detectada por isBusinessAccount');
+  updateVisibility();
+  assert.strictEqual(bizSection.style.display, 'flex', 'Seção de link DEVE ficar visível (flex) para Conta Empresa');
+
+  // 4. Testar resetPostComposer com conta empresa
+  env.elements['post-business-btn-text'].value = 'Comprar Agora';
+  env.elements['post-business-btn-url'].value = 'https://loja.com/produto';
+  win.resetPostComposer();
+  assert.strictEqual(env.elements['post-business-btn-text'].value, '', 'resetPostComposer deve limpar texto do botão');
+  assert.strictEqual(env.elements['post-business-btn-url'].value, '', 'resetPostComposer deve limpar URL do botão');
+  assert.strictEqual(bizSection.style.display, 'flex', 'Após reset, seção deve permanecer visível para conta empresa');
+
+  // 5. Conta admin: também tem acesso à seção de link
+  win.setCurrentProfile({
+    uid: 'admin_uid_789',
+    name: 'Admin VORTEX',
+    email: 'dxhub.oficial@gmail.com',
+    accountType: 'personal'
+  });
+  env.triggerAuthStateChange({ uid: 'admin_uid_789', email: 'dxhub.oficial@gmail.com' });
+
+  updateVisibility();
+  assert.strictEqual(bizSection.style.display, 'flex', 'Administrador também deve ter acesso à seção de link');
+});
+
 
 
 
