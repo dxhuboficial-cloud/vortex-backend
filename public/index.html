@@ -4,20 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.124">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.124">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.124">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.124">
-    <link rel="stylesheet" href="style.css?v=1.0.124">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.125">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.125">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.125">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.125">
+    <link rel="stylesheet" href="style.css?v=1.0.125">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.124">
+    <link rel="manifest" href="manifest.json?v=1.0.125">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.124">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.124">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.125">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.125">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -2752,40 +2752,44 @@
                     <button type="button" id="catalog-editor-close-btn" class="catalog-sheet-close" aria-label="Fechar"><i data-lucide="x"></i></button>
                 </div>
                 <div class="catalog-sheet-body">
-                    <label class="catalog-field-label" for="cat-prod-name">Nome do produto *</label>
-                    <input id="cat-prod-name" type="text" maxlength="80" placeholder="Ex.: Camiseta Preta M">
+                    <div class="catalog-field-group">
+                        <label class="catalog-field-label" for="cat-prod-name">Nome do produto *</label>
+                        <input id="cat-prod-name" type="text" maxlength="80" placeholder="Ex.: Camiseta Preta M">
+                    </div>
 
-                    <label class="catalog-field-label" for="cat-prod-desc">Descrição</label>
-                    <textarea id="cat-prod-desc" rows="3" maxlength="600" placeholder="Detalhes, material, tamanho..."></textarea>
+                    <div class="catalog-field-group">
+                        <label class="catalog-field-label" for="cat-prod-desc">Descrição</label>
+                        <textarea id="cat-prod-desc" rows="3" maxlength="600" placeholder="Detalhes, material, tamanho..."></textarea>
+                    </div>
 
                     <div class="catalog-field-row">
-                        <div>
+                        <div class="catalog-field-group">
                             <label class="catalog-field-label" for="cat-prod-price">Preço (R$) *</label>
                             <input id="cat-prod-price" type="text" inputmode="decimal" placeholder="0,00">
                         </div>
-                        <div>
+                        <div class="catalog-field-group">
                             <label class="catalog-field-label" for="cat-prod-promo">Preço promocional</label>
                             <input id="cat-prod-promo" type="text" inputmode="decimal" placeholder="Opcional">
                         </div>
                     </div>
 
                     <div class="catalog-field-row">
-                        <div>
+                        <div class="catalog-field-group">
                             <label class="catalog-field-label" for="cat-prod-category">Categoria</label>
                             <select id="cat-prod-category"></select>
                         </div>
-                        <div>
+                        <div class="catalog-field-group">
                             <label class="catalog-field-label" for="cat-prod-sku">Código (SKU)</label>
                             <input id="cat-prod-sku" type="text" maxlength="30" placeholder="Opcional">
                         </div>
                     </div>
 
-                    <div class="catalog-field-row">
-                        <div>
+                    <div class="catalog-field-row catalog-stock-row">
+                        <div class="catalog-field-group">
                             <label class="catalog-field-label" for="cat-prod-stock">Estoque</label>
                             <input id="cat-prod-stock" type="number" inputmode="numeric" min="0" step="1" placeholder="Quantidade">
                         </div>
-                        <label class="catalog-check" for="cat-prod-unlimited">
+                        <label class="catalog-check catalog-stock-check" for="cat-prod-unlimited">
                             <input id="cat-prod-unlimited" type="checkbox" checked>
                             <span>Estoque ilimitado</span>
                         </label>
@@ -2796,9 +2800,11 @@
                         <span>Visível na vitrine</span>
                     </label>
 
-                    <span class="catalog-field-label">Fotos (até 5)</span>
-                    <div id="cat-prod-photos-list" class="catalog-photo-list"></div>
-                    <input id="cat-prod-photo-input" type="file" accept="image/*" multiple style="display:none;">
+                    <div class="catalog-field-group">
+                        <span class="catalog-field-label">Fotos (até 5)</span>
+                        <div id="cat-prod-photos-list" class="catalog-photo-list"></div>
+                        <input id="cat-prod-photo-input" type="file" accept="image/*" multiple style="display:none;">
+                    </div>
                 </div>
                 <div class="catalog-sheet-footer">
                     <button type="button" id="cat-prod-delete-btn" class="catalog-danger-btn" style="display:none;"><i data-lucide="trash-2"></i></button>
@@ -2828,8 +2834,10 @@
                 <div class="catalog-sheet-body">
                     <div id="catalog-cart-seller" class="catalog-cart-seller"></div>
                     <div id="catalog-cart-items" class="catalog-cart-items"></div>
-                    <label class="catalog-field-label" for="catalog-cart-note">Observação para o vendedor</label>
-                    <textarea id="catalog-cart-note" rows="2" maxlength="300" placeholder="Endereço de entrega, horário, detalhes..."></textarea>
+                    <div class="catalog-field-group">
+                        <label class="catalog-field-label" for="catalog-cart-note">Observação para o vendedor</label>
+                        <textarea id="catalog-cart-note" rows="2" maxlength="300" placeholder="Endereço de entrega, horário, detalhes..."></textarea>
+                    </div>
                 </div>
                 <div class="catalog-sheet-footer catalog-cart-footer">
                     <div class="catalog-cart-total-row"><span>Total</span><strong id="catalog-cart-total">R$ 0,00</strong></div>
@@ -2937,6 +2945,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.124" defer></script>
+    <script type="module" src="script.js?v=1.0.125" defer></script>
 </body>
 </html>

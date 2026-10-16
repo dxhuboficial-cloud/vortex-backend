@@ -7185,6 +7185,52 @@ test('Fluxo de Pedido no Catálogo: sem necessidade de solicitação, abertura a
   assert.strictEqual(orderMessage[1].order.sellerUid, sellerUid);
 });
 
+test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com catalog-field-group e espaçamento sem sobreposição', () => {
+  const env = createTestEnvironment();
+  const doc = env.sandbox.document;
+
+  // 1. Validar elementos no DOM simulado
+  assert.ok(doc.getElementById('catalog-product-editor-modal'), '#catalog-product-editor-modal deve existir');
+  assert.ok(doc.getElementById('cat-prod-name'), '#cat-prod-name deve existir');
+  assert.ok(doc.getElementById('cat-prod-desc'), '#cat-prod-desc deve existir');
+  assert.ok(doc.getElementById('cat-prod-price'), '#cat-prod-price deve existir');
+  assert.ok(doc.getElementById('cat-prod-promo'), '#cat-prod-promo deve existir');
+  assert.ok(doc.getElementById('cat-prod-category'), '#cat-prod-category deve existir');
+  assert.ok(doc.getElementById('cat-prod-sku'), '#cat-prod-sku deve existir');
+  assert.ok(doc.getElementById('cat-prod-stock'), '#cat-prod-stock deve existir');
+  assert.ok(doc.getElementById('cat-prod-unlimited'), '#cat-prod-unlimited deve existir');
+  assert.ok(doc.getElementById('cat-prod-active'), '#cat-prod-active deve existir');
+
+  // 2. Validar estrutura no HTML oficial (agrupamento e classes)
+  const groupMatches = htmlContent.match(/class=["'][^"']*catalog-field-group[^"']*["']/g);
+  assert.ok(groupMatches && groupMatches.length >= 5, 'Deve conter os grupos de campos (.catalog-field-group) no index.html');
+
+  assert.ok(htmlContent.includes('class="catalog-field-row catalog-stock-row"'), 'catalog-stock-row deve estar presente no HTML');
+  assert.ok(htmlContent.includes('class="catalog-check catalog-stock-check"'), 'catalog-stock-check deve estar presente no HTML');
+
+  // 3. Validar labels com for correspondente aos campos
+  const requiredLabels = [
+    { forId: 'cat-prod-name', text: 'Nome do produto *' },
+    { forId: 'cat-prod-desc', text: 'Descrição' },
+    { forId: 'cat-prod-price', text: 'Preço (R$) *' },
+    { forId: 'cat-prod-promo', text: 'Preço promocional' },
+    { forId: 'cat-prod-category', text: 'Categoria' },
+    { forId: 'cat-prod-sku', text: 'Código (SKU)' },
+    { forId: 'cat-prod-stock', text: 'Estoque' }
+  ];
+
+  for (const item of requiredLabels) {
+    assert.ok(htmlContent.includes(`for="${item.forId}"`), `Label for="${item.forId}" deve existir no HTML`);
+    assert.ok(htmlContent.includes(item.text), `Texto "${item.text}" deve existir no HTML`);
+  }
+
+  // 4. Validar estilos no style.css (sem margem negativa que sobrepunha títulos e inputs)
+  assert.ok(cssContent.includes('.catalog-field-group'), 'style.css deve conter regra para .catalog-field-group');
+  assert.ok(cssContent.includes('.catalog-field-label'), 'style.css deve conter regra para .catalog-field-label');
+  assert.ok(cssContent.includes('.catalog-stock-check'), 'style.css deve conter regra para .catalog-stock-check');
+  assert.ok(!cssContent.match(/\.catalog-field-label\s*\{[^}]*margin-bottom:\s*-[0-9]/), 'catalog-field-label não deve ter margin-bottom negativa');
+});
+
 
 
 

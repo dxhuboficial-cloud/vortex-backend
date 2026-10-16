@@ -12032,7 +12032,7 @@ body.total-black .ringtone-select {
     padding: 16px 18px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 14px;
     -webkit-overflow-scrolling: touch;
 }
 
@@ -12047,12 +12047,30 @@ body.total-black .ringtone-select {
 }
 
 /* Campos do Formulário do Produto */
+.catalog-field-group,
+.catalog-field-row > div {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    min-width: 0;
+}
+
 .catalog-field-label {
-    font-size: 0.78rem;
+    font-size: 0.82rem;
     font-weight: 600;
-    color: var(--text-dim, #8e8e93);
-    margin-bottom: -6px;
+    color: var(--text-dim, #b2b2ba);
+    margin: 0;
+    padding: 0;
     display: block;
+    line-height: 1.35;
+    letter-spacing: 0.25px;
+    user-select: none;
+}
+
+.catalog-field-group > .catalog-field-label,
+.catalog-field-row > div > .catalog-field-label {
+    margin-bottom: 0;
 }
 
 .catalog-sheet input[type="text"],
@@ -12069,6 +12087,7 @@ body.total-black .ringtone-select {
     font-size: 0.88rem;
     font-family: inherit;
     outline: none;
+    box-sizing: border-box;
 }
 
 .catalog-sheet input:focus,
@@ -12081,7 +12100,18 @@ body.total-black .ringtone-select {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 12px;
+    align-items: flex-start;
+}
+
+.catalog-field-row.catalog-stock-row {
     align-items: flex-end;
+}
+
+.catalog-stock-check {
+    min-height: 42px;
+    display: inline-flex;
+    align-items: center;
+    margin-bottom: 2px;
 }
 
 .catalog-check {
