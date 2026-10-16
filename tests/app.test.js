@@ -77,6 +77,16 @@ function createTestEnvironment() {
           remove: () => {}
         };
       },
+      closest(sel) {
+        let cur = this;
+        while (cur) {
+          if (sel.startsWith('.') && cur.classList && cur.classList.contains && cur.classList.contains(sel.slice(1))) {
+            return cur;
+          }
+          cur = cur.parentElement || null;
+        }
+        return null;
+      },
       querySelectorAll(sel) {
         const results = [];
         function walk(node) {
@@ -87,6 +97,21 @@ function createTestEnvironment() {
               if (c.classList && c.classList.contains && c.classList.contains(cls)) {
                 results.push(c);
               }
+            } else if (sel.startsWith('[') && sel.endsWith(']')) {
+              const attrPart = sel.slice(1, -1);
+              if (attrPart.includes('=')) {
+                const [k, vRaw] = attrPart.split('=');
+                const v = vRaw.replace(/^["']|["']$/g, '');
+                if (k.startsWith('data-')) {
+                  const camelKey = k.slice(5).replace(/-([a-z])/g, (_, m) => m.toUpperCase());
+                  if (c.dataset && c.dataset[camelKey] === v) results.push(c);
+                  else if (c[k] === v || (c.getAttribute && c.getAttribute(k) === v)) results.push(c);
+                } else if (c[k] === v || (c.getAttribute && c.getAttribute(k) === v)) {
+                  results.push(c);
+                }
+              }
+            } else if (c.tagName && c.tagName.toLowerCase() === sel.toLowerCase()) {
+              results.push(c);
             }
             walk(c);
           }
@@ -97,12 +122,14 @@ function createTestEnvironment() {
       prepend(child) {
         const idx = this.children.indexOf(child);
         if (idx !== -1) this.children.splice(idx, 1);
+        if (child) child.parentElement = this;
         this.children.unshift(child);
         return child;
       },
       appendChild(child) {
         const idx = this.children.indexOf(child);
         if (idx !== -1) this.children.splice(idx, 1);
+        if (child) child.parentElement = this;
         this.children.push(child);
         return child;
       },
@@ -259,14 +286,26 @@ function createTestEnvironment() {
       appendChild(child) {
         const idx = this.children.indexOf(child);
         if (idx !== -1) this.children.splice(idx, 1);
+        if (child) child.parentElement = this;
         this.children.push(child);
         return child;
       },
       prepend(child) {
         const idx = this.children.indexOf(child);
         if (idx !== -1) this.children.splice(idx, 1);
+        if (child) child.parentElement = this;
         this.children.unshift(child);
         return child;
+      },
+      closest(sel) {
+        let cur = this;
+        while (cur) {
+          if (sel.startsWith('.') && cur.classList && cur.classList.contains && cur.classList.contains(sel.slice(1))) {
+            return cur;
+          }
+          cur = cur.parentElement || null;
+        }
+        return null;
       },
       remove: () => {},
       querySelector(sel) {
@@ -289,6 +328,24 @@ function createTestEnvironment() {
               if (c.classList && c.classList.contains && c.classList.contains(cls)) {
                 results.push(c);
               }
+            } else if (sel.startsWith('[') && sel.endsWith(']')) {
+              const attrPart = sel.slice(1, -1);
+              if (attrPart.includes('=')) {
+                const [k, vRaw] = attrPart.split('=');
+                const v = vRaw.replace(/^["']|["']$/g, '');
+                if (k.startsWith('data-')) {
+                  const camelKey = k.slice(5).replace(/-([a-z])/g, (_, m) => m.toUpperCase());
+                  if (c.dataset && c.dataset[camelKey] === v) results.push(c);
+                  else if (c[k] === v || (c.getAttribute && c.getAttribute(k) === v)) results.push(c);
+                } else if (c[k] === v || (c.getAttribute && c.getAttribute(k) === v)) {
+                  results.push(c);
+                }
+              } else {
+                if (c.dataset && c.dataset[attrPart.replace(/^data-/, '')] !== undefined) results.push(c);
+                else if (c[attrPart] !== undefined || (c.getAttribute && c.getAttribute(attrPart) !== null)) results.push(c);
+              }
+            } else if (c.tagName && c.tagName.toLowerCase() === sel.toLowerCase()) {
+              results.push(c);
             }
             walk(c);
           }
@@ -468,7 +525,10 @@ function createTestEnvironment() {
       clearTimeout,
       requestAnimationFrame: (cb) => setTimeout(cb, 16),
       cancelAnimationFrame: (id) => clearTimeout(id),
-      URL: { createObjectURL: () => 'blob:mock', revokeObjectURL: () => {} },
+      Blob: typeof Blob !== 'undefined' ? Blob : globalThis.Blob,
+      atob: typeof atob !== 'undefined' ? atob : globalThis.atob,
+      btoa: typeof btoa !== 'undefined' ? btoa : globalThis.btoa,
+      URL: { createObjectURL: (b) => 'blob:mock/' + Math.random().toString(36).substring(2, 8), revokeObjectURL: () => {} },
       RTCPeerConnection: function() {},
       MediaStream: function() { this.getTracks = () => []; },
       MediaRecorder: function(stream) {
@@ -501,7 +561,10 @@ function createTestEnvironment() {
         }, 0);
       };
     },
-    URL: { createObjectURL: () => 'blob:mock', revokeObjectURL: () => {} },
+    Blob: typeof Blob !== 'undefined' ? Blob : globalThis.Blob,
+    atob: typeof atob !== 'undefined' ? atob : globalThis.atob,
+    btoa: typeof btoa !== 'undefined' ? btoa : globalThis.btoa,
+    URL: { createObjectURL: (b) => 'blob:mock/' + Math.random().toString(36).substring(2, 8), revokeObjectURL: () => {} },
     MediaRecorder: function(stream) {
       this.stream = stream;
       this.state = 'inactive';
@@ -666,6 +729,7 @@ function createTestEnvironment() {
     writeBatch: () => {
       const ops = [];
       return {
+        _ops: ops,
         set: (ref, data) => ops.push({ type: 'set', ref, data }),
         update: (ref, updateData) => ops.push({ type: 'update', ref, updateData }),
         delete: (ref) => ops.push({ type: 'delete', ref }),
@@ -5962,6 +6026,140 @@ test('Envio de Chave Pix nas Conversas: Botão nos anexos, modal de envio com pr
   // Invocar ação de cópia
   await win.navigator.clipboard.writeText('nova.chave@empresa.com.br');
   assert.strictEqual(env.sandbox._copiedText, 'nova.chave@empresa.com.br', 'Chave Pix copiada para a área de transferência');
+});
+
+test('Correção de Vídeos no Chat: Envio com particionamento em lotes seguros (<= 8 chunks / 4 MB por batch), sem corrupção de payload Base64, conversão para Blob URL e suporte a vídeos grandes (> 10 MB)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+  const db = env.sandbox.db;
+  const updateMessageMediaWithChunks = win.updateMessageMediaWithChunks;
+  const loadMediaWithChunks = win.loadMediaWithChunks;
+  const resolveChatChunkedMedia = win.resolveChatChunkedMedia;
+  const dataUrlToBlob = win.dataUrlToBlob;
+  const createBlobUrlFromData = win.createBlobUrlFromData;
+
+  assert.ok(typeof updateMessageMediaWithChunks === 'function', 'updateMessageMediaWithChunks deve ser uma função');
+  assert.ok(typeof loadMediaWithChunks === 'function', 'loadMediaWithChunks deve ser uma função');
+  assert.ok(typeof resolveChatChunkedMedia === 'function', 'resolveChatChunkedMedia deve ser uma função');
+  assert.ok(typeof dataUrlToBlob === 'function', 'dataUrlToBlob deve ser uma função');
+  assert.ok(typeof createBlobUrlFromData === 'function', 'createBlobUrlFromData deve ser uma função');
+
+  // 1. Testar conversão de dataUrl para Blob sem corrupção
+  const testBase64 = 'data:video/mp4;base64,AAAA';
+  const blob = dataUrlToBlob(testBase64);
+  assert.ok(blob, 'dataUrlToBlob deve retornar um objeto Blob');
+  assert.strictEqual(blob.type, 'video/mp4', 'Tipo MIME deve ser extraído corretamente');
+
+  // 2. Testar sanitização de fragmento corrompido #t=0,120 no final de dataUrl
+  const corruptedDataUrl = 'data:video/mp4;base64,AAAA#t=0,120';
+  const blobFromCorrupted = dataUrlToBlob(corruptedDataUrl);
+  assert.ok(blobFromCorrupted, 'dataUrlToBlob deve sanitizar e aceitar dataUrls que possuam #t= no final');
+  assert.strictEqual(blobFromCorrupted.type, 'video/mp4');
+
+  // 3. Testar createBlobUrlFromData
+  const blobUrl = createBlobUrlFromData(testBase64);
+  assert.ok(blobUrl && blobUrl.startsWith('blob:'), 'createBlobUrlFromData deve gerar uma URL do tipo blob:');
+
+  // 4. Testar envio de vídeo grande (> 10 MB = ~14.8M chars = 30 chunks)
+  // Verificar que os batches são divididos em lotes de no máximo 8 chunks (max ~4 MB por commit)
+  // garantindo que NENHUM batch commit exceda o limite rígido de 10 MiB do Firestore
+  const chatId = 'chat_video_test_123';
+  const msgId = 'msg_video_large_999';
+  const msgPath = `chats/${chatId}/messages/${msgId}`;
+  
+  env.firestoreDocs[msgPath] = {
+    senderUid: 'user_video_sender',
+    type: 'video',
+    fileName: 'meu_video_10mb.mp4',
+    fileSize: '10838 KB',
+    duration: '02:00',
+    durationSeconds: 120,
+    isTrimmed: true,
+    uploadState: 'uploading'
+  };
+
+  // Simular vídeo de 10.8 MB (30 chunks de 500k caracteres = 15.000.000 chars)
+  const totalChunksExpected = 30;
+  const largeVideoData = 'data:video/mp4;base64,' + 'Y'.repeat((totalChunksExpected * 500000) - 22);
+
+  // Monitorar writeBatch e seus commits
+  let committedBatchCounts = [];
+  const originalWriteBatch = env.sandbox.writeBatch;
+  env.sandbox.writeBatch = () => {
+    const batch = originalWriteBatch();
+    const originalCommit = batch.commit;
+    batch.commit = function() {
+      let setOpsCount = (this._ops || []).length;
+      committedBatchCounts.push(setOpsCount);
+      assert.ok(setOpsCount <= 8, `Cada lote deve ter no máximo 8 chunks para não exceder 10MB do Firestore (teve ${setOpsCount})`);
+      return originalCommit.call(this);
+    };
+    return batch;
+  };
+
+  await updateMessageMediaWithChunks(chatId, msgId, {
+    uploadState: 'sent',
+    uploadPercent: 100,
+    fileSize: '10838 KB',
+    duration: '02:00',
+    durationSeconds: 120,
+    isTrimmed: true
+  }, largeVideoData);
+
+  // Restaurar mock
+  env.sandbox.writeBatch = originalWriteBatch;
+
+  const savedMsgDoc = env.firestoreDocs[msgPath];
+  assert.strictEqual(savedMsgDoc.fileData, null, 'fileData no doc principal deve ser null');
+  assert.strictEqual(savedMsgDoc.hasChunks, true, 'hasChunks deve ser true');
+  assert.strictEqual(savedMsgDoc.totalChunks, totalChunksExpected, `Devem ser gerados exatamente ${totalChunksExpected} chunks`);
+
+  // Verificar que foram gerados múltiplos commits (30 chunks / 8 = 4 batches: 8 + 8 + 8 + 6)
+  assert.strictEqual(committedBatchCounts.length, 4, '30 chunks devem ser salvos em 4 lotes seguros (8, 8, 8, 6)');
+  assert.deepStrictEqual(committedBatchCounts, [8, 8, 8, 6], 'Distribuição de chunks por lote deve ser [8, 8, 8, 6]');
+
+  // 5. Testar remontagem completa via loadMediaWithChunks
+  win.mediaChunkCache.delete(`chats/${chatId}/messages_${msgId}`);
+  const reassembledMedia = await loadMediaWithChunks(`chats/${chatId}/messages`, msgId);
+  assert.strictEqual(reassembledMedia.length, largeVideoData.length, 'Vídeo remontado deve ter o tamanho exato do original');
+  assert.strictEqual(reassembledMedia, largeVideoData, 'Vídeo de 10.8 MB remontado com sucesso');
+
+  // 6. Testar renderização do vídeo no chat e resolução de chunks via resolveChatChunkedMedia
+  const container = env.sandbox.document.createElement('div');
+  const wrapper = env.sandbox.document.createElement('div');
+  wrapper.className = 'chat-video-wrapper';
+
+  const loadingSpinner = env.sandbox.document.createElement('div');
+  loadingSpinner.className = 'chat-video-loading';
+  loadingSpinner.innerText = 'Carregando vídeo...';
+  wrapper.appendChild(loadingSpinner);
+
+  const videoEl = env.sandbox.document.createElement('video');
+  videoEl.dataset.msgId = msgId;
+  videoEl.dataset.chatId = chatId;
+  videoEl.dataset.hasChunks = 'true';
+  videoEl.dataset.isTrimmed = 'true';
+  videoEl.style.display = 'none';
+  wrapper.appendChild(videoEl);
+  container.appendChild(wrapper);
+
+  // Executar resolução de chunks
+  await resolveChatChunkedMedia(container, chatId);
+
+  // Aguardar microtasks para promessas assíncronas
+  await new Promise(r => setTimeout(r, 20));
+
+  assert.strictEqual(videoEl.dataset.hasChunks, 'false', 'hasChunks deve ser atualizado para false após resolver');
+  assert.ok(videoEl.src && videoEl.src.startsWith('blob:'), 'videoEl.src deve ser configurado com uma Blob URL');
+  assert.ok(videoEl.src.includes('#t=0,120'), 'Fragmento de corte #t=0,120 deve ser anexado à Blob URL');
+  assert.strictEqual(videoEl.style.display, '', 'Vídeo deve ficar visível após carregamento');
+  assert.strictEqual(loadingSpinner.style.display, 'none', 'Spinner de carregamento deve ser ocultado');
+
+  // 7. Testar sons sintetizados (Web Audio API sem requisições de CDN e sem erro 403)
+  const clickSound = env.sandbox.clickSound || win.clickSound;
+  assert.ok(clickSound, 'clickSound deve existir');
+  assert.ok(typeof clickSound.play === 'function', 'clickSound deve ter método play');
+  await clickSound.play();
 });
 
 

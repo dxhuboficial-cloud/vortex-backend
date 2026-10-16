@@ -360,11 +360,77 @@ function createActivityIndicatorHTML(activity = {}) {
     return `<span class="typing-indicator activity-indicator"><i data-lucide="${icons[kind] || 'loader'}"></i><span class="dot"></span><span class="dot"></span><span class="dot"></span> ${escapeHTML(activity.label || labels[kind] || 'processando')}</span>`;
 }
 
-const clickSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3');
-const notificationSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2357/2357-preview.mp3');
-const unlockSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2567/2567-preview.mp3');
-const replySendSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3');
-const ringtoneSound = new Audio('https://assets.mixkit.co/active_storage/sfx/1350/1350-preview.mp3');
+// Sons da aplicação sintetizados via Web Audio API (sem dependência externa de CDN e sem erros 403)
+function createAudioTonePlayer(type) {
+    return {
+        currentTime: 0,
+        loop: false,
+        play: async function() {
+            if (typeof window === 'undefined') return Promise.resolve();
+            try {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (!AudioCtx) return Promise.resolve();
+                if (!window.__vortexAudioCtx) {
+                    window.__vortexAudioCtx = new AudioCtx();
+                }
+                const ctx = window.__vortexAudioCtx;
+                if (ctx.state === 'suspended') {
+                    await ctx.resume().catch(() => {});
+                }
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                const now = ctx.currentTime;
+
+                if (type === 'click') {
+                    osc.frequency.setValueAtTime(600, now);
+                    osc.frequency.exponentialRampToValueAtTime(300, now + 0.04);
+                    gain.gain.setValueAtTime(0.08, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+                    osc.start(now);
+                    osc.stop(now + 0.04);
+                } else if (type === 'notification') {
+                    osc.frequency.setValueAtTime(587.33, now);
+                    osc.frequency.setValueAtTime(880, now + 0.09);
+                    gain.gain.setValueAtTime(0.12, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+                    osc.start(now);
+                    osc.stop(now + 0.28);
+                } else if (type === 'unlock') {
+                    osc.frequency.setValueAtTime(523.25, now);
+                    osc.frequency.setValueAtTime(659.25, now + 0.08);
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+                    osc.start(now);
+                    osc.stop(now + 0.22);
+                } else if (type === 'reply') {
+                    osc.frequency.setValueAtTime(440, now);
+                    osc.frequency.exponentialRampToValueAtTime(880, now + 0.09);
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+                    osc.start(now);
+                    osc.stop(now + 0.15);
+                } else if (type === 'ringtone') {
+                    osc.frequency.setValueAtTime(440, now);
+                    osc.frequency.setValueAtTime(480, now + 0.05);
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+                    osc.start(now);
+                    osc.stop(now + 0.4);
+                }
+            } catch (_) {}
+            return Promise.resolve();
+        },
+        pause: function() {}
+    };
+}
+
+const clickSound = createAudioTonePlayer('click');
+const notificationSound = createAudioTonePlayer('notification');
+const unlockSound = createAudioTonePlayer('unlock');
+const replySendSound = createAudioTonePlayer('reply');
+const ringtoneSound = createAudioTonePlayer('ringtone');
 ringtoneSound.loop = true;
 
 const mediaSizeLimits = {
@@ -2393,8 +2459,10 @@ async function displayCurrentStory() {
         story.src = mediaSrc;
     }
 
-    if (story.type === 'video' && story.isTrimmed && mediaSrc && typeof mediaSrc === 'string' && !mediaSrc.includes('#t=')) {
-        mediaSrc = `${mediaSrc}#t=0,${customDurSec}`;
+    if (story.type === 'video' && mediaSrc) {
+        const clean = (typeof mediaSrc === 'string') ? mediaSrc.replace(/#t=[0-9,.]+$/, '') : mediaSrc;
+        const bUrl = createBlobUrlFromData(clean);
+        mediaSrc = (story.isTrimmed && !bUrl.includes('#t=')) ? `${bUrl}#t=0,${customDurSec}` : bUrl;
     }
 
     // Prefetch próximo story se houver
@@ -3128,9 +3196,10 @@ export async function saveMediaWithChunks(collectionName, docData, mediaFieldNam
 
     // O payload excede o limite do documento Firestore (~1 MB).
     // Fatiar em pedaços de 500.000 caracteres gravados na subcoleção 'chunks'.
+    const cleanPayload = (typeof mediaPayload === 'string') ? mediaPayload.replace(/#t=[0-9,.]+$/, '') : mediaPayload;
     const chunks = [];
-    for (let i = 0; i < mediaPayload.length; i += MEDIA_CHUNK_SIZE) {
-        chunks.push(mediaPayload.slice(i, i + MEDIA_CHUNK_SIZE));
+    for (let i = 0; i < cleanPayload.length; i += MEDIA_CHUNK_SIZE) {
+        chunks.push(cleanPayload.slice(i, i + MEDIA_CHUNK_SIZE));
     }
 
     const mainDoc = {
@@ -3149,8 +3218,8 @@ export async function saveMediaWithChunks(collectionName, docData, mediaFieldNam
         docRef = await addDoc(colRef, mainDoc);
     }
 
-    // Gravar os chunks na subcoleção em lotes de até 400
-    const BATCH_LIMIT = 400;
+    // Gravar os chunks na subcoleção em lotes de até 8 (max ~4 MB por lote, bem abaixo do limite de 10 MiB do Firestore)
+    const BATCH_LIMIT = 8;
     for (let b = 0; b < chunks.length; b += BATCH_LIMIT) {
         const batch = writeBatch(db);
         const chunkBatch = chunks.slice(b, b + BATCH_LIMIT);
@@ -3166,7 +3235,7 @@ export async function saveMediaWithChunks(collectionName, docData, mediaFieldNam
         await batch.commit();
     }
 
-    mediaChunkCache.set(`${collectionName}_${docRef.id}`, mediaPayload);
+    mediaChunkCache.set(`${collectionName}_${docRef.id}`, cleanPayload);
     return docRef;
 }
 
@@ -3175,22 +3244,24 @@ export async function updateMessageMediaWithChunks(chatId, msgId, updateFields, 
     const cacheKey = `${colPath}_${msgId}`;
     const targetDocRef = doc(db, 'chats', chatId, 'messages', msgId);
 
-    if (!mediaPayload || typeof mediaPayload !== 'string' || mediaPayload.length <= MAX_DIRECT_PAYLOAD_CHARS) {
+    const cleanPayload = (typeof mediaPayload === 'string') ? mediaPayload.replace(/#t=[0-9,.]+$/, '') : mediaPayload;
+
+    if (!cleanPayload || typeof cleanPayload !== 'string' || cleanPayload.length <= MAX_DIRECT_PAYLOAD_CHARS) {
         await updateDoc(targetDocRef, {
             ...updateFields,
-            fileData: mediaPayload || '',
+            fileData: cleanPayload || '',
             hasChunks: false
         });
-        if (mediaPayload) {
-            mediaChunkCache.set(cacheKey, mediaPayload);
+        if (cleanPayload) {
+            mediaChunkCache.set(cacheKey, cleanPayload);
         }
         return;
     }
 
     // Payload > 700 KB: particionar em chunks
     const chunks = [];
-    for (let i = 0; i < mediaPayload.length; i += MEDIA_CHUNK_SIZE) {
-        chunks.push(mediaPayload.slice(i, i + MEDIA_CHUNK_SIZE));
+    for (let i = 0; i < cleanPayload.length; i += MEDIA_CHUNK_SIZE) {
+        chunks.push(cleanPayload.slice(i, i + MEDIA_CHUNK_SIZE));
     }
 
     await updateDoc(targetDocRef, {
@@ -3201,7 +3272,8 @@ export async function updateMessageMediaWithChunks(chatId, msgId, updateFields, 
         chunkSize: MEDIA_CHUNK_SIZE
     });
 
-    const BATCH_LIMIT = 400;
+    // Gravar os chunks em lotes de até 8 (max ~4 MB por lote, garantindo conformidade com o limite de 10 MiB do Firestore)
+    const BATCH_LIMIT = 8;
     for (let b = 0; b < chunks.length; b += BATCH_LIMIT) {
         const batch = writeBatch(db);
         const chunkBatch = chunks.slice(b, b + BATCH_LIMIT);
@@ -3217,7 +3289,7 @@ export async function updateMessageMediaWithChunks(chatId, msgId, updateFields, 
         await batch.commit();
     }
 
-    mediaChunkCache.set(cacheKey, mediaPayload);
+    mediaChunkCache.set(cacheKey, cleanPayload);
 }
 
 export async function loadMediaWithChunks(collectionName, docId, fallbackSrc = '') {
@@ -3245,8 +3317,9 @@ export async function loadMediaWithChunks(collectionName, docId, fallbackSrc = '
             list.sort((a, b) => a.index - b.index);
             const fullPayload = list.map(item => item.part).join('');
             if (fullPayload) {
-                mediaChunkCache.set(cacheKey, fullPayload);
-                return fullPayload;
+                const sanitizedPayload = (typeof fullPayload === 'string') ? fullPayload.replace(/#t=[0-9,.]+$/, '') : fullPayload;
+                mediaChunkCache.set(cacheKey, sanitizedPayload);
+                return sanitizedPayload;
             }
         }
     } catch (err) {
@@ -3254,6 +3327,56 @@ export async function loadMediaWithChunks(collectionName, docId, fallbackSrc = '
     }
 
     return fallbackSrc || '';
+}
+
+export function dataUrlToBlob(dataUrl) {
+    if (!dataUrl || typeof dataUrl !== 'string') return null;
+    if (dataUrl.startsWith('blob:')) return null;
+
+    const cleanUrl = dataUrl.replace(/#t=[0-9,.]+$/, '');
+    const commaIndex = cleanUrl.indexOf(',');
+    if (commaIndex === -1) return null;
+
+    const header = cleanUrl.slice(0, commaIndex);
+    const base64Data = cleanUrl.slice(commaIndex + 1);
+
+    const mimeMatch = header.match(/:(.*?);/);
+    const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+
+    try {
+        const atobFn = (typeof window !== 'undefined' && typeof window.atob === 'function') 
+            ? window.atob 
+            : (typeof atob === 'function' ? atob : null);
+        if (!atobFn) return null;
+
+        const byteCharacters = atobFn(base64Data);
+        const byteLength = byteCharacters.length;
+        const u8arr = new Uint8Array(byteLength);
+        for (let i = 0; i < byteLength; i++) {
+            u8arr[i] = byteCharacters.charCodeAt(i);
+        }
+        const BlobClass = (typeof window !== 'undefined' && window.Blob) ? window.Blob : (typeof Blob !== 'undefined' ? Blob : null);
+        if (!BlobClass) return null;
+        return new BlobClass([u8arr], { type: mime });
+    } catch (e) {
+        console.warn('Erro ao converter dataUrl para Blob:', e);
+        return null;
+    }
+}
+
+export function createBlobUrlFromData(data) {
+    if (!data || typeof data !== 'string') return data || '';
+    if (data.startsWith('blob:') || data.startsWith('http://') || data.startsWith('https://')) {
+        return data;
+    }
+    const blob = dataUrlToBlob(data);
+    const UrlClass = (typeof window !== 'undefined' && window.URL) ? window.URL : (typeof URL !== 'undefined' ? URL : null);
+    if (blob && UrlClass && typeof UrlClass.createObjectURL === 'function') {
+        try {
+            return UrlClass.createObjectURL(blob);
+        } catch (_) {}
+    }
+    return data;
 }
 
 export function formatBytesToKB(bytes) {
@@ -6232,22 +6355,38 @@ export function resolveChatChunkedMedia(container, chatId) {
         try {
             const fullData = await loadMediaWithChunks(`chats/${chatId}/messages`, msgId);
             if (!fullData) return;
-            if (el.tagName === 'IMG' || el.tagName === 'VIDEO') {
-                let src = fullData;
-                if (el.dataset.isTrimmed === 'true' && !src.includes('#t=')) {
-                    src = `${src}#t=0,120`;
+            const cleanData = (typeof fullData === 'string') ? fullData.replace(/#t=[0-9,.]+$/, '') : fullData;
+
+            if (el.tagName === 'VIDEO') {
+                const blobUrl = createBlobUrlFromData(cleanData);
+                let finalSrc = blobUrl;
+                if (el.dataset.isTrimmed === 'true' && !finalSrc.includes('#t=')) {
+                    finalSrc = `${finalSrc}#t=0,120`;
                 }
-                el.src = src;
+                el.src = finalSrc;
+                el.style.display = '';
+                const wrapper = (typeof el.closest === 'function') 
+                    ? el.closest('.chat-video-wrapper') 
+                    : (el.parentElement && el.parentElement.classList && el.parentElement.classList.contains('chat-video-wrapper') ? el.parentElement : null);
+                if (wrapper && typeof wrapper.querySelector === 'function') {
+                    const loader = wrapper.querySelector('.chat-video-loading');
+                    if (loader) loader.style.display = 'none';
+                }
+                try { el.load(); } catch (_) {}
+            } else if (el.tagName === 'IMG') {
+                el.src = cleanData;
             } else if (el.classList.contains('audio-player-ui')) {
-                let src = fullData;
-                if (el.dataset.isTrimmed === 'true' && !src.includes('#t=')) {
-                    src = `${src}#t=0,120`;
+                const blobUrl = createBlobUrlFromData(cleanData);
+                let finalSrc = blobUrl;
+                if (el.dataset.isTrimmed === 'true' && !finalSrc.includes('#t=')) {
+                    finalSrc = `${finalSrc}#t=0,120`;
                 }
-                el.dataset.src = src;
+                el.dataset.src = finalSrc;
             } else if (el.classList.contains('view-once-bubble')) {
-                el.dataset.src = fullData;
+                el.dataset.src = cleanData;
             } else if (el.tagName === 'A' && el.classList.contains('file-attachment-card')) {
-                el.href = fullData;
+                const blobUrl = createBlobUrlFromData(cleanData);
+                el.href = blobUrl;
             }
             el.dataset.hasChunks = 'false';
         } catch (err) {
@@ -6682,9 +6821,24 @@ function loadRealtimeMessages() {
                 } else if (msg.type === 'video') {
                     const isTrimmed = !!msg.isTrimmed;
                     const trimBadgeHTML = isTrimmed ? `<span class="media-trim-badge" style="display:inline-flex; align-items:center; gap:4px; font-size:0.68rem; color:#ffdd57; background:rgba(255,221,87,0.15); border:1px solid rgba(255,221,87,0.3); padding:2px 6px; border-radius:12px; margin-bottom:4px; font-weight:600;">✂️ Cortado (2 min)${msg.fileSize ? ` • ${msg.fileSize}` : ''}</span>` : (msg.fileSize ? `<span style="display:inline-block; font-size:0.68rem; opacity:0.75; margin-bottom:4px;">📹 ${msg.fileSize}</span>` : '');
+                    const hasChunks = !!msg.hasChunks;
+                    let initialSrc = '';
+                    if (!hasChunks && msg.fileData) {
+                        const clean = (typeof msg.fileData === 'string') ? msg.fileData.replace(/#t=[0-9,.]+$/, '') : msg.fileData;
+                        const bUrl = createBlobUrlFromData(clean);
+                        initialSrc = (isTrimmed && !bUrl.includes('#t=')) ? `${bUrl}#t=0,120` : bUrl;
+                    }
                     mediaHTML = `
                         ${trimBadgeHTML}
-                        <video src="${msg.fileData || ''}" controls playsinline data-msg-id="${msg.id}" data-chat-id="${chatId}" data-has-chunks="${msg.hasChunks ? 'true' : 'false'}" data-is-trimmed="${isTrimmed ? 'true' : 'false'}" data-max-duration="${isTrimmed ? '120' : ''}" style="max-width:100%; border-radius:10px; margin-bottom:4px;"></video>
+                        <div class="chat-video-wrapper" style="position:relative; max-width:100%; border-radius:10px; overflow:hidden;">
+                            ${hasChunks ? `
+                                <div class="chat-video-loading" style="display:flex; align-items:center; justify-content:center; gap:8px; padding:16px; background:rgba(0,0,0,0.5); border-radius:10px; font-size:0.8rem; color:#aaa;">
+                                    <div class="remote-upload-spinner" style="width:16px; height:16px; border-width:2px;"></div>
+                                    <span>Carregando vídeo...</span>
+                                </div>
+                            ` : ''}
+                            <video src="${initialSrc}" controls playsinline preload="metadata" data-msg-id="${msg.id}" data-chat-id="${chatId}" data-has-chunks="${hasChunks ? 'true' : 'false'}" data-is-trimmed="${isTrimmed ? 'true' : 'false'}" data-max-duration="${isTrimmed ? '120' : ''}" style="max-width:100%; border-radius:10px; margin-bottom:4px; ${hasChunks ? 'display:none;' : ''}"></video>
+                        </div>
                     `;
                 } else if (msg.type === 'file') {
                     mediaHTML = `
@@ -6926,7 +7080,7 @@ function loadRealtimeMessages() {
                 };
             }
 
-            // Vídeos do Chat: controle de reprodução e corte de 2 minutos
+            // Vídeos do Chat: controle de reprodução, corte de 2 minutos e carregamento sob demanda
             const chatVideo = msgDiv.querySelector('video');
             if (chatVideo) {
                 const isTrimmed = chatVideo.dataset.isTrimmed === 'true';
@@ -6936,6 +7090,51 @@ function loadRealtimeMessages() {
                         if (chatVideo.currentTime >= maxDur) {
                             chatVideo.currentTime = maxDur;
                             chatVideo.pause();
+                        }
+                    });
+                }
+
+                const ensureVideoLoaded = async () => {
+                    if (chatVideo.dataset.hasChunks === 'true') {
+                        const vMsgId = chatVideo.dataset.msgId;
+                        const vChatId = chatVideo.dataset.chatId || chatId;
+                        if (vMsgId && vChatId) {
+                            try {
+                                const fullData = await loadMediaWithChunks(`chats/${vChatId}/messages`, vMsgId);
+                                if (fullData) {
+                                    const clean = (typeof fullData === 'string') ? fullData.replace(/#t=[0-9,.]+$/, '') : fullData;
+                                    const bUrl = createBlobUrlFromData(clean);
+                                    let finalSrc = bUrl;
+                                    if (isTrimmed && !finalSrc.includes('#t=')) {
+                                        finalSrc = `${finalSrc}#t=0,120`;
+                                    }
+                                    chatVideo.src = finalSrc;
+                                    chatVideo.style.display = '';
+                                    chatVideo.dataset.hasChunks = 'false';
+                                    const wrapper = (typeof chatVideo.closest === 'function')
+                                        ? chatVideo.closest('.chat-video-wrapper')
+                                        : (chatVideo.parentElement && chatVideo.parentElement.classList && chatVideo.parentElement.classList.contains('chat-video-wrapper') ? chatVideo.parentElement : null);
+                                    if (wrapper && typeof wrapper.querySelector === 'function') {
+                                        const loader = wrapper.querySelector('.chat-video-loading');
+                                        if (loader) loader.style.display = 'none';
+                                    }
+                                    try { chatVideo.load(); } catch (_) {}
+                                }
+                            } catch (e) {
+                                console.warn('Erro ao carregar chunks do vídeo sob demanda:', e);
+                            }
+                        }
+                    }
+                };
+
+                chatVideo.addEventListener('play', ensureVideoLoaded);
+                chatVideo.addEventListener('click', ensureVideoLoaded);
+
+                const videoWrapper = msgDiv.querySelector('.chat-video-wrapper');
+                if (videoWrapper) {
+                    videoWrapper.addEventListener('click', () => {
+                        if (chatVideo.dataset.hasChunks === 'true') {
+                            ensureVideoLoaded();
                         }
                     });
                 }
@@ -12368,10 +12567,7 @@ function handleFileUpload(inputEl, type, options = {}) {
 
             const deliverVideo = async (rawPayload) => {
                 try {
-                    let payload = rawPayload;
-                    if (isTrimmed && typeof payload === 'string' && !payload.includes('#t=')) {
-                        payload = `${payload}#t=0,120`;
-                    }
+                    let payload = (typeof rawPayload === 'string') ? rawPayload.replace(/#t=[0-9,.]+$/, '') : rawPayload;
                     await updateMessageMediaWithChunks(chatId, pendingMessageRef.id, {
                         fileName: file.name,
                         fileSize: finalSize,
@@ -12465,10 +12661,7 @@ function handleFileUpload(inputEl, type, options = {}) {
 
             const deliverAudio = async (rawPayload) => {
                 try {
-                    let payload = rawPayload;
-                    if (isTrimmed && typeof payload === 'string' && !payload.includes('#t=')) {
-                        payload = `${payload}#t=0,120`;
-                    }
+                    let payload = (typeof rawPayload === 'string') ? rawPayload.replace(/#t=[0-9,.]+$/, '') : rawPayload;
                     await updateMessageMediaWithChunks(chatId, pendingMessageRef.id, {
                         fileName: file.name,
                         fileSize: finalSize,
@@ -13814,8 +14007,10 @@ function resolvePostChunkedMedia(container, postsList) {
             const postObj = Array.isArray(postsList) ? postsList.find(p => p.id === pId) : null;
             if (postObj) postObj.mediaData = fullData;
             let src = fullData;
-            if (el.dataset.chunkType === 'video' && el.dataset.chunkTrimmed === 'true' && !src.includes('#t=')) {
-                src = `${src}#t=0,${el.dataset.chunkDuration || 120}`;
+            if (el.dataset.chunkType === 'video') {
+                const clean = (typeof fullData === 'string') ? fullData.replace(/#t=[0-9,.]+$/, '') : fullData;
+                const blobUrl = createBlobUrlFromData(clean);
+                src = (el.dataset.chunkTrimmed === 'true' && !blobUrl.includes('#t=')) ? `${blobUrl}#t=0,${el.dataset.chunkDuration || 120}` : blobUrl;
             }
             el.src = src;
             el.removeAttribute('data-chunk-post-id');
@@ -13849,8 +14044,12 @@ function renderPostsFeed(posts = []) {
                 const caption = post.caption || '';
                 const rawMedia = post.mediaData || (post.hasChunks && post.id && mediaChunkCache.get(`posts_${post.id}`)) || '';
                 const isChunkPending = post.hasChunks && !rawMedia && post.id;
-                const postMediaSrc = (post.type === 'video' && post.isTrimmed && rawMedia && typeof rawMedia === 'string' && !rawMedia.includes('#t='))
-                    ? `${rawMedia}#t=0,${post.videoDuration || 120}`
+                const postMediaSrc = (post.type === 'video' && rawMedia)
+                    ? (() => {
+                        const clean = (typeof rawMedia === 'string') ? rawMedia.replace(/#t=[0-9,.]+$/, '') : rawMedia;
+                        const bUrl = createBlobUrlFromData(clean);
+                        return (post.isTrimmed && !bUrl.includes('#t=')) ? `${bUrl}#t=0,${post.videoDuration || 120}` : bUrl;
+                    })()
                     : (rawMedia || '');
                 const mediaTag = post.type === 'video'
                     ? `<video src="${postMediaSrc}" ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="video" data-chunk-trimmed="${post.isTrimmed ? 'true' : 'false'}" data-chunk-duration="${post.videoDuration || 120}"` : ''} controls playsinline></video>`
@@ -13951,8 +14150,12 @@ function renderPostsFeed(posts = []) {
         const caption = post.caption || '';
         const rawMedia = post.mediaData || (post.hasChunks && post.id && mediaChunkCache.get(`posts_${post.id}`)) || '';
         const isChunkPending = post.hasChunks && !rawMedia && post.id;
-        const postMediaSrc = (post.type === 'video' && post.isTrimmed && rawMedia && typeof rawMedia === 'string' && !rawMedia.includes('#t='))
-            ? `${rawMedia}#t=0,${post.videoDuration || 120}`
+        const postMediaSrc = (post.type === 'video' && rawMedia)
+            ? (() => {
+                const clean = (typeof rawMedia === 'string') ? rawMedia.replace(/#t=[0-9,.]+$/, '') : rawMedia;
+                const bUrl = createBlobUrlFromData(clean);
+                return (post.isTrimmed && !bUrl.includes('#t=')) ? `${bUrl}#t=0,${post.videoDuration || 120}` : bUrl;
+            })()
             : (rawMedia || '');
         const mediaTag = post.type === 'video'
             ? `<video src="${postMediaSrc}" ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="video" data-chunk-trimmed="${post.isTrimmed ? 'true' : 'false'}" data-chunk-duration="${post.videoDuration || 120}"` : ''} controls playsinline></video>`
@@ -18724,6 +18927,13 @@ if (typeof window !== 'undefined') {
     window.getCurrentChatEphemeralDuration = () => currentChatEphemeralDuration;
     window.getIsSendingChatMessage = () => isSendingChatMessage;
     window.formatMessageTime = formatMessageTime;
+    window.dataUrlToBlob = dataUrlToBlob;
+    window.createBlobUrlFromData = createBlobUrlFromData;
+    window.clickSound = clickSound;
+    window.notificationSound = notificationSound;
+    window.unlockSound = unlockSound;
+    window.replySendSound = replySendSound;
+    window.ringtoneSound = ringtoneSound;
 }
 
 if (typeof window !== 'undefined') {
