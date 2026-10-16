@@ -59,8 +59,11 @@ let currentProfile = {
     whatsapp: '',
     facebook: '',
     website1: '',
+    website1Title: '',
     website2: '',
+    website2Title: '',
     website3: '',
+    website3Title: '',
     youtube: '',
     instagram: '',
     tiktok: '',
@@ -71,8 +74,11 @@ let currentProfile = {
         whatsapp: '',
         facebook: '',
         website1: '',
+        website1Title: '',
         website2: '',
-        website3: ''
+        website2Title: '',
+        website3: '',
+        website3Title: ''
     },
     avatar: '',
     accentColor: '#fff01f',
@@ -4821,8 +4827,11 @@ export function updateContactProfileSocialUI(data) {
     const whatsapp = isBusiness ? (data?.whatsapp || data?.socialLinks?.whatsapp || '') : '';
     const facebook = isBusiness ? (data?.facebook || data?.socialLinks?.facebook || '') : '';
     const website1 = isBusiness ? (data?.website1 || data?.socialLinks?.website1 || '') : '';
+    const website1Title = isBusiness ? (data?.website1Title || data?.socialLinks?.website1Title || '') : '';
     const website2 = isBusiness ? (data?.website2 || data?.socialLinks?.website2 || '') : '';
+    const website2Title = isBusiness ? (data?.website2Title || data?.socialLinks?.website2Title || '') : '';
     const website3 = isBusiness ? (data?.website3 || data?.socialLinks?.website3 || '') : '';
+    const website3Title = isBusiness ? (data?.website3Title || data?.socialLinks?.website3Title || '') : '';
 
     const phoneCard = document.getElementById('contact-profile-phone-card');
     const phoneText = document.getElementById('contact-profile-phone-text');
@@ -4922,10 +4931,16 @@ export function updateContactProfileSocialUI(data) {
         if (website1) {
             w1Link.href = formatWebsiteLink(website1);
             const w1Label = document.getElementById('contact-profile-website1-label');
+            const customTitle1 = (website1Title || '').trim();
             if (w1Label) {
-                const d = website1.replace(/^https?:\/\//i, '').replace(/^www\./i, '').split('/')[0];
-                w1Label.innerText = d.length > 20 ? 'Site 1' : (d || 'Site 1');
+                if (customTitle1) {
+                    w1Label.innerText = customTitle1;
+                } else {
+                    const d = website1.replace(/^https?:\/\//i, '').replace(/^www\./i, '').split('/')[0];
+                    w1Label.innerText = d.length > 20 ? 'Site 1' : (d || 'Site 1');
+                }
             }
+            w1Link.title = customTitle1 ? `Acessar ${customTitle1}` : 'Acessar Site Oficial 1';
             w1Link.style.display = 'inline-flex';
             hasAnySocial = true;
         } else {
@@ -4937,10 +4952,16 @@ export function updateContactProfileSocialUI(data) {
         if (website2) {
             w2Link.href = formatWebsiteLink(website2);
             const w2Label = document.getElementById('contact-profile-website2-label');
+            const customTitle2 = (website2Title || '').trim();
             if (w2Label) {
-                const d = website2.replace(/^https?:\/\//i, '').replace(/^www\./i, '').split('/')[0];
-                w2Label.innerText = d.length > 20 ? 'Site 2' : (d || 'Site 2');
+                if (customTitle2) {
+                    w2Label.innerText = customTitle2;
+                } else {
+                    const d = website2.replace(/^https?:\/\//i, '').replace(/^www\./i, '').split('/')[0];
+                    w2Label.innerText = d.length > 20 ? 'Site 2' : (d || 'Site 2');
+                }
             }
+            w2Link.title = customTitle2 ? `Acessar ${customTitle2}` : 'Acessar Site Oficial 2';
             w2Link.style.display = 'inline-flex';
             hasAnySocial = true;
         } else {
@@ -4952,10 +4973,16 @@ export function updateContactProfileSocialUI(data) {
         if (website3) {
             w3Link.href = formatWebsiteLink(website3);
             const w3Label = document.getElementById('contact-profile-website3-label');
+            const customTitle3 = (website3Title || '').trim();
             if (w3Label) {
-                const d = website3.replace(/^https?:\/\//i, '').replace(/^www\./i, '').split('/')[0];
-                w3Label.innerText = d.length > 20 ? 'Site 3' : (d || 'Site 3');
+                if (customTitle3) {
+                    w3Label.innerText = customTitle3;
+                } else {
+                    const d = website3.replace(/^https?:\/\//i, '').replace(/^www\./i, '').split('/')[0];
+                    w3Label.innerText = d.length > 20 ? 'Site 3' : (d || 'Site 3');
+                }
             }
+            w3Link.title = customTitle3 ? `Acessar ${customTitle3}` : 'Acessar Site Oficial 3';
             w3Link.style.display = 'inline-flex';
             hasAnySocial = true;
         } else {
@@ -15225,14 +15252,20 @@ document.getElementById('profile-btn')?.addEventListener('click', () => {
     const whatsappInp = document.getElementById('profile-whatsapp-input');
     const facebookInp = document.getElementById('profile-facebook-input');
     const website1Inp = document.getElementById('profile-website1-input');
+    const website1TitleInp = document.getElementById('profile-website1-title-input');
     const website2Inp = document.getElementById('profile-website2-input');
+    const website2TitleInp = document.getElementById('profile-website2-title-input');
     const website3Inp = document.getElementById('profile-website3-input');
+    const website3TitleInp = document.getElementById('profile-website3-title-input');
 
     if (whatsappInp) whatsappInp.value = currentProfile.whatsapp || currentProfile.socialLinks?.whatsapp || '';
     if (facebookInp) facebookInp.value = currentProfile.facebook || currentProfile.socialLinks?.facebook || '';
     if (website1Inp) website1Inp.value = currentProfile.website1 || currentProfile.socialLinks?.website1 || '';
+    if (website1TitleInp) website1TitleInp.value = currentProfile.website1Title || currentProfile.socialLinks?.website1Title || '';
     if (website2Inp) website2Inp.value = currentProfile.website2 || currentProfile.socialLinks?.website2 || '';
+    if (website2TitleInp) website2TitleInp.value = currentProfile.website2Title || currentProfile.socialLinks?.website2Title || '';
     if (website3Inp) website3Inp.value = currentProfile.website3 || currentProfile.socialLinks?.website3 || '';
+    if (website3TitleInp) website3TitleInp.value = currentProfile.website3Title || currentProfile.socialLinks?.website3Title || '';
 
     const prev = document.getElementById('profile-edit-avatar-preview');
     if (prev) {
@@ -15336,8 +15369,11 @@ document.getElementById('save-profile-btn')?.addEventListener('click', async () 
     const rawWhatsapp = document.getElementById('profile-whatsapp-input')?.value.trim() || '';
     const rawFacebook = document.getElementById('profile-facebook-input')?.value.trim() || '';
     const rawWebsite1 = document.getElementById('profile-website1-input')?.value.trim() || '';
+    const rawWebsite1Title = document.getElementById('profile-website1-title-input')?.value.trim() || '';
     const rawWebsite2 = document.getElementById('profile-website2-input')?.value.trim() || '';
+    const rawWebsite2Title = document.getElementById('profile-website2-title-input')?.value.trim() || '';
     const rawWebsite3 = document.getElementById('profile-website3-input')?.value.trim() || '';
+    const rawWebsite3Title = document.getElementById('profile-website3-title-input')?.value.trim() || '';
 
     const youtube = formatSocialLink('youtube', rawYoutube);
     const instagram = formatSocialLink('instagram', rawInstagram);
@@ -15345,8 +15381,11 @@ document.getElementById('save-profile-btn')?.addEventListener('click', async () 
     const whatsapp = formatSocialLink('whatsapp', rawWhatsapp);
     const facebook = formatSocialLink('facebook', rawFacebook);
     const website1 = formatWebsiteLink(rawWebsite1);
+    const website1Title = rawWebsite1Title.slice(0, 30);
     const website2 = formatWebsiteLink(rawWebsite2);
+    const website2Title = rawWebsite2Title.slice(0, 30);
     const website3 = formatWebsiteLink(rawWebsite3);
+    const website3Title = rawWebsite3Title.slice(0, 30);
 
     const usernameKey = normalizeUsername(usernameInputValue);
     const usernameError = usernameValidationMessage(usernameKey);
@@ -15405,8 +15444,11 @@ document.getElementById('save-profile-btn')?.addEventListener('click', async () 
                 whatsapp,
                 facebook,
                 website1,
+                website1Title,
                 website2,
+                website2Title,
                 website3,
+                website3Title,
                 youtube,
                 instagram,
                 tiktok,
@@ -15417,8 +15459,11 @@ document.getElementById('save-profile-btn')?.addEventListener('click', async () 
                     whatsapp,
                     facebook,
                     website1,
+                    website1Title,
                     website2,
-                    website3
+                    website2Title,
+                    website3,
+                    website3Title
                 }
             };
             if (currentProfile.avatar !== undefined) {
@@ -15446,8 +15491,11 @@ document.getElementById('save-profile-btn')?.addEventListener('click', async () 
     currentProfile.whatsapp = whatsapp;
     currentProfile.facebook = facebook;
     currentProfile.website1 = website1;
+    currentProfile.website1Title = website1Title;
     currentProfile.website2 = website2;
+    currentProfile.website2Title = website2Title;
     currentProfile.website3 = website3;
+    currentProfile.website3Title = website3Title;
     currentProfile.youtube = youtube;
     currentProfile.instagram = instagram;
     currentProfile.tiktok = tiktok;
@@ -15458,8 +15506,11 @@ document.getElementById('save-profile-btn')?.addEventListener('click', async () 
         whatsapp,
         facebook,
         website1,
+        website1Title,
         website2,
-        website3
+        website2Title,
+        website3,
+        website3Title
     };
     updateProfileDOM();
     showToast("Perfil Salvo", "Dados atualizados com sucesso!", "green");

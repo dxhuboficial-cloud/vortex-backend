@@ -5629,8 +5629,11 @@ test('Conta Empresa no Editar Perfil VIP: Alternância Pessoal vs Empresa, valid
   assert.ok(env.elements['profile-whatsapp-input'], 'Input WhatsApp deve existir');
   assert.ok(env.elements['profile-facebook-input'], 'Input Facebook deve existir');
   assert.ok(env.elements['profile-website1-input'], 'Input Site 1 deve existir');
+  assert.ok(env.elements['profile-website1-title-input'], 'Input Título Site 1 deve existir');
   assert.ok(env.elements['profile-website2-input'], 'Input Site 2 deve existir');
+  assert.ok(env.elements['profile-website2-title-input'], 'Input Título Site 2 deve existir');
   assert.ok(env.elements['profile-website3-input'], 'Input Site 3 deve existir');
+  assert.ok(env.elements['profile-website3-title-input'], 'Input Título Site 3 deve existir');
   assert.ok(env.elements['contact-profile-business-badge'], 'Badge de Conta Empresa nos Dados do Contato deve existir');
   assert.ok(env.elements['contact-profile-whatsapp-link'], 'Pill WhatsApp nos Dados do Contato deve existir');
   assert.ok(env.elements['contact-profile-facebook-link'], 'Pill Facebook nos Dados do Contato deve existir');
@@ -5690,8 +5693,11 @@ test('Conta Empresa no Editar Perfil VIP: Alternância Pessoal vs Empresa, valid
   env.elements['profile-tiktok-input'].value = '@vortexstore';
   env.elements['profile-youtube-input'].value = '@vortexchannel';
   env.elements['profile-website1-input'].value = 'vortexstore.com.br';
+  env.elements['profile-website1-title-input'].value = 'Loja Oficial';
   env.elements['profile-website2-input'].value = 'http://loja.vortexstore.com.br';
+  env.elements['profile-website2-title-input'].value = 'Cardápio Digital';
   env.elements['profile-website3-input'].value = 'https://catalogo.vortexstore.com.br';
+  env.elements['profile-website3-title-input'].value = 'Catálogo 2026';
 
   await env.elements['save-profile-btn'].click();
 
@@ -5701,14 +5707,27 @@ test('Conta Empresa no Editar Perfil VIP: Alternância Pessoal vs Empresa, valid
   assert.strictEqual(savedUserDoc.whatsapp, 'https://wa.me/5511988887777', 'WhatsApp deve estar formatado com wa.me');
   assert.strictEqual(savedUserDoc.facebook, 'https://www.facebook.com/vortexstore', 'Facebook deve estar formatado');
   assert.strictEqual(savedUserDoc.website1, 'https://vortexstore.com.br', 'Site 1 deve ter https://');
+  assert.strictEqual(savedUserDoc.website1Title, 'Loja Oficial', 'website1Title deve estar salvo');
   assert.strictEqual(savedUserDoc.website2, 'https://loja.vortexstore.com.br', 'Site 2 deve ter sido convertido para https://');
+  assert.strictEqual(savedUserDoc.website2Title, 'Cardápio Digital', 'website2Title deve estar salvo');
   assert.strictEqual(savedUserDoc.website3, 'https://catalogo.vortexstore.com.br', 'Site 3 deve manter https://');
+  assert.strictEqual(savedUserDoc.website3Title, 'Catálogo 2026', 'website3Title deve estar salvo');
   assert.strictEqual(savedUserDoc.socialLinks.website1, 'https://vortexstore.com.br', 'socialLinks.website1 deve estar sincronizado');
+  assert.strictEqual(savedUserDoc.socialLinks.website1Title, 'Loja Oficial', 'socialLinks.website1Title deve estar sincronizado');
+
+  // Testar carregamento dos títulos ao abrir painel de editar perfil
+  env.elements['profile-website1-title-input'].value = '';
+  env.elements['profile-website2-title-input'].value = '';
+  env.elements['profile-website3-title-input'].value = '';
+  await env.elements['profile-btn'].click();
+  assert.strictEqual(env.elements['profile-website1-title-input'].value, 'Loja Oficial', 'Título 1 deve ser recarregado no input');
+  assert.strictEqual(env.elements['profile-website2-title-input'].value, 'Cardápio Digital', 'Título 2 deve ser recarregado no input');
+  assert.strictEqual(env.elements['profile-website3-title-input'].value, 'Catálogo 2026', 'Título 3 deve ser recarregado no input');
 
   // 5. Testar renderização nos Dados do Contato
   const updateContactProfileSocialUI = win.updateContactProfileSocialUI;
 
-  // A) Renderizar contato como Empresa
+  // A) Renderizar contato como Empresa com títulos personalizados
   updateContactProfileSocialUI({
     accountType: 'business',
     phone: '(11) 97777-6666',
@@ -5717,8 +5736,11 @@ test('Conta Empresa no Editar Perfil VIP: Alternância Pessoal vs Empresa, valid
     instagram: 'https://www.instagram.com/vortexstore',
     tiktok: 'https://www.tiktok.com/@vortexstore',
     website1: 'https://vortexstore.com.br',
+    website1Title: 'Loja Oficial',
     website2: 'https://loja.vortexstore.com.br',
-    website3: 'https://catalogo.vortexstore.com.br'
+    website2Title: 'Cardápio Digital',
+    website3: 'https://catalogo.vortexstore.com.br',
+    website3Title: 'Catálogo 2026'
   });
 
   assert.strictEqual(env.elements['contact-profile-business-badge'].style.display, 'inline-flex', 'Badge de Conta Empresa deve estar visível');
@@ -5728,8 +5750,20 @@ test('Conta Empresa no Editar Perfil VIP: Alternância Pessoal vs Empresa, valid
   assert.strictEqual(env.elements['contact-profile-website2-link'].style.display, 'inline-flex', 'Pill Site 2 deve estar visível');
   assert.strictEqual(env.elements['contact-profile-website3-link'].style.display, 'inline-flex', 'Pill Site 3 deve estar visível');
   assert.strictEqual(env.elements['contact-profile-website1-link'].href, 'https://vortexstore.com.br', 'href do Site 1 deve ser o link https://');
+  assert.strictEqual(env.elements['contact-profile-website1-label'].innerText, 'Loja Oficial', 'Label do Site 1 deve exibir o título customizado');
+  assert.strictEqual(env.elements['contact-profile-website2-label'].innerText, 'Cardápio Digital', 'Label do Site 2 deve exibir o título customizado');
+  assert.strictEqual(env.elements['contact-profile-website3-label'].innerText, 'Catálogo 2026', 'Label do Site 3 deve exibir o título customizado');
 
-  // B) Renderizar contato como Pessoal
+  // B) Renderizar contato como Empresa SEM títulos personalizados (deve ter fallback)
+  updateContactProfileSocialUI({
+    accountType: 'business',
+    website1: 'https://minhaloja.com.br',
+    website2: 'https://site2.com',
+    website3: 'https://site3.com'
+  });
+  assert.strictEqual(env.elements['contact-profile-website1-label'].innerText, 'minhaloja.com.br', 'Label deve fazer fallback para o domínio quando sem título');
+
+  // C) Renderizar contato como Pessoal
   updateContactProfileSocialUI({
     accountType: 'personal',
     phone: '(11) 99999-0000',

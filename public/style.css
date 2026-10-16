@@ -10528,3 +10528,42 @@ body.theme-rgb .ephemeral-save-btn {
     box-shadow: 0 0 14px rgba(168, 85, 247, 0.5);
     transform: translateY(-1px);
 }
+
+/* Inputs de Título e Link para Sites de Conta Empresa */
+.setting-item.profile-website-item {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+    margin-bottom: 12px;
+}
+
+.setting-item.profile-website-item .setting-info {
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 4px !important;
+}
+
+.profile-website-inputs {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+}
+
+.profile-website-inputs input[type="text"],
+.profile-website-inputs input[type="url"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    text-align: left !important;
+    box-sizing: border-box !important;
+}
+
+.contact-social-pill span {
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}

@@ -4,20 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.109">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.109">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.109">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.109">
-    <link rel="stylesheet" href="style.css?v=1.0.109">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.110">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.110">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.110">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.110">
+    <link rel="stylesheet" href="style.css?v=1.0.110">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.109">
+    <link rel="manifest" href="manifest.json?v=1.0.110">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.109">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.109">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.110">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.110">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -1193,34 +1193,46 @@
                         <input type="text" id="profile-facebook-input" placeholder="https://facebook.com/suapagina ou @pagina" title="Link do Facebook">
                     </div>
 
-                    <div class="setting-item">
-                        <label for="profile-website1-input" class="setting-info">
+                    <!-- Site Oficial 1 -->
+                    <div class="setting-item profile-website-item">
+                        <div class="setting-info">
                             <span class="profile-field-title">
                                 <i data-lucide="globe" class="profile-field-icon social-icon-website"></i> Site Oficial 1
                             </span>
-                            <small>Link seguro com https://</small>
-                        </label>
-                        <input type="url" id="profile-website1-input" placeholder="https://seusite.com" title="Link do Site 1 (com https://)">
+                            <small>Defina um título personalizado e link seguro com https://</small>
+                        </div>
+                        <div class="profile-website-inputs">
+                            <input type="text" id="profile-website1-title-input" placeholder="Título (Ex: Loja Online, Catálogo)" title="Título do Site 1" maxlength="30" class="website-title-input">
+                            <input type="url" id="profile-website1-input" placeholder="https://seusite.com" title="Link do Site 1 (com https://)">
+                        </div>
                     </div>
 
-                    <div class="setting-item">
-                        <label for="profile-website2-input" class="setting-info">
+                    <!-- Site Oficial 2 -->
+                    <div class="setting-item profile-website-item">
+                        <div class="setting-info">
                             <span class="profile-field-title">
                                 <i data-lucide="globe" class="profile-field-icon social-icon-website"></i> Site Oficial 2
                             </span>
-                            <small>Link seguro com https://</small>
-                        </label>
-                        <input type="url" id="profile-website2-input" placeholder="https://sualoja.com" title="Link do Site 2 (com https://)">
+                            <small>Defina um título personalizado e link seguro com https://</small>
+                        </div>
+                        <div class="profile-website-inputs">
+                            <input type="text" id="profile-website2-title-input" placeholder="Título (Ex: Cardápio, Suporte, WhatsApp Web)" title="Título do Site 2" maxlength="30" class="website-title-input">
+                            <input type="url" id="profile-website2-input" placeholder="https://sualoja.com" title="Link do Site 2 (com https://)">
+                        </div>
                     </div>
 
-                    <div class="setting-item">
-                        <label for="profile-website3-input" class="setting-info">
+                    <!-- Site Oficial 3 -->
+                    <div class="setting-item profile-website-item">
+                        <div class="setting-info">
                             <span class="profile-field-title">
                                 <i data-lucide="globe" class="profile-field-icon social-icon-website"></i> Site Oficial 3
                             </span>
-                            <small>Link seguro com https://</small>
-                        </label>
-                        <input type="url" id="profile-website3-input" placeholder="https://catalogo.com" title="Link do Site 3 (com https://)">
+                            <small>Defina um título personalizado e link seguro com https://</small>
+                        </div>
+                        <div class="profile-website-inputs">
+                            <input type="text" id="profile-website3-title-input" placeholder="Título (Ex: Portfólio, Agendamento VIP)" title="Título do Site 3" maxlength="30" class="website-title-input">
+                            <input type="url" id="profile-website3-input" placeholder="https://catalogo.com" title="Link do Site 3 (com https://)">
+                        </div>
                     </div>
                 </div>
 
@@ -2668,6 +2680,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.109" defer></script>
+    <script type="module" src="script.js?v=1.0.110" defer></script>
 </body>
 </html>
