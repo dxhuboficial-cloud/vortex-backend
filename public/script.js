@@ -927,7 +927,11 @@ export function openChatByChatIdOrUid(chatId, senderUid) {
         contactCard.click();
     } else {
         const contact = { uid: targetUid, name: 'Contato VIP' };
-        if (typeof openChat === 'function') openChat(contact);
+        if (typeof openDirectChat === 'function') {
+            openDirectChat(contact);
+        } else if (typeof openChat === 'function') {
+            openChat(contact);
+        }
     }
 }
 
@@ -1543,20 +1547,24 @@ export function updateVerifiedBadgeElement(badgeEl, userOrData) {
     const displayVal = (badgeEl.id === 'user-verified-badge' || badgeEl.id === 'story-verified-badge') ? 'inline-block' : 'inline-flex';
 
     if (isAdmin) {
-        badgeEl.style.display = displayVal;
-        badgeEl.classList.add('active', 'verified-badge-admin');
-        badgeEl.setAttribute('data-admin-badge', 'true');
-        badgeEl.setAttribute('title', '💥Admin⚡');
+        if (badgeEl.style) badgeEl.style.display = displayVal;
+        if (badgeEl.classList) badgeEl.classList.add('active', 'verified-badge-admin');
+        if (typeof badgeEl.setAttribute === 'function') {
+            badgeEl.setAttribute('data-admin-badge', 'true');
+            badgeEl.setAttribute('title', '💥Admin⚡');
+        }
     } else if (isVip) {
-        badgeEl.style.display = displayVal;
-        badgeEl.classList.add('active');
-        badgeEl.classList.remove('verified-badge-admin');
-        badgeEl.removeAttribute('data-admin-badge');
-        badgeEl.setAttribute('title', 'Verificado VIP');
+        if (badgeEl.style) badgeEl.style.display = displayVal;
+        if (badgeEl.classList) {
+            badgeEl.classList.add('active');
+            badgeEl.classList.remove('verified-badge-admin');
+        }
+        if (typeof badgeEl.removeAttribute === 'function') badgeEl.removeAttribute('data-admin-badge');
+        if (typeof badgeEl.setAttribute === 'function') badgeEl.setAttribute('title', 'Verificado VIP');
     } else {
-        badgeEl.style.display = 'none';
-        badgeEl.classList.remove('active', 'verified-badge-admin');
-        badgeEl.removeAttribute('data-admin-badge');
+        if (badgeEl.style) badgeEl.style.display = 'none';
+        if (badgeEl.classList) badgeEl.classList.remove('active', 'verified-badge-admin');
+        if (typeof badgeEl.removeAttribute === 'function') badgeEl.removeAttribute('data-admin-badge');
     }
 }
 
@@ -2974,6 +2982,61 @@ export function renderCatalogCartUI() {
     });
 }
 
+// Garantir que dois usuários sejam contatos mútuos sem precisar de solicitação
+export async function ensureMutualContacts(user1, user2) {
+    if (!user1?.uid || !user2?.uid || user1.uid === user2.uid) return;
+    try {
+        const u1Doc = {
+            uid: user1.uid,
+            name: user1.name || 'Usuário VORTEX',
+            avatar: user1.avatar || '',
+            status: (user1.status && user1.status.trim()) ? user1.status.trim() : (user1.bio || 'Disponível no VORTEX ⚡'),
+            isVip: Boolean(user1.isVip || user1.isVerified),
+            isVerified: Boolean(user1.isVip || user1.isVerified),
+            addedAt: Date.now()
+        };
+
+        const u2Doc = {
+            uid: user2.uid,
+            name: user2.name || 'Usuário VORTEX',
+            avatar: user2.avatar || '',
+            status: (user2.status && user2.status.trim()) ? user2.status.trim() : (user2.bio || 'Disponível no VORTEX ⚡'),
+            isVip: Boolean(user2.isVip || user2.isVerified),
+            isVerified: Boolean(user2.isVip || user2.isVerified),
+            addedAt: Date.now()
+        };
+
+        await Promise.all([
+            setDoc(doc(db, 'users', user1.uid, 'contacts', user2.uid), u2Doc, { merge: true }),
+            setDoc(doc(db, 'users', user2.uid, 'contacts', user1.uid), u1Doc, { merge: true })
+        ]);
+
+        if (typeof userContactsSet !== 'undefined' && userContactsSet) {
+            if (currentUser && currentUser.uid === user1.uid) userContactsSet.add(user2.uid);
+            if (currentUser && currentUser.uid === user2.uid) userContactsSet.add(user1.uid);
+        }
+
+        // Se houver qualquer solicitação pendente entre os dois, marca como aceita
+        try {
+            const reqsCol = collection(db, 'requests');
+            const [snap1, snap2] = await Promise.all([
+                getDocs(query(reqsCol, where('fromUid', '==', user1.uid), where('toUid', '==', user2.uid), where('status', '==', 'pending'))),
+                getDocs(query(reqsCol, where('fromUid', '==', user2.uid), where('toUid', '==', user1.uid), where('status', '==', 'pending')))
+            ]);
+            const batchUpdates = [];
+            snap1.forEach(d => batchUpdates.push(updateDoc(d.ref, { status: 'accepted' }).catch(() => {})));
+            snap2.forEach(d => batchUpdates.push(updateDoc(d.ref, { status: 'accepted' }).catch(() => {})));
+            if (batchUpdates.length > 0) {
+                await Promise.all(batchUpdates);
+            }
+        } catch (e) {
+            console.warn('[VORTEX] Aviso ao resolver solicitações pendentes:', e);
+        }
+    } catch (err) {
+        console.warn('[VORTEX] Erro ao assegurar contatos mútuos:', err);
+    }
+}
+
 // Finalização do Pedido
 export async function submitCatalogOrder() {
     if (!currentUser) {
@@ -3010,11 +3073,13 @@ export async function submitCatalogOrder() {
         // Validar e reservar estoque via runTransaction
         let orderTotal = 0;
         const finalizedItems = [];
+        let fetchedSellerData = null;
 
         await runTransaction(db, async (tx) => {
             // Ler dados do vendedor para obter a chave Pix atualizada
             const sellerSnap = await tx.get(doc(db, 'users', cart.sellerUid));
             const sellerData = sellerSnap.exists() ? sellerSnap.data() : {};
+            fetchedSellerData = sellerData;
             const sellerPixKey = sellerData.pixKey || cart.sellerPixKey || '';
 
             // Verificar produtos e subtrair estoque
@@ -3060,11 +3125,12 @@ export async function submitCatalogOrder() {
                 });
             }
 
+            const buyerFullName = (`${currentProfile?.name || ''} ${currentProfile?.surname || ''}`).trim() || currentProfile?.name || currentUser.displayName || 'Comprador VORTEX';
             const orderDocData = {
                 id: orderId,
                 orderNumber: orderNumber,
                 buyerUid: currentUser.uid,
-                buyerName: currentProfile?.name || currentUser.displayName || 'Comprador VORTEX',
+                buyerName: buyerFullName,
                 buyerAvatar: currentProfile?.avatar || currentUser.photoURL || '',
                 sellerUid: cart.sellerUid,
                 sellerName: sellerData.name || cart.sellerName || 'Vendedor VORTEX',
@@ -3080,28 +3146,68 @@ export async function submitCatalogOrder() {
             tx.set(doc(db, 'orders', orderId), orderDocData);
         });
 
-        // Limpar carrinho
-        clearCatalogCart();
-        closeCatalogCartModal();
-
-        // Enviar mensagem do pedido no chat com o vendedor
+        // 1. Garantir que vendedor e comprador sejam contatos mútuos (sem precisar de solicitação)
         const sellerUid = cart.sellerUid;
-        const sellerName = cart.sellerName;
-        const sellerPix = cart.sellerPixKey;
+        const sellerName = (fetchedSellerData && fetchedSellerData.name) || cart.sellerName || 'Vendedor VORTEX';
+        const sellerAvatar = (fetchedSellerData && fetchedSellerData.avatar) || '';
+        const sellerBio = (fetchedSellerData && fetchedSellerData.status && fetchedSellerData.status.trim())
+            ? fetchedSellerData.status.trim()
+            : ((fetchedSellerData && fetchedSellerData.bio) || 'Disponível no VORTEX ⚡');
+        const sellerIsVip = Boolean(fetchedSellerData && (fetchedSellerData.isVip || fetchedSellerData.isVerified || checkIsVipUser(fetchedSellerData)));
+        const sellerPixKey = (fetchedSellerData && fetchedSellerData.pixKey) || cart.sellerPixKey || '';
 
-        // Ativar contato do chat
-        setActiveChatContact({
+        const buyerName = (`${currentProfile?.name || ''} ${currentProfile?.surname || ''}`).trim() || currentProfile?.name || currentUser.displayName || 'Comprador VORTEX';
+        const buyerAvatar = currentProfile?.avatar || currentUser.photoURL || '';
+        const buyerBio = (currentProfile?.status && currentProfile.status.trim())
+            ? currentProfile.status.trim()
+            : (currentProfile?.bio || 'Disponível no VORTEX ⚡');
+        const buyerIsVip = Boolean(checkIsVipUser(currentProfile));
+
+        await ensureMutualContacts({
+            uid: currentUser.uid,
+            name: buyerName,
+            avatar: buyerAvatar,
+            status: buyerBio,
+            isVip: buyerIsVip,
+            isVerified: buyerIsVip
+        }, {
             uid: sellerUid,
             name: sellerName,
-            isGroup: false
+            avatar: sellerAvatar,
+            status: sellerBio,
+            isVip: sellerIsVip,
+            isVerified: sellerIsVip
         });
 
+        // 2. Limpar carrinho e fechar o catálogo para abrir a conversa diretamente
+        clearCatalogCart();
+        closeCatalogCartModal();
+        closeCatalogOverlay();
+
+        // 3. Montar contato do vendedor e abrir a conversa normalmente (sem solicitação)
+        const sellerContact = {
+            uid: sellerUid,
+            name: sellerName,
+            avatar: sellerAvatar,
+            status: sellerBio,
+            isVip: sellerIsVip,
+            isVerified: sellerIsVip,
+            isGroup: false
+        };
+
+        if (typeof openDirectChat === 'function') {
+            openDirectChat(sellerContact);
+        } else {
+            setActiveChatContact(sellerContact);
+        }
+
+        // 4. Enviar mensagem do pedido no chat com o vendedor
         const orderPayload = {
             orderId: orderId,
             orderNumber: orderNumber,
             sellerUid: sellerUid,
             sellerName: sellerName,
-            sellerPixKey: sellerPix,
+            sellerPixKey: sellerPixKey,
             items: finalizedItems,
             total: orderTotal,
             status: 'new'
@@ -3114,9 +3220,6 @@ export async function submitCatalogOrder() {
 
         playSound(replySendSound);
         showToast('Pedido Enviado! 🚀', `Pedido ${orderNumber} criado e enviado no chat do vendedor!`, 'green');
-
-        // Abrir modal do pedido para que o comprador veja os dados Pix imediatamente
-        openOrderDetail(orderId);
     } catch (err) {
         console.error('[VORTEX CATALOG] Erro ao enviar pedido:', err);
         showToast('Erro no Pedido', err.message || 'Não foi possível finalizar o pedido.', 'red');
@@ -3405,9 +3508,34 @@ export async function openStorefront(sellerUid, sellerData = {}) {
             chatBtn.style.display = 'none';
         } else {
             chatBtn.style.display = 'inline-flex';
-            chatBtn.onclick = () => {
+            chatBtn.onclick = async () => {
+                if (currentUser && currentUser.uid) {
+                    const buyerContactData = {
+                        uid: currentUser.uid,
+                        name: (`${currentProfile?.name || ''} ${currentProfile?.surname || ''}`).trim() || currentProfile?.name || currentUser.displayName || 'Comprador VORTEX',
+                        avatar: currentProfile?.avatar || currentUser.photoURL || '',
+                        status: currentProfile?.status || currentProfile?.bio || 'Disponível no VORTEX ⚡',
+                        isVip: checkIsVipUser(currentProfile),
+                        isVerified: checkIsVipUser(currentProfile)
+                    };
+                    const sellerContactData = {
+                        uid: sellerUid,
+                        name: (sellerData && sellerData.name) || 'Vendedor VORTEX',
+                        avatar: (sellerData && sellerData.avatar) || '',
+                        status: (sellerData && sellerData.status) || (sellerData && sellerData.bio) || 'Disponível no VORTEX ⚡',
+                        isVip: Boolean(sellerData && (sellerData.isVip || sellerData.isVerified || checkIsVipUser(sellerData))),
+                        isVerified: Boolean(sellerData && (sellerData.isVip || sellerData.isVerified || checkIsVipUser(sellerData)))
+                    };
+                    await ensureMutualContacts(buyerContactData, sellerContactData);
+                }
                 closeCatalogOverlay();
-                openChatByChatIdOrUid(sellerUid, sellerUid);
+                openDirectChat({
+                    uid: sellerUid,
+                    name: (sellerData && sellerData.name) || 'Vendedor VORTEX',
+                    avatar: (sellerData && sellerData.avatar) || '',
+                    status: (sellerData && sellerData.status) || (sellerData && sellerData.bio) || 'Disponível no VORTEX ⚡',
+                    isGroup: false
+                });
             };
         }
     }
@@ -4388,7 +4516,14 @@ export async function openOrderDetail(orderId) {
             closeOrderDetail();
             closeCatalogOverlay();
             const targetUid = isSeller ? ord.buyerUid : ord.sellerUid;
-            openChatByChatIdOrUid(targetUid, targetUid);
+            const targetName = isSeller ? (ord.buyerName || 'Comprador') : (ord.sellerName || 'Vendedor');
+            const targetAvatar = isSeller ? (ord.buyerAvatar || '') : '';
+            openDirectChat({
+                uid: targetUid,
+                name: targetName,
+                avatar: targetAvatar,
+                isGroup: false
+            });
         });
 
         content.querySelectorAll('.cat-status-action').forEach(btn => {
@@ -8856,11 +8991,12 @@ export function openDirectChat(contact) {
             }
 
             if (currentUser && currentUser.uid) {
-                updateDoc(doc(db, 'users', currentUser.uid, 'contacts', contact.uid), {
+                setDoc(doc(db, 'users', currentUser.uid, 'contacts', contact.uid), {
+                    uid: contact.uid,
                     avatar: liveAvatar,
                     name: liveName,
                     status: liveBio
-                }).catch(() => {});
+                }, { merge: true }).catch(() => {});
             }
         }
     }, (error) => console.error('Erro ao ouvir status do contato:', error));
@@ -22567,6 +22703,7 @@ if (typeof window !== 'undefined') {
     window.openCatalogCartModal = openCatalogCartModal;
     window.closeCatalogCartModal = closeCatalogCartModal;
     window.submitCatalogOrder = submitCatalogOrder;
+    window.ensureMutualContacts = ensureMutualContacts;
     window.loadSellerOrders = loadSellerOrders;
     window.loadBuyerPurchases = loadBuyerPurchases;
     window.updateOrderStatus = updateOrderStatus;

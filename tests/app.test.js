@@ -7062,6 +7062,129 @@ test('Validação de Links Sociais e Sites Oficiais (v1.0.123): regras de perfil
   assert.strictEqual(web1Input.style.borderColor, '');
 });
 
+test('Fluxo de Pedido no Catálogo: sem necessidade de solicitação, abertura automática do chat com o vendedor e vinculação mútua de contatos (v1.0.124)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+
+  const buyerUid = 'buyer_auto_chat_111';
+  const sellerUid = 'seller_auto_chat_222';
+
+  // 1. Configurar comprador autenticado
+  await env.triggerAuthStateChange({ uid: buyerUid, email: 'comprador@vortex.app', displayName: 'Lucas Comprador' });
+  win.setCurrentProfile({
+    uid: buyerUid,
+    name: 'Lucas',
+    surname: 'Comprador',
+    username: '@lucas_comprador',
+    status: 'Cliente VIP VORTEX ⚡',
+    isVip: true,
+    isVerified: true
+  });
+
+  // 2. Configurar perfil e catálogo do vendedor
+  env.firestoreDocs[`users/${sellerUid}`] = {
+    uid: sellerUid,
+    name: 'Mega Store VIP 🛒',
+    username: '@megastore',
+    status: 'Loja Oficial de Eletrônicos ⚡',
+    avatar: 'https://vortex.app/avatar_seller.jpg',
+    pixKey: 'pagamentos@megastore.com',
+    isVip: true,
+    isVerified: true,
+    accountType: 'business'
+  };
+
+  env.firestoreDocs[`users/${sellerUid}/catalog/prod_fone_1`] = {
+    name: 'Headset Gamer VIP',
+    description: 'Fone com som surround 7.1',
+    price: 350,
+    promoPrice: 299,
+    stock: 10,
+    unlimitedStock: false,
+    active: true,
+    cover: 'https://vortex.app/fone.jpg',
+    photos: ['https://vortex.app/fone.jpg'],
+    createdAt: Date.now()
+  };
+
+  // 3. Simular que eles NÃO são contatos e existe uma solicitação pendente no requests
+  assert.strictEqual(env.firestoreDocs[`users/${buyerUid}/contacts/${sellerUid}`], undefined, 'Comprador não deve ter o vendedor como contato inicialmente');
+  assert.strictEqual(env.firestoreDocs[`users/${sellerUid}/contacts/${buyerUid}`], undefined, 'Vendedor não deve ter o comprador como contato inicialmente');
+
+  env.firestoreDocs['requests/req_pendente_1'] = {
+    id: 'req_pendente_1',
+    fromUid: buyerUid,
+    toUid: sellerUid,
+    status: 'pending',
+    createdAt: Date.now() - 10000
+  };
+
+  // 4. Comprador adiciona o produto ao carrinho
+  win.clearCatalogCart();
+  const prod = {
+    id: 'prod_fone_1',
+    name: 'Headset Gamer VIP',
+    price: 350,
+    promoPrice: 299,
+    stock: 10,
+    unlimitedStock: false,
+    active: true
+  };
+  win.addToCatalogCart(prod, sellerUid, env.firestoreDocs[`users/${sellerUid}`]);
+
+  // Simular que o overlay do catálogo estava aberto
+  const catOverlay = env.elements['catalog-overlay'];
+  if (catOverlay) {
+    catOverlay.style.display = 'flex';
+    catOverlay.classList.add('active');
+  }
+
+  // 5. Comprador clica em "Enviar pedido"
+  await win.submitCatalogOrder();
+
+  // 6. Verificações:
+  // a) Contatos mútuos criados automaticamente sem precisar de aprovação/solicitação
+  const buyerContactEntry = env.firestoreDocs[`users/${buyerUid}/contacts/${sellerUid}`];
+  assert.ok(buyerContactEntry, 'Vendedor deve ter sido adicionado à lista de contatos do comprador');
+  assert.strictEqual(buyerContactEntry.uid, sellerUid);
+  assert.strictEqual(buyerContactEntry.name, 'Mega Store VIP 🛒');
+  assert.strictEqual(buyerContactEntry.avatar, 'https://vortex.app/avatar_seller.jpg');
+  assert.strictEqual(buyerContactEntry.status, 'Loja Oficial de Eletrônicos ⚡');
+
+  const sellerContactEntry = env.firestoreDocs[`users/${sellerUid}/contacts/${buyerUid}`];
+  assert.ok(sellerContactEntry, 'Comprador deve ter sido adicionado à lista de contatos do vendedor');
+  assert.strictEqual(sellerContactEntry.uid, buyerUid);
+  assert.strictEqual(sellerContactEntry.name, 'Lucas Comprador');
+
+  // b) Solicitação pendente foi resolvida como 'accepted'
+  assert.strictEqual(env.firestoreDocs['requests/req_pendente_1'].status, 'accepted', 'Solicitação pendente deve ter sido aceita automaticamente');
+
+  // c) Catálogo foi fechado
+  if (catOverlay) {
+    assert.strictEqual(catOverlay.style.display, 'none', 'Overlay do catálogo deve ter sido fechado');
+    assert.strictEqual(catOverlay.classList.contains('active'), false);
+  }
+
+  // d) Conversa com o vendedor foi aberta normalmente
+  const chatWindow = env.elements['chat-window'];
+  assert.ok(chatWindow, '#chat-window deve existir');
+  assert.strictEqual(chatWindow.classList.contains('active'), true, 'Janela de conversa deve estar aberta e ativa');
+
+  const activeContact = win.getActiveChatContact();
+  assert.ok(activeContact, 'Contato ativo do chat deve estar definido');
+  assert.strictEqual(activeContact.uid, sellerUid, 'O chat ativo deve ser com o vendedor');
+  assert.strictEqual(activeContact.name, 'Mega Store VIP 🛒');
+
+  // e) Mensagem com dados do pedido foi enviada na conversa
+  const chatId = [buyerUid, sellerUid].sort().join('_');
+  const chatMessages = Object.entries(env.firestoreDocs).filter(([k, v]) => k.startsWith(`chats/${chatId}/messages/`));
+  assert.ok(chatMessages.length >= 1, 'Deve haver ao menos 1 mensagem no chat entre comprador e vendedor');
+  const orderMessage = chatMessages.find(([k, v]) => v.type === 'order' || v.order);
+  assert.ok(orderMessage, 'Mensagem com dados do pedido (type: order) deve constar no chat');
+  assert.strictEqual(orderMessage[1].order.total, 299);
+  assert.strictEqual(orderMessage[1].order.sellerUid, sellerUid);
+});
+
 
 
 
