@@ -12621,6 +12621,7 @@ export async function adminOpenPostPreview(postId) {
     `;
 
     modal.style.display = 'flex';
+    modal.classList.add('active');
     if (window.lucide && typeof window.lucide.createIcons === 'function') {
         window.lucide.createIcons();
     }
@@ -12654,17 +12655,22 @@ export async function adminOpenPostPreview(postId) {
 
     if (window.lucide) lucide.createIcons();
 
-    document.getElementById('close-admin-post-preview-modal')?.addEventListener('click', () => {
-        modal.style.display = 'none';
-        content.innerHTML = '';
-    }, { once: true });
+    const closeBtn = document.getElementById('close-admin-post-preview-modal');
+    if (closeBtn) {
+        closeBtn.onclick = () => {
+            modal.style.display = 'none';
+            modal.classList.remove('active');
+            content.innerHTML = '';
+        };
+    }
 
-    modal.addEventListener('click', (e) => {
+    modal.onclick = (e) => {
         if (e.target === modal) {
             modal.style.display = 'none';
+            modal.classList.remove('active');
             content.innerHTML = '';
         }
-    }, { once: true });
+    };
 }
 
 
@@ -12679,6 +12685,7 @@ export async function adminAnalyzeReport(report) {
 
     content.innerHTML = '<p style="color:var(--text-dim); padding:20px 0; text-align:center;">Carregando...</p>';
     modal.style.display = 'flex';
+    modal.classList.add('active');
 
     const type = report.targetType || 'user';
     let html = '';
@@ -12896,17 +12903,22 @@ export async function adminAnalyzeReport(report) {
     content.innerHTML = html;
     if (window.lucide) lucide.createIcons();
 
-    document.getElementById('close-admin-analyze-modal')?.addEventListener('click', () => {
-        modal.style.display = 'none';
-        content.innerHTML = '';
-    }, { once: true });
+    const closeBtn = document.getElementById('close-admin-analyze-modal');
+    if (closeBtn) {
+        closeBtn.onclick = () => {
+            modal.style.display = 'none';
+            modal.classList.remove('active');
+            content.innerHTML = '';
+        };
+    }
 
-    modal.addEventListener('click', (e) => {
+    modal.onclick = (e) => {
         if (e.target === modal) {
             modal.style.display = 'none';
+            modal.classList.remove('active');
             content.innerHTML = '';
         }
-    }, { once: true });
+    };
 }
 
 
@@ -13571,6 +13583,37 @@ document.getElementById('admin-cancel-purge-btn')?.addEventListener('click', () 
     document.getElementById('admin-purge-modal')?.classList.remove('active');
     targetPurgeUser = null;
 });
+
+// Fechar modais administrativos ao clicar no backdrop escuro
+const adminBanModalEl = document.getElementById('admin-ban-modal');
+if (adminBanModalEl) {
+    adminBanModalEl.addEventListener('click', (e) => {
+        if (e.target === adminBanModalEl) {
+            adminBanModalEl.classList.remove('active');
+            targetBanUser = null;
+        }
+    });
+}
+
+const adminRestrictModalEl = document.getElementById('admin-restrict-modal');
+if (adminRestrictModalEl) {
+    adminRestrictModalEl.addEventListener('click', (e) => {
+        if (e.target === adminRestrictModalEl) {
+            adminRestrictModalEl.classList.remove('active');
+            targetRestrictUser = null;
+        }
+    });
+}
+
+const adminPurgeModalEl = document.getElementById('admin-purge-modal');
+if (adminPurgeModalEl) {
+    adminPurgeModalEl.addEventListener('click', (e) => {
+        if (e.target === adminPurgeModalEl) {
+            adminPurgeModalEl.classList.remove('active');
+            targetPurgeUser = null;
+        }
+    });
+}
 
 // Eventos de Exclusão da Própria Conta (Configurações VIP)
 document.getElementById('delete-account-btn')?.addEventListener('click', () => {
@@ -20898,22 +20941,44 @@ let lastExitBackPressTime = 0;
 let isBackNavInitialized = false;
 
 export function closeTopmostActiveLayer() {
+    // 0. Modais de Preview e Análise do Painel ADM
+    const postPreviewModal = document.getElementById('admin-post-preview-modal');
+    if (postPreviewModal && (postPreviewModal.classList?.contains('active') || postPreviewModal.style.display === 'flex')) {
+        postPreviewModal.style.display = 'none';
+        postPreviewModal.classList.remove('active');
+        const previewContent = document.getElementById('admin-post-preview-content');
+        if (previewContent) previewContent.innerHTML = '';
+        return true;
+    }
+
+    const analyzeModal = document.getElementById('admin-analyze-modal');
+    if (analyzeModal && (analyzeModal.classList?.contains('active') || analyzeModal.style.display === 'flex')) {
+        analyzeModal.style.display = 'none';
+        analyzeModal.classList.remove('active');
+        const analyzeContent = document.getElementById('admin-analyze-content');
+        if (analyzeContent) analyzeContent.innerHTML = '';
+        return true;
+    }
+
     // 1. Modais de Confirmação & Alertas Administrativos
     const banModal = document.getElementById('admin-ban-modal');
     if (banModal && banModal.classList && banModal.classList.contains('active')) {
         banModal.classList.remove('active');
+        targetBanUser = null;
         return true;
     }
 
     const restrictModal = document.getElementById('admin-restrict-modal');
     if (restrictModal && restrictModal.classList && restrictModal.classList.contains('active')) {
         restrictModal.classList.remove('active');
+        targetRestrictUser = null;
         return true;
     }
 
     const purgeModal = document.getElementById('admin-purge-modal');
     if (purgeModal && purgeModal.classList && purgeModal.classList.contains('active')) {
         purgeModal.classList.remove('active');
+        targetPurgeUser = null;
         return true;
     }
 
