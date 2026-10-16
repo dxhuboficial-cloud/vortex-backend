@@ -18223,7 +18223,10 @@ document.getElementById('profile-btn')?.addEventListener('click', () => {
     if (surnameInp) surnameInp.value = currentProfile.surname || '';
     if (usernameInp) usernameInp.value = (currentProfile.username || '').replace('@', '');
     if (statusInp) statusInp.value = currentProfile.status || '';
-    if (phoneInp) phoneInp.value = currentProfile.phone || '';
+    if (phoneInp) {
+        phoneInp.value = currentProfile.phone || '';
+        formatAndValidateProfilePhone(phoneInp);
+    }
     if (pixInp) pixInp.value = currentProfile.pixKey || '';
     if (youtubeInp) youtubeInp.value = currentProfile.youtube || currentProfile.socialLinks?.youtube || '';
     if (instaInp) instaInp.value = currentProfile.instagram || currentProfile.socialLinks?.instagram || '';
@@ -18314,22 +18317,116 @@ profileUsernameInput?.addEventListener('input', () => {
     profileUsernameInput.setCustomValidity(usernameValidationMessage(cleanValue));
 });
 
-const profilePhoneInput = document.getElementById('profile-phone-input');
-profilePhoneInput?.addEventListener('input', () => {
-    let val = profilePhoneInput.value;
-    if (!val.startsWith('+')) {
-        const digits = val.replace(/\D/g, '').slice(0, 11);
-        if (digits.length > 10) {
-            val = `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
-        } else if (digits.length > 6) {
-            val = `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
-        } else if (digits.length > 2) {
-            val = `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-        } else if (digits.length > 0) {
-            val = `(${digits}`;
-        }
-        profilePhoneInput.value = val;
+export function validateBrazilianPhone(val) {
+    if (!val) return { isValid: false, isEmpty: true, formatted: '', digits: '' };
+    let digits = String(val).replace(/\D/g, '');
+    if (digits.startsWith('55') && (digits.length === 12 || digits.length === 13)) {
+        digits = digits.slice(2);
     }
+    digits = digits.slice(0, 11);
+
+    if (digits.length === 0) {
+        return { isValid: false, isEmpty: true, formatted: '', digits: '' };
+    }
+
+    let formatted = '';
+    if (digits.length > 10) {
+        formatted = `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+    } else if (digits.length > 6) {
+        formatted = `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+    } else if (digits.length > 2) {
+        formatted = `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+    } else if (digits.length > 0) {
+        formatted = `(${digits}`;
+    }
+
+    const VALID_DDDS = new Set([
+        11, 12, 13, 14, 15, 16, 17, 18, 19,
+        21, 22, 24, 27, 28,
+        31, 32, 33, 34, 35, 37, 38,
+        41, 42, 43, 44, 45, 46, 47, 48, 49,
+        51, 53, 54, 55,
+        61, 62, 63, 64, 65, 66, 67, 68, 69,
+        71, 73, 74, 75, 77, 79,
+        81, 82, 83, 84, 85, 86, 87, 88, 89,
+        91, 92, 93, 94, 95, 96, 97, 98, 99
+    ]);
+
+    const ddd = parseInt(digits.slice(0, 2), 10);
+    const hasValidDdd = VALID_DDDS.has(ddd);
+
+    let isValid = false;
+    if (hasValidDdd) {
+        if (digits.length === 11 && digits[2] === '9') {
+            isValid = true;
+        } else if (digits.length === 10 && ['2', '3', '4', '5'].includes(digits[2])) {
+            isValid = true;
+        }
+    }
+
+    return { isValid, isEmpty: false, formatted, digits };
+}
+
+export function formatAndValidateProfilePhone(input) {
+    if (!input) return;
+    const res = validateBrazilianPhone(input.value);
+    input.value = res.formatted;
+
+    if (res.isEmpty) {
+        input.classList.remove('input-valid', 'input-invalid');
+        input.style.borderColor = '';
+        input.style.boxShadow = '';
+        input.style.color = '';
+    } else if (res.isValid) {
+        input.classList.add('input-valid');
+        input.classList.remove('input-invalid');
+        input.style.borderColor = '#34c759';
+        input.style.boxShadow = '0 0 10px rgba(52, 199, 89, 0.35)';
+        input.style.color = '#34c759';
+    } else {
+        input.classList.add('input-invalid');
+        input.classList.remove('input-valid');
+        input.style.borderColor = '#ff3b30';
+        input.style.boxShadow = '0 0 10px rgba(255, 59, 48, 0.35)';
+        input.style.color = '#ff6b6b';
+    }
+}
+
+const profilePhoneInput = document.getElementById('profile-phone-input');
+profilePhoneInput?.addEventListener('keydown', (e) => {
+    // Permitir teclas de navegação, exclusão, atalhos de seleção/cópia
+    if (
+        e.key === 'Backspace' ||
+        e.key === 'Tab' ||
+        e.key === 'Enter' ||
+        e.key === 'Delete' ||
+        e.key === 'Escape' ||
+        e.key === 'ArrowLeft' ||
+        e.key === 'ArrowRight' ||
+        e.key === 'ArrowUp' ||
+        e.key === 'ArrowDown' ||
+        e.key === 'Home' ||
+        e.key === 'End' ||
+        e.ctrlKey ||
+        e.metaKey
+    ) {
+        return;
+    }
+
+    // Bloquear qualquer tecla que não seja dígito numérico (0 a 9)
+    if (!/^[0-9]$/.test(e.key)) {
+        e.preventDefault();
+    }
+});
+
+profilePhoneInput?.addEventListener('input', () => {
+    formatAndValidateProfilePhone(profilePhoneInput);
+});
+
+profilePhoneInput?.addEventListener('paste', () => {
+    setTimeout(() => {
+        formatAndValidateProfilePhone(profilePhoneInput);
+    }, 0);
 });
 
 document.getElementById('contact-profile-copy-phone-btn')?.addEventListener('click', () => {
@@ -18380,7 +18477,17 @@ document.getElementById('save-profile-btn')?.addEventListener('click', async () 
     const surname = rawSurname.slice(0, 15);
     const usernameInputValue = profileUsernameInput?.value.trim() || '';
     const bio = document.getElementById('profile-status-input')?.value.trim() || 'Online';
-    const phone = document.getElementById('profile-phone-input')?.value.trim() || '';
+    const rawPhone = document.getElementById('profile-phone-input')?.value.trim() || '';
+    let phone = '';
+    if (rawPhone) {
+        const phoneValidation = validateBrazilianPhone(rawPhone);
+        if (!phoneValidation.isValid) {
+            showToast('Telefone inválido', 'Por favor, insira um número de telefone válido com DDD (ex: (11) 99999-9999).', 'red');
+            document.getElementById('profile-phone-input')?.focus();
+            return;
+        }
+        phone = phoneValidation.formatted;
+    }
     const pixKey = document.getElementById('profile-pix-input')?.value.trim() || '';
     const rawYoutube = document.getElementById('profile-youtube-input')?.value.trim() || '';
     const rawInstagram = document.getElementById('profile-instagram-input')?.value.trim() || '';
@@ -21706,6 +21813,8 @@ if (typeof window !== 'undefined') {
     window.parseBRL = parseBRL;
     window.isBusinessAccount = isBusinessAccount;
     window.initCatalog = initCatalog;
+    window.validateBrazilianPhone = validateBrazilianPhone;
+    window.formatAndValidateProfilePhone = formatAndValidateProfilePhone;
 }
 
 if (typeof window !== 'undefined') {

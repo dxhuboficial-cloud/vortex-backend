@@ -6788,6 +6788,114 @@ test('Limite de 15 caracteres no Nome e Sobrenome: atributos HTML, truncamento d
   assert.ok(surnameInput.value.length <= 15, 'Sobrenome válido de 15 caracteres deve ser mantido');
 });
 
+test('Validação e Feedback Visual no Campo de Telefone (DDD + Número)', () => {
+  const env = createTestEnvironment();
+
+  // 1. Verificar atributos no HTML
+  const phoneHtmlMatch = htmlContent.match(/<input[^>]*id=["']profile-phone-input["'][^>]*>/i);
+  assert.ok(phoneHtmlMatch, 'profile-phone-input deve existir no HTML');
+  assert.ok(/inputmode=["']numeric["']/i.test(phoneHtmlMatch[0]), 'profile-phone-input deve possuir inputmode="numeric" para teclado numérico');
+  assert.ok(/maxlength=["']15["']/i.test(phoneHtmlMatch[0]), 'profile-phone-input deve possuir maxlength="15"');
+
+  // 2. Testar função validateBrazilianPhone
+  const valFn = env.sandbox.validateBrazilianPhone;
+  assert.ok(typeof valFn === 'function', 'validateBrazilianPhone deve estar disponível');
+
+  // Vazio
+  const emptyRes = valFn('');
+  assert.strictEqual(emptyRes.isEmpty, true);
+  assert.strictEqual(emptyRes.isValid, false);
+
+  // Celular válido (11 dígitos, DDD 11)
+  const validMobile = valFn('11999998888');
+  assert.strictEqual(validMobile.isValid, true);
+  assert.strictEqual(validMobile.formatted, '(11) 99999-8888');
+
+  // Telefone fixo válido (10 dígitos, DDD 21)
+  const validLandline = valFn('2122334455');
+  assert.strictEqual(validLandline.isValid, true);
+  assert.strictEqual(validLandline.formatted, '(21) 2233-4455');
+
+  // Com DDI 55 colado
+  const withDDI = valFn('5511988887777');
+  assert.strictEqual(withDDI.isValid, true);
+  assert.strictEqual(withDDI.formatted, '(11) 98888-7777');
+
+  // Com letras filtradas automaticamente
+  const withLetters = valFn('11abc988887777');
+  assert.strictEqual(withLetters.isValid, true);
+  assert.strictEqual(withLetters.formatted, '(11) 98888-7777');
+
+  // DDD inválido (ex: 00)
+  const invalidDdd = valFn('00999998888');
+  assert.strictEqual(invalidDdd.isValid, false);
+
+  // Incompleto (poucos dígitos)
+  const incomplete = valFn('11999');
+  assert.strictEqual(incomplete.isValid, false);
+
+  // 3. Testar Feedback Visual no input (classes e border-color)
+  const phoneInput = env.elements['profile-phone-input'];
+  assert.ok(phoneInput, 'profile-phone-input deve existir no DOM');
+
+  // Simular input com telefone válido
+  phoneInput.value = '11987654321';
+  phoneInput.dispatchEvent({ type: 'input' });
+  assert.strictEqual(phoneInput.value, '(11) 98765-4321');
+  assert.ok(phoneInput.classList.contains('input-valid'), 'Deve conter a classe input-valid');
+  assert.ok(!phoneInput.classList.contains('input-invalid'), 'Não deve conter a classe input-invalid');
+  assert.strictEqual(phoneInput.style.borderColor, '#34c759', 'Borda deve ficar verde (#34c759)');
+
+  // Simular input com telefone inválido/incompleto
+  phoneInput.value = '11987';
+  phoneInput.dispatchEvent({ type: 'input' });
+  assert.ok(phoneInput.classList.contains('input-invalid'), 'Deve conter a classe input-invalid quando incompleto');
+  assert.ok(!phoneInput.classList.contains('input-valid'), 'Não deve conter a classe input-valid');
+  assert.strictEqual(phoneInput.style.borderColor, '#ff3b30', 'Borda deve ficar vermelha (#ff3b30)');
+
+  // Simular input vazio (estado neutro)
+  phoneInput.value = '';
+  phoneInput.dispatchEvent({ type: 'input' });
+  assert.ok(!phoneInput.classList.contains('input-valid'), 'Campo vazio não deve ter classe input-valid');
+  assert.ok(!phoneInput.classList.contains('input-invalid'), 'Campo vazio não deve ter classe input-invalid');
+  assert.strictEqual(phoneInput.style.borderColor, '', 'Borda deve voltar ao padrão');
+
+  // 4. Testar bloqueio de teclas no keydown
+  let prevented = false;
+  const preventDefault = () => { prevented = true; };
+
+  // Tecla de letra 'a' -> deve ser bloqueada
+  prevented = false;
+  phoneInput.dispatchEvent({ type: 'keydown', key: 'a', preventDefault });
+  assert.strictEqual(prevented, true, 'Letras devem ser bloqueadas no keydown');
+
+  // Tecla de letra 'x' -> deve ser bloqueada
+  prevented = false;
+  phoneInput.dispatchEvent({ type: 'keydown', key: 'x', preventDefault });
+  assert.strictEqual(prevented, true, 'Letras devem ser bloqueadas no keydown');
+
+  // Tecla de caractere especial '@' -> deve ser bloqueada
+  prevented = false;
+  phoneInput.dispatchEvent({ type: 'keydown', key: '@', preventDefault });
+  assert.strictEqual(prevented, true, 'Caracteres especiais devem ser bloqueados no keydown');
+
+  // Tecla numérica '5' -> deve ser permitida
+  prevented = false;
+  phoneInput.dispatchEvent({ type: 'keydown', key: '5', preventDefault });
+  assert.strictEqual(prevented, false, 'Dígitos numéricos devem ser permitidos');
+
+  // Tecla 'Backspace' -> deve ser permitida
+  prevented = false;
+  phoneInput.dispatchEvent({ type: 'keydown', key: 'Backspace', preventDefault });
+  assert.strictEqual(prevented, false, 'Backspace deve ser permitido');
+
+  // Tecla 'Delete' -> deve ser permitida
+  prevented = false;
+  phoneInput.dispatchEvent({ type: 'keydown', key: 'Delete', preventDefault });
+  assert.strictEqual(prevented, false, 'Delete deve ser permitido');
+});
+
+
 
 
 

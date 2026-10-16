@@ -2491,6 +2491,32 @@ header h1 span {
     box-shadow: 0 0 10px rgba(255, 240, 31, 0.25);
 }
 
+.setting-item input.input-valid,
+input.input-valid {
+    border-color: #34c759 !important;
+    box-shadow: 0 0 10px rgba(52, 199, 89, 0.35) !important;
+    color: #34c759 !important;
+}
+
+.setting-item input.input-invalid,
+input.input-invalid {
+    border-color: #ff3b30 !important;
+    box-shadow: 0 0 10px rgba(255, 59, 48, 0.35) !important;
+    color: #ff6b6b !important;
+}
+
+.setting-item input.input-valid:focus,
+input.input-valid:focus {
+    border-color: #34c759 !important;
+    box-shadow: 0 0 12px rgba(52, 199, 89, 0.5) !important;
+}
+
+.setting-item input.input-invalid:focus,
+input.input-invalid:focus {
+    border-color: #ff3b30 !important;
+    box-shadow: 0 0 12px rgba(255, 59, 48, 0.5) !important;
+}
+
 .hidden-file-input {
     position: absolute !important;
     width: 0.1px !important;
