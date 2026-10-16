@@ -787,7 +787,7 @@ export async function requestPushNotificationPermission() {
 }
 
 export function updatePushSettingsUI(permission) {
-    const statusLabel = document.getElementById('push-status-label');
+    const statusLabel = document.getElementById('push-perm-status-label') || document.getElementById('push-status-label');
     const permBtn = document.getElementById('push-permission-btn');
     const permText = document.getElementById('push-permission-text');
     const currentPerm = permission || (typeof window !== 'undefined' && window.Notification ? window.Notification.permission : 'default');
@@ -798,16 +798,16 @@ export function updatePushSettingsUI(permission) {
             permBtn.classList.add('granted');
             permBtn.title = 'Notificações push ativas';
         }
-        if (permText) permText.innerText = 'Ativado 🔔';
+        if (permText) permText.innerText = 'Ativado';
     } else if (currentPerm === 'denied') {
         if (statusLabel) statusLabel.innerText = 'Bloqueado no navegador • Altere nas permissões';
         if (permBtn) {
             permBtn.classList.remove('granted');
             permBtn.title = 'Notificações bloqueadas';
         }
-        if (permText) permText.innerText = 'Bloqueado ⚠️';
+        if (permText) permText.innerText = 'Bloqueado';
     } else {
-        if (statusLabel) statusLabel.innerText = 'Alertas de mensagens mesmo em segundo plano';
+        if (statusLabel) statusLabel.innerText = 'Alertas no celular em segundo plano';
         if (permBtn) {
             permBtn.classList.remove('granted');
             permBtn.title = 'Ativar notificações push no celular';

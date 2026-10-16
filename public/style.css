@@ -10822,40 +10822,78 @@ body.theme-rgb .ephemeral-save-btn {
 }
 
 /* ===== Toque de Chamada (Configurações VIP) ===== */
-.ringtone-setting-controls {
+/* ===== Toque de Chamada (Configurações VIP - Layout Mobile Otimizado) ===== */
+.setting-item.ringtone-setting-item {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 14px 16px;
+}
+
+.setting-item.ringtone-setting-item .setting-info {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.setting-item.ringtone-setting-item .setting-info span {
+    font-size: 0.96rem;
+    font-weight: 600;
+    color: #ffffff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.setting-item.ringtone-setting-item .setting-info small {
+    font-size: 0.78rem;
+    color: var(--text-dim, #888);
+    line-height: 1.35;
+}
+
+.setting-item.ringtone-setting-item .ringtone-setting-controls {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
+    width: 100%;
 }
 
 .ringtone-select {
-    background: #1e1e24;
+    flex: 1;
+    min-width: 0;
+    width: 100%;
+    max-width: none;
+    height: 42px;
+    background: #1c1c24;
     color: var(--text-color, #fff);
     border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 10px;
-    padding: 6px 12px;
-    font-size: 0.85rem;
+    border-radius: 12px;
+    padding: 0 14px;
+    font-size: 0.88rem;
     font-family: inherit;
     font-weight: 600;
     cursor: pointer;
     outline: none;
-    transition: border-color 0.2s, background 0.2s;
-    max-width: 175px;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
 }
 
 .ringtone-select:focus {
     border-color: var(--accent-color, #fff01f);
+    background: #23232e;
 }
 
 .ringtone-preview-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 34px;
-    height: 34px;
+    width: 42px;
+    height: 42px;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 240, 31, 0.12);
+    border: 1px solid var(--accent-color, #fff01f);
     color: var(--accent-color, #fff01f);
     cursor: pointer;
     transition: all 0.2s ease;
@@ -10863,8 +10901,9 @@ body.theme-rgb .ephemeral-save-btn {
 }
 
 .ringtone-preview-btn:hover {
-    background: rgba(255, 255, 255, 0.16);
-    transform: scale(1.06);
+    background: var(--accent-color, #fff01f);
+    color: #000;
+    transform: scale(1.05);
 }
 
 .ringtone-preview-btn:active {
@@ -10873,8 +10912,8 @@ body.theme-rgb .ephemeral-save-btn {
 
 .ringtone-preview-btn i,
 .ringtone-preview-btn svg {
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
     pointer-events: none;
 }
 
@@ -10883,25 +10922,67 @@ body.total-black .ringtone-select {
     border-color: rgba(255, 255, 255, 0.2);
 }
 
-/* ===== NOTIFICAÇÃO PUSH NO CELULAR & IN-APP BANNER VIP ===== */
+/* ===== NOTIFICAÇÕES PUSH (Configurações VIP - Layout Mobile Otimizado) ===== */
+.setting-item.push-setting-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+}
+
+.setting-item.push-setting-item .setting-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.setting-item.push-setting-item .setting-info span {
+    font-size: 0.96rem;
+    font-weight: 600;
+    color: #ffffff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.setting-item.push-setting-item .setting-info small {
+    font-size: 0.78rem;
+    color: var(--text-dim, #888);
+    line-height: 1.35;
+}
+
 .push-setting-controls {
     display: flex;
     align-items: center;
+    flex-shrink: 0;
 }
 
 .push-permission-btn {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 6px;
-    padding: 6px 14px;
+    padding: 7px 16px;
     border-radius: 20px;
     background: rgba(255, 240, 31, 0.12);
     border: 1px solid var(--accent-color, #fff01f);
     color: var(--accent-color, #fff01f);
     font-size: 0.82rem;
-    font-weight: 600;
+    font-weight: 700;
+    white-space: nowrap;
+    flex-shrink: 0;
     cursor: pointer;
     transition: all 0.25s ease;
+}
+
+.push-permission-btn i,
+.push-permission-btn svg {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
 }
 
 .push-permission-btn:hover {
