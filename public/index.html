@@ -4,20 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.115">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.115">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.115">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.115">
-    <link rel="stylesheet" href="style.css?v=1.0.115">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.116">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.116">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.116">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.116">
+    <link rel="stylesheet" href="style.css?v=1.0.116">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.115">
+    <link rel="manifest" href="manifest.json?v=1.0.116">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.115">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.115">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.116">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.116">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -1549,6 +1549,10 @@
                         <i data-lucide="message-square"></i>
                         <span>Mensagem</span>
                     </button>
+                    <button id="contact-profile-catalog-btn" class="contact-action-btn" type="button" title="Ver catálogo de produtos" style="display:none;">
+                        <i data-lucide="shopping-bag"></i>
+                        <span>Ver catálogo</span>
+                    </button>
                     <button id="contact-profile-call-btn" class="contact-action-btn" type="button" title="Iniciar chamada de vídeo">
                         <i data-lucide="video"></i>
                         <span>Chamada VIP</span>
@@ -2654,63 +2658,210 @@
             </div>
         </div>
 
-        <!-- Modal de Catálogo e Loja Online (Contas Empresa - Em Breve) -->
-        <div id="business-catalog-modal" class="custom-modal-overlay" style="display:none;" aria-hidden="true">
-            <div class="custom-modal-card business-catalog-card">
-                <div class="custom-modal-header" style="margin-bottom: 8px;">
-                    <h3 class="custom-modal-title">
-                        <i data-lucide="store" style="color: var(--accent-color);"></i>
-                        <span>Catálogo & Loja Online</span>
-                    </h3>
-                    <div class="header-icon-btn" id="close-business-catalog-modal" title="Fechar" aria-label="Fechar">
-                        <i data-lucide="x"></i>
+<!-- Catálogo & Loja Online (v1.0.116) -->
+        <div id="catalog-overlay" class="catalog-overlay" aria-hidden="true">
+            <div class="catalog-header">
+                <button type="button" id="catalog-back-btn" class="gallery-back-icon" title="Voltar" aria-label="Voltar">
+                    <i data-lucide="arrow-left"></i>
+                </button>
+                <div class="catalog-header-title">
+                    <h3 id="catalog-title">Catálogo &amp; Loja</h3>
+                    <span id="catalog-subtitle" class="catalog-subtitle">Produtos e pedidos no VORTEX</span>
+                </div>
+                <button type="button" id="catalog-cart-btn" class="catalog-cart-btn" title="Carrinho" aria-label="Abrir carrinho" style="display:none;">
+                    <i data-lucide="shopping-cart"></i>
+                    <span id="catalog-cart-badge" class="catalog-cart-badge" style="display:none;">0</span>
+                </button>
+            </div>
+
+            <div class="catalog-tabs" id="catalog-tabs" role="tablist">
+                <button type="button" class="catalog-tab active" id="catalog-tab-stores" data-tab="stores" role="tab">Lojas</button>
+                <button type="button" class="catalog-tab" id="catalog-tab-mine" data-tab="mine" role="tab" style="display:none;">Meus produtos</button>
+                <button type="button" class="catalog-tab" id="catalog-tab-orders" data-tab="orders" role="tab" style="display:none;">Pedidos</button>
+                <button type="button" class="catalog-tab" id="catalog-tab-purchases" data-tab="purchases" role="tab">Minhas compras</button>
+            </div>
+
+            <div class="catalog-body" id="catalog-body">
+                <!-- Lista de lojas Business -->
+                <section id="catalog-view-stores" class="catalog-view">
+                    <div id="catalog-business-hint" class="catalog-hint" style="display:none;">
+                        <i data-lucide="store"></i>
+                        <div>
+                            <strong>Quer vender no VORTEX?</strong>
+                            <small>Mude seu Tipo de Conta para Conta Empresa no seu perfil e monte seu catálogo.</small>
+                        </div>
+                    </div>
+                    <div id="catalog-stores-list" class="catalog-stores-list"></div>
+                </section>
+
+                <!-- Vitrine de uma loja -->
+                <section id="catalog-view-storefront" class="catalog-view" style="display:none;">
+                    <div class="catalog-store-bar">
+                        <button type="button" id="catalog-store-back-btn" class="catalog-link-btn"><i data-lucide="chevron-left"></i><span>Lojas</span></button>
+                        <div id="catalog-store-info" class="catalog-store-info"></div>
+                        <button type="button" id="catalog-store-chat-btn" class="catalog-secondary-btn"><i data-lucide="message-square"></i><span>Conversar</span></button>
+                    </div>
+                    <div class="catalog-search-row">
+                        <i data-lucide="search"></i>
+                        <input id="catalog-search-input" type="search" maxlength="60" placeholder="Buscar produto..." aria-label="Buscar produto">
+                    </div>
+                    <div id="catalog-category-chips" class="catalog-chips"></div>
+                    <div id="catalog-storefront-grid" class="catalog-grid"></div>
+                </section>
+
+                <!-- Meus produtos (Business) -->
+                <section id="catalog-view-mine" class="catalog-view" style="display:none;">
+                    <div class="catalog-toolbar">
+                        <button type="button" id="catalog-add-product-btn" class="catalog-primary-btn"><i data-lucide="plus"></i><span>Novo produto</span></button>
+                        <button type="button" id="catalog-manage-categories-btn" class="catalog-secondary-btn"><i data-lucide="tags"></i><span>Categorias</span></button>
+                    </div>
+                    <div id="catalog-mine-summary" class="catalog-summary"></div>
+                    <div id="catalog-mine-grid" class="catalog-grid"></div>
+                </section>
+
+                <!-- Pedidos recebidos (Business) -->
+                <section id="catalog-view-orders" class="catalog-view" style="display:none;">
+                    <div id="catalog-orders-filters" class="catalog-chips"></div>
+                    <div id="catalog-orders-list" class="catalog-order-list"></div>
+                </section>
+
+                <!-- Minhas compras -->
+                <section id="catalog-view-purchases" class="catalog-view" style="display:none;">
+                    <div id="catalog-purchases-list" class="catalog-order-list"></div>
+                </section>
+            </div>
+
+            <div id="catalog-cart-bar" class="catalog-cart-bar" style="display:none;">
+                <div class="catalog-cart-bar-info">
+                    <strong id="catalog-cart-bar-count">0 itens</strong>
+                    <span id="catalog-cart-bar-total">R$ 0,00</span>
+                </div>
+                <button type="button" id="catalog-cart-bar-btn" class="catalog-primary-btn"><i data-lucide="shopping-cart"></i><span>Ver carrinho</span></button>
+            </div>
+        </div>
+
+        <!-- Editor de produto -->
+        <div id="catalog-product-editor-modal" class="catalog-sheet-overlay" aria-hidden="true" style="display:none;">
+            <div class="catalog-sheet">
+                <div class="catalog-sheet-header">
+                    <h4 id="catalog-editor-title">Novo produto</h4>
+                    <button type="button" id="catalog-editor-close-btn" class="catalog-sheet-close" aria-label="Fechar"><i data-lucide="x"></i></button>
+                </div>
+                <div class="catalog-sheet-body">
+                    <label class="catalog-field-label" for="cat-prod-name">Nome do produto *</label>
+                    <input id="cat-prod-name" type="text" maxlength="80" placeholder="Ex.: Camiseta Preta M">
+
+                    <label class="catalog-field-label" for="cat-prod-desc">Descrição</label>
+                    <textarea id="cat-prod-desc" rows="3" maxlength="600" placeholder="Detalhes, material, tamanho..."></textarea>
+
+                    <div class="catalog-field-row">
+                        <div>
+                            <label class="catalog-field-label" for="cat-prod-price">Preço (R$) *</label>
+                            <input id="cat-prod-price" type="text" inputmode="decimal" placeholder="0,00">
+                        </div>
+                        <div>
+                            <label class="catalog-field-label" for="cat-prod-promo">Preço promocional</label>
+                            <input id="cat-prod-promo" type="text" inputmode="decimal" placeholder="Opcional">
+                        </div>
+                    </div>
+
+                    <div class="catalog-field-row">
+                        <div>
+                            <label class="catalog-field-label" for="cat-prod-category">Categoria</label>
+                            <select id="cat-prod-category"></select>
+                        </div>
+                        <div>
+                            <label class="catalog-field-label" for="cat-prod-sku">Código (SKU)</label>
+                            <input id="cat-prod-sku" type="text" maxlength="30" placeholder="Opcional">
+                        </div>
+                    </div>
+
+                    <div class="catalog-field-row">
+                        <div>
+                            <label class="catalog-field-label" for="cat-prod-stock">Estoque</label>
+                            <input id="cat-prod-stock" type="number" inputmode="numeric" min="0" step="1" placeholder="Quantidade">
+                        </div>
+                        <label class="catalog-check" for="cat-prod-unlimited">
+                            <input id="cat-prod-unlimited" type="checkbox" checked>
+                            <span>Estoque ilimitado</span>
+                        </label>
+                    </div>
+
+                    <label class="catalog-check" for="cat-prod-active">
+                        <input id="cat-prod-active" type="checkbox" checked>
+                        <span>Visível na vitrine</span>
+                    </label>
+
+                    <span class="catalog-field-label">Fotos (até 5)</span>
+                    <div id="cat-prod-photos-list" class="catalog-photo-list"></div>
+                    <input id="cat-prod-photo-input" type="file" accept="image/*" multiple style="display:none;">
+                </div>
+                <div class="catalog-sheet-footer">
+                    <button type="button" id="cat-prod-delete-btn" class="catalog-danger-btn" style="display:none;"><i data-lucide="trash-2"></i></button>
+                    <button type="button" id="cat-prod-save-btn" class="catalog-primary-btn catalog-grow"><i data-lucide="check"></i><span>Salvar produto</span></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detalhe do produto -->
+        <div id="catalog-product-detail-modal" class="catalog-sheet-overlay" aria-hidden="true" style="display:none;">
+            <div class="catalog-sheet">
+                <div class="catalog-sheet-header">
+                    <h4>Detalhes do produto</h4>
+                    <button type="button" id="catalog-detail-close-btn" class="catalog-sheet-close" aria-label="Fechar"><i data-lucide="x"></i></button>
+                </div>
+                <div id="catalog-detail-content" class="catalog-sheet-body"></div>
+            </div>
+        </div>
+
+        <!-- Carrinho -->
+        <div id="catalog-cart-modal" class="catalog-sheet-overlay" aria-hidden="true" style="display:none;">
+            <div class="catalog-sheet">
+                <div class="catalog-sheet-header">
+                    <h4>Seu carrinho</h4>
+                    <button type="button" id="catalog-cart-close-btn" class="catalog-sheet-close" aria-label="Fechar"><i data-lucide="x"></i></button>
+                </div>
+                <div class="catalog-sheet-body">
+                    <div id="catalog-cart-seller" class="catalog-cart-seller"></div>
+                    <div id="catalog-cart-items" class="catalog-cart-items"></div>
+                    <label class="catalog-field-label" for="catalog-cart-note">Observação para o vendedor</label>
+                    <textarea id="catalog-cart-note" rows="2" maxlength="300" placeholder="Endereço de entrega, horário, detalhes..."></textarea>
+                </div>
+                <div class="catalog-sheet-footer catalog-cart-footer">
+                    <div class="catalog-cart-total-row"><span>Total</span><strong id="catalog-cart-total">R$ 0,00</strong></div>
+                    <div class="catalog-footer-actions">
+                        <button type="button" id="catalog-cart-clear-btn" class="catalog-secondary-btn"><i data-lucide="trash-2"></i><span>Limpar</span></button>
+                        <button type="button" id="catalog-cart-submit-btn" class="catalog-primary-btn catalog-grow"><i data-lucide="send"></i><span>Enviar pedido</span></button>
                     </div>
                 </div>
+            </div>
+        </div>
 
-                <div class="business-catalog-body">
-                    <div class="business-catalog-badge">
-                        <span class="business-pulse-dot"></span>
-                        <span>EM BREVE • CONTAS EMPRESA</span>
-                    </div>
-
-                    <div class="business-catalog-icon-wrap">
-                        <i data-lucide="shopping-bag" class="business-hero-icon"></i>
-                    </div>
-
-                    <h4 class="business-catalog-headline">Sua Loja Virtual no VORTEX VIP</h4>
-                    <p class="business-catalog-description">
-                        Em breve você poderá cadastrar seus produtos, criar catálogos interativos, exibir preços e receber pedidos diretamente pelo seu perfil no VORTEX.
-                    </p>
-
-                    <div class="business-catalog-features">
-                        <div class="business-feature-item">
-                            <i data-lucide="package-check" class="feature-icon"></i>
-                            <div>
-                                <strong>Catálogo de Produtos</strong>
-                                <small>Fotos em alta resolução, descrições e controle de estoque.</small>
-                            </div>
-                        </div>
-                        <div class="business-feature-item">
-                            <i data-lucide="qr-code" class="feature-icon"></i>
-                            <div>
-                                <strong>Pagamento Direto via Pix</strong>
-                                <small>Receba pagamentos instantâneos com confirmação automática.</small>
-                            </div>
-                        </div>
-                        <div class="business-feature-item">
-                            <i data-lucide="message-circle" class="feature-icon"></i>
-                            <div>
-                                <strong>Pedidos Integrados ao Chat</strong>
-                                <small>O cliente escolhe o produto e envia o pedido direto na conversa.</small>
-                            </div>
-                        </div>
-                    </div>
-
-                    <button type="button" id="business-catalog-notify-btn" class="business-notify-action-btn">
-                        <i data-lucide="bell-ring"></i>
-                        <span>Quero ser avisado no lançamento</span>
-                    </button>
+        <!-- Categorias -->
+        <div id="catalog-categories-modal" class="catalog-sheet-overlay" aria-hidden="true" style="display:none;">
+            <div class="catalog-sheet">
+                <div class="catalog-sheet-header">
+                    <h4>Categorias</h4>
+                    <button type="button" id="catalog-categories-close-btn" class="catalog-sheet-close" aria-label="Fechar"><i data-lucide="x"></i></button>
                 </div>
+                <div class="catalog-sheet-body">
+                    <div class="catalog-category-add">
+                        <input id="catalog-category-input" type="text" maxlength="30" placeholder="Nova categoria">
+                        <button type="button" id="catalog-category-add-btn" class="catalog-primary-btn"><i data-lucide="plus"></i></button>
+                    </div>
+                    <div id="catalog-categories-list" class="catalog-categories-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detalhe do pedido -->
+        <div id="catalog-order-modal" class="catalog-sheet-overlay" aria-hidden="true" style="display:none;">
+            <div class="catalog-sheet">
+                <div class="catalog-sheet-header">
+                    <h4 id="catalog-order-title">Pedido</h4>
+                    <button type="button" id="catalog-order-close-btn" class="catalog-sheet-close" aria-label="Fechar"><i data-lucide="x"></i></button>
+                </div>
+                <div id="catalog-order-content" class="catalog-sheet-body"></div>
             </div>
         </div>
 
@@ -2782,6 +2933,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.115" defer></script>
+    <script type="module" src="script.js?v=1.0.116" defer></script>
 </body>
 </html>

@@ -6435,6 +6435,216 @@ test('Sons VIP e Notificação Push no Celular: Toque de notificação, toque de
   assert.strictEqual(mobilePushBanner.classList.contains('visible'), false, 'Classe visible deve ser removida no dismiss');
 });
 
+test('Catálogo de Produtos & Loja Online: CRUD de produtos, categorias, carrinho, pedidos, estoque e Pix', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+
+  // 1. Integridade do DOM: elementos do catálogo
+  const requiredCatalogIds = [
+    'catalog-overlay',
+    'catalog-back-btn',
+    'catalog-cart-btn',
+    'catalog-cart-badge',
+    'catalog-tabs',
+    'catalog-tab-stores',
+    'catalog-tab-mine',
+    'catalog-tab-orders',
+    'catalog-tab-purchases',
+    'catalog-view-stores',
+    'catalog-view-storefront',
+    'catalog-view-mine',
+    'catalog-view-orders',
+    'catalog-view-purchases',
+    'catalog-stores-list',
+    'catalog-storefront-grid',
+    'catalog-mine-grid',
+    'catalog-cart-bar',
+    'catalog-product-editor-modal',
+    'catalog-product-detail-modal',
+    'catalog-cart-modal',
+    'catalog-categories-modal',
+    'catalog-order-modal'
+  ];
+
+  for (const id of requiredCatalogIds) {
+    assert.ok(env.elements[id], `Elemento #${id} deve existir no DOM`);
+  }
+
+  // 2. Permissões de Conta: Pessoal vs Business
+  const isBusinessAccount = win.isBusinessAccount;
+  assert.strictEqual(isBusinessAccount({ accountType: 'personal' }), false, 'Conta pessoal não deve ser business');
+  assert.strictEqual(isBusinessAccount({ accountType: 'business' }), true, 'Conta business deve retornar true');
+
+  // Configurar vendedor Business
+  const sellerUid = 'seller_business_123';
+  env.firestoreDocs[`users/${sellerUid}`] = {
+    uid: sellerUid,
+    name: 'Loja Tech VIP ⚡',
+    accountType: 'business',
+    pixKey: 'tech@vortex.app',
+    status: 'Produtos de tecnologia com entrega rápida',
+    avatar: 'https://vortex.app/tech.png'
+  };
+
+  // Configurar comprador Personal
+  const buyerUid = 'buyer_user_456';
+  env.firestoreDocs[`users/${buyerUid}`] = {
+    uid: buyerUid,
+    name: 'Comprador VIP',
+    accountType: 'personal',
+    avatar: 'https://vortex.app/buyer.png'
+  };
+
+  // Simular login como o Vendedor Business
+  env.triggerAuthStateChange({ uid: sellerUid, email: 'tech@vortex.app' });
+  win.setCurrentProfile({
+    uid: sellerUid,
+    name: 'Loja Tech VIP ⚡',
+    accountType: 'business',
+    pixKey: 'tech@vortex.app'
+  });
+
+  // 3. Gerenciamento de Categorias (Vendedor)
+  const addCatalogCategory = win.addCatalogCategory;
+  const loadSellerCategories = win.loadSellerCategories;
+  const catInput = env.elements['catalog-category-input'];
+  catInput.value = 'Eletrônicos';
+  await addCatalogCategory();
+
+  let cats = await loadSellerCategories(sellerUid);
+  assert.ok(cats.length >= 1, 'Deve haver pelo menos 1 categoria criada');
+  assert.strictEqual(cats[0].name, 'Eletrônicos', 'Nome da categoria deve ser Eletrônicos');
+
+  // 4. CRUD de Produtos (Vendedor)
+  const saveCatalogProduct = win.saveCatalogProduct;
+  const loadSellerProducts = win.loadSellerProducts;
+
+  // Preencher formulário de produto
+  env.elements['cat-prod-name'].value = 'Fone Bluetooth VIP';
+  env.elements['cat-prod-desc'].value = 'Fone com cancelamento de ruído';
+  env.elements['cat-prod-price'].value = '150,00';
+  env.elements['cat-prod-promo'].value = '120,00';
+  env.elements['cat-prod-category'].value = 'Eletrônicos';
+  env.elements['cat-prod-sku'].value = 'FONE-BT-01';
+  env.elements['cat-prod-unlimited'].checked = false;
+  env.elements['cat-prod-stock'].disabled = false;
+  env.elements['cat-prod-stock'].value = '5';
+  env.elements['cat-prod-active'].checked = true;
+
+  await saveCatalogProduct();
+
+  let prods = await loadSellerProducts(sellerUid);
+  assert.strictEqual(prods.length, 1, 'Deve haver 1 produto cadastrado');
+  const prod = prods[0];
+  assert.strictEqual(prod.name, 'Fone Bluetooth VIP');
+  assert.strictEqual(prod.price, 150);
+  assert.strictEqual(prod.promoPrice, 120);
+  assert.strictEqual(prod.stock, 5);
+  assert.strictEqual(prod.active, true);
+
+  // 5. Alternar status ativo/inativo
+  const toggleProductActive = win.toggleProductActive;
+  await toggleProductActive(prod.id, true);
+  prods = await loadSellerProducts(sellerUid);
+  assert.strictEqual(prods[0].active, false, 'Produto deve estar inativo após alternância');
+
+  // Reativar para permitir compra
+  await toggleProductActive(prod.id, false);
+  prods = await loadSellerProducts(sellerUid);
+  assert.strictEqual(prods[0].active, true, 'Produto deve estar ativo novamente');
+
+  // 6. Simular login como Comprador
+  env.triggerAuthStateChange({ uid: buyerUid, email: 'buyer@vortex.app' });
+  win.setCurrentProfile({
+    uid: buyerUid,
+    name: 'Comprador VIP',
+    accountType: 'personal'
+  });
+
+  // Carrinho de Compras
+  const clearCatalogCart = win.clearCatalogCart;
+  const addToCatalogCart = win.addToCatalogCart;
+  const getCatalogCart = win.getCatalogCart;
+  const updateCatalogCartItemQty = win.updateCatalogCartItemQty;
+
+  clearCatalogCart();
+  assert.strictEqual(getCatalogCart().items.length, 0, 'Carrinho inicial deve estar vazio');
+
+  // Adicionar produto ao carrinho
+  addToCatalogCart(prod, sellerUid, env.firestoreDocs[`users/${sellerUid}`]);
+  let cart = getCatalogCart();
+  assert.strictEqual(cart.items.length, 1, 'Carrinho deve ter 1 item');
+  assert.strictEqual(cart.items[0].name, 'Fone Bluetooth VIP');
+  assert.strictEqual(cart.items[0].effectivePrice, 120, 'Preço efetivo deve ser o promocional (120)');
+  assert.strictEqual(cart.items[0].quantity, 1, 'Quantidade inicial deve ser 1');
+
+  // Incrementar quantidade
+  updateCatalogCartItemQty(prod.id, 1);
+  cart = getCatalogCart();
+  assert.strictEqual(cart.items[0].quantity, 2, 'Quantidade deve ser 2 após incremento');
+
+  // 7. Envio e Criação de Pedido com Transação e Reserva de Estoque
+  const submitCatalogOrder = win.submitCatalogOrder;
+  await submitCatalogOrder();
+
+  // Verificar que o carrinho foi limpo
+  cart = getCatalogCart();
+  assert.strictEqual(cart.items.length, 0, 'Carrinho deve ser esvaziado após enviar o pedido');
+
+  // Verificar estoque decrementado no Firestore (5 - 2 = 3)
+  prods = await loadSellerProducts(sellerUid);
+  assert.strictEqual(prods[0].stock, 3, 'Estoque do produto deve ter sido reduzido de 5 para 3');
+
+  // Verificar pedido criado na coleção orders
+  const orderEntries = Object.entries(env.firestoreDocs).filter(([k]) => k.startsWith('orders/'));
+  assert.strictEqual(orderEntries.length, 1, 'Deve existir exatamente 1 pedido na coleção orders');
+  const [orderPath, orderData] = orderEntries[0];
+  assert.strictEqual(orderData.buyerUid, buyerUid);
+  assert.strictEqual(orderData.sellerUid, sellerUid);
+  assert.strictEqual(orderData.total, 240, 'Total deve ser 2 x 120 = 240');
+  assert.strictEqual(orderData.status, 'new', 'Status inicial deve ser new');
+  assert.strictEqual(orderData.sellerPixKey, 'tech@vortex.app', 'Chave Pix do vendedor deve constar no pedido');
+
+  // 8. Mensagem de Pedido no Chat
+  const chatMessages = Object.entries(env.firestoreDocs).filter(([k]) => k.includes('/messages/'));
+  const orderMsg = chatMessages.find(([k, v]) => v.type === 'order' || v.order);
+  assert.ok(orderMsg, 'Mensagem com type: order deve ter sido enviada no chat');
+  assert.strictEqual(orderMsg[1].order.total, 240);
+
+  // Renderização do Card de Pedido no Chat
+  const buildOrderCardHTML = win.buildOrderCardHTML;
+  const cardHTML = buildOrderCardHTML(orderMsg[1]);
+  assert.ok(cardHTML.includes('chat-order-card'), 'HTML deve conter classe chat-order-card');
+  assert.ok(cardHTML.includes('Pagar com Pix'), 'HTML deve conter botão Pagar com Pix');
+
+  // 9. Ciclo de Vida do Pedido & Restauração de Estoque no Cancelamento
+  // Simular login do vendedor para gerenciar o pedido
+  env.triggerAuthStateChange({ uid: sellerUid, email: 'tech@vortex.app' });
+  win.setCurrentProfile({
+    uid: sellerUid,
+    name: 'Loja Tech VIP ⚡',
+    accountType: 'business'
+  });
+
+  const updateOrderStatus = win.updateOrderStatus;
+  // Atualizar para paid
+  await updateOrderStatus(orderData.id, 'paid');
+  assert.strictEqual(env.firestoreDocs[orderPath].status, 'paid', 'Status deve mudar para paid');
+
+  // Cancelar pedido e verificar devolução de estoque (3 + 2 = 5)
+  await updateOrderStatus(orderData.id, 'canceled');
+  assert.strictEqual(env.firestoreDocs[orderPath].status, 'canceled', 'Status deve mudar para canceled');
+
+  prods = await loadSellerProducts(sellerUid);
+  assert.strictEqual(prods[0].stock, 5, 'Estoque deve ser restaurado para 5 ao cancelar o pedido');
+
+  // 10. Formatação BRL e Helpers
+  const formatBRL = win.formatBRL;
+  const parseBRL = win.parseBRL;
+  assert.strictEqual(parseBRL('R$ 1.250,50'), 1250.5);
+  assert.ok(formatBRL(49.9).includes('49,90'));
+});
+
 
 
 
