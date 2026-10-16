@@ -4396,7 +4396,7 @@ function listenToContacts() {
                 if (visibleDocs.length > 0) {
                     const lastData = visibleDocs[0].data();
                     if (lastMsgEl) {
-                        lastMsgEl.dataset.fallback = lastData.deletedForEveryone ? '🚫 Esta mensagem foi apagada' : (lastData.text || (lastData.type === 'image' ? '📷 Foto' : (lastData.type === 'audio' ? '🎤 Áudio' : '📂 Arquivo')));
+                        lastMsgEl.dataset.fallback = lastData.deletedForEveryone ? '🚫 Esta mensagem foi apagada' : (lastData.text || (lastData.type === 'image' ? '📷 Foto' : (lastData.type === 'audio' ? '🎤 Áudio' : (lastData.type === 'pix' ? '⚡ Chave Pix' : '📂 Arquivo'))));
                         if (!card.classList.contains('typing')) {
                             if (lastData.deletedForEveryone) {
                                 lastMsgEl.innerText = '🚫 Esta mensagem foi apagada';
@@ -6750,11 +6750,36 @@ function loadRealtimeMessages() {
                             </div>
                         `;
                     }
+                } else if (msg.type === 'pix' || msg.pix) {
+                    const pix = msg.pix || {};
+                    const pixKey = pix.key || (typeof msg.text === 'string' && msg.text.startsWith('⚡ Chave Pix: ') ? msg.text.replace('⚡ Chave Pix: ', '') : '') || '';
+                    const pixName = pix.name || msg.senderName || 'Beneficiário';
+                    const pixNote = pix.note || '';
+
+                    mediaHTML = `
+                        <div class="chat-pix-card" data-msg-id="${msg.id}">
+                            <div class="chat-pix-card-header">
+                                <div class="chat-pix-badge">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M17.07 14.66l-3.32-3.32a2.47 2.47 0 0 0-3.5 0L6.93 14.66a2.47 2.47 0 0 0 0 3.5l3.32 3.32a2.47 2.47 0 0 0 3.5 0l3.32-3.32a2.47 2.47 0 0 0 0-3.5zm-5.07 5.07a.35.35 0 0 1-.5 0L8.18 16.4a.35.35 0 0 1 0-.5l3.32-3.32a.35.35 0 0 1 .5 0l3.32 3.32a.35.35 0 0 1 0 .5l-3.32 3.33zM6.93 9.34l3.32 3.32a2.47 2.47 0 0 0 3.5 0l3.32-3.32a2.47 2.47 0 0 0 0-3.5L13.75 2.52a2.47 2.47 0 0 0-3.5 0L6.93 5.84a2.47 2.47 0 0 0 0 3.5zm5.07-5.07a.35.35 0 0 1 .5 0l3.32 3.33a.35.35 0 0 1 0 .5l-3.32 3.32a.35.35 0 0 1-.5 0L8.18 8.1a.35.35 0 0 1 0-.5L11.5 4.27z"/></svg>
+                                    <span>Chave Pix</span>
+                                </div>
+                                ${pixName ? `<span class="chat-pix-receiver">${escapeHTML(pixName)}</span>` : ''}
+                            </div>
+                            <div class="chat-pix-key-box" title="Chave Pix">
+                                <span class="chat-pix-key-val">${escapeHTML(pixKey)}</span>
+                            </div>
+                            ${pixNote ? `<div class="chat-pix-note"><i data-lucide="message-square" style="width:12px; height:12px; display:inline-block; vertical-align:middle; margin-right:4px;"></i>${escapeHTML(pixNote)}</div>` : ''}
+                            <button type="button" class="chat-pix-copy-btn" data-key="${escapeHTML(pixKey)}">
+                                <i data-lucide="copy" style="width:14px; height:14px;"></i>
+                                <span>Copiar Chave Pix</span>
+                            </button>
+                        </div>
+                    `;
                 }
             }
 
             let textHTML = '';
-            if (msg.text && !msg.deletedForEveryone && msg.type !== 'poll') {
+            if (msg.text && !msg.deletedForEveryone && msg.type !== 'poll' && msg.type !== 'pix') {
                 const isSenderVip = isMe
                     ? checkIsVipUser(currentProfile)
                     : !!(msg.isVip || msg.isVerified || (msg.senderEmail && VORTEX_ADMIN_EMAILS.includes(msg.senderEmail.toLowerCase())) || (msg.senderUsername === 'dxhuboficial') || checkIsVipUser(msg));
@@ -6985,6 +7010,35 @@ function loadRealtimeMessages() {
                         e.stopPropagation();
                         if (typeof openPollVotesModal === 'function') {
                             openPollVotesModal(msg.poll);
+                        }
+                    });
+                }
+            }
+
+            // Pix: botão para copiar chave Pix
+            if (msg.type === 'pix' || msg.pix) {
+                const copyBtn = msgDiv.querySelector('.chat-pix-copy-btn');
+                if (copyBtn) {
+                    copyBtn.addEventListener('click', async (e) => {
+                        e.stopPropagation();
+                        const keyToCopy = copyBtn.dataset.key || (msg.pix && msg.pix.key) || '';
+                        if (!keyToCopy) return;
+                        try {
+                            if (navigator.clipboard && navigator.clipboard.writeText) {
+                                await navigator.clipboard.writeText(keyToCopy);
+                            } else {
+                                const ta = document.createElement('textarea');
+                                ta.value = keyToCopy;
+                                document.body.appendChild(ta);
+                                ta.select();
+                                document.execCommand('copy');
+                                document.body.removeChild(ta);
+                            }
+                            playSound(clickSound);
+                            showToast('Pix Copiado!', 'Chave Pix copiada para a área de transferência! ⚡', 'teal');
+                        } catch (err) {
+                            console.error('Erro ao copiar chave Pix:', err);
+                            showToast('Erro', 'Não foi possível copiar a chave Pix.', 'red');
                         }
                     });
                 }
@@ -7522,6 +7576,10 @@ async function openForwardModal(msgToFwd) {
                     forwarded: true,
                     createdAt: Date.now()
                 };
+
+                if (messageToForward.pix) {
+                    forwardData.pix = messageToForward.pix;
+                }
 
                 await addDoc(collection(db, 'chats', targetChatId, 'messages'), forwardData);
                 showToast("Encaminhado", `Mensagem encaminhada para ${c.name}!`, "green");
@@ -11249,6 +11307,9 @@ async function sendChatMessage(type = 'text', payload = {}) {
         if (payload.poll) {
             msgData.poll = payload.poll;
         }
+        if (payload.pix) {
+            msgData.pix = payload.pix;
+        }
 
         const isSenderVip = checkIsVipUser(currentProfile);
         if (isSenderVip) {
@@ -11980,6 +12041,161 @@ document.getElementById('poll-creator-modal')?.addEventListener('click', (e) => 
 document.getElementById('poll-votes-modal')?.addEventListener('click', (e) => {
     if (e.target && e.target.id === 'poll-votes-modal') {
         closePollVotesModal();
+    }
+});
+
+// ===== ENVIO DE CHAVE PIX NAS CONVERSAS =====
+export function openPixSendModal() {
+    if (!currentUser) return;
+    const chatId = getActiveChatId();
+    if (!chatId || !activeChatContact) {
+        showToast('Nenhuma conversa', 'Abra uma conversa para enviar sua chave Pix.', 'yellow');
+        return;
+    }
+    if (isUserBanned(currentProfile)) {
+        showToast('Conta Suspensa', 'Sua conta está banida e não pode enviar mensagens.', 'red');
+        return;
+    }
+    if (isUserRestricted(currentProfile)) {
+        showRestrictionActionNotice();
+        return;
+    }
+
+    // Fechar drawer de anexos se estiver aberto
+    const attachPanel = document.getElementById('attachment-panel');
+    if (attachPanel) attachPanel.classList.remove('active');
+
+    const modal = document.getElementById('pix-send-modal');
+    if (!modal) return;
+
+    const nameInput = document.getElementById('pix-send-name-input');
+    const keyInput = document.getElementById('pix-send-key-input');
+    const noteInput = document.getElementById('pix-send-note-input');
+    const saveContainer = document.getElementById('pix-save-profile-container');
+    const saveCheckbox = document.getElementById('pix-send-save-profile-checkbox');
+
+    const senderFullName = `${currentProfile?.name || ''} ${currentProfile?.surname || ''}`.trim() || currentUser?.displayName || currentUser?.name || 'Beneficiário';
+    if (nameInput) nameInput.value = senderFullName;
+    if (keyInput) keyInput.value = currentProfile?.pixKey || '';
+    if (noteInput) noteInput.value = '';
+
+    if (saveContainer && saveCheckbox) {
+        if (currentProfile?.pixKey) {
+            saveContainer.style.display = 'none';
+            saveCheckbox.checked = false;
+        } else {
+            saveContainer.style.display = 'block';
+            saveCheckbox.checked = true;
+        }
+    }
+
+    modal.style.display = 'flex';
+    modal.classList.add('active');
+    modal.setAttribute('aria-hidden', 'false');
+
+    if (typeof pushBackNavigationState === 'function') {
+        pushBackNavigationState('pix-send-modal');
+    }
+
+    if (window.lucide) lucide.createIcons();
+}
+
+export function closePixSendModal() {
+    const modal = document.getElementById('pix-send-modal');
+    if (!modal) return;
+    modal.style.display = 'none';
+    modal.classList.remove('active');
+    modal.setAttribute('aria-hidden', 'true');
+}
+
+export async function sendPixMessage() {
+    if (!currentUser || !activeChatContact) return;
+    const keyInput = document.getElementById('pix-send-key-input');
+    const nameInput = document.getElementById('pix-send-name-input');
+    const noteInput = document.getElementById('pix-send-note-input');
+    const saveCheckbox = document.getElementById('pix-send-save-profile-checkbox');
+    const submitBtn = document.getElementById('pix-send-confirm-btn');
+
+    const pixKey = (keyInput?.value || '').trim();
+    if (!pixKey) {
+        showToast('Chave Pix Obrigatória', 'Por favor, digite a sua chave Pix para enviar.', 'yellow');
+        if (keyInput) keyInput.focus();
+        return;
+    }
+
+    const beneficiaryName = (nameInput?.value || '').trim() || `${currentProfile?.name || ''} ${currentProfile?.surname || ''}`.trim() || currentUser?.displayName || 'Beneficiário';
+    const note = (noteInput?.value || '').trim();
+
+    if (submitBtn) submitBtn.disabled = true;
+
+    try {
+        if (saveCheckbox && saveCheckbox.checked && currentUser.uid) {
+            currentProfile.pixKey = pixKey;
+            try {
+                await updateDoc(doc(db, 'users', currentUser.uid), { pixKey: pixKey });
+                const profilePixInp = document.getElementById('profile-pix-input');
+                if (profilePixInp) profilePixInp.value = pixKey;
+            } catch (err) {
+                console.warn('Erro ao salvar chave Pix no perfil:', err);
+            }
+        }
+
+        await sendChatMessage('pix', {
+            pix: {
+                key: pixKey,
+                name: beneficiaryName,
+                note: note
+            },
+            text: `⚡ Chave Pix: ${pixKey}`
+        });
+
+        closePixSendModal();
+        showToast('Chave Pix Enviada!', 'Sua chave Pix foi compartilhada na conversa ⚡', 'teal');
+    } catch (err) {
+        console.error('Erro ao enviar chave Pix:', err);
+        showToast('Erro ao enviar', 'Não foi possível enviar a chave Pix. Tente novamente.', 'red');
+    } finally {
+        if (submitBtn) submitBtn.disabled = false;
+    }
+}
+
+// Event Listeners para Envio de Pix
+document.getElementById('chat-attach-pix-btn')?.addEventListener('click', () => {
+    playSound(clickSound);
+    openPixSendModal();
+});
+
+document.getElementById('close-pix-send-modal-btn')?.addEventListener('click', () => {
+    playSound(clickSound);
+    closePixSendModal();
+});
+
+document.getElementById('pix-send-cancel-btn')?.addEventListener('click', () => {
+    playSound(clickSound);
+    closePixSendModal();
+});
+
+document.getElementById('pix-send-confirm-btn')?.addEventListener('click', () => {
+    sendPixMessage();
+});
+
+document.getElementById('pix-send-modal')?.addEventListener('click', (e) => {
+    if (e.target && e.target.id === 'pix-send-modal') {
+        closePixSendModal();
+    }
+});
+
+document.getElementById('pix-send-key-input')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        sendPixMessage();
+    }
+});
+
+document.getElementById('pix-send-note-input')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        sendPixMessage();
     }
 });
 
@@ -17987,6 +18203,17 @@ export function closeTopmostActiveLayer() {
         return true;
     }
 
+    const pixSendModal = document.getElementById('pix-send-modal');
+    if (pixSendModal && (pixSendModal.classList.contains('active') || pixSendModal.style.display === 'flex')) {
+        if (typeof closePixSendModal === 'function') {
+            closePixSendModal();
+        } else {
+            pixSendModal.classList.remove('active');
+            pixSendModal.style.display = 'none';
+        }
+        return true;
+    }
+
     // 3. Chamadas de Voz / Vídeo
     const videoCallOverlay = document.getElementById('video-call-overlay');
     if (videoCallOverlay && videoCallOverlay.classList && videoCallOverlay.classList.contains('active')) {
@@ -18429,6 +18656,9 @@ if (typeof window !== 'undefined') {
     window.openPollVotesModal = openPollVotesModal;
     window.closePollVotesModal = closePollVotesModal;
     window.getPollCreatorOptions = () => pollCreatorOptions;
+    window.openPixSendModal = openPixSendModal;
+    window.closePixSendModal = closePixSendModal;
+    window.sendPixMessage = sendPixMessage;
     window.openContactProfile = openContactProfile;
     window.closeContactProfile = closeContactProfile;
     window.updateChatBioBubble = updateChatBioBubble;

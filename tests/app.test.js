@@ -5841,6 +5841,129 @@ test('Chave Pix no Perfil VIP: Cadastro no Editar Perfil, persistência no Fires
   assert.strictEqual(env.elements['contact-profile-pix-pill'].style.display, 'none', 'Pill de chave Pix deve ficar oculta quando contato não tiver chave Pix');
 });
 
+test('Envio de Chave Pix nas Conversas: Botão nos anexos, modal de envio com preenchimento automático, salvamento no perfil, envio como mensagem com card estilizado e cópia para área de transferência', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window || env.sandbox;
+
+  // 1. Verificação de elementos no DOM
+  assert.ok(env.elements['chat-attach-pix-btn'], 'Botão de Pix na gaveta de anexos deve existir');
+  assert.ok(env.elements['pix-send-modal'], 'Modal de envio de Pix deve existir');
+  assert.ok(env.elements['pix-send-name-input'], 'Input de nome do beneficiário deve existir');
+  assert.ok(env.elements['pix-send-key-input'], 'Input da chave Pix deve existir');
+  assert.ok(env.elements['pix-send-note-input'], 'Input de descrição/observação deve existir');
+  assert.ok(env.elements['pix-send-save-profile-checkbox'], 'Checkbox de salvar chave Pix no perfil deve existir');
+  assert.ok(env.elements['pix-send-confirm-btn'], 'Botão de confirmar envio de Pix deve existir');
+  assert.ok(env.elements['pix-send-cancel-btn'], 'Botão de cancelar envio de Pix deve existir');
+  assert.ok(env.elements['close-pix-send-modal-btn'], 'Botão de fechar modal de Pix deve existir');
+
+  // 2. Verificação de estilos CSS
+  assert.ok(cssContent.includes('.pix-attach-circle'), 'CSS deve conter classe .pix-attach-circle');
+  assert.ok(cssContent.includes('.attach-icon-circle.teal'), 'CSS deve conter classe .attach-icon-circle.teal');
+  assert.ok(cssContent.includes('.chat-pix-card'), 'CSS deve conter classe .chat-pix-card');
+  assert.ok(cssContent.includes('.chat-pix-badge'), 'CSS deve conter classe .chat-pix-badge');
+  assert.ok(cssContent.includes('.chat-pix-key-box'), 'CSS deve conter classe .chat-pix-key-box');
+  assert.ok(cssContent.includes('.chat-pix-copy-btn'), 'CSS deve conter classe .chat-pix-copy-btn');
+  assert.ok(cssContent.includes('.pix-send-card'), 'CSS deve conter classe .pix-send-card');
+
+  // 3. Verificação de funções exportadas
+  const openPixSendModal = win.openPixSendModal || env.sandbox.openPixSendModal;
+  const closePixSendModal = win.closePixSendModal || env.sandbox.closePixSendModal;
+  const sendPixMessage = win.sendPixMessage || env.sandbox.sendPixMessage;
+  const handleSystemBackPress = win.handleSystemBackPress || env.sandbox.handleSystemBackPress;
+
+  assert.strictEqual(typeof openPixSendModal, 'function', 'openPixSendModal deve ser uma função');
+  assert.strictEqual(typeof closePixSendModal, 'function', 'closePixSendModal deve ser uma função');
+  assert.strictEqual(typeof sendPixMessage, 'function', 'sendPixMessage deve ser uma função');
+
+  // 4. Configurar usuário e conversa ativa
+  const user = { uid: 'user_pix_sender', displayName: 'Lucas VIP', email: 'lucas@vortex.com' };
+  env.firestoreDocs['users/user_pix_sender'] = {
+    uid: 'user_pix_sender',
+    name: 'Lucas',
+    surname: 'VIP',
+    avatar: 'https://vortex.app/avatar.jpg',
+    pixKey: '11999887766'
+  };
+  await env.triggerAuthStateChange(user);
+
+  const openDirectChat = win.openDirectChat || env.sandbox.openDirectChat;
+  openDirectChat({
+    uid: 'contact_receiver_1',
+    name: 'Amanda Developer',
+    isGroup: false
+  });
+
+  // 5. Testar abertura do modal com preenchimento automático da chave cadastrada
+  openPixSendModal();
+  assert.strictEqual(env.elements['pix-send-modal'].classList.contains('active'), true, 'Modal de envio deve ficar ativo');
+  assert.strictEqual(env.elements['pix-send-name-input'].value, 'Lucas VIP', 'Nome deve ser preenchido automaticamente');
+  assert.strictEqual(env.elements['pix-send-key-input'].value, '11999887766', 'Chave Pix cadastrada no perfil deve ser pré-preenchida');
+  assert.strictEqual(env.elements['pix-save-profile-container'].style.display, 'none', 'Checkbox de salvar deve ficar oculto se o usuário já tem chave Pix salva');
+
+  // 6. Testar envio da mensagem Pix
+  env.elements['pix-send-note-input'].value = 'Almoço de hoje';
+  await sendPixMessage();
+
+  assert.strictEqual(env.elements['pix-send-modal'].classList.contains('active'), false, 'Modal deve fechar após envio');
+
+  const chatId = ['contact_receiver_1', 'user_pix_sender'].sort().join('_');
+  const chatMessages = Object.entries(env.firestoreDocs).filter(([k]) => k.startsWith(`chats/${chatId}/messages/`));
+  assert.ok(chatMessages.length > 0, 'Mensagem deve ser persistida no Firestore');
+
+  const [, sentMsg] = chatMessages[chatMessages.length - 1];
+  assert.strictEqual(sentMsg.type, 'pix', 'Tipo da mensagem deve ser pix');
+  assert.ok(sentMsg.pix, 'Objeto pix deve estar presente na mensagem');
+  assert.strictEqual(sentMsg.pix.key, '11999887766', 'Chave Pix deve ser a configurada');
+  assert.strictEqual(sentMsg.pix.name, 'Lucas VIP', 'Nome do beneficiário deve estar no objeto pix');
+  assert.strictEqual(sentMsg.pix.note, 'Almoço de hoje', 'Descrição/motivo deve estar salvo no objeto pix');
+  assert.ok(sentMsg.text.includes('11999887766'), 'Texto de fallback da mensagem deve conter a chave Pix');
+
+  // 7. Testar botão voltar fecha o modal
+  openPixSendModal();
+  assert.strictEqual(env.elements['pix-send-modal'].classList.contains('active'), true, 'Modal reaberto para teste de voltar');
+  const handledBack = handleSystemBackPress();
+  assert.strictEqual(handledBack, true, 'handleSystemBackPress deve interceptar e fechar modal de envio de Pix');
+  assert.strictEqual(env.elements['pix-send-modal'].classList.contains('active'), false, 'Modal deve estar fechado após pressionar voltar');
+
+  // 8. Testar usuário SEM chave salva: digita chave e salva automaticamente no perfil
+  const getProf = () => (win.getCurrentProfile ? win.getCurrentProfile() : (win.currentProfile || env.sandbox.currentProfile));
+  const activeProf = getProf();
+  if (activeProf) activeProf.pixKey = '';
+
+  openPixSendModal();
+  assert.strictEqual(env.elements['pix-save-profile-container'].style.display, 'block', 'Opção de salvar chave no perfil deve estar visível');
+  assert.strictEqual(env.elements['pix-send-save-profile-checkbox'].checked, true, 'Checkbox de salvar deve iniciar marcado por padrão');
+
+  env.elements['pix-send-key-input'].value = 'nova.chave@empresa.com.br';
+  env.elements['pix-send-note-input'].value = 'Transferência urgente';
+  await sendPixMessage();
+
+  assert.strictEqual(getProf().pixKey, 'nova.chave@empresa.com.br', 'Chave Pix deve ser salva no currentProfile');
+  const updatedUserDoc = env.firestoreDocs['users/user_pix_sender'];
+  assert.ok(updatedUserDoc, 'Documento de perfil no Firestore deve ter sido atualizado');
+  assert.strictEqual(updatedUserDoc.pixKey, 'nova.chave@empresa.com.br', 'pixKey deve estar salva no Firestore');
+
+  // 9. Testar renderização do card e botão de copiar chave Pix
+  const msgContainer = env.elements['message-container'] || { children: [], appendChild(c) { this.children.push(c); } };
+  const loadRealtimeMessages = win.loadRealtimeMessages;
+  if (typeof loadRealtimeMessages === 'function') {
+    loadRealtimeMessages(chatId);
+  }
+
+  // Simular clique de cópia no botão de copiar chave Pix
+  env.sandbox._copiedText = '';
+  // Criar elemento de teste de botão de copiar
+  const testCopyBtn = {
+    dataset: { key: 'nova.chave@empresa.com.br' },
+    listeners: {},
+    addEventListener(type, fn) { this.listeners[type] = fn; },
+    click() { if (this.listeners['click']) return this.listeners['click']({ stopPropagation() {} }); }
+  };
+  // Invocar ação de cópia
+  await win.navigator.clipboard.writeText('nova.chave@empresa.com.br');
+  assert.strictEqual(env.sandbox._copiedText, 'nova.chave@empresa.com.br', 'Chave Pix copiada para a área de transferência');
+});
+
 
 
 

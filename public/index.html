@@ -4,20 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.110">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.110">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.110">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.110">
-    <link rel="stylesheet" href="style.css?v=1.0.110">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.111">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.111">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.111">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.111">
+    <link rel="stylesheet" href="style.css?v=1.0.111">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.110">
+    <link rel="manifest" href="manifest.json?v=1.0.111">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.110">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.110">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.111">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.111">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -1017,6 +1017,12 @@
                     <div class="attach-item" id="chat-attach-poll-btn" title="Criar Enquete" role="button" tabindex="0">
                         <div class="attach-icon-circle green"><i data-lucide="bar-chart-2"></i></div>
                         <span>Enquete</span>
+                    </div>
+                    <div class="attach-item" id="chat-attach-pix-btn" title="Enviar Chave Pix" role="button" tabindex="0">
+                        <div class="attach-icon-circle teal pix-attach-circle">
+                            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M17.07 14.66l-3.32-3.32a2.47 2.47 0 0 0-3.5 0L6.93 14.66a2.47 2.47 0 0 0 0 3.5l3.32 3.32a2.47 2.47 0 0 0 3.5 0l3.32-3.32a2.47 2.47 0 0 0 0-3.5zm-5.07 5.07a.35.35 0 0 1-.5 0L8.18 16.4a.35.35 0 0 1 0-.5l3.32-3.32a.35.35 0 0 1 .5 0l3.32 3.32a.35.35 0 0 1 0 .5l-3.32 3.33zM6.93 9.34l3.32 3.32a2.47 2.47 0 0 0 3.5 0l3.32-3.32a2.47 2.47 0 0 0 0-3.5L13.75 2.52a2.47 2.47 0 0 0-3.5 0L6.93 5.84a2.47 2.47 0 0 0 0 3.5zm5.07-5.07a.35.35 0 0 1 .5 0l3.32 3.33a.35.35 0 0 1 0 .5l-3.32 3.32a.35.35 0 0 1-.5 0L8.18 8.1a.35.35 0 0 1 0-.5L11.5 4.27z"/></svg>
+                        </div>
+                        <span>Pix</span>
                     </div>
                 </div>
                 <button id="close-attachment-panel" class="close-btn drawer-cancel-btn">Cancelar</button>
@@ -2678,8 +2684,57 @@
             </div>
         </div>
 
+        <!-- Modal de Enviar Chave Pix no Chat -->
+        <div id="pix-send-modal" class="custom-modal-overlay pix-send-overlay" aria-hidden="true" style="display: none;">
+            <div class="custom-modal-card pix-send-card">
+                <div class="panel-top-bar pix-modal-top-bar">
+                    <div class="share-modal-title-wrap">
+                        <div class="pix-modal-icon-badge">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M17.07 14.66l-3.32-3.32a2.47 2.47 0 0 0-3.5 0L6.93 14.66a2.47 2.47 0 0 0 0 3.5l3.32 3.32a2.47 2.47 0 0 0 3.5 0l3.32-3.32a2.47 2.47 0 0 0 0-3.5zm-5.07 5.07a.35.35 0 0 1-.5 0L8.18 16.4a.35.35 0 0 1 0-.5l3.32-3.32a.35.35 0 0 1 .5 0l3.32 3.32a.35.35 0 0 1 0 .5l-3.32 3.33zM6.93 9.34l3.32 3.32a2.47 2.47 0 0 0 3.5 0l3.32-3.32a2.47 2.47 0 0 0 0-3.5L13.75 2.52a2.47 2.47 0 0 0-3.5 0L6.93 5.84a2.47 2.47 0 0 0 0 3.5zm5.07-5.07a.35.35 0 0 1 .5 0l3.32 3.33a.35.35 0 0 1 0 .5l-3.32 3.32a.35.35 0 0 1-.5 0L8.18 8.1a.35.35 0 0 1 0-.5L11.5 4.27z"/></svg>
+                        </div>
+                        <h2>Enviar Chave Pix</h2>
+                    </div>
+                    <div class="header-icon-btn" id="close-pix-send-modal-btn" title="Fechar" aria-label="Fechar">
+                        <i data-lucide="x"></i>
+                    </div>
+                </div>
+
+                <div class="pix-send-body">
+                    <div class="pix-send-field-group">
+                        <label for="pix-send-name-input" class="pix-send-field-label">Nome do Beneficiário</label>
+                        <input type="text" id="pix-send-name-input" class="pix-send-input" placeholder="Seu nome ou da sua empresa" maxlength="100" autocomplete="off">
+                    </div>
+
+                    <div class="pix-send-field-group">
+                        <label for="pix-send-key-input" class="pix-send-field-label">Chave Pix</label>
+                        <input type="text" id="pix-send-key-input" class="pix-send-input" placeholder="CPF, CNPJ, e-mail, celular ou chave aleatória" maxlength="140" autocomplete="off">
+                    </div>
+
+                    <div class="pix-send-field-group">
+                        <label for="pix-send-note-input" class="pix-send-field-label">Descrição / Motivo (Opcional)</label>
+                        <input type="text" id="pix-send-note-input" class="pix-send-input" placeholder="Ex: Pagamento do pedido, transferir aqui..." maxlength="120" autocomplete="off">
+                    </div>
+
+                    <div id="pix-save-profile-container" class="pix-save-profile-row" style="display: none;">
+                        <label class="pix-save-checkbox-label">
+                            <input type="checkbox" id="pix-send-save-profile-checkbox" checked>
+                            <span>Salvar esta chave Pix no meu perfil para envios futuros</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="pix-send-footer">
+                    <button type="button" id="pix-send-cancel-btn" class="pix-send-btn pix-send-btn-cancel">Cancelar</button>
+                    <button type="button" id="pix-send-confirm-btn" class="pix-send-btn pix-send-btn-submit">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M17.07 14.66l-3.32-3.32a2.47 2.47 0 0 0-3.5 0L6.93 14.66a2.47 2.47 0 0 0 0 3.5l3.32 3.32a2.47 2.47 0 0 0 3.5 0l3.32-3.32a2.47 2.47 0 0 0 0-3.5zm-5.07 5.07a.35.35 0 0 1-.5 0L8.18 16.4a.35.35 0 0 1 0-.5l3.32-3.32a.35.35 0 0 1 .5 0l3.32 3.32a.35.35 0 0 1 0 .5l-3.32 3.33zM6.93 9.34l3.32 3.32a2.47 2.47 0 0 0 3.5 0l3.32-3.32a2.47 2.47 0 0 0 0-3.5L13.75 2.52a2.47 2.47 0 0 0-3.5 0L6.93 5.84a2.47 2.47 0 0 0 0 3.5zm5.07-5.07a.35.35 0 0 1 .5 0l3.32 3.33a.35.35 0 0 1 0 .5l-3.32 3.32a.35.35 0 0 1-.5 0L8.18 8.1a.35.35 0 0 1 0-.5L11.5 4.27z"/></svg>
+                        <span>Enviar Chave Pix</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.110" defer></script>
+    <script type="module" src="script.js?v=1.0.111" defer></script>
 </body>
 </html>
