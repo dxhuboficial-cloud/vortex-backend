@@ -3291,14 +3291,18 @@ export async function loadBusinessStores() {
             const bio = store.status || store.bio || 'Loja Oficial VORTEX ⚡';
             return `
                 <div class="catalog-store-card" data-uid="${store.uid}">
-                    ${avatar}
-                    <div class="catalog-store-info-col">
-                        <div class="catalog-store-header-row">
-                            <strong class="catalog-store-name">${escapeHTML(store.name)}</strong>
-                            <span class="catalog-business-badge"><i data-lucide="badge-check"></i> Empresa</span>
+                    <div class="catalog-store-main-row">
+                        ${avatar}
+                        <div class="catalog-store-info-col">
+                            <div class="catalog-store-name-row">
+                                <strong class="catalog-store-name" title="${escapeHTML(store.name)}">${escapeHTML(store.name)}</strong>
+                            </div>
+                            <div class="catalog-store-meta-row">
+                                <span class="catalog-business-badge"><i data-lucide="badge-check"></i> Empresa</span>
+                                ${store.pixKey ? `<span class="catalog-store-pix"><i data-lucide="qr-code"></i> Aceita Pix</span>` : ''}
+                            </div>
+                            <p class="catalog-store-bio">${escapeHTML(bio)}</p>
                         </div>
-                        <p class="catalog-store-bio">${escapeHTML(bio)}</p>
-                        ${store.pixKey ? `<small class="catalog-store-pix"><i data-lucide="qr-code"></i> Aceita Pix</small>` : ''}
                     </div>
                     <button type="button" class="catalog-primary-btn catalog-open-store-btn" data-uid="${store.uid}">
                         <span>${isMe ? 'Minha loja' : 'Visitar loja'}</span>
@@ -3310,9 +3314,18 @@ export async function loadBusinessStores() {
 
         if (window.lucide) lucide.createIcons();
 
-        container.querySelectorAll('.catalog-store-card, .catalog-open-store-btn').forEach(el => {
-            el.onclick = (e) => {
+        container.querySelectorAll('.catalog-store-card').forEach(el => {
+            el.onclick = () => {
                 const uid = el.dataset.uid;
+                const s = stores.find(x => x.uid === uid);
+                openStorefront(uid, s || {});
+            };
+        });
+
+        container.querySelectorAll('.catalog-open-store-btn').forEach(btn => {
+            btn.onclick = (e) => {
+                e.stopPropagation();
+                const uid = btn.dataset.uid;
                 const s = stores.find(x => x.uid === uid);
                 openStorefront(uid, s || {});
             };
