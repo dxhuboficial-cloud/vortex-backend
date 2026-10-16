@@ -87,7 +87,7 @@ let currentProfile = {
     ghostMode: false,
     privacyMode: false,
     soundEnabled: true,
-    ringtoneType: 'vortex_vip',
+    ringtoneType: 'antigo',
     themeEnabled: true,
     isVerified: false,
     isVip: false,
@@ -361,17 +361,81 @@ function createActivityIndicatorHTML(activity = {}) {
     return `<span class="typing-indicator activity-indicator"><i data-lucide="${icons[kind] || 'loader'}"></i><span class="dot"></span><span class="dot"></span><span class="dot"></span> ${escapeHTML(activity.label || labels[kind] || 'processando')}</span>`;
 }
 
-// Motor de Toque de Chamada (Ringtone) Sintetizado via Web Audio API
-// Suporta reprodução contínua em loop, parada instantânea (pause), pré-visualização (preview) e múltiplos timbres VIP
+// Motor de Síntese Web Audio API para Fallbacks Imediatos e Timbres Sintéticos
+function playSyntheticTone(type) {
+    if (typeof window === 'undefined') return Promise.resolve();
+    try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return Promise.resolve();
+        if (!window.__vortexAudioCtx) {
+            window.__vortexAudioCtx = new AudioCtx();
+        }
+        const ctx = window.__vortexAudioCtx;
+        if (ctx.state === 'suspended') {
+            ctx.resume().catch(() => {});
+        }
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        const now = ctx.currentTime;
+
+        if (type === 'click') {
+            osc.frequency.setValueAtTime(600, now);
+            osc.frequency.exponentialRampToValueAtTime(300, now + 0.04);
+            gain.gain.setValueAtTime(0.08, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+            osc.start(now);
+            osc.stop(now + 0.04);
+        } else if (type === 'notification') {
+            osc.frequency.setValueAtTime(587.33, now);
+            osc.frequency.setValueAtTime(880, now + 0.09);
+            gain.gain.setValueAtTime(0.12, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+            osc.start(now);
+            osc.stop(now + 0.28);
+        } else if (type === 'unlock') {
+            osc.frequency.setValueAtTime(523.25, now);
+            osc.frequency.setValueAtTime(659.25, now + 0.08);
+            gain.gain.setValueAtTime(0.1, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+            osc.start(now);
+            osc.stop(now + 0.22);
+        } else if (type === 'reply') {
+            osc.frequency.setValueAtTime(440, now);
+            osc.frequency.exponentialRampToValueAtTime(880, now + 0.09);
+            gain.gain.setValueAtTime(0.1, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+            osc.start(now);
+            osc.stop(now + 0.15);
+        }
+    } catch (_) {}
+    return Promise.resolve();
+}
+
+// Motor de Toque de Chamada (Ringtone) com Toque Global Antigo Original + Timbres VIP
 function createRingtonePlayer() {
     let loopTimer = null;
     let previewTimer = null;
     let isPlaying = false;
-    let currentToneType = 'vortex_vip';
+    let currentToneType = 'antigo';
     let userLoop = true;
     let currentTimeVal = 0;
+    let ringtoneAudioEl = null;
     const activeOscillators = new Set();
     const activeGainNodes = new Set();
+
+    function getNativeAudio() {
+        if (typeof window === 'undefined' || typeof window.Audio !== 'function') return null;
+        if (!ringtoneAudioEl) {
+            try {
+                ringtoneAudioEl = new window.Audio('/sounds/ringtone.mp3');
+                ringtoneAudioEl.preload = 'auto';
+                ringtoneAudioEl.loop = userLoop;
+            } catch (_) {}
+        }
+        return ringtoneAudioEl;
+    }
 
     function getAudioContext() {
         if (typeof window === 'undefined') return null;
@@ -413,7 +477,6 @@ function createRingtonePlayer() {
             osc.type = type;
             osc.frequency.setValueAtTime(freq, startTime);
 
-            // Ataque suave para evitar cliques e decaimento exponencial musical
             gain.gain.setValueAtTime(0.0001, startTime);
             gain.gain.linearRampToValueAtTime(maxGain, startTime + 0.02);
             gain.gain.setValueAtTime(maxGain, startTime + Math.max(0.03, duration - 0.06));
@@ -440,6 +503,7 @@ function createRingtonePlayer() {
     function getCadenceDuration(toneType) {
         if (toneType === 'classico') return 3400;
         if (toneType === 'digital') return 3000;
+        if (toneType === 'antigo') return 4000;
         return 3200; // 'vortex_vip'
     }
 
@@ -450,32 +514,22 @@ function createRingtonePlayer() {
         const selected = toneType || currentToneType;
 
         if (selected === 'classico') {
-            // Frequência padrão dupla de telefonia (440Hz + 480Hz)
-            // Pulso 1: 0.45s
             playTone(ctx, 440, now, 0.45, 0.11, 'sine');
             playTone(ctx, 480, now, 0.45, 0.11, 'sine');
-
-            // Pulso 2: 0.45s após 0.20s de intervalo
             playTone(ctx, 440, now + 0.65, 0.45, 0.11, 'sine');
             playTone(ctx, 480, now + 0.65, 0.45, 0.11, 'sine');
         } else if (selected === 'digital') {
-            // Melodia arpejada rítmica futurista (Marimba Digital)
-            playTone(ctx, 587.33, now, 0.12, 0.12, 'sine');       // D5
-            playTone(ctx, 739.99, now + 0.11, 0.12, 0.12, 'sine'); // F#5
-            playTone(ctx, 880.00, now + 0.22, 0.12, 0.12, 'sine'); // A5
-            playTone(ctx, 1174.66, now + 0.33, 0.36, 0.14, 'sine'); // D6
-
-            // Segunda fase de resposta
+            playTone(ctx, 587.33, now, 0.12, 0.12, 'sine');
+            playTone(ctx, 739.99, now + 0.11, 0.12, 0.12, 'sine');
+            playTone(ctx, 880.00, now + 0.22, 0.12, 0.12, 'sine');
+            playTone(ctx, 1174.66, now + 0.33, 0.36, 0.14, 'sine');
             playTone(ctx, 880.00, now + 0.75, 0.12, 0.10, 'sine');
             playTone(ctx, 1174.66, now + 0.88, 0.36, 0.13, 'sine');
         } else {
-            // Padrão 'vortex_vip': Chime harmônico VIP cristalino e elegante
-            // Fase 1: Tríade C5-E5-G5
+            // 'vortex_vip'
             playTone(ctx, 523.25, now, 0.42, 0.10, 'sine');
             playTone(ctx, 659.25, now, 0.42, 0.09, 'sine');
             playTone(ctx, 783.99, now, 0.42, 0.08, 'sine');
-
-            // Fase 2: Tríade elevada E5-A5-C6
             playTone(ctx, 659.25, now + 0.60, 0.48, 0.10, 'sine');
             playTone(ctx, 880.00, now + 0.60, 0.48, 0.09, 'sine');
             playTone(ctx, 1046.50, now + 0.60, 0.48, 0.08, 'sine');
@@ -484,10 +538,13 @@ function createRingtonePlayer() {
 
     const player = {
         get currentTime() {
-            return currentTimeVal;
+            return ringtoneAudioEl ? (ringtoneAudioEl.currentTime || currentTimeVal) : currentTimeVal;
         },
         set currentTime(val) {
             currentTimeVal = Number(val) || 0;
+            if (ringtoneAudioEl) {
+                try { ringtoneAudioEl.currentTime = currentTimeVal; } catch (_) {}
+            }
             if (currentTimeVal === 0 && !isPlaying) {
                 clearScheduledNodes();
             }
@@ -497,6 +554,7 @@ function createRingtonePlayer() {
         },
         set loop(val) {
             userLoop = !!val;
+            if (ringtoneAudioEl) ringtoneAudioEl.loop = !!val;
         },
         get isPlaying() {
             return isPlaying;
@@ -505,7 +563,7 @@ function createRingtonePlayer() {
             return currentToneType;
         },
         setToneType: function(type) {
-            if (['vortex_vip', 'classico', 'digital'].includes(type)) {
+            if (['antigo', 'vortex_vip', 'classico', 'digital'].includes(type)) {
                 currentToneType = type;
             }
         },
@@ -517,6 +575,11 @@ function createRingtonePlayer() {
             if (typeof currentProfile !== 'undefined' && currentProfile && currentProfile.soundEnabled === false) {
                 return Promise.resolve();
             }
+
+            if (customType) {
+                player.setToneType(customType);
+            }
+
             try {
                 const ctx = getAudioContext();
                 if (ctx && ctx.state === 'suspended') {
@@ -524,35 +587,57 @@ function createRingtonePlayer() {
                 }
             } catch (_) {}
 
-            if (customType) player.setToneType(customType);
-            else if (typeof currentProfile !== 'undefined' && currentProfile && currentProfile.ringtoneType) {
-                player.setToneType(currentProfile.ringtoneType);
-            }
-
             if (isPlaying) return Promise.resolve();
             isPlaying = true;
 
-            // Executar primeira cadência imediatamente
-            scheduleToneCadence(currentToneType);
-
-            // Se loop estiver ativo, agendar repetições periódicas
-            if (userLoop) {
-                if (loopTimer) clearInterval(loopTimer);
-                const intervalMs = getCadenceDuration(currentToneType);
-                loopTimer = setInterval(() => {
-                    if (!isPlaying) {
-                        clearInterval(loopTimer);
-                        loopTimer = null;
-                        return;
+            // Se for o Toque Antigo Original Clássico
+            if (currentToneType === 'antigo') {
+                const snd = getNativeAudio();
+                if (snd) {
+                    try {
+                        snd.currentTime = 0;
+                        snd.loop = userLoop;
+                        const p = snd.play();
+                        if (p && typeof p.then === 'function') {
+                            return p.catch(() => {
+                                // Fallback sintético se o navegador bloquear o elemento de áudio
+                                scheduleToneCadence('vortex_vip');
+                            });
+                        }
+                        return Promise.resolve();
+                    } catch (_) {
+                        scheduleToneCadence('vortex_vip');
                     }
-                    scheduleToneCadence(currentToneType);
-                }, intervalMs);
+                } else {
+                    scheduleToneCadence('vortex_vip');
+                }
+            } else {
+                // Timbres Sintetizados Web Audio API
+                scheduleToneCadence(currentToneType);
+                if (userLoop) {
+                    if (loopTimer) clearInterval(loopTimer);
+                    const intervalMs = getCadenceDuration(currentToneType);
+                    loopTimer = setInterval(() => {
+                        if (!isPlaying) {
+                            clearInterval(loopTimer);
+                            loopTimer = null;
+                            return;
+                        }
+                        scheduleToneCadence(currentToneType);
+                    }, intervalMs);
+                }
             }
 
             return Promise.resolve();
         },
         pause: function() {
             isPlaying = false;
+            if (ringtoneAudioEl) {
+                try {
+                    ringtoneAudioEl.pause();
+                    ringtoneAudioEl.currentTime = 0;
+                } catch (_) {}
+            }
             if (loopTimer) {
                 clearInterval(loopTimer);
                 loopTimer = null;
@@ -576,7 +661,22 @@ function createRingtonePlayer() {
                 }
             } catch (_) {}
 
-            scheduleToneCadence(tone);
+            if (tone === 'antigo') {
+                const snd = getNativeAudio();
+                if (snd) {
+                    try {
+                        snd.currentTime = 0;
+                        snd.loop = false;
+                        snd.play().catch(() => scheduleToneCadence('vortex_vip'));
+                    } catch (_) {
+                        scheduleToneCadence('vortex_vip');
+                    }
+                } else {
+                    scheduleToneCadence('vortex_vip');
+                }
+            } else {
+                scheduleToneCadence(tone);
+            }
 
             const durationMs = getCadenceDuration(tone);
             previewTimer = setTimeout(() => {
@@ -591,65 +691,64 @@ function createRingtonePlayer() {
     return player;
 }
 
-// Sons da aplicação sintetizados via Web Audio API (sem dependência externa de CDN e sem erros 403)
+// Sons da aplicação híbridos (Arquivos de alta fidelidade locais + fallback Web Audio API)
 function createAudioTonePlayer(type) {
     if (type === 'ringtone') {
         return createRingtonePlayer();
     }
+
+    const soundUrls = {
+        notification: '/sounds/notification.mp3',
+        reply: '/sounds/message-send.mp3',
+        unlock: '/sounds/unlock.mp3',
+        click: ''
+    };
+
+    let audioEl = null;
+    function getAudio() {
+        if (typeof window === 'undefined' || typeof window.Audio !== 'function' || !soundUrls[type]) return null;
+        if (!audioEl) {
+            try {
+                audioEl = new window.Audio(soundUrls[type]);
+                audioEl.preload = 'auto';
+            } catch (_) {}
+        }
+        return audioEl;
+    }
+
     return {
         currentTime: 0,
         loop: false,
         play: async function() {
             if (typeof window === 'undefined') return Promise.resolve();
-            try {
-                const AudioCtx = window.AudioContext || window.webkitAudioContext;
-                if (!AudioCtx) return Promise.resolve();
-                if (!window.__vortexAudioCtx) {
-                    window.__vortexAudioCtx = new AudioCtx();
-                }
-                const ctx = window.__vortexAudioCtx;
-                if (ctx.state === 'suspended') {
-                    await ctx.resume().catch(() => {});
-                }
-                const osc = ctx.createOscillator();
-                const gain = ctx.createGain();
-                osc.connect(gain);
-                gain.connect(ctx.destination);
-                const now = ctx.currentTime;
+            if (typeof currentProfile !== 'undefined' && currentProfile && currentProfile.soundEnabled === false) {
+                return Promise.resolve();
+            }
 
-                if (type === 'click') {
-                    osc.frequency.setValueAtTime(600, now);
-                    osc.frequency.exponentialRampToValueAtTime(300, now + 0.04);
-                    gain.gain.setValueAtTime(0.08, now);
-                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
-                    osc.start(now);
-                    osc.stop(now + 0.04);
-                } else if (type === 'notification') {
-                    osc.frequency.setValueAtTime(587.33, now);
-                    osc.frequency.setValueAtTime(880, now + 0.09);
-                    gain.gain.setValueAtTime(0.12, now);
-                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
-                    osc.start(now);
-                    osc.stop(now + 0.28);
-                } else if (type === 'unlock') {
-                    osc.frequency.setValueAtTime(523.25, now);
-                    osc.frequency.setValueAtTime(659.25, now + 0.08);
-                    gain.gain.setValueAtTime(0.1, now);
-                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
-                    osc.start(now);
-                    osc.stop(now + 0.22);
-                } else if (type === 'reply') {
-                    osc.frequency.setValueAtTime(440, now);
-                    osc.frequency.exponentialRampToValueAtTime(880, now + 0.09);
-                    gain.gain.setValueAtTime(0.1, now);
-                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
-                    osc.start(now);
-                    osc.stop(now + 0.15);
+            const snd = getAudio();
+            if (snd) {
+                try {
+                    snd.currentTime = 0;
+                    const p = snd.play();
+                    if (p && typeof p.then === 'function') {
+                        return p.catch(() => playSyntheticTone(type));
+                    }
+                    return Promise.resolve();
+                } catch (_) {
+                    return playSyntheticTone(type);
                 }
-            } catch (_) {}
-            return Promise.resolve();
+            }
+
+            return playSyntheticTone(type);
         },
-        pause: function() {}
+        pause: function() {
+            if (audioEl) {
+                try {
+                    audioEl.pause();
+                    audioEl.currentTime = 0;
+                } catch (_) {}
+            }
+        }
     };
 }
 
@@ -658,6 +757,179 @@ const notificationSound = createAudioTonePlayer('notification');
 const unlockSound = createAudioTonePlayer('unlock');
 const replySendSound = createAudioTonePlayer('reply');
 const ringtoneSound = createRingtonePlayer();
+
+// ===== SISTEMA DE NOTIFICAÇÕES PUSH NO CELULAR (PWA & NATIVO) =====
+let inAppPushBannerTimer = null;
+const lastKnownUnreadCountMap = new Map();
+
+export async function requestPushNotificationPermission() {
+    if (typeof window === 'undefined' || !('Notification' in window) || !window.Notification) {
+        showToast('Notificações', 'Seu navegador não suporta notificações nativas.', 'yellow');
+        updatePushSettingsUI('unsupported');
+        return 'unsupported';
+    }
+    try {
+        const permission = await window.Notification.requestPermission();
+        updatePushSettingsUI(permission);
+        if (permission === 'granted') {
+            showToast('Notificações Ativadas', 'Você receberá alertas de mensagens no celular! 🔔', 'green');
+            if (typeof localStorage !== 'undefined') {
+                localStorage.setItem('vortex_push_permission', 'granted');
+            }
+        } else if (permission === 'denied') {
+            showToast('Notificações Bloqueadas', 'Permissão bloqueada. Habilite nas configurações do navegador/celular.', 'red');
+        }
+        return permission;
+    } catch (e) {
+        console.warn('Erro ao solicitar permissão de notificações:', e);
+        return 'denied';
+    }
+}
+
+export function updatePushSettingsUI(permission) {
+    const statusLabel = document.getElementById('push-status-label');
+    const permBtn = document.getElementById('push-permission-btn');
+    const permText = document.getElementById('push-permission-text');
+    const currentPerm = permission || (typeof window !== 'undefined' && window.Notification ? window.Notification.permission : 'default');
+
+    if (currentPerm === 'granted') {
+        if (statusLabel) statusLabel.innerText = 'Ativado • Alertas ativos no celular';
+        if (permBtn) {
+            permBtn.classList.add('granted');
+            permBtn.title = 'Notificações push ativas';
+        }
+        if (permText) permText.innerText = 'Ativado 🔔';
+    } else if (currentPerm === 'denied') {
+        if (statusLabel) statusLabel.innerText = 'Bloqueado no navegador • Altere nas permissões';
+        if (permBtn) {
+            permBtn.classList.remove('granted');
+            permBtn.title = 'Notificações bloqueadas';
+        }
+        if (permText) permText.innerText = 'Bloqueado ⚠️';
+    } else {
+        if (statusLabel) statusLabel.innerText = 'Alertas de mensagens mesmo em segundo plano';
+        if (permBtn) {
+            permBtn.classList.remove('granted');
+            permBtn.title = 'Ativar notificações push no celular';
+        }
+        if (permText) permText.innerText = 'Ativar';
+    }
+}
+
+export function showMobilePushNotification({ title, body, icon, chatId, senderUid, avatar }) {
+    if (typeof currentProfile !== 'undefined' && currentProfile && currentProfile.soundEnabled === false) {
+        // Respeita modo silencioso
+    } else {
+        playSound(notificationSound);
+        if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+            try { navigator.vibrate([200, 100, 200]); } catch (_) {}
+        }
+    }
+
+    const notifTitle = title || 'VORTEX VIP ⚡';
+    const notifBody = body || 'Nova mensagem recebida';
+    const notifIcon = avatar || icon || '/icons/vortex-vip-192.png';
+
+    // 1. Notificação Nativa do Sistema Operacional (Mobile e Desktop)
+    if (typeof window !== 'undefined' && 'Notification' in window && window.Notification && window.Notification.permission === 'granted') {
+        if (typeof navigator !== 'undefined' && navigator.serviceWorker && navigator.serviceWorker.ready) {
+            navigator.serviceWorker.ready.then(registration => {
+                registration.showNotification(notifTitle, {
+                    body: notifBody,
+                    icon: notifIcon,
+                    badge: '/icons/vortex-vip-192.png',
+                    vibrate: [200, 100, 200],
+                    tag: `vortex-msg-${chatId || senderUid || 'general'}`,
+                    data: {
+                        chatId: chatId,
+                        senderUid: senderUid,
+                        url: '/'
+                    }
+                }).catch(() => {});
+            }).catch(() => {});
+        } else {
+            try {
+                const n = new window.Notification(notifTitle, {
+                    body: notifBody,
+                    icon: notifIcon,
+                    badge: '/icons/vortex-vip-192.png'
+                });
+                n.onclick = () => {
+                    window.focus();
+                    if (chatId || senderUid) openChatByChatIdOrUid(chatId, senderUid);
+                };
+            } catch (_) {}
+        }
+    }
+
+    // 2. Banner Push Flutuante VIP no Celular (In-App Push Banner)
+    const isCurrentChatActive = activeChatContact && (activeChatContact.uid === senderUid || activeChatContact.chatId === chatId) && document.getElementById('chat-window')?.classList.contains('active');
+    if (!isCurrentChatActive) {
+        showInAppPushBanner({ title: notifTitle, body: notifBody, avatar: notifIcon, chatId, senderUid });
+    }
+}
+
+export function showInAppPushBanner({ title, body, avatar, chatId, senderUid }) {
+    const banner = document.getElementById('mobile-push-banner');
+    if (!banner) return;
+    const titleEl = document.getElementById('mobile-push-title');
+    const bodyEl = document.getElementById('mobile-push-body');
+    const avatarEl = document.getElementById('mobile-push-avatar');
+
+    if (titleEl) titleEl.innerText = title || 'Nova Mensagem';
+    if (bodyEl) bodyEl.innerText = body || 'Mensagem recebida';
+    if (avatarEl) {
+        if (avatar && (avatar.startsWith('http') || avatar.startsWith('data:'))) {
+            avatarEl.style.backgroundImage = `url('${avatar}')`;
+        } else {
+            avatarEl.style.backgroundImage = '';
+        }
+    }
+
+    banner.style.display = 'block';
+    banner.classList.add('visible');
+    banner.setAttribute('aria-hidden', 'false');
+
+    banner.onclick = (e) => {
+        if (e.target && e.target.closest('#mobile-push-close')) {
+            dismissInAppPushBanner();
+            return;
+        }
+        dismissInAppPushBanner();
+        if (senderUid || chatId) {
+            openChatByChatIdOrUid(chatId, senderUid);
+        }
+    };
+
+    if (inAppPushBannerTimer) clearTimeout(inAppPushBannerTimer);
+    inAppPushBannerTimer = setTimeout(() => {
+        dismissInAppPushBanner();
+    }, 4500);
+}
+
+export function dismissInAppPushBanner() {
+    const banner = document.getElementById('mobile-push-banner');
+    if (!banner) return;
+    banner.classList.remove('visible');
+    setTimeout(() => {
+        if (!banner.classList.contains('visible')) {
+            banner.style.display = 'none';
+            banner.setAttribute('aria-hidden', 'true');
+        }
+    }, 350);
+}
+
+export function openChatByChatIdOrUid(chatId, senderUid) {
+    if (!senderUid && !chatId) return;
+    const targetUid = senderUid || chatId;
+    const contactCard = document.querySelector(`.chat-card[data-uid="${targetUid}"]`);
+    if (contactCard) {
+        contactCard.click();
+    } else {
+        const contact = { uid: targetUid, name: 'Contato VIP' };
+        if (typeof openChat === 'function') openChat(contact);
+    }
+}
 
 const mediaSizeLimits = {
     image: { bytes: 26214400, label: 'imagem' },
@@ -853,7 +1125,7 @@ onAuthStateChanged(auth, async (user) => {
                 ghostMode: false,
                 privacyMode: false,
                 soundEnabled: true,
-                ringtoneType: 'vortex_vip',
+                ringtoneType: 'antigo',
                 isVerified: isAdmin,
                 isVip: isAdmin,
                 online: true,
@@ -944,36 +1216,40 @@ export function listenToNotifications() {
         // 1. Notificações diretas para o usuário (ex: Selo VIP aprovado)
         const userQuery = query(collection(db, 'notifications'), where('toUid', '==', currentUser.uid), limit(25));
         notificationsUnsubscribe = onSnapshot(userQuery, (snapshot) => {
-            snapshot.docChanges().forEach(change => {
-                if (change.type === 'added') {
-                    const data = change.doc.data();
-                    const notifId = change.doc.id;
-                    if (!readNotifIds.has(notifId) && !deletedNotifIds.has(notifId)) {
-                        const toastColor = data.type === 'vip' ? 'green' : (data.type === 'alert' ? 'red' : 'blue');
-                        showToast(data.title || 'Notificação VIP', data.message || '', toastColor);
-                        playSound(notificationSound);
+            if (snapshot && typeof snapshot.docChanges === 'function') {
+                snapshot.docChanges().forEach(change => {
+                    if (change.type === 'added') {
+                        const data = change.doc.data();
+                        const notifId = change.doc.id;
+                        if (!readNotifIds.has(notifId) && !deletedNotifIds.has(notifId)) {
+                            const toastColor = data.type === 'vip' ? 'green' : (data.type === 'alert' ? 'red' : 'blue');
+                            showToast(data.title || 'Notificação VIP', data.message || '', toastColor);
+                            playSound(notificationSound);
+                        }
                     }
-                }
-            });
-            userNotifications = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                });
+            }
+            userNotifications = (snapshot && snapshot.docs) ? snapshot.docs.map(d => ({ id: d.id, ...d.data() })) : [];
             combineAndRenderNotifications();
         }, (error) => console.warn('Erro ao ouvir notificações do usuário:', error));
 
         // 2. Transmissões gerais da plataforma (toUid == 'all')
         const broadcastQuery = query(collection(db, 'notifications'), where('toUid', '==', 'all'), limit(25));
         broadcastUnsubscribe = onSnapshot(broadcastQuery, (snapshot) => {
-            snapshot.docChanges().forEach(change => {
-                if (change.type === 'added') {
-                    const data = change.doc.data();
-                    const notifId = change.doc.id;
-                    if (!readNotifIds.has(notifId) && !deletedNotifIds.has(notifId)) {
-                        const toastColor = data.type === 'alert' ? 'red' : 'blue';
-                        showToast(data.title || 'Aviso da Plataforma', data.message || '', toastColor);
-                        playSound(notificationSound);
+            if (snapshot && typeof snapshot.docChanges === 'function') {
+                snapshot.docChanges().forEach(change => {
+                    if (change.type === 'added') {
+                        const data = change.doc.data();
+                        const notifId = change.doc.id;
+                        if (!readNotifIds.has(notifId) && !deletedNotifIds.has(notifId)) {
+                            const toastColor = data.type === 'alert' ? 'red' : 'blue';
+                            showToast(data.title || 'Aviso da Plataforma', data.message || '', toastColor);
+                            playSound(notificationSound);
+                        }
                     }
-                }
-            });
-            broadcastNotifications = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                });
+            }
+            broadcastNotifications = (snapshot && snapshot.docs) ? snapshot.docs.map(d => ({ id: d.id, ...d.data() })) : [];
             combineAndRenderNotifications();
         }, (error) => console.warn('Erro ao ouvir avisos e alertas gerais:', error));
     } catch (err) {
@@ -2167,12 +2443,13 @@ function applyUserTheme() {
     const subscribeBtn = document.getElementById('subscribe-btn');
     if (soundTog) soundTog.checked = !!currentProfile.soundEnabled;
     if (ringtoneSelect) {
-        const savedTone = currentProfile.ringtoneType || (typeof localStorage !== 'undefined' ? localStorage.getItem('vortex_ringtone_type') : 'vortex_vip') || 'vortex_vip';
+        const savedTone = currentProfile.ringtoneType || (typeof localStorage !== 'undefined' ? localStorage.getItem('vortex_ringtone_type') : 'antigo') || 'antigo';
         ringtoneSelect.value = savedTone;
         if (typeof ringtoneSound !== 'undefined' && ringtoneSound.setToneType) {
             ringtoneSound.setToneType(savedTone);
         }
     }
+    updatePushSettingsUI();
     if (ghostTog) ghostTog.checked = !!currentProfile.ghostMode;
     if (privTog) privTog.checked = !!currentProfile.privacyMode;
     if (pinTog) pinTog.checked = !!currentProfile.pinEnabled;
@@ -4787,6 +5064,19 @@ function listenToContacts() {
                     card.dataset.unread = hasUnread ? 'true' : 'false';
                     card.dataset.unreadCount = String(unreadCount);
 
+                    const prevCount = lastKnownUnreadCountMap.get(contactUid);
+                    if (prevCount !== undefined && unreadCount > prevCount && !isChatCurrentlyOpen) {
+                        const snippet = lastData.text || (lastData.poll ? '📊 Enquete' : (lastData.pix ? '⚡ Chave Pix' : (lastData.type === 'video' ? '📹 Vídeo' : (lastData.type === 'image' ? '📷 Foto' : (lastData.type === 'audio' ? '🎵 Áudio' : 'Nova mensagem')))));
+                        showMobilePushNotification({
+                            title: contact.name || 'Contato VIP',
+                            body: snippet,
+                            avatar: contact.avatar,
+                            chatId: contactUid,
+                            senderUid: contactUid
+                        });
+                    }
+                    lastKnownUnreadCountMap.set(contactUid, unreadCount);
+
                     if (hasUnread) {
                         if (unreadBadge) {
                             unreadBadge.style.display = 'flex';
@@ -5014,6 +5304,21 @@ function listenToContacts() {
                 card.classList.toggle('unread', hasUnread);
                 card.dataset.unread = hasUnread ? 'true' : 'false';
                 card.dataset.unreadCount = String(unreadCount);
+
+                const prevGrpCount = lastKnownUnreadCountMap.get(groupId);
+                if (prevGrpCount !== undefined && unreadCount > prevGrpCount && !isGroupChatCurrentlyOpen) {
+                    const lastDoc = msgSnap.docs[0];
+                    const lastGrpMsg = lastDoc ? lastDoc.data() : {};
+                    const snippet = lastGrpMsg.text || (lastGrpMsg.poll ? '📊 Enquete' : (lastGrpMsg.pix ? '⚡ Chave Pix' : (lastGrpMsg.type === 'video' ? '📹 Vídeo' : (lastGrpMsg.type === 'image' ? '📷 Foto' : (lastGrpMsg.type === 'audio' ? '🎵 Áudio' : 'Nova mensagem')))));
+                    showMobilePushNotification({
+                        title: group.name || 'Grupo VIP',
+                        body: snippet,
+                        avatar: group.avatar,
+                        chatId: groupId,
+                        senderUid: groupId
+                    });
+                }
+                lastKnownUnreadCountMap.set(groupId, unreadCount);
 
                 if (hasUnread) {
                     if (unreadBadge) {
@@ -6896,6 +7201,9 @@ function loadRealtimeMessages() {
             const isFromOther = sender ? sender !== currentUser.uid : true;
             const isRead = (Array.isArray(message.readBy) && message.readBy.includes(currentUser.uid)) || (message.readByMap && !!message.readByMap[currentUser.uid]);
             if (isFromOther && !message.deletedForEveryone && !isRead) {
+                if (message.createdAt && (Date.now() - Number(message.createdAt) < 30000)) {
+                    playSound(notificationSound);
+                }
                 updateDoc(docSnap.ref, { 
                     readBy: arrayUnion(currentUser.uid),
                     [`readByMap.${currentUser.uid}`]: Date.now()
@@ -17175,7 +17483,7 @@ document.getElementById('ringtone-select')?.addEventListener('change', async (e)
 document.getElementById('ringtone-preview-btn')?.addEventListener('click', () => {
     const previewBtn = document.getElementById('ringtone-preview-btn');
     const selectEl = document.getElementById('ringtone-select');
-    const tone = selectEl ? selectEl.value : (currentProfile.ringtoneType || 'vortex_vip');
+    const tone = selectEl ? selectEl.value : (currentProfile.ringtoneType || 'antigo');
 
     if (isRingtonePreviewActive) {
         if (typeof ringtoneSound !== 'undefined') ringtoneSound.pause();
@@ -17195,6 +17503,10 @@ document.getElementById('ringtone-preview-btn')?.addEventListener('click', () =>
             });
         }
     }
+});
+
+document.getElementById('push-permission-btn')?.addEventListener('click', () => {
+    requestPushNotificationPermission();
 });
 
 document.getElementById('ghost-toggle')?.addEventListener('change', async (e) => {
@@ -19217,6 +19529,12 @@ if (typeof window !== 'undefined') {
     window.replySendSound = replySendSound;
     window.ringtoneSound = ringtoneSound;
     window.createRingtonePlayer = createRingtonePlayer;
+    window.requestPushNotificationPermission = requestPushNotificationPermission;
+    window.updatePushSettingsUI = updatePushSettingsUI;
+    window.showMobilePushNotification = showMobilePushNotification;
+    window.showInAppPushBanner = showInAppPushBanner;
+    window.dismissInAppPushBanner = dismissInAppPushBanner;
+    window.openChatByChatIdOrUid = openChatByChatIdOrUid;
 }
 
 if (typeof window !== 'undefined') {

@@ -4,20 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.113">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.113">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.113">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.113">
-    <link rel="stylesheet" href="style.css?v=1.0.113">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.114">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.114">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.114">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.114">
+    <link rel="stylesheet" href="style.css?v=1.0.114">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.113">
+    <link rel="manifest" href="manifest.json?v=1.0.114">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.113">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.113">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.114">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.114">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -1615,12 +1615,25 @@
                     </div>
                     <div class="ringtone-setting-controls">
                         <select id="ringtone-select" class="ringtone-select" title="Selecionar toque de chamada" aria-label="Selecionar toque de chamada">
+                            <option value="antigo" selected>Toque Original Antigo (Padrão) 🎵</option>
                             <option value="vortex_vip">VORTEX VIP ⚡</option>
                             <option value="classico">Telefone Clássico 📞</option>
                             <option value="digital">Digital Cyber 🔔</option>
                         </select>
                         <button type="button" id="ringtone-preview-btn" class="ringtone-preview-btn" title="Ouvir toque" aria-label="Ouvir toque">
                             <i data-lucide="play"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <span>Notificações Push no Celular</span>
+                        <small id="push-perm-status-label">Alertas de mensagens mesmo em segundo plano</small>
+                    </div>
+                    <div class="push-setting-controls">
+                        <button type="button" id="push-permission-btn" class="push-permission-btn" title="Ativar notificações push no celular" aria-label="Ativar notificações push no celular">
+                            <i data-lucide="bell"></i> <span id="push-permission-text">Ativar</span>
                         </button>
                     </div>
                 </div>
@@ -2748,10 +2761,27 @@
                     </button>
                 </div>
             </div>
+        <!-- Banner Push Flutuante no Celular (In-App Push Banner) -->
+        <div id="mobile-push-banner" class="mobile-push-banner" style="display:none;" aria-hidden="true">
+            <div class="mobile-push-card">
+                <div class="mobile-push-avatar-box">
+                    <div id="mobile-push-avatar" class="mobile-push-avatar"></div>
+                </div>
+                <div class="mobile-push-info">
+                    <div class="mobile-push-top">
+                        <span id="mobile-push-title" class="mobile-push-title">VORTEX VIP ⚡</span>
+                        <span class="mobile-push-tag">AGORA</span>
+                    </div>
+                    <p id="mobile-push-body" class="mobile-push-body">Nova mensagem recebida</p>
+                </div>
+                <button type="button" id="mobile-push-close" class="mobile-push-close" title="Fechar notificação" aria-label="Fechar notificação">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
         </div>
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.113" defer></script>
+    <script type="module" src="script.js?v=1.0.114" defer></script>
 </body>
 </html>

@@ -6222,7 +6222,7 @@ test('Toque de Chamada (Ringtone VIP): Sintetizador Web Audio API, cadência con
   assert.ok(ringtoneSound, 'ringtoneSound deve estar disponível globalmente');
   assert.strictEqual(ringtoneSound.loop, true, 'Ringtone deve ter loop = true por padrão');
   assert.strictEqual(ringtoneSound.isPlaying, false, 'Ringtone não deve iniciar tocando');
-  assert.strictEqual(ringtoneSound.getToneType(), 'vortex_vip', 'Tom padrão deve ser vortex_vip');
+  assert.strictEqual(ringtoneSound.getToneType(), 'antigo', 'Tom padrão deve ser antigo');
 
   // 2. Testar troca de timbres
   ringtoneSound.setToneType('classico');
@@ -6268,7 +6268,7 @@ test('Toque de Chamada (Ringtone VIP): Sintetizador Web Audio API, cadência con
   // Testar alteração do select e persistência
   const getProf = () => (win.getCurrentProfile ? win.getCurrentProfile() : (win.currentProfile || env.sandbox.currentProfile));
   const prof = getProf();
-  if (prof) prof.ringtoneType = 'vortex_vip';
+  if (prof) prof.ringtoneType = 'antigo';
   ringtoneSelect.value = 'digital';
   await ringtoneSelect.dispatchEvent('change', { target: ringtoneSelect });
   assert.strictEqual(getProf().ringtoneType, 'digital', 'currentProfile.ringtoneType deve ser atualizado para digital');
@@ -6299,6 +6299,140 @@ test('Toque de Chamada (Ringtone VIP): Sintetizador Web Audio API, cadência con
   }
   assert.strictEqual(ringtoneSound.isPlaying, false, 'Ao encerrar ou atender chamada, ringtoneSound deve pausar imediatamente');
   assert.strictEqual(ringtoneSound.currentTime, 0, 'currentTime deve ser resetado');
+});
+
+test('Sons VIP e Notificação Push no Celular: Toque de notificação, toque de envio, toque original antigo global restaurado e banner push flutuante', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+
+  // Mock Audio element for native audio playback
+  class MockAudioElement {
+    constructor(src) {
+      this.src = src;
+      this.currentTime = 0;
+      this.loop = false;
+      this.playedCount = 0;
+      this.isPaused = true;
+    }
+    play() {
+      this.isPaused = false;
+      this.playedCount++;
+      return Promise.resolve();
+    }
+    pause() {
+      this.isPaused = true;
+    }
+  }
+  win.Audio = MockAudioElement;
+
+  // Mock Notification API
+  let requestedNotificationPerm = false;
+  let createdNotifications = [];
+  class MockNotification {
+    constructor(title, options) {
+      this.title = title;
+      this.options = options;
+      createdNotifications.push({ title, options });
+    }
+    static get permission() {
+      return win._mockNotificationPermission || 'default';
+    }
+    static set permission(val) {
+      win._mockNotificationPermission = val;
+    }
+    static requestPermission() {
+      requestedNotificationPerm = true;
+      win._mockNotificationPermission = 'granted';
+      return Promise.resolve('granted');
+    }
+  }
+  win.Notification = MockNotification;
+
+  // Mock ServiceWorker registration
+  let showedSwNotifications = [];
+  win.navigator.serviceWorker = {
+    ready: Promise.resolve({
+      showNotification: (title, opts) => {
+        showedSwNotifications.push({ title, opts });
+        return Promise.resolve();
+      }
+    })
+  };
+
+  // 1. Integridade do DOM: Elementos de Notificações Push e Toques
+  const mobilePushBanner = env.elements['mobile-push-banner'];
+  const mobilePushTitle = env.elements['mobile-push-title'];
+  const mobilePushBody = env.elements['mobile-push-body'];
+  const mobilePushAvatar = env.elements['mobile-push-avatar'];
+  const mobilePushClose = env.elements['mobile-push-close'];
+  const pushPermissionBtn = env.elements['push-permission-btn'];
+  const pushPermStatusLabel = env.elements['push-perm-status-label'];
+  const ringtoneSelect = env.elements['ringtone-select'];
+
+  assert.ok(mobilePushBanner, 'Banner push flutuante (#mobile-push-banner) deve existir no HTML');
+  assert.ok(mobilePushTitle, 'Título do banner push (#mobile-push-title) deve existir no HTML');
+  assert.ok(mobilePushBody, 'Corpo do banner push (#mobile-push-body) deve existir no HTML');
+  assert.ok(mobilePushAvatar, 'Avatar do banner push (#mobile-push-avatar) deve existir no HTML');
+  assert.ok(mobilePushClose, 'Botão de fechar banner push (#mobile-push-close) deve existir no HTML');
+  assert.ok(pushPermissionBtn, 'Botão de permissão push (#push-permission-btn) deve existir nas configurações');
+  assert.ok(pushPermStatusLabel, 'Label de status push (#push-perm-status-label) deve existir nas configurações');
+  assert.ok(ringtoneSelect, 'Select de toques (#ringtone-select) deve existir');
+  assert.ok(htmlContent.includes('value="antigo"'), 'Select de toques deve conter a opção antigo (Toque Original Antigo)');
+
+  // 2. Toque Global Restaurado: 'antigo' é o padrão da plataforma
+  const ringtoneSound = win.ringtoneSound;
+  assert.ok(ringtoneSound, 'ringtoneSound deve existir globalmente');
+  assert.strictEqual(ringtoneSound.getToneType(), 'antigo', 'O toque padrão da aplicação deve ser antigo (restaurando o toque clássico original do app)');
+
+  // 3. Toque de Envio de Mensagem (replySendSound)
+  const replySendSound = win.replySendSound;
+  assert.ok(replySendSound, 'replySendSound deve existir globalmente');
+  assert.strictEqual(typeof replySendSound.play, 'function', 'replySendSound.play deve ser uma função');
+  await replySendSound.play();
+
+  // 4. Toque de Notificação de Mensagem (notificationSound)
+  const notificationSound = win.notificationSound;
+  assert.ok(notificationSound, 'notificationSound deve existir globalmente');
+  assert.strictEqual(typeof notificationSound.play, 'function', 'notificationSound.play deve ser uma função');
+  await notificationSound.play();
+
+  // 5. Permissão de Notificações Push no Celular
+  const updatePushSettingsUI = win.updatePushSettingsUI;
+  assert.ok(typeof updatePushSettingsUI === 'function', 'updatePushSettingsUI deve existir');
+  updatePushSettingsUI();
+  const pushPermText = env.elements['push-permission-text'];
+  assert.strictEqual(pushPermText?.innerText, 'Ativar', 'Quando permissão default, texto deve ser Ativar');
+
+  // Testar clique para solicitar permissão
+  const requestPushNotificationPermission = win.requestPushNotificationPermission;
+  assert.ok(typeof requestPushNotificationPermission === 'function', 'requestPushNotificationPermission deve existir');
+  await requestPushNotificationPermission();
+  assert.strictEqual(requestedNotificationPerm, true, 'requestPermission deve ser invocado ao clicar');
+  assert.ok(pushPermissionBtn.classList.contains('granted'), 'Botão deve receber classe granted após concessão');
+
+  // 6. Notificações Push Mobile: SW nativo + In-App Push Banner
+  const showMobilePushNotification = win.showMobilePushNotification;
+  assert.ok(typeof showMobilePushNotification === 'function', 'showMobilePushNotification deve existir');
+
+  showMobilePushNotification({
+    title: 'Ana VIP ⚡',
+    body: 'Olá, tudo bem?',
+    avatar: 'https://vortex.app/avatar.jpg',
+    chatId: 'chat_123',
+    senderUid: 'user_456'
+  });
+
+  // Verificar In-App Push Banner
+  assert.strictEqual(mobilePushBanner.style.display, 'block', 'Banner push deve ficar visível (display: block)');
+  assert.ok(mobilePushBanner.classList.contains('visible'), 'Banner push deve conter classe visible');
+  assert.strictEqual(mobilePushTitle.innerText, 'Ana VIP ⚡', 'Título do banner push deve refletir o remetente');
+  assert.strictEqual(mobilePushBody.innerText, 'Olá, tudo bem?', 'Mensagem do banner push deve refletir o texto recebido');
+
+  // Verificar fechamento do banner push
+  const dismissInAppPushBanner = win.dismissInAppPushBanner;
+  assert.ok(typeof dismissInAppPushBanner === 'function', 'dismissInAppPushBanner deve existir');
+  dismissInAppPushBanner();
+  assert.strictEqual(mobilePushBanner.classList.contains('visible'), false, 'Classe visible deve ser removida no dismiss');
 });
 
 

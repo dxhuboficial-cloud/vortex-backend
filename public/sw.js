@@ -2,13 +2,13 @@
    VORTEX VIP ⚡ - Service Worker Oficial PWA
    ========================================================================== */
 
-const CACHE_NAME = 'vortex-vip-v1.0.113';
+const CACHE_NAME = 'vortex-vip-v1.0.114';
 
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
-  '/style.css?v=1.0.113',
-  '/script.js?v=1.0.113',
+  '/style.css?v=1.0.114',
+  '/script.js?v=1.0.114',
   '/manifest.json',
   '/icons/vortex-vip-192.png',
   '/icons/vortex-vip-512.png',
@@ -18,7 +18,11 @@ const PRECACHE_ASSETS = [
   '/icons/icon-512.png',
   '/icons/icon-maskable-512.png',
   '/icons/icon.svg',
-  '/favicon.ico'
+  '/favicon.ico',
+  '/sounds/ringtone.mp3',
+  '/sounds/notification.mp3',
+  '/sounds/message-send.mp3',
+  '/sounds/unlock.mp3'
 ];
 
 // Instalação: Pré-carrega o App Shell no Cache e ativa imediatamente
@@ -152,20 +156,25 @@ self.addEventListener('push', (event) => {
   event.waitUntil(self.registration.showNotification(data.title || 'VORTEX VIP ⚡', options));
 });
 
-// Clique na Notificação PWA
+// Clique na Notificação PWA (Mobile e Desktop)
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const targetUrl = event.notification.data?.url || '/';
+  const targetChatId = event.notification.data?.chatId;
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
         if (client.url.includes(self.location.origin) && 'focus' in client) {
+          if (targetChatId) {
+            client.postMessage({ type: 'OPEN_CHAT', chatId: targetChatId });
+          }
           return client.focus();
         }
       }
       if (clients.openWindow) {
-        return clients.openWindow(targetUrl);
+        const fullUrl = targetChatId ? `/?chat=${targetChatId}` : targetUrl;
+        return clients.openWindow(fullUrl);
       }
     })
   );
