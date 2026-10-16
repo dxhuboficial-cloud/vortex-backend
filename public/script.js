@@ -7398,6 +7398,13 @@ export function formatSocialLink(network, val) {
     const clean = val.trim();
     if (!clean) return '';
 
+    if (typeof validateProfileLink === 'function') {
+        const vRes = validateProfileLink(network, clean);
+        if (vRes && vRes.isValid && vRes.formatted) {
+            return vRes.formatted;
+        }
+    }
+
     if (network === 'youtube') {
         if (clean.startsWith('http://') || clean.startsWith('https://')) return clean;
         if (clean.startsWith('youtube.com') || clean.startsWith('www.youtube.com')) return `https://${clean}`;
@@ -18267,6 +18274,13 @@ document.getElementById('profile-btn')?.addEventListener('click', () => {
     if (website3Inp) website3Inp.value = currentProfile.website3 || currentProfile.socialLinks?.website3 || '';
     if (website3TitleInp) website3TitleInp.value = currentProfile.website3Title || currentProfile.socialLinks?.website3Title || '';
 
+    if (typeof formatAndValidateProfileLink === 'function') {
+        profileSocialLinkFields.forEach(({ id, network }) => {
+            const el = document.getElementById(id);
+            if (el) formatAndValidateProfileLink(network, el);
+        });
+    }
+
     const prev = document.getElementById('profile-edit-avatar-preview');
     if (prev) {
         prev.style.backgroundImage = currentProfile.avatar ? `url('${currentProfile.avatar}')` : '';
@@ -18429,6 +18443,732 @@ profilePhoneInput?.addEventListener('paste', () => {
     }, 0);
 });
 
+export function applyInputValidationFeedback(input, res) {
+    if (!input) return;
+    if (res.isEmpty) {
+        input.classList.remove('input-valid', 'input-invalid');
+        input.style.borderColor = '';
+        input.style.boxShadow = '';
+        input.style.color = '';
+        if (typeof input.setCustomValidity === 'function') input.setCustomValidity('');
+    } else if (res.isValid) {
+        input.classList.add('input-valid');
+        input.classList.remove('input-invalid');
+        input.style.borderColor = '#34c759';
+        input.style.boxShadow = '0 0 10px rgba(52, 199, 89, 0.35)';
+        input.style.color = '#34c759';
+        if (typeof input.setCustomValidity === 'function') input.setCustomValidity('');
+    } else {
+        input.classList.add('input-invalid');
+        input.classList.remove('input-valid');
+        input.style.borderColor = '#ff3b30';
+        input.style.boxShadow = '0 0 10px rgba(255, 59, 48, 0.35)';
+        input.style.color = '#ff6b6b';
+        if (typeof input.setCustomValidity === 'function' && res.error) {
+            input.setCustomValidity(res.error);
+        }
+    }
+}
+
+export function safeParseURL(candidate) {
+    if (!candidate || typeof candidate !== 'string') return null;
+    try {
+        if (typeof URL === 'function' && URL.prototype && URL.prototype.constructor) {
+            return new URL(candidate);
+        }
+    } catch (e) {}
+
+    const m = candidate.match(/^(https?:\/\/)?([^\/\s:]+)(?::\d+)?(\/[^?#]*)?(\?[^#]*)?(#.*)?$/i);
+    if (!m) return null;
+    const rawProto = (m[1] || 'https:').toLowerCase().replace(/\/\/$/, '');
+    const protocol = rawProto.endsWith(':') ? rawProto : rawProto + ':';
+    const hostname = (m[2] || '').toLowerCase();
+    const pathname = m[3] || '/';
+    const search = m[4] || '';
+    return {
+        protocol,
+        hostname,
+        pathname,
+        search,
+        searchParams: {
+            has: (k) => new RegExp('[?&]' + k + '(?:=([^&#]*))?').test(search),
+            get: (k) => {
+                const match = search.match(new RegExp('[?&]' + k + '=([^&#]*)'));
+                return match ? decodeURIComponent(match[1]) : null;
+            }
+        },
+        href: candidate
+    };
+}
+
+export function validateProfileLink(network, rawVal) {
+    if (!rawVal || typeof rawVal !== 'string') {
+        return { isValid: false, isEmpty: true, formatted: '', error: '' };
+    }
+    const val = rawVal.trim();
+    if (!val) {
+        return { isValid: false, isEmpty: true, formatted: '', error: '' };
+    }
+
+    const lower = val.toLowerCase();
+
+    // Identificar se colocou link de outra rede social
+    const isOtherSocialNetwork = (urlStr, currentNet) => {
+        const patterns = {
+            youtube: [/youtube\.com/i, /youtu\.be/i],
+            instagram: [/instagram\.com/i],
+            tiktok: [/tiktok\.com/i],
+            facebook: [/facebook\.com/i, /fb\.com/i, /fb\.watch/i],
+            whatsapp: [/wa\.me/i, /whatsapp\.com/i]
+        };
+        for (const [net, regexes] of Object.entries(patterns)) {
+            if (net !== currentNet && regexes.some(r => r.test(urlStr))) {
+                return net;
+            }
+        }
+        return null;
+    };
+
+    if (network === 'youtube') {
+        const otherNet = isOtherSocialNetwork(val, 'youtube');
+        if (otherNet) {
+            const netNames = { instagram: 'Instagram', tiktok: 'TikTok', facebook: 'Facebook', whatsapp: 'WhatsApp' };
+            return {
+                isValid: false,
+                isEmpty: false,
+                formatted: val,
+                error: `Link incorreto! Você colocou um link do ${netNames[otherNet] || otherNet} no campo do YouTube.`
+            };
+        }
+
+        // Bloquear vídeos, shorts, lives, embeds
+        if (
+            lower.includes('/watch') ||
+            lower.includes('watch?v=') ||
+            lower.includes('youtu.be/') ||
+            lower.includes('/shorts/') ||
+            lower.includes('/embed/') ||
+            lower.includes('/live/')
+        ) {
+            return {
+                isValid: false,
+                isEmpty: false,
+                formatted: val,
+                error: 'Links de vídeos ou shorts do YouTube não são permitidos. Insira o link do seu canal ou perfil.'
+            };
+        }
+
+        // Handle direto: @canal
+        if (/^@[a-zA-Z0-9_.-]{3,30}$/.test(val)) {
+            return {
+                isValid: true,
+                isEmpty: false,
+                formatted: `https://www.youtube.com/${val}`,
+                error: ''
+            };
+        }
+
+        // Nome simples de canal
+        if (/^[a-zA-Z0-9_.-]{3,30}$/.test(val) && !val.includes('.') && !val.includes('/')) {
+            return {
+                isValid: true,
+                isEmpty: false,
+                formatted: `https://www.youtube.com/@${val}`,
+                error: ''
+            };
+        }
+
+        let urlCandidate = val;
+        if (!urlCandidate.startsWith('http://') && !urlCandidate.startsWith('https://')) {
+            if (urlCandidate.startsWith('youtube.com/') || urlCandidate.startsWith('www.youtube.com/')) {
+                urlCandidate = 'https://' + urlCandidate;
+            } else {
+                return {
+                    isValid: false,
+                    isEmpty: false,
+                    formatted: val,
+                    error: 'Link do YouTube inválido. Use https://youtube.com/@seucanal ou @seucanal.'
+                };
+            }
+        }
+
+        const url = safeParseURL(urlCandidate);
+        if (!url) {
+            return {
+                isValid: false,
+                isEmpty: false,
+                formatted: val,
+                error: 'URL do YouTube malformada.'
+            };
+        }
+        const host = url.hostname.toLowerCase();
+        if (host !== 'youtube.com' && host !== 'www.youtube.com' && host !== 'm.youtube.com') {
+            return {
+                isValid: false,
+                isEmpty: false,
+                formatted: val,
+                error: 'O link deve ser do canal do YouTube (youtube.com).'
+            };
+        }
+        const path = url.pathname.replace(/\/$/, '');
+        if (!path || path === '') {
+            return {
+                isValid: false,
+                isEmpty: false,
+                formatted: val,
+                error: 'Link incompleto. Insira o link completo do canal.'
+            };
+        }
+        if (
+            /^\/@[a-zA-Z0-9_.-]{3,30}$/.test(path) ||
+            /^\/(channel|c|user)\/[a-zA-Z0-9_.-]{2,}$/.test(path) ||
+            /^\/[a-zA-Z0-9_.-]{3,30}$/.test(path)
+        ) {
+            return {
+                isValid: true,
+                isEmpty: false,
+                formatted: `https://www.youtube.com${path}`,
+                error: ''
+            };
+        }
+        return {
+            isValid: false,
+            isEmpty: false,
+            formatted: val,
+            error: 'Link de canal do YouTube inválido.'
+        };
+    }
+
+    if (network === 'instagram') {
+        const otherNet = isOtherSocialNetwork(val, 'instagram');
+        if (otherNet) {
+            const netNames = { youtube: 'YouTube', tiktok: 'TikTok', facebook: 'Facebook', whatsapp: 'WhatsApp' };
+            return {
+                isValid: false,
+                isEmpty: false,
+                formatted: val,
+                error: `Link incorreto! Você colocou um link do ${netNames[otherNet] || otherNet} no campo do Instagram.`
+            };
+        }
+
+        // Bloquear posts, reels, stories, tv
+        if (
+            lower.includes('/p/') ||
+            lower.includes('/reel/') ||
+            lower.includes('/reels/') ||
+            lower.includes('/stories/') ||
+            lower.includes('/tv/')
+        ) {
+            return {
+                isValid: false,
+                isEmpty: false,
+                formatted: val,
+                error: 'Links de publicações, reels ou stories não são permitidos. Insira apenas o perfil do Instagram.'
+            };
+        }
+
+        // Handle: @usuario
+        if (/^@[a-zA-Z0-9._]{1,30}$/.test(val)) {
+            const user = val.slice(1);
+            return {
+                isValid: true,
+                isEmpty: false,
+                formatted: `https://www.instagram.com/${user}`,
+                error: ''
+            };
+        }
+
+        // Nome simples
+        if (/^[a-zA-Z0-9._]{1,30}$/.test(val) && !val.includes('/')) {
+            return {
+                isValid: true,
+                isEmpty: false,
+                formatted: `https://www.instagram.com/${val}`,
+                error: ''
+            };
+        }
+
+        let urlCandidate = val;
+        if (!urlCandidate.startsWith('http://') && !urlCandidate.startsWith('https://')) {
+            if (urlCandidate.startsWith('instagram.com/') || urlCandidate.startsWith('www.instagram.com/')) {
+                urlCandidate = 'https://' + urlCandidate;
+            } else {
+                return {
+                    isValid: false,
+                    isEmpty: false,
+                    formatted: val,
+                    error: 'Link do Instagram inválido. Use https://instagram.com/seuperfil ou @seuperfil.'
+                };
+            }
+        }
+
+        const url = safeParseURL(urlCandidate);
+        if (!url) {
+            return {
+                isValid: false,
+                isEmpty: false,
+                formatted: val,
+                error: 'URL do Instagram malformada.'
+            };
+        }
+        const host = url.hostname.toLowerCase();
+        if (host !== 'instagram.com' && host !== 'www.instagram.com') {
+            return {
+                isValid: false,
+                isEmpty: false,
+                formatted: val,
+                error: 'O link deve ser do Instagram (instagram.com).'
+            };
+        }
+        const pathParts = url.pathname.replace(/\/$/, '').split('/').filter(Boolean);
+        if (pathParts.length !== 1) {
+            return {
+                isValid: false,
+                isEmpty: false,
+                formatted: val,
+                error: 'Link inválido. Insira apenas o link do perfil (ex: https://instagram.com/seuperfil).'
+            };
+        }
+        const username = pathParts[0];
+        if (['p', 'reel', 'reels', 'stories', 'tv', 'explore', 'direct'].includes(username.toLowerCase())) {
+            return {
+                isValid: false,
+                isEmpty: false,
+                formatted: val,
+                error: 'Links de publicações ou seções do Instagram não são permitidos. Insira o perfil.'
+            };
+        }
+        if (/^[a-zA-Z0-9._]{1,30}$/.test(username)) {
+            return {
+                isValid: true,
+                isEmpty: false,
+                formatted: `https://www.instagram.com/${username}`,
+                error: ''
+            };
+        }
+        return {
+            isValid: false,
+            isEmpty: false,
+            formatted: val,
+            error: 'Nome de usuário do Instagram inválido.'
+        };
+    }
+
+    if (network === 'tiktok') {
+        const otherNet = isOtherSocialNetwork(val, 'tiktok');
+        if (otherNet) {
+            const netNames = { youtube: 'YouTube', instagram: 'Instagram', facebook: 'Facebook', whatsapp: 'WhatsApp' };
+            return {
+                isValid: false,
+                isEmpty: false,
+                formatted: val,
+                error: `Link incorreto! Você colocou um link do ${netNames[otherNet] || otherNet} no campo do TikTok.`
+            };
+        }
+
+        // Bloquear vídeos
+        if (
+            lower.includes('/video/') ||
+            lower.includes('vm.tiktok.com') ||
+            lower.includes('vt.tiktok.com')
+        ) {
+            return {
+                isValid: false,
+                isEmpty: false,
+                formatted: val,
+                error: 'Links de vídeos do TikTok não são permitidos. Insira apenas o perfil do TikTok.'
+            };
+        }
+
+        // Handle: @usuario
+        if (/^@[a-zA-Z0-9._]{1,30}$/.test(val)) {
+            return {
+                isValid: true,
+                isEmpty: false,
+                formatted: `https://www.tiktok.com/${val}`,
+                error: ''
+            };
+        }
+
+        // Nome simples
+        if (/^[a-zA-Z0-9._]{1,30}$/.test(val) && !val.includes('/')) {
+            return {
+                isValid: true,
+                isEmpty: false,
+                formatted: `https://www.tiktok.com/@${val}`,
+                error: ''
+            };
+        }
+
+        let urlCandidate = val;
+        if (!urlCandidate.startsWith('http://') && !urlCandidate.startsWith('https://')) {
+            if (urlCandidate.startsWith('tiktok.com/') || urlCandidate.startsWith('www.tiktok.com/')) {
+                urlCandidate = 'https://' + urlCandidate;
+            } else {
+                return {
+                    isValid: false,
+                    isEmpty: false,
+                    formatted: val,
+                    error: 'Link do TikTok inválido. Use https://tiktok.com/@seuperfil ou @seuperfil.'
+                };
+            }
+        }
+
+        const url = safeParseURL(urlCandidate);
+        if (!url) {
+            return {
+                isValid: false,
+                isEmpty: false,
+                formatted: val,
+                error: 'URL do TikTok malformada.'
+            };
+        }
+        const host = url.hostname.toLowerCase();
+        if (host !== 'tiktok.com' && host !== 'www.tiktok.com') {
+            return {
+                isValid: false,
+                isEmpty: false,
+                formatted: val,
+                error: 'O link deve ser do TikTok (tiktok.com).'
+            };
+        }
+        const pathParts = url.pathname.replace(/\/$/, '').split('/').filter(Boolean);
+        if (pathParts.length !== 1) {
+            return {
+                isValid: false,
+                isEmpty: false,
+                formatted: val,
+                error: 'Insira apenas o link do perfil do TikTok.'
+            };
+        }
+        let user = pathParts[0];
+        if (!user.startsWith('@')) user = '@' + user;
+        if (/^@[a-zA-Z0-9._]{1,30}$/.test(user)) {
+            return {
+                isValid: true,
+                isEmpty: false,
+                formatted: `https://www.tiktok.com/${user}`,
+                error: ''
+            };
+        }
+        return {
+            isValid: false,
+            isEmpty: false,
+            formatted: val,
+            error: 'Perfil do TikTok inválido.'
+        };
+    }
+
+    if (network === 'facebook') {
+        const otherNet = isOtherSocialNetwork(val, 'facebook');
+        if (otherNet) {
+            const netNames = { youtube: 'YouTube', instagram: 'Instagram', tiktok: 'TikTok', whatsapp: 'WhatsApp' };
+            return {
+                isValid: false,
+                isEmpty: false,
+                formatted: val,
+                error: `Link incorreto! Você colocou um link do ${netNames[otherNet] || otherNet} no campo do Facebook.`
+            };
+        }
+
+        // Bloquear vídeos, reels, posts, fotos, stories
+        if (
+            lower.includes('/watch') ||
+            lower.includes('/reel/') ||
+            lower.includes('/reels/') ||
+            lower.includes('/videos/') ||
+            lower.includes('/posts/') ||
+            lower.includes('/photo/') ||
+            lower.includes('/photos/') ||
+            lower.includes('/story.php')
+        ) {
+            return {
+                isValid: false,
+                isEmpty: false,
+                formatted: val,
+                error: 'Links de vídeos, reels ou publicações não são permitidos. Insira apenas a página ou perfil do Facebook.'
+            };
+        }
+
+        // Handle: @pagina
+        if (/^@[a-zA-Z0-9._-]{2,50}$/.test(val)) {
+            return {
+                isValid: true,
+                isEmpty: false,
+                formatted: `https://www.facebook.com/${val.slice(1)}`,
+                error: ''
+            };
+        }
+
+        // Nome simples
+        if (/^[a-zA-Z0-9._-]{2,50}$/.test(val) && !val.includes('/')) {
+            return {
+                isValid: true,
+                isEmpty: false,
+                formatted: `https://www.facebook.com/${val}`,
+                error: ''
+            };
+        }
+
+        let urlCandidate = val;
+        if (!urlCandidate.startsWith('http://') && !urlCandidate.startsWith('https://')) {
+            if (urlCandidate.startsWith('facebook.com/') || urlCandidate.startsWith('www.facebook.com/') || urlCandidate.startsWith('fb.com/')) {
+                urlCandidate = 'https://' + urlCandidate;
+            } else {
+                return {
+                    isValid: false,
+                    isEmpty: false,
+                    formatted: val,
+                    error: 'Link do Facebook inválido. Use https://facebook.com/suapagina ou @suapagina.'
+                };
+            }
+        }
+
+        const url = safeParseURL(urlCandidate);
+        if (!url) {
+            return {
+                isValid: false,
+                isEmpty: false,
+                formatted: val,
+                error: 'URL do Facebook malformada.'
+            };
+        }
+        const host = url.hostname.toLowerCase();
+        const validHosts = ['facebook.com', 'www.facebook.com', 'fb.com', 'www.fb.com', 'm.facebook.com'];
+        if (!validHosts.includes(host)) {
+            return {
+                isValid: false,
+                isEmpty: false,
+                formatted: val,
+                error: 'O link deve ser do Facebook (facebook.com).'
+            };
+        }
+        const path = url.pathname.replace(/\/$/, '');
+        if (!path || path === '') {
+            return {
+                isValid: false,
+                isEmpty: false,
+                formatted: val,
+                error: 'Link incompleto. Insira o link da página ou perfil do Facebook.'
+            };
+        }
+        const baseHost = (host === 'facebook.com') ? 'facebook.com' : 'www.facebook.com';
+        if (path.includes('profile.php')) {
+            if (url.searchParams && typeof url.searchParams.has === 'function' && url.searchParams.has('id')) {
+                return {
+                    isValid: true,
+                    isEmpty: false,
+                    formatted: `https://${baseHost}/profile.php?id=${url.searchParams.get('id')}`,
+                    error: ''
+                };
+            }
+            return {
+                isValid: false,
+                isEmpty: false,
+                formatted: val,
+                error: 'Link de perfil do Facebook inválido.'
+            };
+        }
+        if (/^\/(pages|pg)\/.+/.test(path) || /^\/[a-zA-Z0-9._-]{2,50}$/.test(path)) {
+            return {
+                isValid: true,
+                isEmpty: false,
+                formatted: `https://${baseHost}${path}`,
+                error: ''
+            };
+        }
+        return {
+            isValid: false,
+            isEmpty: false,
+            formatted: val,
+            error: 'Link do Facebook inválido.'
+        };
+    }
+
+    if (network === 'whatsapp') {
+        const otherNet = isOtherSocialNetwork(val, 'whatsapp');
+        if (otherNet) {
+            const netNames = { youtube: 'YouTube', instagram: 'Instagram', tiktok: 'TikTok', facebook: 'Facebook' };
+            return {
+                isValid: false,
+                isEmpty: false,
+                formatted: val,
+                error: `Link incorreto! Você colocou um link do ${netNames[otherNet] || otherNet} no campo do WhatsApp Comercial.`
+            };
+        }
+
+        // WhatsApp Business Short Link: wa.me/message/XXXXXX ou https://wa.me/message/XXXXXX
+        const bizMsgMatch = val.match(/wa\.me\/message\/([a-zA-Z0-9_-]{3,})/i) || val.match(/whatsapp\.com\/message\/([a-zA-Z0-9_-]{3,})/i);
+        if (bizMsgMatch) {
+            return {
+                isValid: true,
+                isEmpty: false,
+                formatted: `https://wa.me/message/${bizMsgMatch[1]}`,
+                error: ''
+            };
+        }
+
+        // Link padrão wa.me/55...
+        if (val.includes('wa.me/')) {
+            const digits = val.replace(/\D/g, '');
+            if (digits.length >= 10 && digits.length <= 15) {
+                return {
+                    isValid: true,
+                    isEmpty: false,
+                    formatted: `https://wa.me/${digits}`,
+                    error: ''
+                };
+            }
+            return {
+                isValid: false,
+                isEmpty: false,
+                formatted: val,
+                error: 'Link wa.me inválido. Certifique-se de incluir o código do país e DDD.'
+            };
+        }
+
+        // api.whatsapp.com
+        if (val.includes('api.whatsapp.com')) {
+            const digits = val.replace(/\D/g, '');
+            if (digits.length >= 10 && digits.length <= 15) {
+                return {
+                    isValid: true,
+                    isEmpty: false,
+                    formatted: `https://api.whatsapp.com/send?phone=${digits}`,
+                    error: ''
+                };
+            }
+        }
+
+        // Número direto com DDD
+        const digits = val.replace(/\D/g, '');
+        if (digits.length === 10 || digits.length === 11) {
+            const ddd = parseInt(digits.slice(0, 2), 10);
+            const VALID_DDDS = new Set([
+                11, 12, 13, 14, 15, 16, 17, 18, 19,
+                21, 22, 24, 27, 28,
+                31, 32, 33, 34, 35, 37, 38,
+                41, 42, 43, 44, 45, 46, 47, 48, 49,
+                51, 53, 54, 55,
+                61, 62, 63, 64, 65, 66, 67, 68, 69,
+                71, 73, 74, 75, 77, 79,
+                81, 82, 83, 84, 85, 86, 87, 88, 89,
+                91, 92, 93, 94, 95, 96, 97, 98, 99
+            ]);
+            if (VALID_DDDS.has(ddd)) {
+                return {
+                    isValid: true,
+                    isEmpty: false,
+                    formatted: `https://wa.me/55${digits}`,
+                    error: ''
+                };
+            }
+        } else if ((digits.length === 12 || digits.length === 13) && digits.startsWith('55')) {
+            return {
+                isValid: true,
+                isEmpty: false,
+                formatted: `https://wa.me/${digits}`,
+                error: ''
+            };
+        }
+
+        return {
+            isValid: false,
+            isEmpty: false,
+            formatted: val,
+            error: 'Link ou número do WhatsApp inválido. Insira wa.me/message/..., wa.me/55... ou número com DDD.'
+        };
+    }
+
+    if (network === 'website') {
+        // "Eas 3 opções de links faça ele aceitar só link com https://"
+        if (!lower.startsWith('https://')) {
+            return {
+                isValid: false,
+                isEmpty: false,
+                formatted: val,
+                error: 'O link do site deve começar obrigatoriamente com https://'
+            };
+        }
+
+        const url = safeParseURL(val);
+        if (!url) {
+            return {
+                isValid: false,
+                isEmpty: false,
+                formatted: val,
+                error: 'Link de site inválido. Formato esperado: https://seusite.com'
+            };
+        }
+        if (url.protocol !== 'https:') {
+            return {
+                isValid: false,
+                isEmpty: false,
+                formatted: val,
+                error: 'Apenas links seguros com https:// são aceitos.'
+            };
+        }
+        const host = url.hostname.toLowerCase();
+        if (!host.includes('.') || host.length < 4 || host.startsWith('.') || host.endsWith('.')) {
+            return {
+                isValid: false,
+                isEmpty: false,
+                formatted: val,
+                error: 'Endereço de domínio inválido. Ex: https://seusite.com'
+            };
+        }
+        const formattedHref = (url.href || val).replace(/\/$/, '');
+        return {
+            isValid: true,
+            isEmpty: false,
+            formatted: formattedHref,
+            error: ''
+        };
+    }
+
+    return { isValid: true, isEmpty: false, formatted: val, error: '' };
+}
+
+export function formatAndValidateProfileLink(network, input) {
+    if (!input) return { isValid: false, isEmpty: true };
+    const res = validateProfileLink(network, input.value);
+    applyInputValidationFeedback(input, res);
+    return res;
+}
+
+export const profileSocialLinkFields = [
+    { id: 'profile-youtube-input', network: 'youtube', label: 'YouTube', reqBiz: false },
+    { id: 'profile-instagram-input', network: 'instagram', label: 'Instagram', reqBiz: false },
+    { id: 'profile-tiktok-input', network: 'tiktok', label: 'TikTok', reqBiz: false },
+    { id: 'profile-whatsapp-input', network: 'whatsapp', label: 'WhatsApp Comercial', reqBiz: true },
+    { id: 'profile-facebook-input', network: 'facebook', label: 'Facebook', reqBiz: true },
+    { id: 'profile-website1-input', network: 'website', label: 'Site Oficial 1', reqBiz: true },
+    { id: 'profile-website2-input', network: 'website', label: 'Site Oficial 2', reqBiz: true },
+    { id: 'profile-website3-input', network: 'website', label: 'Site Oficial 3', reqBiz: true }
+];
+
+export function setupProfileLinkValidationListeners() {
+    profileSocialLinkFields.forEach(({ id, network }) => {
+        const input = document.getElementById(id);
+        if (!input) return;
+        const handler = () => {
+            formatAndValidateProfileLink(network, input);
+        };
+        input.addEventListener('input', handler);
+        input.addEventListener('blur', handler);
+        input.addEventListener('paste', () => {
+            setTimeout(handler, 0);
+        });
+    });
+
+    document.getElementById('profile-type-business')?.addEventListener('change', () => {
+        profileSocialLinkFields.filter(f => f.reqBiz).forEach(({ id, network }) => {
+            const input = document.getElementById(id);
+            if (input) formatAndValidateProfileLink(network, input);
+        });
+    });
+}
+
 document.getElementById('contact-profile-copy-phone-btn')?.addEventListener('click', () => {
     const phone = document.getElementById('contact-profile-phone-text')?.innerText?.trim();
     if (phone) {
@@ -18505,16 +19245,41 @@ document.getElementById('save-profile-btn')?.addEventListener('click', async () 
     const rawWebsite3 = document.getElementById('profile-website3-input')?.value.trim() || '';
     const rawWebsite3Title = document.getElementById('profile-website3-title-input')?.value.trim() || '';
 
-    const youtube = formatSocialLink('youtube', rawYoutube);
-    const instagram = formatSocialLink('instagram', rawInstagram);
-    const tiktok = formatSocialLink('tiktok', rawTiktok);
-    const whatsapp = formatSocialLink('whatsapp', rawWhatsapp);
-    const facebook = formatSocialLink('facebook', rawFacebook);
-    const website1 = formatWebsiteLink(rawWebsite1);
+    // Validação estrita de Redes Sociais e Sites Oficiais
+    let youtube = '';
+    let instagram = '';
+    let tiktok = '';
+    let whatsapp = '';
+    let facebook = '';
+    let website1 = '';
+    let website2 = '';
+    let website3 = '';
+
+    for (const item of profileSocialLinkFields) {
+        if (item.reqBiz && !isBusiness) continue;
+        const input = document.getElementById(item.id);
+        const rawVal = input?.value?.trim() || '';
+        if (rawVal) {
+            const vRes = validateProfileLink(item.network, rawVal);
+            applyInputValidationFeedback(input, vRes);
+            if (!vRes.isValid) {
+                showToast(`Link de ${item.label} inválido`, vRes.error || `Por favor, insira um link válido para ${item.label}.`, 'red');
+                input?.focus();
+                return;
+            }
+            if (item.network === 'youtube') youtube = vRes.formatted;
+            if (item.network === 'instagram') instagram = vRes.formatted;
+            if (item.network === 'tiktok') tiktok = vRes.formatted;
+            if (item.network === 'whatsapp') whatsapp = vRes.formatted;
+            if (item.network === 'facebook') facebook = vRes.formatted;
+            if (item.id === 'profile-website1-input') website1 = vRes.formatted;
+            if (item.id === 'profile-website2-input') website2 = vRes.formatted;
+            if (item.id === 'profile-website3-input') website3 = vRes.formatted;
+        }
+    }
+
     const website1Title = rawWebsite1Title.slice(0, 30);
-    const website2 = formatWebsiteLink(rawWebsite2);
     const website2Title = rawWebsite2Title.slice(0, 30);
-    const website3 = formatWebsiteLink(rawWebsite3);
     const website3Title = rawWebsite3Title.slice(0, 30);
 
     const usernameKey = normalizeUsername(usernameInputValue);
@@ -21815,6 +22580,11 @@ if (typeof window !== 'undefined') {
     window.initCatalog = initCatalog;
     window.validateBrazilianPhone = validateBrazilianPhone;
     window.formatAndValidateProfilePhone = formatAndValidateProfilePhone;
+    window.validateProfileLink = validateProfileLink;
+    window.applyInputValidationFeedback = applyInputValidationFeedback;
+    window.formatAndValidateProfileLink = formatAndValidateProfileLink;
+    window.profileSocialLinkFields = profileSocialLinkFields;
+    window.setupProfileLinkValidationListeners = setupProfileLinkValidationListeners;
 }
 
 if (typeof window !== 'undefined') {
@@ -21824,4 +22594,5 @@ if (typeof window !== 'undefined') {
     setupVipSettingsControls();
     setupEphemeralMessagesModal();
     initCatalog();
+    setupProfileLinkValidationListeners();
 }

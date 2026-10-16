@@ -2492,6 +2492,7 @@ header h1 span {
 }
 
 .setting-item input.input-valid,
+.profile-website-inputs input.input-valid,
 input.input-valid {
     border-color: #34c759 !important;
     box-shadow: 0 0 10px rgba(52, 199, 89, 0.35) !important;
@@ -2499,6 +2500,7 @@ input.input-valid {
 }
 
 .setting-item input.input-invalid,
+.profile-website-inputs input.input-invalid,
 input.input-invalid {
     border-color: #ff3b30 !important;
     box-shadow: 0 0 10px rgba(255, 59, 48, 0.35) !important;
@@ -2506,12 +2508,14 @@ input.input-invalid {
 }
 
 .setting-item input.input-valid:focus,
+.profile-website-inputs input.input-valid:focus,
 input.input-valid:focus {
     border-color: #34c759 !important;
     box-shadow: 0 0 12px rgba(52, 199, 89, 0.5) !important;
 }
 
 .setting-item input.input-invalid:focus,
+.profile-website-inputs input.input-invalid:focus,
 input.input-invalid:focus {
     border-color: #ff3b30 !important;
     box-shadow: 0 0 12px rgba(255, 59, 48, 0.5) !important;

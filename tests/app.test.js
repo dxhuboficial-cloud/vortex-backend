@@ -463,15 +463,22 @@ function createTestEnvironment() {
 
   class MockEvent { constructor(type, opts = {}) { this.type = type; Object.assign(this, opts); } }
 
+  class MockURL extends URL {
+    static createObjectURL(b) { return 'blob:mock/' + Math.random().toString(36).substring(2, 8); }
+    static revokeObjectURL() {}
+  }
+
   const sandbox = {
     console,
     fetch: globalThis.fetch,
+    URL: MockURL,
     document: mockDoc,
     history: mockHistory,
     Event: MockEvent,
     window: {
       Event: MockEvent,
       fetch: globalThis.fetch,
+      URL: MockURL,
       lucide: { createIcons: () => {} },
       history: mockHistory,
       addEventListener: (type, fn) => {
@@ -528,7 +535,6 @@ function createTestEnvironment() {
       Blob: typeof Blob !== 'undefined' ? Blob : globalThis.Blob,
       atob: typeof atob !== 'undefined' ? atob : globalThis.atob,
       btoa: typeof btoa !== 'undefined' ? btoa : globalThis.btoa,
-      URL: { createObjectURL: (b) => 'blob:mock/' + Math.random().toString(36).substring(2, 8), revokeObjectURL: () => {} },
       RTCPeerConnection: function() {},
       MediaStream: function() { this.getTracks = () => []; },
       MediaRecorder: function(stream) {
@@ -5756,9 +5762,9 @@ test('Conta Empresa no Editar Perfil VIP: Alternância Pessoal vs Empresa, valid
   env.elements['profile-instagram-input'].value = '@vortexstore';
   env.elements['profile-tiktok-input'].value = '@vortexstore';
   env.elements['profile-youtube-input'].value = '@vortexchannel';
-  env.elements['profile-website1-input'].value = 'vortexstore.com.br';
+  env.elements['profile-website1-input'].value = 'https://vortexstore.com.br';
   env.elements['profile-website1-title-input'].value = 'Loja Oficial';
-  env.elements['profile-website2-input'].value = 'http://loja.vortexstore.com.br';
+  env.elements['profile-website2-input'].value = 'https://loja.vortexstore.com.br';
   env.elements['profile-website2-title-input'].value = 'Cardápio Digital';
   env.elements['profile-website3-input'].value = 'https://catalogo.vortexstore.com.br';
   env.elements['profile-website3-title-input'].value = 'Catálogo 2026';
@@ -6894,6 +6900,168 @@ test('Validação e Feedback Visual no Campo de Telefone (DDD + Número)', () =>
   phoneInput.dispatchEvent({ type: 'keydown', key: 'Delete', preventDefault });
   assert.strictEqual(prevented, false, 'Delete deve ser permitido');
 });
+
+test('Validação de Links Sociais e Sites Oficiais (v1.0.123): regras de perfil, bloqueio de vídeos, detecção de link no campo errado, exigência de https:// nos sites e feedback verde/vermelho', async () => {
+  const env = createTestEnvironment();
+  const valLink = env.sandbox.validateProfileLink;
+  assert.ok(typeof valLink === 'function', 'validateProfileLink deve estar disponível');
+
+  // --- 1. YOUTUBE ---
+  // Válidos: Canal, handle, perfil
+  assert.strictEqual(valLink('youtube', '@meucanal').isValid, true);
+  assert.strictEqual(valLink('youtube', 'https://www.youtube.com/@meucanal').isValid, true);
+  assert.strictEqual(valLink('youtube', 'https://youtube.com/channel/UC1234567890123456789012').isValid, true);
+  assert.strictEqual(valLink('youtube', 'https://www.youtube.com/c/canalvip').isValid, true);
+
+  // Inválidos: Vídeos (/watch, youtu.be, /shorts, /embed, /live)
+  const ytWatch = valLink('youtube', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+  assert.strictEqual(ytWatch.isValid, false, 'Link de vídeo /watch deve ser rejeitado');
+  assert.ok(ytWatch.error.includes('vídeos'), 'Mensagem deve indicar bloqueio de vídeos');
+
+  const ytShort = valLink('youtube', 'https://youtu.be/dQw4w9WgXcQ');
+  assert.strictEqual(ytShort.isValid, false, 'Link de vídeo youtu.be deve ser rejeitado');
+
+  const ytShorts = valLink('youtube', 'https://www.youtube.com/shorts/AbCdEf123');
+  assert.strictEqual(ytShorts.isValid, false, 'Link de Shorts deve ser rejeitado');
+
+  // Inválido: Link incompleto (sem canal)
+  assert.strictEqual(valLink('youtube', 'https://www.youtube.co').isValid, false);
+  assert.strictEqual(valLink('youtube', 'https://youtube.com/').isValid, false);
+
+  // Inválido: Rede errada no campo YouTube
+  const ytWrongNet = valLink('youtube', 'https://www.instagram.com/meuperfil');
+  assert.strictEqual(ytWrongNet.isValid, false);
+  assert.ok(ytWrongNet.error.includes('INSTAGRAM') || ytWrongNet.error.includes('Instagram'), 'Deve alertar que colocou link do Instagram no campo do YouTube');
+
+  // --- 2. INSTAGRAM ---
+  // Válidos: perfil, handle
+  assert.strictEqual(valLink('instagram', '@meuperfil').isValid, true);
+  assert.strictEqual(valLink('instagram', 'https://www.instagram.com/meuperfil').isValid, true);
+  assert.strictEqual(valLink('instagram', 'https://instagram.com/loja_vip.oficial').isValid, true);
+
+  // Inválidos: posts, reels, stories, tv
+  const igPost = valLink('instagram', 'https://www.instagram.com/p/C0xyz123/');
+  assert.strictEqual(igPost.isValid, false, 'Publicação /p/ do Instagram deve ser rejeitada');
+
+  const igReel = valLink('instagram', 'https://www.instagram.com/reel/C0xyz123/');
+  assert.strictEqual(igReel.isValid, false, 'Reel do Instagram deve ser rejeitado');
+
+  const igStory = valLink('instagram', 'https://www.instagram.com/stories/user/12345/');
+  assert.strictEqual(igStory.isValid, false, 'Story do Instagram deve ser rejeitado');
+
+  // Inválido: Rede errada no campo Instagram
+  const igWrongNet = valLink('instagram', 'https://www.youtube.com/@meucanal');
+  assert.strictEqual(igWrongNet.isValid, false);
+  assert.ok(igWrongNet.error.includes('YOUTUBE') || igWrongNet.error.includes('YouTube'));
+
+  // --- 3. TIKTOK ---
+  // Válidos: perfil, handle
+  assert.strictEqual(valLink('tiktok', '@meutiktok').isValid, true);
+  assert.strictEqual(valLink('tiktok', 'https://www.tiktok.com/@meutiktok').isValid, true);
+
+  // Inválidos: vídeos (/video/, vm.tiktok)
+  const ttVideo = valLink('tiktok', 'https://www.tiktok.com/@user/video/7123456789012345678');
+  assert.strictEqual(ttVideo.isValid, false, 'Vídeo do TikTok deve ser rejeitado');
+
+  const ttShare = valLink('tiktok', 'https://vm.tiktok.com/ZM8abc123/');
+  assert.strictEqual(ttShare.isValid, false, 'Link curto vm.tiktok deve ser rejeitado');
+
+  // Inválido: Rede errada
+  assert.strictEqual(valLink('tiktok', 'https://facebook.com/loja').isValid, false);
+
+  // --- 4. FACEBOOK ---
+  // Válidos: página, perfil
+  assert.strictEqual(valLink('facebook', '@minhapagina').isValid, true);
+  assert.strictEqual(valLink('facebook', 'https://www.facebook.com/minhapagina').isValid, true);
+  assert.strictEqual(valLink('facebook', 'https://facebook.com/pages/Loja-Oficial/123456').isValid, true);
+  assert.strictEqual(valLink('facebook', 'https://www.facebook.com/profile.php?id=1000888999').isValid, true);
+
+  // Inválidos: vídeos (/watch, /reel, /videos, /posts, /photo)
+  assert.strictEqual(valLink('facebook', 'https://www.facebook.com/watch/?v=123456').isValid, false);
+  assert.strictEqual(valLink('facebook', 'https://www.facebook.com/reel/987654321').isValid, false);
+  assert.strictEqual(valLink('facebook', 'https://www.facebook.com/user/posts/12345').isValid, false);
+
+  // Inválido: Rede errada
+  assert.strictEqual(valLink('facebook', 'https://www.tiktok.com/@user').isValid, false);
+
+  // --- 5. WHATSAPP COMERCIAL ---
+  // Válidos: wa.me/message, wa.me/55, telefone com DDD
+  assert.strictEqual(valLink('whatsapp', 'https://wa.me/message/ABCDEF123456').isValid, true, 'wa.me/message deve ser válido');
+  assert.strictEqual(valLink('whatsapp', 'wa.me/message/XYZ789').isValid, true);
+  assert.strictEqual(valLink('whatsapp', 'https://wa.me/5511999998888').isValid, true);
+  assert.strictEqual(valLink('whatsapp', '(11) 99999-8888').isValid, true);
+  assert.strictEqual(valLink('whatsapp', '11988887777').isValid, true);
+
+  // Inválidos: Rede errada ou link quebrado
+  assert.strictEqual(valLink('whatsapp', 'https://www.youtube.com/@canal').isValid, false);
+  assert.strictEqual(valLink('whatsapp', 'https://wa.me/').isValid, false);
+
+  // --- 6. SITES OFICIAIS 1, 2, 3 (Aceitar SOMENTE https://) ---
+  // Válidos: https:// com domínio
+  assert.strictEqual(valLink('website', 'https://seusite.com').isValid, true);
+  assert.strictEqual(valLink('website', 'https://play-app-dx.web.app').isValid, true);
+  assert.strictEqual(valLink('website', 'https://loja.com.br/produtos').isValid, true);
+
+  // Inválidos: sem https:// ou com http://
+  const siteHttp = valLink('website', 'http://inseguro.com');
+  assert.strictEqual(siteHttp.isValid, false, 'http:// não deve ser aceito');
+  assert.ok(siteHttp.error.includes('https://'), 'Deve exigir https:// explicitamente');
+
+  const siteNoProto = valLink('website', 'vortexstore.com.br');
+  assert.strictEqual(siteNoProto.isValid, false, 'Domínio sem https:// deve ser rejeitado');
+  assert.ok(siteNoProto.error.includes('https://'));
+
+  const siteIncomplete = valLink('website', 'https://');
+  assert.strictEqual(siteIncomplete.isValid, false, 'https:// sem domínio deve ser rejeitado');
+
+  // Vazio: neutro
+  assert.strictEqual(valLink('website', '').isEmpty, true);
+
+  // --- 7. FEEDBACK VISUAL NO DOM (input, blur, paste) ---
+  const ytInput = env.elements['profile-youtube-input'];
+  const igInput = env.elements['profile-instagram-input'];
+  const web1Input = env.elements['profile-website1-input'];
+  assert.ok(ytInput && igInput && web1Input, 'Inputs de rede e site devem existir no DOM');
+
+  // Digitando link de vídeo no YouTube -> Vermelho
+  ytInput.value = 'https://www.youtube.com/watch?v=123';
+  ytInput.dispatchEvent({ type: 'input' });
+  assert.ok(ytInput.classList.contains('input-invalid'), 'YouTube com link de vídeo deve ter input-invalid');
+  assert.strictEqual(ytInput.style.borderColor, '#ff3b30');
+
+  // Corrigindo para canal no YouTube -> Verde
+  ytInput.value = 'https://www.youtube.com/@vortexvip';
+  ytInput.dispatchEvent({ type: 'input' });
+  assert.ok(ytInput.classList.contains('input-valid'), 'YouTube com canal deve ter input-valid');
+  assert.ok(!ytInput.classList.contains('input-invalid'));
+  assert.strictEqual(ytInput.style.borderColor, '#34c759');
+
+  // Instagram com link do YouTube (rede errada) -> Vermelho
+  igInput.value = 'https://www.youtube.com/@canal';
+  igInput.dispatchEvent({ type: 'input' });
+  assert.ok(igInput.classList.contains('input-invalid'), 'Instagram com link de outra rede deve ficar vermelho');
+  assert.strictEqual(igInput.style.borderColor, '#ff3b30');
+
+  // Site Oficial 1 sem https:// -> Vermelho
+  web1Input.value = 'minhaloja.com.br';
+  web1Input.dispatchEvent({ type: 'input' });
+  assert.ok(web1Input.classList.contains('input-invalid'), 'Site sem https deve ficar vermelho');
+  assert.strictEqual(web1Input.style.borderColor, '#ff3b30');
+
+  // Site Oficial 1 com https:// -> Verde
+  web1Input.value = 'https://minhaloja.com.br';
+  web1Input.dispatchEvent({ type: 'input' });
+  assert.ok(web1Input.classList.contains('input-valid'), 'Site com https deve ficar verde');
+  assert.strictEqual(web1Input.style.borderColor, '#34c759');
+
+  // Campo limpo -> Neutro
+  web1Input.value = '';
+  web1Input.dispatchEvent({ type: 'input' });
+  assert.ok(!web1Input.classList.contains('input-valid'));
+  assert.ok(!web1Input.classList.contains('input-invalid'));
+  assert.strictEqual(web1Input.style.borderColor, '');
+});
+
 
 
 
