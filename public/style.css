@@ -10820,3 +10820,65 @@ body.theme-rgb .ephemeral-save-btn {
     box-shadow: 0 6px 18px rgba(50, 188, 173, 0.5);
     transform: translateY(-1px);
 }
+
+/* ===== Toque de Chamada (Configurações VIP) ===== */
+.ringtone-setting-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ringtone-select {
+    background: #1e1e24;
+    color: var(--text-color, #fff);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    font-family: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.2s, background 0.2s;
+    max-width: 175px;
+}
+
+.ringtone-select:focus {
+    border-color: var(--accent-color, #fff01f);
+}
+
+.ringtone-preview-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: var(--accent-color, #fff01f);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.ringtone-preview-btn:hover {
+    background: rgba(255, 255, 255, 0.16);
+    transform: scale(1.06);
+}
+
+.ringtone-preview-btn:active {
+    transform: scale(0.95);
+}
+
+.ringtone-preview-btn i,
+.ringtone-preview-btn svg {
+    width: 16px;
+    height: 16px;
+    pointer-events: none;
+}
+
+body.total-black .ringtone-select {
+    background: #000;
+    border-color: rgba(255, 255, 255, 0.2);
+}

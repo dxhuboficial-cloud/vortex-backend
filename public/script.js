@@ -87,6 +87,7 @@ let currentProfile = {
     ghostMode: false,
     privacyMode: false,
     soundEnabled: true,
+    ringtoneType: 'vortex_vip',
     themeEnabled: true,
     isVerified: false,
     isVip: false,
@@ -360,8 +361,241 @@ function createActivityIndicatorHTML(activity = {}) {
     return `<span class="typing-indicator activity-indicator"><i data-lucide="${icons[kind] || 'loader'}"></i><span class="dot"></span><span class="dot"></span><span class="dot"></span> ${escapeHTML(activity.label || labels[kind] || 'processando')}</span>`;
 }
 
+// Motor de Toque de Chamada (Ringtone) Sintetizado via Web Audio API
+// Suporta reprodução contínua em loop, parada instantânea (pause), pré-visualização (preview) e múltiplos timbres VIP
+function createRingtonePlayer() {
+    let loopTimer = null;
+    let previewTimer = null;
+    let isPlaying = false;
+    let currentToneType = 'vortex_vip';
+    let userLoop = true;
+    let currentTimeVal = 0;
+    const activeOscillators = new Set();
+    const activeGainNodes = new Set();
+
+    function getAudioContext() {
+        if (typeof window === 'undefined') return null;
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return null;
+        if (!window.__vortexAudioCtx) {
+            window.__vortexAudioCtx = new AudioCtx();
+        }
+        return window.__vortexAudioCtx;
+    }
+
+    function clearScheduledNodes() {
+        activeOscillators.forEach(osc => {
+            try {
+                osc.stop();
+                osc.disconnect();
+            } catch (_) {}
+        });
+        activeOscillators.clear();
+
+        activeGainNodes.forEach(gain => {
+            try {
+                const ctx = window.__vortexAudioCtx;
+                if (ctx) {
+                    gain.gain.cancelScheduledValues(0);
+                    gain.gain.setValueAtTime(0, 0);
+                }
+                gain.disconnect();
+            } catch (_) {}
+        });
+        activeGainNodes.clear();
+    }
+
+    function playTone(ctx, freq, startTime, duration, maxGain = 0.12, type = 'sine') {
+        if (!ctx || !isPlaying) return;
+        try {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, startTime);
+
+            // Ataque suave para evitar cliques e decaimento exponencial musical
+            gain.gain.setValueAtTime(0.0001, startTime);
+            gain.gain.linearRampToValueAtTime(maxGain, startTime + 0.02);
+            gain.gain.setValueAtTime(maxGain, startTime + Math.max(0.03, duration - 0.06));
+            gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+
+            osc.start(startTime);
+            osc.stop(startTime + duration);
+
+            activeOscillators.add(osc);
+            activeGainNodes.add(gain);
+
+            osc.onended = () => {
+                activeOscillators.delete(osc);
+                activeGainNodes.delete(gain);
+                try { osc.disconnect(); } catch (_) {}
+                try { gain.disconnect(); } catch (_) {}
+            };
+        } catch (_) {}
+    }
+
+    function getCadenceDuration(toneType) {
+        if (toneType === 'classico') return 3400;
+        if (toneType === 'digital') return 3000;
+        return 3200; // 'vortex_vip'
+    }
+
+    function scheduleToneCadence(toneType) {
+        const ctx = getAudioContext();
+        if (!ctx) return;
+        const now = ctx.currentTime;
+        const selected = toneType || currentToneType;
+
+        if (selected === 'classico') {
+            // Frequência padrão dupla de telefonia (440Hz + 480Hz)
+            // Pulso 1: 0.45s
+            playTone(ctx, 440, now, 0.45, 0.11, 'sine');
+            playTone(ctx, 480, now, 0.45, 0.11, 'sine');
+
+            // Pulso 2: 0.45s após 0.20s de intervalo
+            playTone(ctx, 440, now + 0.65, 0.45, 0.11, 'sine');
+            playTone(ctx, 480, now + 0.65, 0.45, 0.11, 'sine');
+        } else if (selected === 'digital') {
+            // Melodia arpejada rítmica futurista (Marimba Digital)
+            playTone(ctx, 587.33, now, 0.12, 0.12, 'sine');       // D5
+            playTone(ctx, 739.99, now + 0.11, 0.12, 0.12, 'sine'); // F#5
+            playTone(ctx, 880.00, now + 0.22, 0.12, 0.12, 'sine'); // A5
+            playTone(ctx, 1174.66, now + 0.33, 0.36, 0.14, 'sine'); // D6
+
+            // Segunda fase de resposta
+            playTone(ctx, 880.00, now + 0.75, 0.12, 0.10, 'sine');
+            playTone(ctx, 1174.66, now + 0.88, 0.36, 0.13, 'sine');
+        } else {
+            // Padrão 'vortex_vip': Chime harmônico VIP cristalino e elegante
+            // Fase 1: Tríade C5-E5-G5
+            playTone(ctx, 523.25, now, 0.42, 0.10, 'sine');
+            playTone(ctx, 659.25, now, 0.42, 0.09, 'sine');
+            playTone(ctx, 783.99, now, 0.42, 0.08, 'sine');
+
+            // Fase 2: Tríade elevada E5-A5-C6
+            playTone(ctx, 659.25, now + 0.60, 0.48, 0.10, 'sine');
+            playTone(ctx, 880.00, now + 0.60, 0.48, 0.09, 'sine');
+            playTone(ctx, 1046.50, now + 0.60, 0.48, 0.08, 'sine');
+        }
+    }
+
+    const player = {
+        get currentTime() {
+            return currentTimeVal;
+        },
+        set currentTime(val) {
+            currentTimeVal = Number(val) || 0;
+            if (currentTimeVal === 0 && !isPlaying) {
+                clearScheduledNodes();
+            }
+        },
+        get loop() {
+            return userLoop;
+        },
+        set loop(val) {
+            userLoop = !!val;
+        },
+        get isPlaying() {
+            return isPlaying;
+        },
+        getToneType: function() {
+            return currentToneType;
+        },
+        setToneType: function(type) {
+            if (['vortex_vip', 'classico', 'digital'].includes(type)) {
+                currentToneType = type;
+            }
+        },
+        play: async function(customType) {
+            if (typeof window === 'undefined') {
+                isPlaying = true;
+                return Promise.resolve();
+            }
+            if (typeof currentProfile !== 'undefined' && currentProfile && currentProfile.soundEnabled === false) {
+                return Promise.resolve();
+            }
+            try {
+                const ctx = getAudioContext();
+                if (ctx && ctx.state === 'suspended') {
+                    await ctx.resume().catch(() => {});
+                }
+            } catch (_) {}
+
+            if (customType) player.setToneType(customType);
+            else if (typeof currentProfile !== 'undefined' && currentProfile && currentProfile.ringtoneType) {
+                player.setToneType(currentProfile.ringtoneType);
+            }
+
+            if (isPlaying) return Promise.resolve();
+            isPlaying = true;
+
+            // Executar primeira cadência imediatamente
+            scheduleToneCadence(currentToneType);
+
+            // Se loop estiver ativo, agendar repetições periódicas
+            if (userLoop) {
+                if (loopTimer) clearInterval(loopTimer);
+                const intervalMs = getCadenceDuration(currentToneType);
+                loopTimer = setInterval(() => {
+                    if (!isPlaying) {
+                        clearInterval(loopTimer);
+                        loopTimer = null;
+                        return;
+                    }
+                    scheduleToneCadence(currentToneType);
+                }, intervalMs);
+            }
+
+            return Promise.resolve();
+        },
+        pause: function() {
+            isPlaying = false;
+            if (loopTimer) {
+                clearInterval(loopTimer);
+                loopTimer = null;
+            }
+            if (previewTimer) {
+                clearTimeout(previewTimer);
+                previewTimer = null;
+            }
+            clearScheduledNodes();
+        },
+        preview: async function(customType, onEnd) {
+            player.pause();
+            const tone = customType || currentToneType;
+            player.setToneType(tone);
+            isPlaying = true;
+
+            try {
+                const ctx = getAudioContext();
+                if (ctx && ctx.state === 'suspended') {
+                    await ctx.resume().catch(() => {});
+                }
+            } catch (_) {}
+
+            scheduleToneCadence(tone);
+
+            const durationMs = getCadenceDuration(tone);
+            previewTimer = setTimeout(() => {
+                player.pause();
+                if (typeof onEnd === 'function') onEnd();
+            }, durationMs);
+
+            return Promise.resolve();
+        }
+    };
+
+    return player;
+}
+
 // Sons da aplicação sintetizados via Web Audio API (sem dependência externa de CDN e sem erros 403)
 function createAudioTonePlayer(type) {
+    if (type === 'ringtone') {
+        return createRingtonePlayer();
+    }
     return {
         currentTime: 0,
         loop: false,
@@ -411,13 +645,6 @@ function createAudioTonePlayer(type) {
                     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
                     osc.start(now);
                     osc.stop(now + 0.15);
-                } else if (type === 'ringtone') {
-                    osc.frequency.setValueAtTime(440, now);
-                    osc.frequency.setValueAtTime(480, now + 0.05);
-                    gain.gain.setValueAtTime(0.1, now);
-                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
-                    osc.start(now);
-                    osc.stop(now + 0.4);
                 }
             } catch (_) {}
             return Promise.resolve();
@@ -430,8 +657,7 @@ const clickSound = createAudioTonePlayer('click');
 const notificationSound = createAudioTonePlayer('notification');
 const unlockSound = createAudioTonePlayer('unlock');
 const replySendSound = createAudioTonePlayer('reply');
-const ringtoneSound = createAudioTonePlayer('ringtone');
-ringtoneSound.loop = true;
+const ringtoneSound = createRingtonePlayer();
 
 const mediaSizeLimits = {
     image: { bytes: 26214400, label: 'imagem' },
@@ -627,6 +853,7 @@ onAuthStateChanged(auth, async (user) => {
                 ghostMode: false,
                 privacyMode: false,
                 soundEnabled: true,
+                ringtoneType: 'vortex_vip',
                 isVerified: isAdmin,
                 isVip: isAdmin,
                 online: true,
@@ -1936,8 +2163,16 @@ function applyUserTheme() {
     const privTog = document.getElementById('privacy-toggle');
     const pinTog = document.getElementById('pin-toggle');
     const themeTog = document.getElementById('theme-toggle');
+    const ringtoneSelect = document.getElementById('ringtone-select');
     const subscribeBtn = document.getElementById('subscribe-btn');
     if (soundTog) soundTog.checked = !!currentProfile.soundEnabled;
+    if (ringtoneSelect) {
+        const savedTone = currentProfile.ringtoneType || (typeof localStorage !== 'undefined' ? localStorage.getItem('vortex_ringtone_type') : 'vortex_vip') || 'vortex_vip';
+        ringtoneSelect.value = savedTone;
+        if (typeof ringtoneSound !== 'undefined' && ringtoneSound.setToneType) {
+            ringtoneSound.setToneType(savedTone);
+        }
+    }
     if (ghostTog) ghostTog.checked = !!currentProfile.ghostMode;
     if (privTog) privTog.checked = !!currentProfile.privacyMode;
     if (pinTog) pinTog.checked = !!currentProfile.pinEnabled;
@@ -16915,6 +17150,53 @@ document.getElementById('sound-toggle')?.addEventListener('change', async (e) =>
     if (currentUser) await updateDoc(doc(db, 'users', currentUser.uid), { soundEnabled: e.target.checked }).catch(error => console.error('Erro ao salvar sons:', error));
 });
 
+let isRingtonePreviewActive = false;
+document.getElementById('ringtone-select')?.addEventListener('change', async (e) => {
+    const selectedTone = e.target.value;
+    currentProfile.ringtoneType = selectedTone;
+    if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('vortex_ringtone_type', selectedTone);
+    }
+    if (typeof ringtoneSound !== 'undefined' && ringtoneSound.setToneType) {
+        ringtoneSound.setToneType(selectedTone);
+    }
+    if (isRingtonePreviewActive) {
+        if (typeof ringtoneSound !== 'undefined') ringtoneSound.pause();
+        isRingtonePreviewActive = false;
+        const previewBtn = document.getElementById('ringtone-preview-btn');
+        if (previewBtn) previewBtn.innerHTML = '<i data-lucide="play"></i>';
+        if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+    }
+    if (currentUser) {
+        await updateDoc(doc(db, 'users', currentUser.uid), { ringtoneType: selectedTone }).catch(error => console.error('Erro ao salvar toque de chamada:', error));
+    }
+});
+
+document.getElementById('ringtone-preview-btn')?.addEventListener('click', () => {
+    const previewBtn = document.getElementById('ringtone-preview-btn');
+    const selectEl = document.getElementById('ringtone-select');
+    const tone = selectEl ? selectEl.value : (currentProfile.ringtoneType || 'vortex_vip');
+
+    if (isRingtonePreviewActive) {
+        if (typeof ringtoneSound !== 'undefined') ringtoneSound.pause();
+        isRingtonePreviewActive = false;
+        if (previewBtn) previewBtn.innerHTML = '<i data-lucide="play"></i>';
+        if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+    } else {
+        isRingtonePreviewActive = true;
+        if (previewBtn) previewBtn.innerHTML = '<i data-lucide="square"></i>';
+        if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+
+        if (typeof ringtoneSound !== 'undefined' && ringtoneSound.preview) {
+            ringtoneSound.preview(tone, () => {
+                isRingtonePreviewActive = false;
+                if (previewBtn) previewBtn.innerHTML = '<i data-lucide="play"></i>';
+                if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+            });
+        }
+    }
+});
+
 document.getElementById('ghost-toggle')?.addEventListener('change', async (e) => {
     currentProfile.ghostMode = e.target.checked;
     if (currentUser) {
@@ -18934,6 +19216,7 @@ if (typeof window !== 'undefined') {
     window.unlockSound = unlockSound;
     window.replySendSound = replySendSound;
     window.ringtoneSound = ringtoneSound;
+    window.createRingtonePlayer = createRingtonePlayer;
 }
 
 if (typeof window !== 'undefined') {

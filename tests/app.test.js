@@ -6162,6 +6162,145 @@ test('Correção de Vídeos no Chat: Envio com particionamento em lotes seguros 
   await clickSound.play();
 });
 
+test('Toque de Chamada (Ringtone VIP): Sintetizador Web Audio API, cadência contínua em loop, interrupção imediata (pause), suporte a múltiplos timbres (VIP, Clássico, Digital) e integração com Configurações e Chamadas', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+  const db = env.sandbox.db;
+
+  // 1. Mock de Web Audio API no ambiente de teste
+  const createdOscillators = [];
+  const createdGains = [];
+  class MockGainNode {
+    constructor() {
+      this.gain = {
+        value: 1,
+        setValueAtTime: (v, t) => { this.gain.value = v; },
+        linearRampToValueAtTime: (v, t) => { this.gain.value = v; },
+        exponentialRampToValueAtTime: (v, t) => { this.gain.value = v; },
+        cancelScheduledValues: () => {}
+      };
+      createdGains.push(this);
+    }
+    connect() {}
+    disconnect() {}
+  }
+
+  class MockOscillatorNode {
+    constructor() {
+      this.type = 'sine';
+      this.frequency = {
+        value: 440,
+        setValueAtTime: (v, t) => { this.frequency.value = v; },
+        exponentialRampToValueAtTime: () => {}
+      };
+      this.started = false;
+      this.stopped = false;
+      this.onended = null;
+      createdOscillators.push(this);
+    }
+    connect() {}
+    disconnect() {}
+    start() { this.started = true; }
+    stop() { this.stopped = true; if (this.onended) this.onended(); }
+  }
+
+  class MockAudioContext {
+    constructor() {
+      this.currentTime = 0;
+      this.state = 'running';
+      this.destination = {};
+    }
+    resume() { return Promise.resolve(); }
+    createOscillator() { return new MockOscillatorNode(); }
+    createGain() { return new MockGainNode(); }
+  }
+
+  win.AudioContext = MockAudioContext;
+  win.__vortexAudioCtx = new MockAudioContext();
+
+  const ringtoneSound = win.ringtoneSound;
+  assert.ok(ringtoneSound, 'ringtoneSound deve estar disponível globalmente');
+  assert.strictEqual(ringtoneSound.loop, true, 'Ringtone deve ter loop = true por padrão');
+  assert.strictEqual(ringtoneSound.isPlaying, false, 'Ringtone não deve iniciar tocando');
+  assert.strictEqual(ringtoneSound.getToneType(), 'vortex_vip', 'Tom padrão deve ser vortex_vip');
+
+  // 2. Testar troca de timbres
+  ringtoneSound.setToneType('classico');
+  assert.strictEqual(ringtoneSound.getToneType(), 'classico', 'Tom deve ser alterado para clássico');
+  ringtoneSound.setToneType('digital');
+  assert.strictEqual(ringtoneSound.getToneType(), 'digital', 'Tom deve ser alterado para digital');
+  ringtoneSound.setToneType('invalido_inexistente');
+  assert.strictEqual(ringtoneSound.getToneType(), 'digital', 'Tom inválido deve ser ignorado');
+  ringtoneSound.setToneType('vortex_vip');
+  assert.strictEqual(ringtoneSound.getToneType(), 'vortex_vip', 'Tom deve voltar para vortex_vip');
+
+  // 3. Testar reprodução contínua e agendamento de osciladores
+  createdOscillators.length = 0;
+  createdGains.length = 0;
+  await ringtoneSound.play();
+  assert.strictEqual(ringtoneSound.isPlaying, true, 'isPlaying deve ser true durante a reprodução');
+  assert.ok(createdOscillators.length >= 6, 'Para vortex_vip devem ser agendados pelo menos 6 osciladores para os dois acordes');
+  assert.ok(createdOscillators.every(o => o.started), 'Todos os osciladores criados devem ter recebido comando start');
+
+  // 4. Testar interrupção imediata (pause) e reset (currentTime = 0)
+  ringtoneSound.pause();
+  assert.strictEqual(ringtoneSound.isPlaying, false, 'isPlaying deve ser false após pause()');
+  assert.ok(createdOscillators.some(o => o.stopped), 'Osciladores devem ser parados no pause()');
+  ringtoneSound.currentTime = 0;
+  assert.strictEqual(ringtoneSound.currentTime, 0, 'currentTime deve ser 0');
+
+  // 5. Testar modo preview
+  createdOscillators.length = 0;
+  let previewEnded = false;
+  await ringtoneSound.preview('classico', () => { previewEnded = true; });
+  assert.strictEqual(ringtoneSound.isPlaying, true, 'Preview deve colocar ringtoneSound em execução');
+  assert.strictEqual(ringtoneSound.getToneType(), 'classico', 'Preview deve configurar o tom escolhido');
+  assert.ok(createdOscillators.length >= 4, 'Tom clássico deve agendar pelo menos 4 osciladores (2 pulsos com frequências duplas 440+480)');
+  ringtoneSound.pause();
+  assert.strictEqual(ringtoneSound.isPlaying, false, 'Pause deve interromper o preview imediatamente');
+
+  // 6. Testar elementos de Configurações no DOM
+  const ringtoneSelect = env.elements['ringtone-select'];
+  const ringtonePreviewBtn = env.elements['ringtone-preview-btn'];
+  assert.ok(ringtoneSelect, 'Select de toque de chamada deve existir no DOM de Configurações');
+  assert.ok(ringtonePreviewBtn, 'Botão de preview de toque deve existir no DOM de Configurações');
+
+  // Testar alteração do select e persistência
+  const getProf = () => (win.getCurrentProfile ? win.getCurrentProfile() : (win.currentProfile || env.sandbox.currentProfile));
+  const prof = getProf();
+  if (prof) prof.ringtoneType = 'vortex_vip';
+  ringtoneSelect.value = 'digital';
+  await ringtoneSelect.dispatchEvent('change', { target: ringtoneSelect });
+  assert.strictEqual(getProf().ringtoneType, 'digital', 'currentProfile.ringtoneType deve ser atualizado para digital');
+  assert.strictEqual(ringtoneSound.getToneType(), 'digital', 'ringtoneSound deve receber o novo tom selecionado');
+
+  // Testar clique no botão de preview
+  await ringtonePreviewBtn.dispatchEvent('click', {});
+  assert.strictEqual(ringtoneSound.isPlaying, true, 'Clique no botão de preview deve iniciar reprodução');
+  assert.ok(ringtonePreviewBtn.innerHTML.includes('square'), 'Ícone do botão de preview deve mudar para parar (square)');
+
+  // Clique novamente para parar o preview
+  await ringtonePreviewBtn.dispatchEvent('click', {});
+  assert.strictEqual(ringtoneSound.isPlaying, false, 'Segundo clique no preview deve pausar reprodução');
+  assert.ok(ringtonePreviewBtn.innerHTML.includes('play'), 'Ícone do botão deve voltar para play');
+
+  // 7. Testar ciclo de chamada: Atendimento e Encerramento com parada de toque
+  ringtoneSound.currentTime = 0;
+  await ringtoneSound.play();
+  assert.strictEqual(ringtoneSound.isPlaying, true, 'Ao chamar, ringtone deve estar ativo');
+
+  // Simular encerramento de chamada (endCall)
+  const endCall = win.endCall;
+  if (typeof endCall === 'function') {
+    await endCall();
+  } else {
+    ringtoneSound.pause();
+    ringtoneSound.currentTime = 0;
+  }
+  assert.strictEqual(ringtoneSound.isPlaying, false, 'Ao encerrar ou atender chamada, ringtoneSound deve pausar imediatamente');
+  assert.strictEqual(ringtoneSound.currentTime, 0, 'currentTime deve ser resetado');
+});
+
 
 
 
