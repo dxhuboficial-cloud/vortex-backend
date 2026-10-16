@@ -3246,6 +3246,9 @@ export function switchCatalogTab(tab) {
     if (window.lucide) lucide.createIcons();
 }
 
+let allBusinessStoresCache = [];
+let activeStoresSearchQuery = '';
+
 // Carregar Lista de Lojas (Contas Business)
 export async function loadBusinessStores() {
     const container = document.getElementById('catalog-stores-list');
@@ -3271,69 +3274,103 @@ export async function loadBusinessStores() {
             }
         });
 
-        if (stores.length === 0) {
-            container.innerHTML = `
-                <div class="catalog-empty">
-                    <i data-lucide="store"></i>
-                    <p>Nenhuma loja cadastrada no momento.</p>
-                    <small>Seja a primeira conta a criar uma loja virtual no VORTEX!</small>
-                </div>
-            `;
-            if (window.lucide) lucide.createIcons();
-            return;
-        }
-
-        container.innerHTML = stores.map(store => {
-            const avatar = store.avatar
-                ? `<img src="${store.avatar}" alt="${escapeHTML(store.name)}" class="catalog-store-avatar">`
-                : `<div class="catalog-store-avatar-initial">${(store.name || 'L')[0].toUpperCase()}</div>`;
-            const isMe = currentUser && currentUser.uid === store.uid;
-            const bio = store.status || store.bio || 'Loja Oficial VORTEX ⚡';
-            return `
-                <div class="catalog-store-card" data-uid="${store.uid}">
-                    <div class="catalog-store-main-row">
-                        ${avatar}
-                        <div class="catalog-store-info-col">
-                            <div class="catalog-store-name-row">
-                                <strong class="catalog-store-name" title="${escapeHTML(store.name)}">${escapeHTML(store.name)}</strong>
-                            </div>
-                            <div class="catalog-store-meta-row">
-                                <span class="catalog-business-badge"><i data-lucide="badge-check"></i> Empresa</span>
-                                ${store.pixKey ? `<span class="catalog-store-pix"><i data-lucide="qr-code"></i> Aceita Pix</span>` : ''}
-                            </div>
-                            <p class="catalog-store-bio">${escapeHTML(bio)}</p>
-                        </div>
-                    </div>
-                    <button type="button" class="catalog-primary-btn catalog-open-store-btn" data-uid="${store.uid}">
-                        <span>${isMe ? 'Minha loja' : 'Visitar loja'}</span>
-                        <i data-lucide="chevron-right"></i>
-                    </button>
-                </div>
-            `;
-        }).join('');
-
-        if (window.lucide) lucide.createIcons();
-
-        container.querySelectorAll('.catalog-store-card').forEach(el => {
-            el.onclick = () => {
-                const uid = el.dataset.uid;
-                const s = stores.find(x => x.uid === uid);
-                openStorefront(uid, s || {});
-            };
-        });
-
-        container.querySelectorAll('.catalog-open-store-btn').forEach(btn => {
-            btn.onclick = (e) => {
-                e.stopPropagation();
-                const uid = btn.dataset.uid;
-                const s = stores.find(x => x.uid === uid);
-                openStorefront(uid, s || {});
-            };
-        });
+        allBusinessStoresCache = stores;
+        renderBusinessStores();
     } catch (err) {
         console.error('[VORTEX CATALOG] Erro ao carregar lojas:', err);
         container.innerHTML = `<div class="catalog-empty"><p>Não foi possível carregar as lojas.</p></div>`;
     }
+}
+
+// Renderizar Lista de Lojas com suporte a busca em tempo real
+export function renderBusinessStores() {
+    const container = document.getElementById('catalog-stores-list');
+    if (!container) return;
+
+    let stores = allBusinessStoresCache || [];
+
+    if (activeStoresSearchQuery) {
+        const q = activeStoresSearchQuery.toLowerCase();
+        stores = stores.filter(s => {
+            const name = (s.name || '').toLowerCase();
+            const bio = (s.status || s.bio || '').toLowerCase();
+            const username = (s.username || '').toLowerCase();
+            const pix = (s.pixKey || '').toLowerCase();
+            return name.includes(q) || bio.includes(q) || username.includes(q) || pix.includes(q);
+        });
+    }
+
+    if (allBusinessStoresCache.length === 0) {
+        container.innerHTML = `
+            <div class="catalog-empty">
+                <i data-lucide="store"></i>
+                <p>Nenhuma loja cadastrada no momento.</p>
+                <small>Seja a primeira conta a criar uma loja virtual no VORTEX!</small>
+            </div>
+        `;
+        if (window.lucide) lucide.createIcons();
+        return;
+    }
+
+    if (stores.length === 0) {
+        container.innerHTML = `
+            <div class="catalog-empty">
+                <i data-lucide="search-x"></i>
+                <p>Nenhuma loja encontrada</p>
+                <small>Nenhuma loja corresponde a "${escapeHTML(activeStoresSearchQuery)}". Tente outro nome ou termo.</small>
+            </div>
+        `;
+        if (window.lucide) lucide.createIcons();
+        return;
+    }
+
+    container.innerHTML = stores.map(store => {
+        const avatar = store.avatar
+            ? `<img src="${store.avatar}" alt="${escapeHTML(store.name)}" class="catalog-store-avatar">`
+            : `<div class="catalog-store-avatar-initial">${(store.name || 'L')[0].toUpperCase()}</div>`;
+        const isMe = currentUser && currentUser.uid === store.uid;
+        const bio = store.status || store.bio || 'Loja Oficial VORTEX ⚡';
+        return `
+            <div class="catalog-store-card" data-uid="${store.uid}">
+                <div class="catalog-store-main-row">
+                    ${avatar}
+                    <div class="catalog-store-info-col">
+                        <div class="catalog-store-name-row">
+                            <strong class="catalog-store-name" title="${escapeHTML(store.name)}">${escapeHTML(store.name)}</strong>
+                        </div>
+                        <div class="catalog-store-meta-row">
+                            <span class="catalog-business-badge"><i data-lucide="badge-check"></i> Empresa</span>
+                            ${store.pixKey ? `<span class="catalog-store-pix"><i data-lucide="qr-code"></i> Aceita Pix</span>` : ''}
+                        </div>
+                        <p class="catalog-store-bio">${escapeHTML(bio)}</p>
+                    </div>
+                </div>
+                <button type="button" class="catalog-primary-btn catalog-open-store-btn" data-uid="${store.uid}">
+                    <span>${isMe ? 'Minha loja' : 'Visitar loja'}</span>
+                    <i data-lucide="chevron-right"></i>
+                </button>
+            </div>
+        `;
+    }).join('');
+
+    if (window.lucide) lucide.createIcons();
+
+    container.querySelectorAll('.catalog-store-card').forEach(el => {
+        el.onclick = () => {
+            const uid = el.dataset.uid;
+            const s = allBusinessStoresCache.find(x => x.uid === uid);
+            openStorefront(uid, s || {});
+        };
+    });
+
+    container.querySelectorAll('.catalog-open-store-btn').forEach(btn => {
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            const uid = btn.dataset.uid;
+            const s = allBusinessStoresCache.find(x => x.uid === uid);
+            openStorefront(uid, s || {});
+        };
+    });
 }
 
 // Abrir Vitrine de uma Loja
@@ -4503,6 +4540,15 @@ export function initCatalog() {
         playSound(clickSound);
         switchCatalogTab('stores');
     });
+
+    // Campo de busca de lojas
+    const storesSearchInp = document.getElementById('catalog-stores-search-input');
+    if (storesSearchInp) {
+        storesSearchInp.addEventListener('input', (e) => {
+            activeStoresSearchQuery = e.target.value.trim();
+            renderBusinessStores();
+        });
+    }
 
     // Campo de busca na vitrine
     const searchInp = document.getElementById('catalog-search-input');
@@ -21528,6 +21574,10 @@ if (typeof window !== 'undefined') {
     window.closeCatalogOverlay = closeCatalogOverlay;
     window.switchCatalogTab = switchCatalogTab;
     window.loadBusinessStores = loadBusinessStores;
+    window.renderBusinessStores = renderBusinessStores;
+    window.setBusinessStoresCache = (stores) => { allBusinessStoresCache = stores; };
+    window.setStoresSearchQuery = (q) => { activeStoresSearchQuery = q; };
+    window.getAllBusinessStoresCache = () => allBusinessStoresCache;
     window.openStorefront = openStorefront;
     window.loadSellerProducts = loadSellerProducts;
     window.loadSellerCategories = loadSellerCategories;

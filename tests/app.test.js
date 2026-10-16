@@ -6451,6 +6451,7 @@ test('Catálogo de Produtos & Loja Online: CRUD de produtos, categorias, carrinh
     'catalog-tab-orders',
     'catalog-tab-purchases',
     'catalog-view-stores',
+    'catalog-stores-search-input',
     'catalog-view-storefront',
     'catalog-view-mine',
     'catalog-view-orders',
@@ -6468,6 +6469,44 @@ test('Catálogo de Produtos & Loja Online: CRUD de produtos, categorias, carrinh
 
   for (const id of requiredCatalogIds) {
     assert.ok(env.elements[id], `Elemento #${id} deve existir no DOM`);
+  }
+
+  // 1b. Busca de Lojas no Catálogo (Filtro por nome, bio, pix ou username)
+  const renderBusinessStores = win.renderBusinessStores;
+  const setBusinessStoresCache = win.setBusinessStoresCache;
+  const setStoresSearchQuery = win.setStoresSearchQuery;
+
+  if (setBusinessStoresCache && renderBusinessStores) {
+    setBusinessStoresCache([
+      { uid: 'store_1', name: 'Loja Tech VIP ⚡', status: 'Eletrônicos e acessórios', pixKey: 'tech@pix.com' },
+      { uid: 'store_2', name: 'Moda Urbana VIP', status: 'Roupas e calçados', pixKey: 'moda@pix.com' }
+    ]);
+
+    // Sem filtro -> exibe ambas as lojas
+    setStoresSearchQuery('');
+    renderBusinessStores();
+    let storesListHTML = env.elements['catalog-stores-list'].innerHTML;
+    assert.ok(storesListHTML.includes('Loja Tech VIP ⚡'), 'Deve renderizar Loja Tech VIP');
+    assert.ok(storesListHTML.includes('Moda Urbana VIP'), 'Deve renderizar Moda Urbana VIP');
+
+    // Filtro por "tech" -> exibe apenas Loja Tech
+    setStoresSearchQuery('tech');
+    renderBusinessStores();
+    storesListHTML = env.elements['catalog-stores-list'].innerHTML;
+    assert.ok(storesListHTML.includes('Loja Tech VIP ⚡'), 'Deve manter Loja Tech VIP');
+    assert.ok(!storesListHTML.includes('Moda Urbana VIP'), 'Moda Urbana não deve ser listada na busca por tech');
+
+    // Filtro por termo inexistente -> exibe card amigável de não encontrado
+    setStoresSearchQuery('inexistente999');
+    renderBusinessStores();
+    storesListHTML = env.elements['catalog-stores-list'].innerHTML;
+    assert.ok(storesListHTML.includes('Nenhuma loja encontrada'), 'Deve exibir mensagem amigável de nenhuma loja encontrada');
+
+    // Limpar busca -> volta a exibir todas
+    setStoresSearchQuery('');
+    renderBusinessStores();
+    storesListHTML = env.elements['catalog-stores-list'].innerHTML;
+    assert.ok(storesListHTML.includes('Moda Urbana VIP'), 'Deve voltar a exibir todas as lojas após limpar busca');
   }
 
   // 2. Permissões de Conta: Pessoal vs Business
