@@ -6746,6 +6746,49 @@ test('Botão de Link da Postagem para Conta Empresa: Exibição para conta empre
   assert.strictEqual(bizSection.style.display, 'flex', 'Administrador também deve ter acesso à seção de link');
 });
 
+test('Limite de 15 caracteres no Nome e Sobrenome: atributos HTML, truncamento de input e validação ao salvar perfil', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window || env.sandbox;
+
+  // 1. Verificar atributos maxlength no index.html
+  const nameInputHtml = htmlContent.match(/<input[^>]+id=["']profile-name-input["'][^>]*>/i);
+  const lastnameInputHtml = htmlContent.match(/<input[^>]+id=["']profile-lastname-input["'][^>]*>/i);
+
+  assert.ok(nameInputHtml, 'profile-name-input deve existir no HTML');
+  assert.ok(lastnameInputHtml, 'profile-lastname-input deve existir no HTML');
+  assert.ok(/maxlength=["']15["']/i.test(nameInputHtml[0]), 'profile-name-input deve possuir maxlength="15"');
+  assert.ok(/maxlength=["']15["']/i.test(lastnameInputHtml[0]), 'profile-lastname-input deve possuir maxlength="15"');
+
+  // 2. Testar listeners de input que limitam/trancam a 15 caracteres
+  const nameInput = env.elements['profile-name-input'];
+  const surnameInput = env.elements['profile-lastname-input'];
+  assert.ok(nameInput, 'profile-name-input deve existir');
+  assert.ok(surnameInput, 'profile-lastname-input deve existir');
+
+  // Simular digitação com mais de 15 caracteres
+  nameInput.value = 'NomeMuitoLongoComMaisDe15Chars';
+  nameInput.dispatchEvent({ type: 'input' });
+  assert.strictEqual(nameInput.value.length, 15, 'Nome deve ser limitado a exatamente 15 caracteres no input');
+  assert.strictEqual(nameInput.value, 'NomeMuitoLongoC');
+
+  surnameInput.value = 'SobrenomeGiganteComMuitasLetras';
+  surnameInput.dispatchEvent({ type: 'input' });
+  assert.strictEqual(surnameInput.value.length, 15, 'Sobrenome deve ser limitado a exatamente 15 caracteres no input');
+  assert.strictEqual(surnameInput.value, 'SobrenomeGigant');
+
+  // 3. Testar valores válidos dentro do limite de 15 caracteres
+  nameInput.value = 'Carlos Eduardo';
+  nameInput.dispatchEvent({ type: 'input' });
+  assert.strictEqual(nameInput.value, 'Carlos Eduardo');
+  assert.ok(nameInput.value.length <= 15, 'Nome válido de 14 caracteres deve ser mantido');
+
+  surnameInput.value = 'Ferreira Santos';
+  surnameInput.dispatchEvent({ type: 'input' });
+  assert.strictEqual(surnameInput.value, 'Ferreira Santos');
+  assert.ok(surnameInput.value.length <= 15, 'Sobrenome válido de 15 caracteres deve ser mantido');
+});
+
+
 
 
 

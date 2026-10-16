@@ -1104,8 +1104,8 @@ onAuthStateChanged(auth, async (user) => {
             currentProfile = {
                 uid: user.uid,
                 email: user.email || '',
-                name: nameParts[0] || 'Membro',
-                surname: nameParts.slice(1).join(' ') || '',
+                name: (nameParts[0] || 'Membro').slice(0, 15),
+                surname: (nameParts.slice(1).join(' ') || '').slice(0, 15),
                 username: autoUsername,
                 status: 'Disponível no VORTEX ⚡',
                 phone: '',
@@ -18293,6 +18293,20 @@ document.getElementById('close-profile-edit')?.addEventListener('click', () => {
     document.getElementById('profile-edit-panel')?.classList.remove('active');
 });
 
+const profileNameInput = document.getElementById('profile-name-input');
+profileNameInput?.addEventListener('input', () => {
+    if (profileNameInput.value.length > 15) {
+        profileNameInput.value = profileNameInput.value.slice(0, 15);
+    }
+});
+
+const profileLastnameInput = document.getElementById('profile-lastname-input');
+profileLastnameInput?.addEventListener('input', () => {
+    if (profileLastnameInput.value.length > 15) {
+        profileLastnameInput.value = profileLastnameInput.value.slice(0, 15);
+    }
+});
+
 const profileUsernameInput = document.getElementById('profile-username-input');
 profileUsernameInput?.addEventListener('input', () => {
     const cleanValue = profileUsernameInput.value.toLowerCase().replace(/[^a-z0-9_.]/g, '');
@@ -18350,8 +18364,20 @@ document.getElementById('contact-profile-pix-pill')?.addEventListener('click', c
 
 document.getElementById('save-profile-btn')?.addEventListener('click', async () => {
     if (!currentUser) return;
-    const name = document.getElementById('profile-name-input')?.value.trim() || 'Usuário';
-    const surname = document.getElementById('profile-lastname-input')?.value.trim() || '';
+    const rawName = document.getElementById('profile-name-input')?.value.trim() || 'Usuário';
+    const rawSurname = document.getElementById('profile-lastname-input')?.value.trim() || '';
+
+    if (rawName.length > 15) {
+        showToast('Nome muito longo', 'O Nome pode ter no máximo 15 caracteres.', 'red');
+        return;
+    }
+    if (rawSurname.length > 15) {
+        showToast('Sobrenome muito longo', 'O Sobrenome pode ter no máximo 15 caracteres.', 'red');
+        return;
+    }
+
+    const name = rawName.slice(0, 15);
+    const surname = rawSurname.slice(0, 15);
     const usernameInputValue = profileUsernameInput?.value.trim() || '';
     const bio = document.getElementById('profile-status-input')?.value.trim() || 'Online';
     const phone = document.getElementById('profile-phone-input')?.value.trim() || '';
