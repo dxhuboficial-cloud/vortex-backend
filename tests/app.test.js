@@ -7432,7 +7432,8 @@ test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com 
   // 30. Organização dos Botões na Loja (Apenas Catálogo e Conversar) (v1.0.151)
   // 31. Correção e Otimização da Interface do Formulário Comercial para Celular (v1.0.152)
   // 32. Organização e Alinhamento Visual dos Modais no Celular (Pix, Enquete, Respostas e Prévia de Formulário) (v1.0.153)
-  assert.strictEqual(versionJson.version, '1.0.153', 'version.json deve ser 1.0.153');
+  // 33. Chamadas Recebidas com o App Fechado: Push FCM, Service Worker e Notificação com Atender/Recusar (v1.0.154)
+  assert.strictEqual(versionJson.version, '1.0.154', 'version.json deve ser 1.0.154');
 });
 
 test('Formulários Comerciais para Conta Empresa: Permissões, templates, card interativo no chat e preenchimento de respostas (v1.0.142)', () => {
@@ -8239,6 +8240,139 @@ test('Organização e Alinhamento Visual dos Modais no Celular (Pix, Enquete, Re
   assert.ok(doc.getElementById('poll-allow-multiple-toggle'), '#poll-allow-multiple-toggle deve existir');
   assert.ok(doc.getElementById('company-form-fill-modal-title'), '#company-form-fill-modal-title deve existir');
   assert.ok(doc.getElementById('company-form-responses-modal-subtitle'), '#company-form-responses-modal-subtitle deve existir');
+});
+
+test('Chamadas Recebidas com o App Fechado: servidor FCM, Service Worker com Atender/Recusar e registro do token no cliente (v1.0.154)', async () => {
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+  const serverContent = fs.readFileSync('server.js', 'utf8');
+
+  // 1. Servidor: sintaxe válida (antes estava quebrada pelo webhook sem fechamento) e rota de push
+  const { spawnSync } = await import('node:child_process');
+  const syntax = spawnSync(process.execPath, ['--check', 'server.js'], { encoding: 'utf8' });
+  assert.strictEqual(syntax.status, 0, `server.js deve ter sintaxe válida: ${syntax.stderr}`);
+  assert.ok(serverContent.includes("app.post('/api/notify-call'"), 'server.js deve expor POST /api/notify-call');
+  assert.ok(serverContent.includes("app.get('/api/push-status'"), 'server.js deve expor GET /api/push-status');
+  assert.ok(serverContent.includes('sendEachForMulticast'), 'server.js deve enviar via FCM (sendEachForMulticast)');
+  assert.ok(serverContent.includes("priority: 'high'"), 'push de chamada deve ter prioridade alta');
+  assert.ok(serverContent.includes('FIREBASE_SERVICE_ACCOUNT'), 'server.js deve aceitar credenciais via variável de ambiente (Render)');
+  assert.ok(serverContent.includes("call.status !== 'ringing'"), 'server.js só deve notificar chamadas que estão tocando');
+  assert.ok(serverContent.includes("collection('blocked')"), 'server.js deve respeitar contatos bloqueados');
+
+  // 2. Cliente: registro do token e disparo do push ao ligar
+  assert.ok(fs.readFileSync('public/script.js', 'utf8').includes('firebase-messaging.js'), 'script.js deve importar o Firebase Messaging');
+  assert.ok(jsContent.includes('notifyCallPush(currentCallId);'), 'startCall deve avisar o servidor para enviar o push');
+  assert.ok(jsContent.includes('fcmTokens: arrayUnion(token)'), 'token do aparelho deve ser salvo no perfil');
+  assert.ok(jsContent.includes('consumePendingCallLink(callDoc.id);'), 'chamada aberta pelo botão Atender deve ser atendida automaticamente');
+
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+  assert.strictEqual(typeof win.registerPushToken, 'function', 'registerPushToken deve existir');
+  assert.strictEqual(typeof win.unregisterPushToken, 'function', 'unregisterPushToken deve existir');
+  assert.strictEqual(typeof win.notifyCallPush, 'function', 'notifyCallPush deve existir');
+  assert.strictEqual(typeof win.handleIncomingCallLink, 'function', 'handleIncomingCallLink deve existir');
+  assert.strictEqual(await win.registerPushToken(), null, 'Sem permissão/usuário, registerPushToken não deve registrar nada');
+  assert.doesNotThrow(() => win.handleIncomingCallLink('call_abc', true), 'handleIncomingCallLink não deve lançar erro');
+
+  // 3. Service Worker executado em sandbox: simula o push de uma chamada recebida
+  function createSwSandbox({ windowClients = [], callStatus = 'ended' } = {}) {
+    const listeners = {};
+    const shown = [];
+    const closed = [];
+    const fetched = [];
+    const openedWindows = [];
+    let fakeNow = 1700000000000;
+    const sandbox = {
+      console,
+      URL,
+      Promise,
+      Date: { now: () => fakeNow },
+      setTimeout: (fn, ms) => { fakeNow += Number(ms) || 0; fn(); return 0; },
+      caches: { open: async () => ({ addAll: async () => {}, put: () => {} }), keys: async () => [], match: async () => null, delete: async () => true },
+      fetch: async (url, opts = {}) => {
+        fetched.push({ url: String(url), method: opts.method || 'GET', body: opts.body });
+        return { ok: true, json: async () => ({ fields: { status: { stringValue: callStatus } } }) };
+      },
+      clients: {
+        matchAll: async () => windowClients,
+        openWindow: async (u) => { openedWindows.push(u); },
+        claim: async () => {}
+      }
+    };
+    sandbox.self = {
+      location: { origin: 'https://menssagem-dx.web.app' },
+      addEventListener: (type, fn) => { listeners[type] = fn; },
+      skipWaiting: () => {},
+      clients: sandbox.clients,
+      registration: {
+        showNotification: async (title, options) => { shown.push({ title, options }); },
+        getNotifications: async () => [{ close: () => closed.push(true) }]
+      }
+    };
+    vm.createContext(sandbox);
+    vm.runInContext(swContent, sandbox);
+    return { listeners, shown, closed, fetched, openedWindows };
+  }
+
+  async function fire(listener, event) {
+    const pending = [];
+    listener({ ...event, waitUntil: (p) => pending.push(p) });
+    await Promise.all(pending);
+  }
+
+  const callPayload = { data: { type: 'call', callId: 'call_1', callerName: 'Ana', isVideo: '1' }, from: '107151991007' };
+  const pushEvent = { data: { json: () => callPayload, text: () => '' } };
+
+  // 3a. Com o app fechado: mostra a chamada com Atender/Recusar e fecha quando a chamada termina
+  const sw = createSwSandbox({ callStatus: 'ended' });
+  assert.strictEqual(typeof sw.listeners.push, 'function', 'sw.js deve ter listener de push');
+  await fire(sw.listeners.push, pushEvent);
+  assert.strictEqual(sw.shown.length, 1, 'Deve exibir exatamente 1 notificação de chamada');
+  assert.strictEqual(sw.shown[0].title, 'Ana está ligando', 'Título deve identificar quem está ligando');
+  assert.strictEqual(sw.shown[0].options.requireInteraction, true, 'Notificação de chamada deve ficar fixa até a pessoa agir');
+  assert.strictEqual(sw.shown[0].options.tag, 'vortex-call-call_1', 'Notificação deve usar tag por chamada');
+  assert.deepStrictEqual(Array.from(sw.shown[0].options.actions, a => a.action), ['answer', 'decline'], 'Deve ter botões Atender e Recusar');
+  assert.ok(sw.shown[0].options.vibrate.length >= 4, 'Deve vibrar com padrão de chamada');
+  assert.ok(sw.closed.length >= 1, 'Deve fechar a notificação quando a chamada deixa de estar tocando');
+  assert.ok(sw.fetched.some(f => f.url.includes('/documents/calls/call_1')), 'Deve consultar o status da chamada no Firestore');
+
+  // 3b. Enquanto a chamada continua tocando, o alerta é repetido (renotify)
+  const swRinging = createSwSandbox({ callStatus: 'ringing' });
+  await fire(swRinging.listeners.push, pushEvent);
+  assert.ok(swRinging.shown.length > 1, 'Deve repetir o alerta enquanto a chamada estiver tocando');
+  assert.ok(swRinging.shown.slice(1).every(s => s.options.renotify === true), 'Repetições devem usar renotify para tocar/vibrar de novo');
+
+  // 3c. App aberto e visível: o próprio app toca, sem notificação duplicada
+  const swVisible = createSwSandbox({ windowClients: [{ visibilityState: 'visible', url: 'https://menssagem-dx.web.app/' }] });
+  await fire(swVisible.listeners.push, pushEvent);
+  assert.strictEqual(swVisible.shown.length, 0, 'Não deve notificar quando o app está visível');
+
+  // 3d. Recusar pela notificação encerra a chamada sem abrir o app
+  const swDecline = createSwSandbox();
+  let notifClosed = false;
+  await fire(swDecline.listeners.notificationclick, {
+    action: 'decline',
+    notification: { close: () => { notifClosed = true; }, data: { type: 'call', callId: 'call_1' } }
+  });
+  const patch = swDecline.fetched.find(f => f.method === 'PATCH');
+  assert.ok(notifClosed, 'Notificação deve ser fechada ao recusar');
+  assert.ok(patch && patch.url.includes('calls/call_1'), 'Recusar deve atualizar o documento da chamada');
+  assert.ok(patch.body.includes('rejected'), 'Status da chamada deve virar rejected');
+  assert.strictEqual(swDecline.openedWindows.length, 0, 'Recusar não deve abrir o app');
+
+  // 3e. Atender pela notificação abre o app já pedindo para atender
+  const swAnswer = createSwSandbox();
+  await fire(swAnswer.listeners.notificationclick, {
+    action: 'answer',
+    notification: { close: () => {}, data: { type: 'call', callId: 'call_1', url: '/?call=call_1' } }
+  });
+  assert.strictEqual(swAnswer.openedWindows.length, 1, 'Atender deve abrir o app');
+  assert.ok(swAnswer.openedWindows[0].includes('call=call_1') && swAnswer.openedWindows[0].includes('answer=1'), 'URL deve carregar a chamada e o pedido de atender');
+
+  // 3f. Push comum (mensagem) continua funcionando
+  const swPlain = createSwSandbox();
+  await fire(swPlain.listeners.push, { data: { json: () => ({ title: 'Nova mensagem', body: 'Oi' }), text: () => '' } });
+  assert.strictEqual(swPlain.shown.length, 1, 'Push comum deve mostrar 1 notificação');
+  assert.strictEqual(swPlain.shown[0].title, 'Nova mensagem', 'Push comum deve manter o título');
 });
 
 

@@ -16,14 +16,47 @@ const PORT = process.env.PORT || 3000;
 const MERCADO_PAGO_ACCESS_TOKEN = process.env.MERCADO_PAGO_ACCESS_TOKEN || 'APP_USR-1207987773430651-091300-6f03f6c2011ba35013c01e3a052ace6e-1885251906';
 const MERCADO_PAGO_PUBLIC_KEY = process.env.MERCADO_PAGO_PUBLIC_KEY || 'APP_USR-2dc3e363-b4c1-43ca-a796-6466d7b3caf0';
 
+/**
+ * Carrega as credenciais do Firebase Admin SDK a partir de (em ordem):
+ *  1. Variável de ambiente FIREBASE_SERVICE_ACCOUNT (JSON puro ou Base64) - recomendado no Render
+ *  2. Secret File do Render em /etc/secrets/serviceAccountKey.json
+ *  3. Arquivo local serviceAccountKey.json (desenvolvimento)
+ */
+function loadServiceAccount() {
+    const envValue = (process.env.FIREBASE_SERVICE_ACCOUNT || '').trim();
+    if (envValue) {
+        try {
+            const raw = envValue.startsWith('{') ? envValue : Buffer.from(envValue, 'base64').toString('utf8');
+            return JSON.parse(raw);
+        } catch (e) {
+            console.warn('⚠️ FIREBASE_SERVICE_ACCOUNT inválida (use o JSON da chave ou o JSON em Base64):', e.message);
+        }
+    }
+    const candidatePaths = [
+        '/etc/secrets/serviceAccountKey.json',
+        path.join(__dirname, 'serviceAccountKey.json')
+    ];
+    for (const candidate of candidatePaths) {
+        try {
+            if (fs.existsSync(candidate)) {
+                return JSON.parse(fs.readFileSync(candidate, 'utf8'));
+            }
+        } catch (e) {
+            console.warn(`⚠️ Falha ao ler ${candidate}:`, e.message);
+        }
+    }
+    return null;
+}
+
 // Configuração opcional do Firebase Admin SDK caso as credenciais estejam disponíveis
 let db = null;
 let adminAuth = null;
+let adminMessaging = null;
+let adminFieldValue = null;
 try {
-    const serviceAccountPath = path.join(__dirname, 'serviceAccountKey.json');
-    if (fs.existsSync(serviceAccountPath)) {
+    const serviceAccount = loadServiceAccount();
+    if (serviceAccount) {
         const { default: admin } = await import('firebase-admin');
-        const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
         if (!admin.apps.length) {
             admin.initializeApp({
                 credential: admin.credential.cert(serviceAccount)
@@ -31,7 +64,11 @@ try {
         }
         db = admin.firestore();
         adminAuth = admin.auth();
+        adminMessaging = admin.messaging();
+        adminFieldValue = admin.firestore.FieldValue;
         console.log('✅ Firebase Admin SDK conectado com sucesso ao projeto:', serviceAccount.project_id);
+    } else {
+        console.warn('⚠️ Credenciais do Firebase Admin não encontradas: notificações push de chamadas ficarão desativadas.');
     }
 } catch (err) {
     console.warn('⚠️ Firebase Admin SDK não inicializado:', err.message);
@@ -336,6 +373,116 @@ app.post('/api/mercadopago-webhook', async (req, res) => {
                 }
             }
         }
+    } catch (err) {
+        console.error('Erro ao processar webhook do Mercado Pago:', err);
+    }
+});
+
+/**
+ * Notificações Push de Chamadas (Firebase Cloud Messaging)
+ * Permite que o destinatário receba a chamada (com vibração e alerta) mesmo com o app fechado.
+ */
+const CALL_PUSH_MAX_AGE_MS = 90 * 1000;
+
+function sanitizePushText(value, max = 60) {
+    return String(value || '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, max);
+}
+
+// Diagnóstico: informa se o servidor está apto a enviar push
+app.get('/api/push-status', (req, res) => {
+    res.json({
+        adminReady: Boolean(db),
+        messagingReady: Boolean(adminMessaging)
+    });
+});
+
+app.post('/api/notify-call', async (req, res) => {
+    try {
+        const callId = sanitizePushText(req.body?.callId, 128);
+        if (!callId || callId.includes('/')) {
+            return res.status(400).json({ error: 'callId inválido.' });
+        }
+        if (!db || !adminMessaging) {
+            return res.status(503).json({ sent: 0, reason: 'push-unavailable', error: 'Servidor sem credenciais do Firebase Admin.' });
+        }
+
+        const callRef = db.collection('calls').doc(callId);
+        const callSnap = await callRef.get();
+        if (!callSnap.exists) {
+            return res.status(404).json({ sent: 0, reason: 'call-not-found' });
+        }
+
+        const call = callSnap.data() || {};
+        if (call.status !== 'ringing') {
+            return res.json({ sent: 0, reason: 'not-ringing' });
+        }
+        if (!call.calleeUid || !call.callerUid) {
+            return res.json({ sent: 0, reason: 'invalid-call' });
+        }
+        if (Date.now() - Number(call.createdAt || 0) > CALL_PUSH_MAX_AGE_MS) {
+            return res.json({ sent: 0, reason: 'expired' });
+        }
+        if (call.pushSentAt) {
+            return res.json({ sent: 0, reason: 'already-sent' });
+        }
+
+        // Respeita bloqueio: quem foi bloqueado não faz o celular do outro tocar
+        const blockedSnap = await db.collection('users').doc(call.calleeUid).collection('blocked').doc(call.callerUid).get();
+        if (blockedSnap.exists) {
+            return res.json({ sent: 0, reason: 'blocked' });
+        }
+
+        const calleeSnap = await db.collection('users').doc(call.calleeUid).get();
+        const rawTokens = calleeSnap.exists ? (calleeSnap.data().fcmTokens || []) : [];
+        const tokens = [...new Set(rawTokens.filter(t => typeof t === 'string' && t.length > 20))];
+        if (tokens.length === 0) {
+            return res.json({ sent: 0, reason: 'no-tokens' });
+        }
+
+        await callRef.set({ pushSentAt: Date.now() }, { merge: true });
+
+        const callerAvatar = typeof call.callerAvatar === 'string' && /^https?:\/\//.test(call.callerAvatar) && call.callerAvatar.length < 900
+            ? call.callerAvatar
+            : '';
+
+        // Mensagem somente de dados: o Service Worker monta a notificação de chamada
+        const response = await adminMessaging.sendEachForMulticast({
+            tokens,
+            data: {
+                type: 'call',
+                callId,
+                callerUid: sanitizePushText(call.callerUid, 128),
+                callerName: sanitizePushText(call.callerName, 60) || 'Contato VIP',
+                callerAvatar,
+                isVideo: call.type === 'audio' ? '0' : '1',
+                url: `/?call=${encodeURIComponent(callId)}`
+            },
+            android: { priority: 'high', ttl: 45 * 1000 },
+            webpush: { headers: { Urgency: 'high', TTL: '45' } }
+        });
+
+        // Remove tokens que não são mais válidos
+        const invalidTokens = [];
+        response.responses.forEach((r, idx) => {
+            const code = r.error && r.error.code;
+            if (code === 'messaging/registration-token-not-registered' || code === 'messaging/invalid-registration-token' || code === 'messaging/invalid-argument') {
+                invalidTokens.push(tokens[idx]);
+            }
+        });
+        if (invalidTokens.length && adminFieldValue) {
+            await db.collection('users').doc(call.calleeUid).update({
+                fcmTokens: adminFieldValue.arrayRemove(...invalidTokens)
+            }).catch(() => {});
+        }
+
+        console.log(`[CALL-PUSH] Chamada ${callId}: ${response.successCount} enviada(s), ${response.failureCount} falha(s).`);
+        res.json({ sent: response.successCount, failed: response.failureCount });
+    } catch (err) {
+        console.error('Erro na rota /api/notify-call:', err);
+        res.status(500).json({ sent: 0, error: 'Erro interno ao enviar notificação da chamada.' });
+    }
+});
+
 // 6. Exclusão Total de Conta de Usuário (Admin ou Próprio Usuário no VORTEX VIP)
 app.post('/api/delete-user-account', async (req, res) => {
     try {

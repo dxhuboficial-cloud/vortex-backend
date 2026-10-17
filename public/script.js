@@ -13,6 +13,9 @@ import {
 import { 
     getDatabase, ref, set as rtdbSet, onValue, onDisconnect, serverTimestamp as rtdbTimestamp 
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { 
+    getMessaging, getToken, isSupported as isMessagingSupported 
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js";
 
 // Credenciais Oficiais Firebase
 const firebaseConfig = {
@@ -772,10 +775,11 @@ export async function requestPushNotificationPermission() {
         const permission = await window.Notification.requestPermission();
         updatePushSettingsUI(permission);
         if (permission === 'granted') {
-            showToast('Notificações Ativadas', 'Você receberá alertas de mensagens no celular! 🔔', 'green');
+            showToast('Notificações Ativadas', 'Você receberá alertas de mensagens e chamadas no celular! 🔔', 'green');
             if (typeof localStorage !== 'undefined') {
                 localStorage.setItem('vortex_push_permission', 'granted');
             }
+            registerPushToken();
         } else if (permission === 'denied') {
             showToast('Notificações Bloqueadas', 'Permissão bloqueada. Habilite nas configurações do navegador/celular.', 'red');
         }
@@ -785,6 +789,124 @@ export async function requestPushNotificationPermission() {
         return 'denied';
     }
 }
+
+/* ===== PUSH DE CHAMADAS COM O APP FECHADO (FIREBASE CLOUD MESSAGING) ===== */
+
+// Registra o aparelho para receber chamadas em segundo plano e salva o token no perfil
+export async function registerPushToken() {
+    try {
+        if (!currentUser) return null;
+        if (typeof window === 'undefined' || !('Notification' in window) || window.Notification.permission !== 'granted') return null;
+        if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return null;
+        if (typeof isMessagingSupported === 'function' && !(await isMessagingSupported())) return null;
+
+        const registration = await navigator.serviceWorker.ready;
+        const token = await getToken(getMessaging(app), { serviceWorkerRegistration: registration });
+        if (!token) return null;
+
+        const storageKey = `vortex_fcm_token_${currentUser.uid}`;
+        const alreadySaved = typeof localStorage !== 'undefined' && localStorage.getItem(storageKey) === token;
+        if (!alreadySaved) {
+            await setDoc(doc(db, 'users', currentUser.uid), {
+                fcmTokens: arrayUnion(token),
+                fcmTokenUpdatedAt: Date.now()
+            }, { merge: true });
+            if (typeof localStorage !== 'undefined') localStorage.setItem(storageKey, token);
+        }
+        return token;
+    } catch (e) {
+        console.warn('[VORTEX] Não foi possível registrar o push de chamadas:', e);
+        return null;
+    }
+}
+
+// Ao sair da conta, este aparelho deixa de receber as chamadas dela
+export async function unregisterPushToken(uid) {
+    try {
+        const targetUid = uid || (currentUser && currentUser.uid);
+        if (!targetUid || typeof localStorage === 'undefined') return;
+        const storageKey = `vortex_fcm_token_${targetUid}`;
+        const token = localStorage.getItem(storageKey);
+        if (!token) return;
+        await updateDoc(doc(db, 'users', targetUid), { fcmTokens: arrayRemove(token) });
+        localStorage.removeItem(storageKey);
+    } catch (e) {
+        console.warn('[VORTEX] Não foi possível remover o token de push:', e);
+    }
+}
+
+// Pede ao servidor para enviar o push da chamada ao destinatário (que pode estar com o app fechado)
+export async function notifyCallPush(callId) {
+    if (!callId) return null;
+    try {
+        const res = await fetchApi('/api/notify-call', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ callId })
+        });
+        return await res.json().catch(() => null);
+    } catch (e) {
+        console.warn('[VORTEX] Não foi possível avisar o servidor da chamada:', e);
+        return null;
+    }
+}
+
+// Pede a permissão de notificações uma única vez, no primeiro toque do usuário (exigência dos navegadores)
+export function setupPushPermissionAutoPrompt() {
+    if (typeof window === 'undefined' || !('Notification' in window) || !window.Notification) return;
+    if (window.Notification.permission !== 'default') return;
+    if (typeof localStorage !== 'undefined' && localStorage.getItem('vortex_push_prompted') === '1') return;
+
+    const onFirstTap = () => {
+        document.removeEventListener('click', onFirstTap, true);
+        if (typeof localStorage !== 'undefined') localStorage.setItem('vortex_push_prompted', '1');
+        requestPushNotificationPermission();
+    };
+    document.addEventListener('click', onFirstTap, true);
+}
+
+// Chamada aberta a partir da notificação (?call=ID&answer=1 ou mensagem do Service Worker)
+let pendingCallLink = null;
+
+export function handleIncomingCallLink(callId, answer = false) {
+    if (!callId) return;
+    pendingCallLink = { callId: String(callId), answer: !!answer, at: Date.now() };
+    if (currentCallId && currentCallId === pendingCallLink.callId) {
+        consumePendingCallLink(currentCallId);
+    }
+}
+
+function consumePendingCallLink(callId) {
+    if (!pendingCallLink || pendingCallLink.callId !== callId) return;
+    const shouldAnswer = pendingCallLink.answer;
+    pendingCallLink = null;
+    if (shouldAnswer) {
+        acceptIncomingCall();
+    }
+}
+
+function readCallLinkFromUrl() {
+    try {
+        if (typeof window === 'undefined' || !window.location || !window.location.search) return;
+        const params = new URLSearchParams(window.location.search);
+        const callId = params.get('call');
+        if (!callId) return;
+        handleIncomingCallLink(callId, params.get('answer') === '1');
+        if (window.history && window.history.replaceState) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    } catch (_) {}
+}
+
+if (typeof navigator !== 'undefined' && navigator.serviceWorker && typeof navigator.serviceWorker.addEventListener === 'function') {
+    navigator.serviceWorker.addEventListener('message', (event) => {
+        const msg = event.data || {};
+        if (msg.type === 'INCOMING_CALL' && msg.callId) {
+            handleIncomingCallLink(msg.callId, msg.answer);
+        }
+    });
+}
+readCallLinkFromUrl();
 
 export function updatePushSettingsUI(permission) {
     const statusLabel = document.getElementById('push-perm-status-label') || document.getElementById('push-status-label');
@@ -1175,6 +1297,8 @@ onAuthStateChanged(auth, async (user) => {
         listenToRequests();
         listenToStories();
         listenToIncomingCalls();
+        registerPushToken();
+        setupPushPermissionAutoPrompt();
         listenToNotifications();
         listenToAdminReports();
         listenToDeletedUsers();
@@ -15082,7 +15206,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.153';
+export const CURRENT_APP_VERSION = '1.0.154';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -18495,6 +18619,9 @@ async function startCall(isVideo = true) {
             offer: { sdp: offerDescription.sdp, type: offerDescription.type }
         });
 
+        // Acorda o celular do destinatário mesmo com o app fechado (push de chamada)
+        notifyCallPush(currentCallId);
+
         if (activeCallDocUnsubscribe) activeCallDocUnsubscribe();
         activeCallDocUnsubscribe = onSnapshot(callDocRef, async (snap) => {
             if (snap.exists()) {
@@ -18579,6 +18706,9 @@ function listenToIncomingCalls() {
                     dismissIncomingCallUI();
                 }
             });
+
+            // Aberto pelo botão "Atender" da notificação: atende automaticamente
+            consumePendingCallLink(callDoc.id);
         } else {
             dismissIncomingCallUI();
         }
@@ -23591,6 +23721,7 @@ document.getElementById('theme-toggle')?.addEventListener('change', async (e) =>
 
 document.getElementById('signout-btn')?.addEventListener('click', async () => {
     if (confirm("Deseja realmente sair da sua conta?")) {
+        await unregisterPushToken();
         await signOut(auth);
         location.reload();
     }
@@ -25685,6 +25816,10 @@ if (typeof window !== 'undefined') {
     window.ringtoneSound = ringtoneSound;
     window.createRingtonePlayer = createRingtonePlayer;
     window.requestPushNotificationPermission = requestPushNotificationPermission;
+    window.registerPushToken = registerPushToken;
+    window.unregisterPushToken = unregisterPushToken;
+    window.notifyCallPush = notifyCallPush;
+    window.handleIncomingCallLink = handleIncomingCallLink;
     window.updatePushSettingsUI = updatePushSettingsUI;
     window.showMobilePushNotification = showMobilePushNotification;
     window.showInAppPushBanner = showInAppPushBanner;
