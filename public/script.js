@@ -3387,6 +3387,15 @@ export function updateCatalogCartBadge() {
 
 export function addToCatalogCart(product, sellerUid, sellerData = {}, options = {}) {
     if (!product || !sellerUid) return;
+
+    // Verificar se compras estão desabilitadas na loja ou no produto
+    const isStoreBuyEnabled = (sellerData?.storeBuyEnabled !== false);
+    const isProdBuyEnabled = (product.buyEnabled !== false);
+    if (!isStoreBuyEnabled || !isProdBuyEnabled) {
+        showToast('Compras Desativadas', 'Esta loja está em modo catálogo no momento. Converse diretamente com o vendedor!', 'orange');
+        return;
+    }
+
     const cart = getCatalogCart();
 
     // Se o carrinho contém itens de outro vendedor, substitui com aviso
@@ -4368,6 +4377,27 @@ export async function openStorefront(sellerUid, sellerData = {}) {
     activeCatalogSellerUid = sellerUid;
     activeCatalogSellerData = sellerData;
 
+    // Se storeBuyEnabled não estiver explicitamente definido no objeto sellerData, verificar usuário
+    if (sellerData.storeBuyEnabled === undefined && sellerUid) {
+        if (currentUser && currentUser.uid === sellerUid && currentProfile && currentProfile.storeBuyEnabled !== undefined) {
+            sellerData.storeBuyEnabled = currentProfile.storeBuyEnabled;
+        } else {
+            const cached = (allBusinessStoresCache || []).find(s => s.uid === sellerUid);
+            if (cached && cached.storeBuyEnabled !== undefined) {
+                sellerData.storeBuyEnabled = cached.storeBuyEnabled;
+            } else {
+                try {
+                    const sDoc = await getDoc(doc(db, 'users', sellerUid));
+                    if (sDoc.exists()) {
+                        sellerData.storeBuyEnabled = sDoc.data()?.storeBuyEnabled !== false;
+                    }
+                } catch (err) {
+                    console.warn('[VORTEX CATALOG] Falha ao verificar storeBuyEnabled:', err);
+                }
+            }
+        }
+    }
+
     const views = {
         stores: document.getElementById('catalog-view-stores'),
         mine: document.getElementById('catalog-view-mine'),
@@ -4378,10 +4408,14 @@ export async function openStorefront(sellerUid, sellerData = {}) {
     Object.values(views).forEach(v => { if (v) v.style.display = 'none'; });
     if (views.storefront) views.storefront.style.display = 'block';
 
+    const isStoreBuyEnabled = (sellerData.storeBuyEnabled !== false);
     const infoEl = document.getElementById('catalog-store-info');
     if (infoEl) {
         infoEl.innerHTML = `
-            <strong>${escapeHTML(sellerData.name || 'Loja')}</strong>
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                <strong>${escapeHTML(sellerData.name || 'Loja')}</strong>
+                ${!isStoreBuyEnabled ? `<span class="catalog-store-badge-catalog-only"><i data-lucide="eye"></i> Apenas Catálogo</span>` : ''}
+            </div>
             <small>${escapeHTML(sellerData.status || 'Loja Oficial VORTEX')}</small>
         `;
     }
@@ -4576,6 +4610,10 @@ export function renderCatalogGrid(container, products, isOwner) {
             ? `<button type="button" class="catalog-status-toggle ${prod.active !== false ? 'active' : 'inactive'}" data-id="${prod.id}" title="${prod.active !== false ? 'Produto Ativo' : 'Produto Oculto'}">${prod.active !== false ? 'Ativo' : 'Oculto'}</button>`
             : '';
 
+        const isStoreBuyEnabled = (activeCatalogSellerData?.storeBuyEnabled !== false);
+        const isProdBuyEnabled = (prod.buyEnabled !== false);
+        const canBuyThisProd = isStoreBuyEnabled && isProdBuyEnabled;
+
         const actionButtons = isOwner
             ? `
                 <div class="catalog-card-owner-actions">
@@ -4583,12 +4621,20 @@ export function renderCatalogGrid(container, products, isOwner) {
                     <button type="button" class="catalog-mini-btn catalog-mini-danger cat-del-btn" data-id="${prod.id}" title="Excluir"><i data-lucide="trash-2"></i></button>
                 </div>
             `
-            : `
-                <button type="button" class="catalog-primary-btn catalog-card-buy-btn cat-add-cart-btn" data-id="${prod.id}" ${isOutOfStock ? 'disabled' : ''}>
-                    <i data-lucide="shopping-cart"></i>
-                    <span>${isOutOfStock ? 'Esgotado' : 'Comprar'}</span>
-                </button>
-            `;
+            : (canBuyThisProd
+                ? `
+                    <button type="button" class="catalog-primary-btn catalog-card-buy-btn cat-add-cart-btn" data-id="${prod.id}" ${isOutOfStock ? 'disabled' : ''}>
+                        <i data-lucide="shopping-cart"></i>
+                        <span>${isOutOfStock ? 'Esgotado' : 'Comprar'}</span>
+                    </button>
+                `
+                : `
+                    <button type="button" class="catalog-secondary-btn catalog-card-buy-btn cat-talk-btn" data-id="${prod.id}" title="Falar com o vendedor">
+                        <i data-lucide="message-circle"></i>
+                        <span>Conversar</span>
+                    </button>
+                `
+            );
 
         return `
             <div class="catalog-card ${isOutOfStock ? 'out-of-stock' : ''}" data-id="${prod.id}">
@@ -4631,6 +4677,12 @@ export function renderCatalogGrid(container, products, isOwner) {
             if (prod) addToCatalogCart(prod, prod.sellerUid || activeCatalogSellerUid, activeCatalogSellerData || {});
         });
 
+        // Botão de conversar quando compras estiverem desativadas
+        card.querySelector('.cat-talk-btn')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openProductDetail(pid, prod?.sellerUid || activeCatalogSellerUid);
+        });
+
         // Botões do proprietário
         card.querySelector('.cat-edit-btn')?.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -4647,9 +4699,63 @@ export function renderCatalogGrid(container, products, isOwner) {
     });
 }
 
+// Controle de Ativação do Botão de Compra da Loja (v1.0.148)
+export function updateStoreBuyButtonUI(isBuyEnabled = true) {
+    const btn = document.getElementById('catalog-store-buy-toggle-btn');
+    const desc = document.getElementById('catalog-store-buy-desc');
+    if (!btn) return;
+
+    if (isBuyEnabled) {
+        btn.classList.add('active');
+        btn.classList.remove('disabled');
+        btn.innerHTML = `<i data-lucide="check-circle-2"></i><span id="catalog-store-buy-toggle-label">Compras Ativadas</span>`;
+        if (desc) desc.innerText = 'Permite que os clientes adicionem produtos ao carrinho e comprem na sua loja.';
+    } else {
+        btn.classList.remove('active');
+        btn.classList.add('disabled');
+        btn.innerHTML = `<i data-lucide="eye"></i><span id="catalog-store-buy-toggle-label">Modo Catálogo (Desativado)</span>`;
+        if (desc) desc.innerText = 'Compras desativadas. Clientes visualizam os produtos e falam com você via chat.';
+    }
+    if (window.lucide) lucide.createIcons();
+}
+
+export async function toggleStoreBuyButton() {
+    if (!currentUser) return;
+    const currentVal = (currentProfile?.storeBuyEnabled !== false);
+    const newVal = !currentVal;
+
+    try {
+        if (!currentProfile) currentProfile = {};
+        currentProfile.storeBuyEnabled = newVal;
+        updateStoreBuyButtonUI(newVal);
+
+        const userRef = doc(db, 'users', currentUser.uid);
+        await updateDoc(userRef, { storeBuyEnabled: newVal });
+
+        const cachedStore = (allBusinessStoresCache || []).find(s => s.uid === currentUser.uid);
+        if (cachedStore) cachedStore.storeBuyEnabled = newVal;
+
+        showToast(
+            newVal ? 'Compras Ativadas' : 'Modo Catálogo Ativado',
+            newVal ? 'Clientes já podem comprar normalmente na sua loja!' : 'O botão de compra foi desativado. Sua loja está em modo catálogo (apenas consulta e chat).',
+            newVal ? 'green' : 'orange'
+        );
+    } catch (err) {
+        console.error('[VORTEX CATALOG] Erro ao alternar botão de compra da loja:', err);
+        if (currentProfile) currentProfile.storeBuyEnabled = currentVal;
+        updateStoreBuyButtonUI(currentVal);
+        showToast('Erro', 'Não foi possível atualizar o botão de compra da loja.', 'red');
+    }
+}
+
 // Meus Produtos (Painel do Vendedor)
 export async function loadMyCatalog() {
     if (!currentUser) return;
+
+    // Atualizar estado visual do botão de compra da loja do vendedor
+    const isStoreBuyEnabled = (currentProfile?.storeBuyEnabled !== false);
+    updateStoreBuyButtonUI(isStoreBuyEnabled);
+
     const gridContainer = document.getElementById('catalog-mine-grid');
     const summaryContainer = document.getElementById('catalog-mine-summary');
     if (!gridContainer) return;
@@ -4715,6 +4821,7 @@ export async function openProductEditor(productId = null) {
     const stockInp = document.getElementById('cat-prod-stock');
     const unlimitedCheck = document.getElementById('cat-prod-unlimited');
     const activeCheck = document.getElementById('cat-prod-active');
+    const buyEnabledCheck = document.getElementById('cat-prod-buy-enabled');
     const deleteBtn = document.getElementById('cat-prod-delete-btn');
     const weightInp = document.getElementById('cat-prod-weight');
     const sizeInp = document.getElementById('cat-prod-size');
@@ -4761,6 +4868,7 @@ export async function openProductEditor(productId = null) {
                 stockInp.disabled = !!prod.unlimitedStock;
             }
             if (activeCheck) activeCheck.checked = prod.active !== false;
+            if (buyEnabledCheck) buyEnabledCheck.checked = prod.buyEnabled !== false;
             if (weightInp) weightInp.value = prod.weight || '';
             if (sizeInp) sizeInp.value = prod.size || '';
             if (voltageSel) voltageSel.value = prod.voltageOption || prod.voltage || 'none';
@@ -4802,6 +4910,7 @@ export async function openProductEditor(productId = null) {
             stockInp.disabled = true;
         }
         if (activeCheck) activeCheck.checked = true;
+        if (buyEnabledCheck) buyEnabledCheck.checked = true;
         if (weightInp) weightInp.value = '';
         if (sizeInp) sizeInp.value = '';
         if (voltageSel) voltageSel.value = 'none';
@@ -5013,6 +5122,7 @@ export async function saveCatalogProduct() {
     const isUnlimited = !!document.getElementById('cat-prod-unlimited')?.checked;
     const stockRaw = document.getElementById('cat-prod-stock')?.value;
     const active = !!document.getElementById('cat-prod-active')?.checked;
+    const buyEnabled = document.getElementById('cat-prod-buy-enabled') ? !!document.getElementById('cat-prod-buy-enabled').checked : true;
 
     if (!name) {
         showToast('Campo Obrigatório', 'Informe o nome do produto.', 'red');
@@ -5105,6 +5215,7 @@ export async function saveCatalogProduct() {
             unlimitedStock: isUnlimited,
             stock: stock,
             active: active,
+            buyEnabled: buyEnabled,
             photos: currentEditorPhotos,
             cover: cover,
             paymentMethods: paymentMethods,
@@ -5413,9 +5524,23 @@ export async function openProductDetail(productId, sellerUid) {
             `;
         }
 
+        const isStoreBuyEnabled = (activeCatalogSellerData?.storeBuyEnabled !== false);
+        const isProdBuyEnabled = (prod.buyEnabled !== false);
+        const canBuyThisProd = isStoreBuyEnabled && isProdBuyEnabled;
+
+        const noticeBannerHTML = (!isOwner && !canBuyThisProd)
+            ? `
+                <div class="catalog-store-notice-banner">
+                    <i data-lucide="info"></i>
+                    <span>Compras desativadas nesta loja. Fale diretamente com o vendedor pelo chat!</span>
+                </div>
+            `
+            : '';
+
         content.innerHTML = `
             ${galleryHTML}
             <div class="catalog-detail-body">
+                ${noticeBannerHTML}
                 ${prod.category ? `<span class="catalog-card-category">${escapeHTML(prod.category)}</span>` : ''}
                 <h3 class="catalog-detail-title">${escapeHTML(prod.name)}</h3>
                 ${prod.sku ? `<small class="catalog-detail-sku">SKU: ${escapeHTML(prod.sku)}</small>` : ''}
@@ -5449,12 +5574,17 @@ export async function openProductDetail(productId, sellerUid) {
                 <div class="catalog-detail-actions">
                     ${isOwner ? `
                         <button type="button" id="catalog-detail-edit-btn" class="catalog-primary-btn catalog-grow"><i data-lucide="pencil"></i><span>Editar produto</span></button>
-                    ` : `
+                    ` : (canBuyThisProd ? `
                         <button type="button" id="catalog-detail-add-cart-btn" class="catalog-primary-btn catalog-grow" ${isOutOfStock ? 'disabled' : ''}>
                             <i data-lucide="shopping-cart"></i>
                             <span>${isOutOfStock ? 'Esgotado' : 'Adicionar ao carrinho'}</span>
                         </button>
-                    `}
+                    ` : `
+                        <button type="button" id="catalog-detail-talk-btn" class="catalog-primary-btn catalog-grow" style="background:#22c55e;color:#fff;">
+                            <i data-lucide="message-circle"></i>
+                            <span>Conversar com vendedor</span>
+                        </button>
+                    `)}
                 </div>
             </div>
         `;
@@ -5535,6 +5665,42 @@ export async function openProductDetail(productId, sellerUid) {
                 selectedVoltage
             });
             closeProductDetail();
+        });
+
+        document.getElementById('catalog-detail-talk-btn')?.addEventListener('click', async () => {
+            closeProductDetail();
+            if (currentUser && currentUser.uid) {
+                const buyerContactData = {
+                    uid: currentUser.uid,
+                    name: (`${currentProfile?.name || ''} ${currentProfile?.surname || ''}`).trim() || currentProfile?.name || currentUser.displayName || 'Comprador VORTEX',
+                    avatar: currentProfile?.avatar || currentUser.photoURL || '',
+                    status: currentProfile?.status || currentProfile?.bio || 'Disponível no VORTEX ⚡',
+                    isVip: checkIsVipUser(currentProfile),
+                    isVerified: checkIsVipUser(currentProfile)
+                };
+                const sellerContactData = {
+                    uid: sellerUid,
+                    name: (activeCatalogSellerData && activeCatalogSellerData.name) || 'Vendedor VORTEX',
+                    avatar: (activeCatalogSellerData && activeCatalogSellerData.avatar) || '',
+                    status: (activeCatalogSellerData && activeCatalogSellerData.status) || (activeCatalogSellerData && activeCatalogSellerData.bio) || 'Disponível no VORTEX ⚡',
+                    isVip: Boolean(activeCatalogSellerData && (activeCatalogSellerData.isVip || activeCatalogSellerData.isVerified || checkIsVipUser(activeCatalogSellerData))),
+                    isVerified: Boolean(activeCatalogSellerData && (activeCatalogSellerData.isVip || activeCatalogSellerData.isVerified || checkIsVipUser(activeCatalogSellerData)))
+                };
+                await ensureMutualContacts(buyerContactData, sellerContactData);
+            }
+            closeCatalogOverlay();
+            openDirectChat({
+                uid: sellerUid,
+                name: (activeCatalogSellerData && activeCatalogSellerData.name) || 'Vendedor VORTEX',
+                avatar: (activeCatalogSellerData && activeCatalogSellerData.avatar) || '',
+                status: (activeCatalogSellerData && activeCatalogSellerData.status) || (activeCatalogSellerData && activeCatalogSellerData.bio) || 'Disponível no VORTEX ⚡',
+                isGroup: false
+            });
+            const chatInput = document.getElementById('message-input');
+            if (chatInput) {
+                chatInput.value = `Olá! Gostaria de saber mais sobre o produto "${prod.name}".`;
+                chatInput.focus();
+            }
         });
 
         document.getElementById('catalog-detail-edit-btn')?.addEventListener('click', () => {
@@ -6175,6 +6341,12 @@ export function initCatalog() {
         addEditorColor();
     });
     attachCatalogNumericGuards();
+
+    // Alternar Botão de Compra da Loja (Vendedor)
+    document.getElementById('catalog-store-buy-toggle-btn')?.addEventListener('click', () => {
+        playSound(clickSound);
+        toggleStoreBuyButton();
+    });
 
     // Alternância Produto Físico vs Digital
     document.getElementById('cat-prod-kind')?.addEventListener('change', (e) => {
@@ -14866,7 +15038,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.147';
+export const CURRENT_APP_VERSION = '1.0.148';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -25554,6 +25726,9 @@ if (typeof window !== 'undefined') {
     window.currentEditorColors = currentEditorColors;
     window.renderEditorColors = renderEditorColors;
     window.addEditorColor = addEditorColor;
+    // Controle do Botão de Compra da Loja (v1.0.148)
+    window.updateStoreBuyButtonUI = updateStoreBuyButtonUI;
+    window.toggleStoreBuyButton = toggleStoreBuyButton;
 }
 
 if (typeof window !== 'undefined') {

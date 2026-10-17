@@ -4,20 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.147">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.147">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.147">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.147">
-    <link rel="stylesheet" href="style.css?v=1.0.147">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.148">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.148">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.148">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.148">
+    <link rel="stylesheet" href="style.css?v=1.0.148">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.147">
+    <link rel="manifest" href="manifest.json?v=1.0.148">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.147">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.147">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.148">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.148">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -2747,6 +2747,22 @@
                         <button type="button" id="catalog-add-product-btn" class="catalog-primary-btn"><i data-lucide="plus"></i><span>Novo produto</span></button>
                         <button type="button" id="catalog-manage-categories-btn" class="catalog-secondary-btn"><i data-lucide="tags"></i><span>Categorias</span></button>
                     </div>
+
+                    <!-- Controle de Ativação do Botão de Compra da Loja -->
+                    <div id="catalog-store-buy-control" class="catalog-store-control-card">
+                        <div class="catalog-store-control-left">
+                            <div class="catalog-store-control-title">
+                                <i data-lucide="shopping-bag"></i>
+                                <span>Botão de Compra da Loja</span>
+                            </div>
+                            <small id="catalog-store-buy-desc" class="catalog-store-control-desc">Permite que os clientes adicionem produtos ao carrinho e comprem na sua loja.</small>
+                        </div>
+                        <button type="button" id="catalog-store-buy-toggle-btn" class="catalog-store-buy-toggle active" title="Clique para alternar o botão de compra da loja">
+                            <i data-lucide="check-circle-2"></i>
+                            <span id="catalog-store-buy-toggle-label">Compras Ativadas</span>
+                        </button>
+                    </div>
+
                     <div id="catalog-mine-summary" class="catalog-summary"></div>
                     <div id="catalog-mine-grid" class="catalog-grid"></div>
                 </section>
@@ -2847,10 +2863,16 @@
                         </label>
                     </div>
 
-                    <label class="catalog-check" for="cat-prod-active">
-                        <input id="cat-prod-active" type="checkbox" checked>
-                        <span>Visível na vitrine</span>
-                    </label>
+                    <div class="catalog-checks-row" style="display:flex;flex-wrap:wrap;gap:14px;margin:4px 0 6px;">
+                        <label class="catalog-check" for="cat-prod-active">
+                            <input id="cat-prod-active" type="checkbox" checked>
+                            <span>Visível na vitrine</span>
+                        </label>
+                        <label class="catalog-check" for="cat-prod-buy-enabled">
+                            <input id="cat-prod-buy-enabled" type="checkbox" checked>
+                            <span>Botão de compra ativado</span>
+                        </label>
+                    </div>
 
                     <!-- Tipo de Produto: Físico vs Digital -->
                     <div class="catalog-editor-section-card">
@@ -3351,6 +3373,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.147" defer></script>
+    <script type="module" src="script.js?v=1.0.148" defer></script>
 </body>
 </html>

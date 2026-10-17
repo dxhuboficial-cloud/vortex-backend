@@ -15046,3 +15046,114 @@ body.total-black .ringtone-select {
     border-color: rgba(16, 185, 129, 0.35);
     color: #34d399;
 }
+
+/* ===== CATÁLOGO: Controle de Ativação do Botão de Compra da Loja (v1.0.148) ===== */
+.catalog-store-control-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    margin-bottom: 12px;
+}
+
+.catalog-store-control-left {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.catalog-store-control-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+.catalog-store-control-title i,
+.catalog-store-control-title svg {
+    width: 16px;
+    height: 16px;
+    color: var(--accent-color, #fff01f);
+    flex-shrink: 0;
+}
+
+.catalog-store-control-desc {
+    font-size: 0.76rem;
+    color: var(--text-dim, #8e8e93);
+    line-height: 1.3;
+}
+
+.catalog-store-buy-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.catalog-store-buy-toggle.active {
+    background: rgba(34, 197, 94, 0.15);
+    border-color: rgba(34, 197, 94, 0.4);
+    color: #22c55e;
+}
+
+.catalog-store-buy-toggle.active:hover {
+    background: rgba(34, 197, 94, 0.25);
+    border-color: #22c55e;
+}
+
+.catalog-store-buy-toggle.disabled,
+.catalog-store-buy-toggle:not(.active) {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.4);
+    color: #ef4444;
+}
+
+.catalog-store-buy-toggle.disabled:hover,
+.catalog-store-buy-toggle:not(.active):hover {
+    background: rgba(239, 68, 68, 0.25);
+    border-color: #ef4444;
+}
+
+.catalog-store-badge-catalog-only {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    background: rgba(234, 179, 8, 0.15);
+    border: 1px solid rgba(234, 179, 8, 0.35);
+    color: #eab308;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.catalog-store-notice-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    background: rgba(234, 179, 8, 0.12);
+    border: 1px solid rgba(234, 179, 8, 0.3);
+    border-radius: 10px;
+    color: #fef08a;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+}

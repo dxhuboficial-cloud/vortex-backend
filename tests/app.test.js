@@ -179,6 +179,9 @@ function createTestEnvironment() {
       if (classM) {
         classM[1].split(/\s+/).filter(Boolean).forEach(c => elements[id].classList.add(c));
       }
+      if (/\bchecked\b/i.test(tagStr)) {
+        elements[id].checked = true;
+      }
       const dataMatches = tagStr.matchAll(/data-([a-zA-Z0-9-]+)=["']([^"']*)["']/g);
       for (const dm of dataMatches) {
         const camel = dm[1].replace(/-([a-z])/g, (_, g) => g.toUpperCase());
@@ -6575,6 +6578,7 @@ test('Catálogo de Produtos & Loja Online: CRUD de produtos, categorias, carrinh
   env.elements['cat-prod-stock'].disabled = false;
   env.elements['cat-prod-stock'].value = '5';
   env.elements['cat-prod-active'].checked = true;
+  env.elements['cat-prod-buy-enabled'].checked = true;
 
   await saveCatalogProduct();
 
@@ -7419,9 +7423,11 @@ test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com 
   assert.ok(cssContent.includes('.catalog-payment-option-pill span'), 'style.css deve conter .catalog-payment-option-pill span com nowrap');
 
   // 26. Organização das Opções no PC e Atualização Automática de Preço por Desconto (v1.0.147)
-  assert.strictEqual(versionJson.version, '1.0.147', 'version.json deve ser 1.0.147');
   assert.ok(jsContent.includes('function calculatePromoFromDiscount'), 'script.js deve conter calculatePromoFromDiscount');
   assert.ok(jsContent.includes('function calculateDiscountFromPromo'), 'script.js deve conter calculateDiscountFromPromo');
+
+  // 27. Opção para o Vendedor Ativar e Desativar o Botão de Compra da Loja (v1.0.148)
+  assert.strictEqual(versionJson.version, '1.0.148', 'version.json deve ser 1.0.148');
 });
 
 test('Formulários Comerciais para Conta Empresa: Permissões, templates, card interativo no chat e preenchimento de respostas (v1.0.142)', () => {
@@ -7802,6 +7808,83 @@ test('Organização das Opções no PC e Atualização Automática de Preço pel
   priceInp.value = '200,00';
   priceInp.dispatchEvent(new win.Event('input'));
   assert.strictEqual(promoInp.value, '185,00', 'Preço promocional deve recalcular ao alterar o preço base');
+});
+
+test('Opção para o Vendedor Desativar e Ativar o Botão de Compra da Loja e por Produto (v1.0.148)', async () => {
+  const env = createTestEnvironment();
+  const doc = env.sandbox.window.document;
+  const win = env.sandbox.window;
+
+  // 1. Verificação no DOM/HTML do elemento de controle de compra da loja
+  const buyControl = doc.getElementById('catalog-store-buy-control');
+  const buyToggleBtn = doc.getElementById('catalog-store-buy-toggle-btn');
+  const buyToggleLabel = doc.getElementById('catalog-store-buy-toggle-label');
+  const buyDesc = doc.getElementById('catalog-store-buy-desc');
+  const prodBuyEnabled = doc.getElementById('cat-prod-buy-enabled');
+
+  assert.ok(buyControl, '#catalog-store-buy-control deve existir no painel de gerenciamento do catálogo');
+  assert.ok(buyToggleBtn, '#catalog-store-buy-toggle-btn deve existir para alternar compras');
+  assert.ok(buyToggleLabel, '#catalog-store-buy-toggle-label deve existir');
+  assert.ok(buyDesc, '#catalog-store-buy-desc deve existir com descrição do recurso');
+  assert.ok(prodBuyEnabled, '#cat-prod-buy-enabled deve existir no editor de produtos');
+
+  // Verifica presença de classes CSS específicas
+  assert.ok(cssContent.includes('.catalog-store-control-card'), 'style.css deve conter .catalog-store-control-card');
+  assert.ok(cssContent.includes('.catalog-store-buy-toggle'), 'style.css deve conter .catalog-store-buy-toggle');
+  assert.ok(cssContent.includes('.catalog-store-badge-catalog-only'), 'style.css deve conter .catalog-store-badge-catalog-only');
+  assert.ok(cssContent.includes('.catalog-store-notice-banner'), 'style.css deve conter .catalog-store-notice-banner');
+
+  // 2. Teste da função updateStoreBuyButtonUI
+  assert.strictEqual(typeof win.updateStoreBuyButtonUI, 'function', 'updateStoreBuyButtonUI deve ser uma função');
+
+  // Quando ativado (true)
+  win.updateStoreBuyButtonUI(true);
+  assert.ok(buyToggleBtn.classList.contains('active'), 'Botão deve ter classe .active quando ativado');
+  assert.strictEqual(buyToggleBtn.classList.contains('disabled'), false, 'Botão não deve ter classe .disabled quando ativado');
+  assert.ok(buyToggleBtn.innerHTML.includes('Compras Ativadas'), 'Texto deve indicar Compras Ativadas');
+
+  // Quando desativado (false)
+  win.updateStoreBuyButtonUI(false);
+  assert.ok(buyToggleBtn.classList.contains('disabled'), 'Botão deve ter classe .disabled quando desativado');
+  assert.strictEqual(buyToggleBtn.classList.contains('active'), false, 'Botão não deve ter classe .active quando desativado');
+  assert.ok(buyToggleBtn.innerHTML.includes('Modo Catálogo'), 'Texto deve indicar Modo Catálogo');
+
+  // 3. Teste da função toggleStoreBuyButton
+  assert.strictEqual(typeof win.toggleStoreBuyButton, 'function', 'toggleStoreBuyButton deve ser uma função');
+
+  // 4. Teste de bloqueio de compra em addToCatalogCart
+  const sampleProduct = {
+    id: 'prod_test_1',
+    name: 'Camisa VORTEX',
+    price: 99.90,
+    stock: 10,
+    buyEnabled: true
+  };
+
+  win.clearCatalogCart();
+
+  // Teste 4a: Loja com compras desativadas (storeBuyEnabled: false)
+  win.addToCatalogCart(sampleProduct, 'seller_123', { name: 'Loja Teste', storeBuyEnabled: false });
+  let cart = win.getCatalogCart();
+  assert.strictEqual(cart.items.length, 0, 'Não deve adicionar itens ao carrinho quando storeBuyEnabled for false');
+
+  // Teste 4b: Produto com compra desativada individualmente (buyEnabled: false)
+  const disabledProduct = {
+    id: 'prod_test_2',
+    name: 'Item Apenas Vitrine',
+    price: 150.00,
+    stock: 5,
+    buyEnabled: false
+  };
+  win.addToCatalogCart(disabledProduct, 'seller_123', { name: 'Loja Teste', storeBuyEnabled: true });
+  cart = win.getCatalogCart();
+  assert.strictEqual(cart.items.length, 0, 'Não deve adicionar itens ao carrinho quando o produto tiver buyEnabled false');
+
+  // Teste 4c: Compra ativada na loja e no produto -> adiciona com sucesso
+  win.addToCatalogCart(sampleProduct, 'seller_123', { name: 'Loja Teste', storeBuyEnabled: true });
+  cart = win.getCatalogCart();
+  assert.strictEqual(cart.items.length, 1, 'Deve adicionar o item ao carrinho quando compras estiverem ativadas');
+  assert.strictEqual(cart.items[0].productId, 'prod_test_1', 'Item correto deve estar no carrinho');
 });
 
 
