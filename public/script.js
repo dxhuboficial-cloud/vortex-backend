@@ -1283,10 +1283,145 @@ export function clearAllNotifications() {
     allNotifications.forEach(n => {
         deletedNotifIds.add(n.id);
         readNotifIds.add(n.id);
+        if (currentUser && n.toUid === currentUser.uid) {
+            deleteDoc(doc(db, 'notifications', n.id)).catch(() => {});
+        }
     });
     saveNotifStorage();
     combineAndRenderNotifications();
     showToast("Notificações", "Todas as notificações foram limpas.", "blue");
+}
+
+export async function deleteSingleNotification(notifId) {
+    if (!notifId) return;
+    deletedNotifIds.add(notifId);
+    readNotifIds.add(notifId);
+    saveNotifStorage();
+
+    const targetNotif = allNotifications.find(n => n.id === notifId);
+    userNotifications = userNotifications.filter(n => n.id !== notifId);
+    broadcastNotifications = broadcastNotifications.filter(n => n.id !== notifId);
+    allNotifications = allNotifications.filter(n => n.id !== notifId);
+
+    if (targetNotif && currentUser && targetNotif.toUid === currentUser.uid) {
+        try {
+            await deleteDoc(doc(db, 'notifications', notifId));
+        } catch (err) {
+            // Silencioso caso não tenha permissão ou já tenha sido removido
+        }
+    }
+
+    updateNotificationsBadge();
+    renderNotifications();
+}
+
+export function attachNotificationSwipeHandlers(listEl) {
+    if (!listEl || typeof listEl.querySelectorAll !== 'function') return;
+    const cards = listEl.querySelectorAll('.notification-card');
+    cards.forEach(card => {
+        const notifId = card.dataset?.id || card.getAttribute?.('data-id');
+        const wrapper = card.closest ? card.closest('.notification-swipe-wrapper') : card.parentElement;
+        let startX = 0;
+        let startY = 0;
+        let currentX = 0;
+        let isDragging = false;
+        let isHorizontal = null;
+
+        const handleStart = (clientX, clientY) => {
+            startX = Number(clientX) || 0;
+            startY = Number(clientY) || 0;
+            currentX = 0;
+            isDragging = true;
+            isHorizontal = null;
+            if (card.style) card.style.transition = 'none';
+        };
+
+        const handleMove = (clientX, clientY, ev) => {
+            if (!isDragging) return;
+            const dx = (Number(clientX) || 0) - startX;
+            const dy = (Number(clientY) || 0) - startY;
+
+            if (isHorizontal === null) {
+                if (Math.abs(dx) > 6 || Math.abs(dy) > 6) {
+                    isHorizontal = Math.abs(dx) >= Math.abs(dy);
+                }
+            }
+            if (!isHorizontal) return;
+
+            if (dx < 0) {
+                if (ev && typeof ev.preventDefault === 'function' && ev.cancelable) {
+                    ev.preventDefault();
+                }
+                currentX = Math.max(-180, dx);
+                if (card.style) card.style.transform = `translateX(${currentX}px)`;
+                if (wrapper && wrapper.classList) {
+                    wrapper.classList.toggle('swiping-left', currentX < -10);
+                }
+            } else {
+                currentX = 0;
+                if (card.style) card.style.transform = 'translateX(0px)';
+                if (wrapper && wrapper.classList) {
+                    wrapper.classList.remove('swiping-left');
+                }
+            }
+        };
+
+        const handleEnd = () => {
+            if (!isDragging) return;
+            isDragging = false;
+            if (currentX <= -65) {
+                if (card.style) {
+                    card.style.transition = 'transform 0.2s ease-out, opacity 0.2s ease-out';
+                    card.style.transform = 'translateX(-110%)';
+                    card.style.opacity = '0';
+                }
+                if (wrapper && wrapper.classList) {
+                    wrapper.classList.add('swipe-deleting');
+                }
+                deleteSingleNotification(notifId);
+            } else {
+                if (card.style) {
+                    card.style.transition = 'transform 0.2s ease-out';
+                    card.style.transform = 'translateX(0px)';
+                }
+                if (wrapper && wrapper.classList) {
+                    wrapper.classList.remove('swiping-left');
+                }
+            }
+        };
+
+        card._swipeStart = handleStart;
+        card._swipeMove = handleMove;
+        card._swipeEnd = handleEnd;
+
+        if (typeof card.addEventListener === 'function') {
+            card.addEventListener('touchstart', (e) => {
+                const t = e.touches && e.touches[0];
+                if (t) handleStart(t.clientX, t.clientY);
+            }, { passive: true });
+
+            card.addEventListener('touchmove', (e) => {
+                const t = e.touches && e.touches[0];
+                if (t) handleMove(t.clientX, t.clientY, e);
+            }, { passive: false });
+
+            card.addEventListener('touchend', handleEnd);
+            card.addEventListener('touchcancel', handleEnd);
+
+            card.addEventListener('mousedown', (e) => {
+                if (e.button !== undefined && e.button !== 0) return;
+                handleStart(e.clientX, e.clientY);
+            });
+            card.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                handleMove(e.clientX, e.clientY, e);
+            });
+            card.addEventListener('mouseup', handleEnd);
+            card.addEventListener('mouseleave', () => {
+                if (isDragging) handleEnd();
+            });
+        }
+    });
 }
 
 export function renderNotifications() {
@@ -1370,18 +1505,24 @@ export function renderNotifications() {
         const timeStr = n.createdAt ? formatLastSeen(n.createdAt) : 'Recentemente';
 
         return `
-            <div class="notification-card card-${typeClass} ${isUnread ? 'unread' : ''}" data-id="${n.id}">
-                <div class="notification-icon-box ${typeClass}">
-                    ${iconHTML}
+            <div class="notification-swipe-wrapper" data-id="${n.id}">
+                <div class="notification-swipe-delete-bg" aria-hidden="true">
+                    <i data-lucide="trash-2"></i>
+                    <span>Apagar</span>
                 </div>
-                <div class="notification-card-content">
-                    <div class="notification-card-top">
-                        <span class="notification-card-title">${escapeHTML(displayTitle)}</span>
-                        <span class="notification-badge ${typeClass}">${badgeText}</span>
+                <div class="notification-card card-${typeClass} ${isUnread ? 'unread' : ''}" data-id="${n.id}">
+                    <div class="notification-icon-box ${typeClass}">
+                        ${iconHTML}
                     </div>
-                    <div class="notification-card-text">${escapeHTML(n.message || '')}</div>
-                    <div class="notification-card-time">
-                        <i data-lucide="clock" style="width:11px; height:11px;"></i> ${timeStr}
+                    <div class="notification-card-content">
+                        <div class="notification-card-top">
+                            <span class="notification-card-title">${escapeHTML(displayTitle)}</span>
+                            <span class="notification-badge ${typeClass}">${badgeText}</span>
+                        </div>
+                        <div class="notification-card-text">${escapeHTML(n.message || '')}</div>
+                        <div class="notification-card-time">
+                            <i data-lucide="clock" style="width:11px; height:11px;"></i> ${timeStr}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1389,6 +1530,7 @@ export function renderNotifications() {
     }).join('');
 
     if (window.lucide) lucide.createIcons();
+    attachNotificationSwipeHandlers(listEl);
 }
 
 function setupPresence(uid) {
@@ -13594,6 +13736,8 @@ if (typeof window !== 'undefined') {
     window.openNotificationsPanel = openNotificationsPanel;
     window.closeNotificationsPanel = closeNotificationsPanel;
     window.clearAllNotifications = clearAllNotifications;
+    window.deleteSingleNotification = deleteSingleNotification;
+    window.attachNotificationSwipeHandlers = attachNotificationSwipeHandlers;
     window.renderNotifications = renderNotifications;
     window.updateNotificationsBadge = updateNotificationsBadge;
     window.adminSendBroadcast = adminSendBroadcast;

@@ -7265,6 +7265,14 @@ test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com 
   assert.ok(cssContent.includes('.notification-icon-box.like'), 'style.css deve estilizar .notification-icon-box.like em azul');
   assert.ok(cssContent.includes('.notification-icon-box.comment'), 'style.css deve estilizar .notification-icon-box.comment em amarelo');
   assert.ok(cssContent.includes('.notification-icon-box.group-add'), 'style.css deve estilizar .notification-icon-box.group-add em azul');
+
+  // 11. Validar exclusão individual de notificação ao arrastar para a esquerda e alinhamento do cabeçalho (v1.0.132)
+  assert.ok(jsContent.includes('function deleteSingleNotification'), 'script.js deve implementar deleteSingleNotification');
+  assert.ok(jsContent.includes('function attachNotificationSwipeHandlers'), 'script.js deve implementar attachNotificationSwipeHandlers');
+  assert.ok(jsContent.includes('notification-swipe-wrapper'), 'Os cards de notificação devem usar .notification-swipe-wrapper');
+  assert.ok(htmlContent.includes('class="notifications-header-text"'), 'O cabeçalho de notificações deve usar .notifications-header-text');
+  assert.ok(!htmlContent.includes('id="close-notifications-btn" class="close-btn drawer-cancel-btn'), 'O botão fechar notificações não deve herdar margin-top de drawer-cancel-btn');
+  assert.ok(cssContent.includes('.notification-swipe-delete-bg'), 'style.css deve estilizar o fundo vermelho de exclusão por swipe');
 });
 
 
