@@ -7411,9 +7411,13 @@ test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com 
   assert.ok(jsContent.includes('function getDigitalCtaIcon'), 'script.js deve conter getDigitalCtaIcon');
 
   // 24. Padronização do Tamanho dos Botões de Formas de Pagamento no Celular (v1.0.145)
-  assert.strictEqual(versionJson.version, '1.0.145', 'version.json deve ser 1.0.145');
   assert.ok(cssContent.includes('.catalog-prod-payments-grid .catalog-check span'), 'style.css deve estilizar o span dos botões de pagamento com white-space nowrap');
   assert.ok(cssContent.includes('repeat(2, 1fr)'), 'style.css deve definir grid de 2 colunas para botões de pagamento no celular');
+
+  // 25. Padronização do Tamanho dos Botões de Formas de Pagamento no Carrinho no Celular (v1.0.146)
+  assert.strictEqual(versionJson.version, '1.0.146', 'version.json deve ser 1.0.146');
+  assert.ok(cssContent.includes('.catalog-payment-options-grid'), 'style.css deve conter .catalog-payment-options-grid');
+  assert.ok(cssContent.includes('.catalog-payment-option-pill span'), 'style.css deve conter .catalog-payment-option-pill span com nowrap');
 });
 
 test('Formulários Comerciais para Conta Empresa: Permissões, templates, card interativo no chat e preenchimento de respostas (v1.0.142)', () => {
@@ -7711,6 +7715,25 @@ test('Padronização de Tamanho dos Botões de Formas de Pagamento no Editor de 
   assert.ok(cssContent.includes('height: 44px;'), 'style.css deve definir height fixa uniforme para os botões de pagamento');
   assert.ok(cssContent.includes('white-space: nowrap;'), 'style.css deve impedir quebra de linha em Cartão de Crédito');
   assert.ok(cssContent.includes('repeat(2, 1fr)'), 'style.css deve definir grid de 2 colunas para manter tamanhos idênticos');
+});
+
+test('Padronização de Tamanho dos Botões de Formas de Pagamento no Carrinho ("Seu carrinho") no Celular (v1.0.146)', () => {
+  const env = createTestEnvironment();
+  const doc = env.sandbox.window.document;
+
+  const cartModal = doc.getElementById('catalog-cart-modal');
+  assert.ok(cartModal, 'Modal #catalog-cart-modal deve existir');
+
+  const paymentOptionsContainer = doc.getElementById('catalog-cart-payment-options');
+  assert.ok(paymentOptionsContainer, 'Container #catalog-cart-payment-options deve existir');
+
+  // Verifica que o CSS do grid do carrinho define 2 colunas no celular e altura uniforme de 44px
+  assert.ok(cssContent.includes('.catalog-payment-options-grid'), 'style.css deve conter .catalog-payment-options-grid');
+  assert.ok(cssContent.includes('.catalog-payment-option-pill'), 'style.css deve conter .catalog-payment-option-pill');
+  assert.ok(cssContent.includes('.catalog-payment-option-pill span'), 'style.css deve conter .catalog-payment-option-pill span');
+  assert.ok(cssContent.includes('min-height: 44px;'), 'style.css deve conter min-height: 44px');
+  assert.ok(cssContent.includes('height: 44px;'), 'style.css deve conter height: 44px');
+  assert.ok(cssContent.includes('white-space: nowrap;'), 'style.css deve conter white-space: nowrap');
 });
 
 

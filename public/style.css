@@ -13413,26 +13413,50 @@ body.total-black .ringtone-select {
 /* Formas de Pagamento no Carrinho */
 .catalog-payment-options-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
     gap: 8px;
     margin-top: 6px;
+}
+
+@media (min-width: 520px) {
+    .catalog-payment-options-grid {
+        grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
+    }
 }
 
 .catalog-payment-option-pill {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    padding: 10px 12px;
+    gap: 6px;
+    padding: 8px 8px;
+    min-height: 44px;
+    height: 44px;
+    box-sizing: border-box;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 10px;
     color: var(--text-color, #fff);
-    font-size: 0.82rem;
+    font-size: 0.76rem;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s ease;
     user-select: none;
+    overflow: hidden;
+}
+
+.catalog-payment-option-pill svg,
+.catalog-payment-option-pill i {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+}
+
+.catalog-payment-option-pill span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
 }
 
 .catalog-payment-option-pill:hover {
