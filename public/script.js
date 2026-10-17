@@ -10407,11 +10407,13 @@ function loadRealtimeMessages() {
                     `;
                 } else if (msg.type === 'order' || msg.order) {
                     mediaHTML = buildOrderCardHTML(msg);
+                } else if (msg.type === 'form' || msg.form) {
+                    mediaHTML = buildCompanyFormCardHTML(msg);
                 }
             }
 
             let textHTML = '';
-            if (msg.text && !msg.deletedForEveryone && msg.type !== 'poll' && msg.type !== 'pix' && msg.type !== 'order') {
+            if (msg.text && !msg.deletedForEveryone && msg.type !== 'poll' && msg.type !== 'pix' && msg.type !== 'order' && msg.type !== 'form') {
                 const isSenderVip = isMe
                     ? checkIsVipUser(currentProfile)
                     : !!(msg.isVip || msg.isVerified || (msg.senderEmail && VORTEX_ADMIN_EMAILS.includes(msg.senderEmail.toLowerCase())) || (msg.senderUsername === 'dxhuboficial') || checkIsVipUser(msg));
@@ -10737,6 +10739,34 @@ function loadRealtimeMessages() {
                         openOrderDetail((msg.order && msg.order.orderId) || orderViewBtn.dataset.orderId);
                     });
                 }
+            }
+
+            // Formulário comercial da empresa: responder e ver respostas
+            if (msg.type === 'form' || msg.form) {
+                const fillBtns = msgDiv.querySelectorAll('.chat-form-fill-btn');
+                fillBtns.forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        playSound(clickSound);
+                        openCompanyFormFillModal(msg.id, msg.form, chatId);
+                    });
+                });
+                const viewResponsesBtns = msgDiv.querySelectorAll('.chat-form-view-responses-btn');
+                viewResponsesBtns.forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        playSound(clickSound);
+                        openCompanyFormResponsesModal(msg.id, msg.form, chatId);
+                    });
+                });
+                const previewBtns = msgDiv.querySelectorAll('.chat-form-preview-btn');
+                previewBtns.forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        playSound(clickSound);
+                        openCompanyFormFillModal(msg.id, msg.form, chatId, true /* previewMode */);
+                    });
+                });
             }
 
             if (speedBtn) {
@@ -11430,7 +11460,14 @@ document.getElementById('cancel-delete-modal-btn')?.addEventListener('click', ()
 document.getElementById('chat-options-menu-btn')?.addEventListener('click', (e) => {
     e.stopPropagation();
     if (typeof updateChatPinUI === 'function') updateChatPinUI();
+    if (typeof updateCompanyAttachVisibility === 'function') updateCompanyAttachVisibility();
     document.getElementById('chat-dropdown-menu')?.classList.toggle('active');
+});
+
+document.getElementById('chat-company-form-trigger')?.addEventListener('click', () => {
+    document.getElementById('chat-dropdown-menu')?.classList.remove('active');
+    playSound(clickSound);
+    openCompanyFormCreator();
 });
 
 document.getElementById('chat-pin-trigger')?.addEventListener('click', () => {
@@ -14084,7 +14121,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.141';
+export const CURRENT_APP_VERSION = '1.0.142';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -15235,6 +15272,9 @@ async function sendChatMessage(type = 'text', payload = {}) {
         if (payload.order) {
             msgData.order = payload.order;
         }
+        if (payload.form) {
+            msgData.form = payload.form;
+        }
 
         const isSenderVip = checkIsVipUser(currentProfile);
         if (isSenderVip) {
@@ -15565,6 +15605,7 @@ export function playVoiceNote(playerEl, audioData) {
 const attachDrawer = document.getElementById('attachment-panel');
 document.getElementById('attach-btn')?.addEventListener('click', () => {
     playSound(clickSound);
+    if (typeof updateCompanyAttachVisibility === 'function') updateCompanyAttachVisibility();
     attachDrawer?.classList.toggle('active');
 });
 document.getElementById('close-attachment-panel')?.addEventListener('click', () => {
@@ -16121,6 +16162,893 @@ document.getElementById('pix-send-note-input')?.addEventListener('keydown', (e) 
     if (e.key === 'Enter') {
         e.preventDefault();
         sendPixMessage();
+    }
+});
+
+/* ==========================================================================
+   FORMULÁRIOS COMERCIAIS PARA CONTA EMPRESA (VORTEX BIZ 💼)
+   ========================================================================== */
+
+export function canManageCompanyForms(profile = currentProfile, user = currentUser) {
+    return isBusinessAccount(profile) || isUserAdmin(user, profile);
+}
+
+export function updateCompanyAttachVisibility() {
+    const isCompany = canManageCompanyForms(currentProfile, currentUser);
+    const formAttachBtn = document.getElementById('chat-attach-form-btn');
+    if (formAttachBtn) {
+        formAttachBtn.style.display = isCompany ? 'flex' : 'none';
+    }
+    const formDropdownItem = document.getElementById('chat-company-form-trigger');
+    if (formDropdownItem) {
+        formDropdownItem.style.display = isCompany ? 'flex' : 'none';
+    }
+}
+
+export const COMPANY_FORM_TEMPLATES = {
+    client_registration: {
+        title: 'Cadastro de Cliente',
+        description: 'Por favor, preencha seus dados para registro do seu pedido e envio rápido.',
+        fields: [
+            { label: 'Nome completo', type: 'text', required: true, options: [] },
+            { label: 'Telefone com DDD / WhatsApp', type: 'text', required: true, options: [] },
+            { label: 'Endereço de entrega (Rua, Número, Bairro, Cidade, CEP)', type: 'textarea', required: true, options: [] },
+            { label: 'Forma preferida de entrega', type: 'radio', required: true, options: ['Retirada no Local', 'Entrega Expressa / Motoboy', 'Correios (Sedex / PAC)'] },
+            { label: 'Observações ou instruções especiais', type: 'textarea', required: false, options: [] }
+        ]
+    },
+    satisfaction_survey: {
+        title: 'Pesquisa de Satisfação',
+        description: 'Sua avaliação é essencial para continuarmos aprimorando nossos produtos e atendimento!',
+        fields: [
+            { label: 'Como você avalia nosso atendimento?', type: 'radio', required: true, options: ['⭐⭐⭐⭐⭐ Excelente', '⭐⭐⭐⭐ Bom', '⭐⭐⭐ Regular', '⭐ Precisa melhorar'] },
+            { label: 'O que mais chamou sua atenção positiva?', type: 'checkbox', required: false, options: ['Rapidez na entrega', 'Qualidade do produto', 'Facilidade no pagamento', 'Atendimento atencioso'] },
+            { label: 'Você recomendaria nossa empresa para outras pessoas?', type: 'radio', required: true, options: ['Com certeza, já recomendo!', 'Sim, com certeza', 'Talvez', 'Não'] },
+            { label: 'Deixe sua sugestão ou comentário para nós:', type: 'textarea', required: false, options: [] }
+        ]
+    },
+    service_briefing: {
+        title: 'Briefing de Orçamento',
+        description: 'Preencha os detalhes do seu pedido para elaborarmos sua proposta personalizada.',
+        fields: [
+            { label: 'Qual serviço ou produto você deseja contratar?', type: 'text', required: true, options: [] },
+            { label: 'Qual o prazo ou data em que precisa do pedido pronto?', type: 'text', required: true, options: [] },
+            { label: 'Faixa de orçamento estimada', type: 'radio', required: false, options: ['Até R$ 200,00', 'R$ 200,00 a R$ 500,00', 'R$ 500,00 a R$ 1.500,00', 'Acima de R$ 1.500,00'] },
+            { label: 'Descreva os detalhes, cores, tamanhos ou referências do projeto:', type: 'textarea', required: true, options: [] }
+        ]
+    },
+    custom: {
+        title: '',
+        description: '',
+        fields: [
+            { label: '', type: 'text', required: true, options: [] },
+            { label: '', type: 'text', required: false, options: [] }
+        ]
+    }
+};
+
+let currentCompanyFormFields = [];
+let activeViewingFormResponses = null;
+
+export function renderCompanyFormCreatorFields() {
+    const container = document.getElementById('company-form-fields-container');
+    const countEl = document.getElementById('company-form-fields-count');
+    if (countEl) countEl.innerText = String(currentCompanyFormFields.length);
+    if (!container) return;
+
+    if (currentCompanyFormFields.length === 0) {
+        container.innerHTML = `<div style="text-align:center; padding: 20px; color: var(--text-dim, #8e8e93); font-size: 0.85rem;">Nenhuma pergunta adicionada. Toque no botão "+ Adicionar Pergunta" acima.</div>`;
+        return;
+    }
+
+    container.innerHTML = currentCompanyFormFields.map((field, idx) => {
+        const isChoice = field.type === 'radio' || field.type === 'checkbox';
+        const optionsStr = Array.isArray(field.options) ? field.options.join(', ') : (field.options || '');
+        return `
+            <div class="company-form-field-item" data-field-index="${idx}">
+                <div class="company-form-field-header">
+                    <span class="company-form-field-num">#${idx + 1}</span>
+                    <button type="button" class="company-form-field-remove-btn" data-field-index="${idx}" title="Remover pergunta" ${currentCompanyFormFields.length <= 1 ? 'disabled' : ''}>
+                        <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
+                    </button>
+                </div>
+                <div class="company-form-field-row">
+                    <div class="company-form-field-col flex-1">
+                        <label class="company-form-sublabel">Pergunta / Campo *</label>
+                        <input type="text" class="company-form-text-input form-field-label-input" data-field-index="${idx}" value="${escapeHTML(field.label || '')}" placeholder="Ex: Qual seu WhatsApp ou chave Pix?">
+                    </div>
+                    <div class="company-form-field-col w-auto">
+                        <label class="company-form-sublabel">Tipo de Resposta</label>
+                        <select class="company-form-select form-field-type-select" data-field-index="${idx}">
+                            <option value="text" ${field.type === 'text' ? 'selected' : ''}>Texto Curto</option>
+                            <option value="textarea" ${field.type === 'textarea' ? 'selected' : ''}>Texto Longo</option>
+                            <option value="radio" ${field.type === 'radio' ? 'selected' : ''}>Escolha Única</option>
+                            <option value="checkbox" ${field.type === 'checkbox' ? 'selected' : ''}>Múltipla Escolha</option>
+                            <option value="number" ${field.type === 'number' ? 'selected' : ''}>Número</option>
+                        </select>
+                    </div>
+                </div>
+                ${isChoice ? `
+                <div class="company-form-options-row">
+                    <label class="company-form-sublabel">Opções de Escolha (separadas por vírgula) *</label>
+                    <input type="text" class="company-form-text-input form-field-options-input" data-field-index="${idx}" value="${escapeHTML(optionsStr)}" placeholder="Ex: Retirada no Local, Entrega Motoboy, Sedex">
+                </div>
+                ` : ''}
+                <div class="company-form-field-footer">
+                    <label class="company-form-toggle-label">
+                        <input type="checkbox" class="form-field-required-checkbox" data-field-index="${idx}" ${field.required ? 'checked' : ''}>
+                        <span>Obrigatório</span>
+                    </label>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    if (window.lucide) lucide.createIcons();
+
+    // Attach listeners for dynamic fields
+    container.querySelectorAll('.form-field-label-input').forEach(input => {
+        input.addEventListener('input', (e) => {
+            const idx = parseInt(e.target.dataset.fieldIndex, 10);
+            if (currentCompanyFormFields[idx]) {
+                currentCompanyFormFields[idx].label = e.target.value;
+            }
+        });
+    });
+
+    container.querySelectorAll('.form-field-type-select').forEach(select => {
+        select.addEventListener('change', (e) => {
+            const idx = parseInt(e.target.dataset.fieldIndex, 10);
+            if (currentCompanyFormFields[idx]) {
+                const newType = e.target.value;
+                currentCompanyFormFields[idx].type = newType;
+                if ((newType === 'radio' || newType === 'checkbox') && (!currentCompanyFormFields[idx].options || currentCompanyFormFields[idx].options.length === 0)) {
+                    currentCompanyFormFields[idx].options = ['Opção 1', 'Opção 2'];
+                }
+                renderCompanyFormCreatorFields();
+            }
+        });
+    });
+
+    container.querySelectorAll('.form-field-options-input').forEach(input => {
+        input.addEventListener('input', (e) => {
+            const idx = parseInt(e.target.dataset.fieldIndex, 10);
+            if (currentCompanyFormFields[idx]) {
+                const parts = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
+                currentCompanyFormFields[idx].options = parts;
+            }
+        });
+    });
+
+    container.querySelectorAll('.form-field-required-checkbox').forEach(chk => {
+        chk.addEventListener('change', (e) => {
+            const idx = parseInt(e.target.dataset.fieldIndex, 10);
+            if (currentCompanyFormFields[idx]) {
+                currentCompanyFormFields[idx].required = !!e.target.checked;
+            }
+        });
+    });
+
+    container.querySelectorAll('.company-form-field-remove-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const idx = parseInt(btn.dataset.fieldIndex, 10);
+            if (currentCompanyFormFields.length > 1 && currentCompanyFormFields[idx]) {
+                currentCompanyFormFields.splice(idx, 1);
+                playSound(clickSound);
+                renderCompanyFormCreatorFields();
+            }
+        });
+    });
+}
+
+export function applyCompanyFormTemplate(templateKey) {
+    const template = COMPANY_FORM_TEMPLATES[templateKey];
+    if (!template) return;
+
+    const titleInput = document.getElementById('company-form-title-input');
+    const descInput = document.getElementById('company-form-desc-input');
+
+    if (titleInput) titleInput.value = template.title || '';
+    if (descInput) descInput.value = template.description || '';
+
+    // Clone fields deeply
+    currentCompanyFormFields = (template.fields || []).map(f => ({
+        label: f.label || '',
+        type: f.type || 'text',
+        required: !!f.required,
+        options: Array.isArray(f.options) ? [...f.options] : []
+    }));
+
+    // Update active chip
+    document.querySelectorAll('.company-form-template-chip').forEach(chip => {
+        chip.classList.toggle('active', chip.dataset.template === templateKey);
+    });
+
+    renderCompanyFormCreatorFields();
+}
+
+export function openCompanyFormCreator() {
+    if (!canManageCompanyForms(currentProfile, currentUser)) {
+        showToast('Recurso Exclusivo', 'A criação de formulários está disponível apenas para Contas Empresa.', 'yellow');
+        return;
+    }
+    if (!activeChatContact) {
+        showToast('Conversa Necessária', 'Abra uma conversa com um cliente para enviar o formulário.', 'yellow');
+        return;
+    }
+
+    // Fechar gaveta de anexos se estiver aberta
+    const attachPanel = document.getElementById('attachment-panel');
+    if (attachPanel) attachPanel.classList.remove('active');
+    document.getElementById('chat-dropdown-menu')?.classList.remove('active');
+
+    const modal = document.getElementById('company-form-creator-modal');
+    if (!modal) return;
+
+    // Iniciar com modelo de cadastro de cliente por padrão ou personalizado
+    applyCompanyFormTemplate('client_registration');
+
+    modal.style.display = 'flex';
+    modal.classList.add('active');
+    modal.setAttribute('aria-hidden', 'false');
+
+    if (typeof pushBackNavigationState === 'function') {
+        pushBackNavigationState('company-form-creator-modal');
+    }
+
+    if (window.lucide) lucide.createIcons();
+}
+
+export function closeCompanyFormCreator() {
+    const modal = document.getElementById('company-form-creator-modal');
+    if (!modal) return;
+    modal.style.display = 'none';
+    modal.classList.remove('active');
+    modal.setAttribute('aria-hidden', 'true');
+}
+
+export async function submitCompanyForm() {
+    if (!currentUser || !activeChatContact) return;
+    if (!canManageCompanyForms(currentProfile, currentUser)) {
+        showToast('Não autorizado', 'Recurso disponível apenas para Contas Empresa.', 'red');
+        return;
+    }
+
+    const titleInput = document.getElementById('company-form-title-input');
+    const descInput = document.getElementById('company-form-desc-input');
+    const submitBtn = document.getElementById('company-form-submit-btn');
+
+    const title = (titleInput?.value || '').trim();
+    if (!title) {
+        showToast('Título Obrigatório', 'Por favor, informe o título do formulário.', 'yellow');
+        if (titleInput) titleInput.focus();
+        return;
+    }
+
+    if (currentCompanyFormFields.length === 0) {
+        showToast('Sem perguntas', 'Adicione pelo menos 1 pergunta ao formulário.', 'yellow');
+        return;
+    }
+
+    // Validar perguntas preenchidas
+    for (let i = 0; i < currentCompanyFormFields.length; i++) {
+        const field = currentCompanyFormFields[i];
+        const label = (field.label || '').trim();
+        if (!label) {
+            showToast('Pergunta incompleta', `Por favor, digite o texto da pergunta #${i + 1}.`, 'yellow');
+            renderCompanyFormCreatorFields();
+            return;
+        }
+        if ((field.type === 'radio' || field.type === 'checkbox')) {
+            const opts = Array.isArray(field.options) ? field.options : String(field.options || '').split(',').map(s => s.trim()).filter(Boolean);
+            if (opts.length < 2) {
+                showToast('Opções insuficientes', `A pergunta #${i + 1} precisa de pelo menos 2 opções.`, 'yellow');
+                return;
+            }
+            field.options = opts;
+        }
+    }
+
+    if (submitBtn) submitBtn.disabled = true;
+
+    try {
+        const companyName = currentProfile?.name || currentUser?.displayName || 'Empresa';
+        const formData = {
+            id: 'form_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 6),
+            title: title,
+            description: (descInput?.value || '').trim(),
+            senderUid: currentUser.uid,
+            senderName: companyName,
+            createdAt: Date.now(),
+            fields: currentCompanyFormFields.map((f, i) => ({
+                id: 'q_' + (i + 1) + '_' + Date.now().toString(36),
+                label: (f.label || '').trim(),
+                type: f.type || 'text',
+                options: (f.type === 'radio' || f.type === 'checkbox') ? [...f.options] : [],
+                required: !!f.required
+            })),
+            responses: {}
+        };
+
+        await sendChatMessage('form', {
+            form: formData,
+            text: `📋 Formulário: ${formData.title} (${formData.fields.length} perguntas)`
+        });
+
+        closeCompanyFormCreator();
+        showToast('Formulário Enviado!', 'O formulário foi enviado na conversa com o cliente ⚡', 'teal');
+    } catch (err) {
+        console.error('Erro ao enviar formulário comercial:', err);
+        showToast('Erro ao enviar', 'Não foi possível enviar o formulário. Tente novamente.', 'red');
+    } finally {
+        if (submitBtn) submitBtn.disabled = false;
+    }
+}
+
+// Constrói o Card de Formulário no Chat
+export function buildCompanyFormCardHTML(msg) {
+    const form = msg.form || {};
+    const title = form.title || 'Formulário Comercial';
+    const description = form.description || '';
+    const fields = Array.isArray(form.fields) ? form.fields : [];
+    const fieldsCount = fields.length;
+    const responses = form.responses || {};
+    const responsesCount = Object.keys(responses).length;
+
+    const myUid = currentUser ? currentUser.uid : '';
+    const isSender = msg.senderUid === myUid || form.senderUid === myUid;
+    const myResponse = myUid ? responses[myUid] : null;
+    const hasResponded = !!myResponse;
+
+    let statusBadgeHTML = '';
+    if (hasResponded) {
+        statusBadgeHTML = `
+            <div class="chat-form-status-badge answered">
+                <i data-lucide="check-circle" style="width:13px;height:13px;"></i>
+                <span>Respondido</span>
+            </div>
+        `;
+    } else if (isSender) {
+        const respText = responsesCount === 1 ? '1 resposta' : `${responsesCount} respostas`;
+        statusBadgeHTML = `
+            <div class="chat-form-status-badge ${responsesCount > 0 ? 'has-responses' : 'pending'}">
+                <i data-lucide="${responsesCount > 0 ? 'inbox' : 'clock'}" style="width:13px;height:13px;"></i>
+                <span>${respText}</span>
+            </div>
+        `;
+    } else {
+        statusBadgeHTML = `
+            <div class="chat-form-status-badge pending">
+                <i data-lucide="clock" style="width:13px;height:13px;"></i>
+                <span>Pendente</span>
+            </div>
+        `;
+    }
+
+    let questionsPreviewHTML = '';
+    if (fieldsCount > 0) {
+        const previewItems = fields.slice(0, 3).map((f, i) => `
+            <div class="chat-form-q-preview">
+                <span class="chat-form-q-num">${i + 1}.</span>
+                <span class="chat-form-q-text">${escapeHTML(f.label || 'Pergunta')}</span>
+                ${f.required ? '<span class="chat-form-q-req">*</span>' : ''}
+            </div>
+        `).join('');
+        const moreCount = fieldsCount - 3;
+        questionsPreviewHTML = `
+            <div class="chat-form-questions-preview">
+                ${previewItems}
+                ${moreCount > 0 ? `<div class="chat-form-q-more">+ ${moreCount} outra(s) pergunta(s)...</div>` : ''}
+            </div>
+        `;
+    }
+
+    let actionsHTML = '';
+    if (isSender) {
+        actionsHTML = `
+            <div class="chat-form-actions-row">
+                <button type="button" class="chat-form-btn chat-form-view-responses-btn" data-msg-id="${msg.id}">
+                    <i data-lucide="list-checks" style="width:15px;height:15px;"></i>
+                    <span>Ver Respostas (${responsesCount})</span>
+                </button>
+                <button type="button" class="chat-form-btn-secondary chat-form-preview-btn" data-msg-id="${msg.id}" title="Visualizar perguntas do formulário">
+                    <i data-lucide="eye" style="width:14px;height:14px;"></i>
+                </button>
+            </div>
+        `;
+    } else {
+        if (hasResponded) {
+            actionsHTML = `
+                <div class="chat-form-actions-row">
+                    <button type="button" class="chat-form-btn chat-form-view-responses-btn" data-msg-id="${msg.id}">
+                        <i data-lucide="check-check" style="width:15px;height:15px;"></i>
+                        <span>Ver Minha Resposta</span>
+                    </button>
+                    <button type="button" class="chat-form-btn-secondary chat-form-fill-btn" data-msg-id="${msg.id}" title="Editar respostas enviadas">
+                        <i data-lucide="edit-2" style="width:14px;height:14px;"></i>
+                        <span>Editar</span>
+                    </button>
+                </div>
+            `;
+        } else {
+            actionsHTML = `
+                <div class="chat-form-actions-row">
+                    <button type="button" class="chat-form-btn chat-form-fill-btn chat-form-btn-primary" data-msg-id="${msg.id}">
+                        <i data-lucide="file-edit" style="width:15px;height:15px;"></i>
+                        <span>Responder Formulário</span>
+                    </button>
+                </div>
+            `;
+        }
+    }
+
+    return `
+        <div class="chat-company-form-card" data-msg-id="${msg.id}">
+            <div class="chat-form-card-top">
+                <div class="chat-form-company-pill">
+                    <i data-lucide="briefcase" style="width:12px;height:12px;"></i>
+                    <span>EMPRESA</span>
+                </div>
+                ${statusBadgeHTML}
+            </div>
+
+            <div class="chat-form-card-header">
+                <div class="chat-form-card-icon">
+                    <i data-lucide="clipboard-list"></i>
+                </div>
+                <div class="chat-form-card-title-wrap">
+                    <h4 class="chat-form-card-title">${escapeHTML(title)}</h4>
+                    <span class="chat-form-card-meta">${fieldsCount} ${fieldsCount === 1 ? 'pergunta' : 'perguntas'}</span>
+                </div>
+            </div>
+
+            ${description ? `<p class="chat-form-card-desc">${escapeHTML(description)}</p>` : ''}
+
+            ${questionsPreviewHTML}
+
+            ${actionsHTML}
+        </div>
+    `;
+}
+
+let activeFormFillContext = null;
+
+export function openCompanyFormFillModal(msgId, form, chatId, previewMode = false) {
+    if (!form) return;
+    const modal = document.getElementById('company-form-fill-modal');
+    if (!modal) return;
+
+    activeFormFillContext = {
+        msgId: msgId,
+        form: form,
+        chatId: chatId || getActiveChatId(),
+        previewMode: !!previewMode
+    };
+
+    const titleEl = document.getElementById('company-form-fill-modal-title');
+    const subEl = document.getElementById('company-form-fill-modal-subtitle');
+    const bannerTitle = document.getElementById('company-form-fill-banner-title');
+    const bannerDesc = document.getElementById('company-form-fill-banner-desc');
+    const submitBtn = document.getElementById('company-form-fill-submit-btn');
+    const submitBtnLabel = document.getElementById('company-form-fill-submit-btn-label');
+    const fieldsContainer = document.getElementById('company-form-fill-fields-container');
+
+    if (titleEl) titleEl.innerText = previewMode ? 'Prévia do Formulário' : 'Responder Formulário';
+    if (subEl) subEl.innerText = form.senderName ? `Enviado por ${form.senderName}` : 'Formulário Comercial';
+    if (bannerTitle) bannerTitle.innerText = form.title || 'Formulário Comercial';
+    if (bannerDesc) bannerDesc.innerText = form.description || 'Preencha as informações solicitadas pela empresa.';
+
+    const myUid = currentUser ? currentUser.uid : '';
+    const myExistingResponse = (form.responses && myUid) ? form.responses[myUid] : null;
+    const existingAnswers = myExistingResponse?.answers || {};
+
+    if (submitBtnLabel) {
+        submitBtnLabel.innerText = previewMode ? 'Fechar Prévia' : (myExistingResponse ? 'Atualizar Respostas' : 'Enviar Respostas');
+    }
+
+    const fields = Array.isArray(form.fields) ? form.fields : [];
+    if (fieldsContainer) {
+        fieldsContainer.innerHTML = fields.map((field, idx) => {
+            const val = existingAnswers[field.id] !== undefined ? existingAnswers[field.id] : '';
+            let inputHTML = '';
+
+            if (field.type === 'textarea') {
+                inputHTML = `<textarea class="company-form-textarea form-fill-field-input" data-field-id="${field.id}" rows="3" placeholder="Digite sua resposta..." ${previewMode ? 'disabled' : ''}>${escapeHTML(val)}</textarea>`;
+            } else if (field.type === 'number') {
+                inputHTML = `<input type="number" class="company-form-text-input form-fill-field-input" data-field-id="${field.id}" value="${escapeHTML(val)}" placeholder="Digite um número..." ${previewMode ? 'disabled' : ''}>`;
+            } else if (field.type === 'radio') {
+                const opts = Array.isArray(field.options) ? field.options : [];
+                inputHTML = `
+                    <div class="form-fill-options-list">
+                        ${opts.map(opt => `
+                            <label class="form-fill-option-item">
+                                <input type="radio" name="form_opt_${field.id}" value="${escapeHTML(opt)}" ${val === opt ? 'checked' : ''} ${previewMode ? 'disabled' : ''}>
+                                <span>${escapeHTML(opt)}</span>
+                            </label>
+                        `).join('')}
+                    </div>
+                `;
+            } else if (field.type === 'checkbox') {
+                const opts = Array.isArray(field.options) ? field.options : [];
+                const checkedArr = Array.isArray(val) ? val : (val ? [val] : []);
+                inputHTML = `
+                    <div class="form-fill-options-list">
+                        ${opts.map(opt => `
+                            <label class="form-fill-option-item">
+                                <input type="checkbox" name="form_check_${field.id}" value="${escapeHTML(opt)}" ${checkedArr.includes(opt) ? 'checked' : ''} ${previewMode ? 'disabled' : ''}>
+                                <span>${escapeHTML(opt)}</span>
+                            </label>
+                        `).join('')}
+                    </div>
+                `;
+            } else {
+                inputHTML = `<input type="text" class="company-form-text-input form-fill-field-input" data-field-id="${field.id}" value="${escapeHTML(val)}" placeholder="Digite sua resposta..." ${previewMode ? 'disabled' : ''}>`;
+            }
+
+            return `
+                <div class="company-form-fill-field-card" data-field-id="${field.id}" data-required="${field.required ? 'true' : 'false'}">
+                    <div class="form-fill-label-row">
+                        <span class="form-fill-q-label"><strong>${idx + 1}.</strong> ${escapeHTML(field.label || 'Pergunta')}</span>
+                        ${field.required ? '<span class="form-fill-required-tag">* Obrigatório</span>' : ''}
+                    </div>
+                    ${inputHTML}
+                </div>
+            `;
+        }).join('');
+    }
+
+    modal.style.display = 'flex';
+    modal.classList.add('active');
+    modal.setAttribute('aria-hidden', 'false');
+
+    if (typeof pushBackNavigationState === 'function') {
+        pushBackNavigationState('company-form-fill-modal');
+    }
+
+    if (window.lucide) lucide.createIcons();
+}
+
+export function closeCompanyFormFillModal() {
+    const modal = document.getElementById('company-form-fill-modal');
+    if (!modal) return;
+    modal.style.display = 'none';
+    modal.classList.remove('active');
+    modal.setAttribute('aria-hidden', 'true');
+    activeFormFillContext = null;
+}
+
+export async function submitCompanyFormAnswers() {
+    if (!activeFormFillContext) return;
+    if (activeFormFillContext.previewMode) {
+        closeCompanyFormFillModal();
+        return;
+    }
+    if (!currentUser) return;
+
+    const { msgId, form, chatId } = activeFormFillContext;
+    const submitBtn = document.getElementById('company-form-fill-submit-btn');
+    const fieldsContainer = document.getElementById('company-form-fill-fields-container');
+    if (!fieldsContainer) return;
+
+    const fields = Array.isArray(form.fields) ? form.fields : [];
+    const answers = {};
+
+    // Remove errors
+    fieldsContainer.querySelectorAll('.company-form-fill-field-card').forEach(c => c.classList.remove('required-error'));
+
+    // Validate and collect
+    for (const field of fields) {
+        const card = fieldsContainer.querySelector(`.company-form-fill-field-card[data-field-id="${field.id}"]`);
+        let val = null;
+
+        if (field.type === 'radio') {
+            const checked = card?.querySelector(`input[name="form_opt_${field.id}"]:checked`);
+            val = checked ? checked.value : '';
+        } else if (field.type === 'checkbox') {
+            const checks = card?.querySelectorAll(`input[name="form_check_${field.id}"]:checked`);
+            val = checks ? Array.from(checks).map(c => c.value) : [];
+        } else {
+            const input = card?.querySelector('.form-fill-field-input');
+            val = input ? input.value.trim() : '';
+        }
+
+        const isEmpty = (Array.isArray(val) && val.length === 0) || (typeof val === 'string' && val.length === 0) || val === null || val === undefined;
+        if (field.required && isEmpty) {
+            if (card) {
+                card.classList.add('required-error');
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            showToast('Campo Obrigatório', `Por favor, responda a pergunta: "${field.label}"`, 'yellow');
+            return;
+        }
+
+        answers[field.id] = val;
+    }
+
+    if (submitBtn) submitBtn.disabled = true;
+
+    try {
+        const targetChatId = chatId || getActiveChatId();
+        if (!targetChatId) throw new Error('Chat ID não encontrado');
+
+        const msgRef = doc(db, 'chats', targetChatId, 'messages', msgId);
+        const msgSnap = await getDoc(msgRef);
+        if (!msgSnap.exists()) {
+            throw new Error('Mensagem do formulário não encontrada no servidor');
+        }
+
+        const msgData = msgSnap.data();
+        const currentForm = msgData.form || form;
+        if (!currentForm.responses) currentForm.responses = {};
+
+        const respondentName = `${currentProfile?.name || ''} ${currentProfile?.surname || ''}`.trim() || currentUser?.displayName || 'Cliente';
+        const respondentAvatar = currentProfile?.avatar || currentUser?.photoURL || '';
+
+        currentForm.responses[currentUser.uid] = {
+            respondentUid: currentUser.uid,
+            respondentName: respondentName,
+            respondentAvatar: respondentAvatar,
+            submittedAt: Date.now(),
+            answers: answers
+        };
+
+        await updateDoc(msgRef, { form: currentForm });
+
+        playSound(clickSound);
+        closeCompanyFormFillModal();
+        showToast('Respostas Enviadas!', 'Suas respostas foram enviadas com sucesso para a empresa ⚡', 'teal');
+    } catch (err) {
+        console.error('Erro ao enviar respostas do formulário:', err);
+        showToast('Erro ao salvar', 'Não foi possível salvar suas respostas. Tente novamente.', 'red');
+    } finally {
+        if (submitBtn) submitBtn.disabled = false;
+    }
+}
+
+export async function openCompanyFormResponsesModal(msgId, form, chatId) {
+    const modal = document.getElementById('company-form-responses-modal');
+    if (!modal) return;
+
+    let activeForm = form;
+    try {
+        const targetChatId = chatId || getActiveChatId();
+        if (targetChatId && msgId) {
+            const msgRef = doc(db, 'chats', targetChatId, 'messages', msgId);
+            const snap = await getDoc(msgRef);
+            if (snap.exists() && snap.data().form) {
+                activeForm = snap.data().form;
+            }
+        }
+    } catch (e) {
+        console.warn('Erro ao atualizar respostas do formulário:', e);
+    }
+
+    activeViewingFormResponses = { msgId, form: activeForm, chatId };
+
+    const subEl = document.getElementById('company-form-responses-modal-subtitle');
+    const summaryContainer = document.getElementById('company-form-responses-summary');
+    const listContainer = document.getElementById('company-form-responses-list');
+
+    const responses = activeForm.responses || {};
+    const responsesList = Object.values(responses);
+    const count = responsesList.length;
+
+    if (subEl) {
+        subEl.innerText = `${activeForm.title || 'Formulário'} • ${count} ${count === 1 ? 'resposta recebida' : 'respostas recebidas'}`;
+    }
+
+    if (count === 0) {
+        if (summaryContainer) summaryContainer.innerHTML = '';
+        if (listContainer) {
+            listContainer.innerHTML = `
+                <div class="company-form-no-responses">
+                    <i data-lucide="inbox" style="width:40px;height:40px;color:rgba(99,102,241,0.5);"></i>
+                    <p>Nenhuma resposta recebida até o momento.<br>Assim que o cliente responder, os dados aparecerão aqui.</p>
+                </div>
+            `;
+        }
+    } else {
+        const fields = Array.isArray(activeForm.fields) ? activeForm.fields : [];
+
+        let summaryHTML = '';
+        let listHTML = '';
+
+        responsesList.forEach((resp, rIdx) => {
+            const dateStr = resp.submittedAt ? new Date(resp.submittedAt).toLocaleString('pt-BR') : '';
+            const initial = resp.respondentName ? resp.respondentName.charAt(0).toUpperCase() : '?';
+            const avatarStyle = resp.respondentAvatar ? `background-image: url('${resp.respondentAvatar}');` : '';
+
+            summaryHTML += `
+                <div class="company-form-respondent-box">
+                    <div class="company-form-respondent-avatar" style="${avatarStyle}">
+                        ${resp.respondentAvatar ? '' : initial}
+                    </div>
+                    <div class="company-form-respondent-info">
+                        <span class="company-form-respondent-name">${escapeHTML(resp.respondentName || 'Cliente')}</span>
+                        <span class="company-form-respondent-time">Enviado em ${dateStr}</span>
+                    </div>
+                </div>
+            `;
+
+            const answers = resp.answers || {};
+            const qasHTML = fields.map((f, fIdx) => {
+                const ans = answers[f.id];
+                let formattedAns = '';
+                if (Array.isArray(ans)) {
+                    formattedAns = ans.length > 0 ? ans.map(a => `<span class="company-form-answer-pill">${escapeHTML(a)}</span>`).join('') : '<em style="color:#888;">(Nenhuma opção marcada)</em>';
+                } else if (ans !== undefined && ans !== null && String(ans).trim() !== '') {
+                    formattedAns = escapeHTML(String(ans));
+                } else {
+                    formattedAns = '<em style="color:#888;">(Não informado)</em>';
+                }
+
+                return `
+                    <div class="company-form-response-qa-card">
+                        <span class="company-form-response-q">${fIdx + 1}. ${escapeHTML(f.label || 'Pergunta')}</span>
+                        <div class="company-form-response-a">${formattedAns}</div>
+                    </div>
+                `;
+            }).join('');
+
+            listHTML += qasHTML;
+        });
+
+        if (summaryContainer) summaryContainer.innerHTML = summaryHTML;
+        if (listContainer) listContainer.innerHTML = listHTML;
+    }
+
+    modal.style.display = 'flex';
+    modal.classList.add('active');
+    modal.setAttribute('aria-hidden', 'false');
+
+    if (typeof pushBackNavigationState === 'function') {
+        pushBackNavigationState('company-form-responses-modal');
+    }
+
+    if (window.lucide) lucide.createIcons();
+}
+
+export function closeCompanyFormResponsesModal() {
+    const modal = document.getElementById('company-form-responses-modal');
+    if (!modal) return;
+    modal.style.display = 'none';
+    modal.classList.remove('active');
+    modal.setAttribute('aria-hidden', 'true');
+    activeViewingFormResponses = null;
+}
+
+export async function copyCompanyFormResponses() {
+    if (!activeViewingFormResponses || !activeViewingFormResponses.form) return;
+    const form = activeViewingFormResponses.form;
+    const responses = Object.values(form.responses || {});
+    if (responses.length === 0) {
+        showToast('Sem respostas', 'Nenhuma resposta disponível para copiar.', 'yellow');
+        return;
+    }
+
+    const fields = Array.isArray(form.fields) ? form.fields : [];
+    let text = `📋 RESPOSTAS DO FORMULÁRIO: ${form.title || 'Formulário Comercial'}\n`;
+    if (form.senderName) text += `🏢 Empresa: ${form.senderName}\n`;
+    text += `=====================================\n\n`;
+
+    responses.forEach((resp, rIdx) => {
+        const dateStr = resp.submittedAt ? new Date(resp.submittedAt).toLocaleString('pt-BR') : '';
+        text += `👤 Cliente: ${resp.respondentName || 'Cliente'}\n`;
+        text += `🕒 Data de Envio: ${dateStr}\n`;
+        text += `-------------------------------------\n`;
+
+        const answers = resp.answers || {};
+        fields.forEach((f, fIdx) => {
+            const ans = answers[f.id];
+            let ansStr = '';
+            if (Array.isArray(ans)) ansStr = ans.join(', ');
+            else if (ans !== undefined && ans !== null && String(ans).trim() !== '') ansStr = String(ans);
+            else ansStr = '(Não informado)';
+
+            text += `${fIdx + 1}. ${f.label || 'Pergunta'}\n👉 ${ansStr}\n\n`;
+        });
+        text += `\n`;
+    });
+
+    try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(text);
+        } else {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+        }
+        playSound(clickSound);
+        showToast('Respostas Copiadas!', 'O conteúdo das respostas foi copiado para a área de transferência 📋', 'teal');
+    } catch (e) {
+        console.error('Erro ao copiar respostas:', e);
+        showToast('Erro ao copiar', 'Não foi possível copiar as respostas.', 'red');
+    }
+}
+
+// Event Listeners para Formulários Comerciais
+document.getElementById('chat-attach-form-btn')?.addEventListener('click', () => {
+    playSound(clickSound);
+    openCompanyFormCreator();
+});
+
+document.getElementById('close-company-form-modal-btn')?.addEventListener('click', () => {
+    playSound(clickSound);
+    closeCompanyFormCreator();
+});
+
+document.getElementById('company-form-cancel-btn')?.addEventListener('click', () => {
+    playSound(clickSound);
+    closeCompanyFormCreator();
+});
+
+document.getElementById('company-form-submit-btn')?.addEventListener('click', () => {
+    submitCompanyForm();
+});
+
+document.getElementById('company-form-add-field-btn')?.addEventListener('click', () => {
+    playSound(clickSound);
+    currentCompanyFormFields.push({ label: '', type: 'text', required: false, options: [] });
+    renderCompanyFormCreatorFields();
+});
+
+document.querySelectorAll('.company-form-template-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+        playSound(clickSound);
+        const template = chip.dataset.template;
+        if (template) applyCompanyFormTemplate(template);
+    });
+});
+
+document.getElementById('company-form-creator-modal')?.addEventListener('click', (e) => {
+    if (e.target && e.target.id === 'company-form-creator-modal') {
+        closeCompanyFormCreator();
+    }
+});
+
+// Modal de Preenchimento
+document.getElementById('close-company-form-fill-btn')?.addEventListener('click', () => {
+    playSound(clickSound);
+    closeCompanyFormFillModal();
+});
+
+document.getElementById('company-form-fill-cancel-btn')?.addEventListener('click', () => {
+    playSound(clickSound);
+    closeCompanyFormFillModal();
+});
+
+document.getElementById('company-form-fill-submit-btn')?.addEventListener('click', () => {
+    submitCompanyFormAnswers();
+});
+
+document.getElementById('company-form-fill-modal')?.addEventListener('click', (e) => {
+    if (e.target && e.target.id === 'company-form-fill-modal') {
+        closeCompanyFormFillModal();
+    }
+});
+
+// Modal de Visualização de Respostas
+document.getElementById('close-company-form-responses-btn')?.addEventListener('click', () => {
+    playSound(clickSound);
+    closeCompanyFormResponsesModal();
+});
+
+document.getElementById('company-form-responses-close-btn')?.addEventListener('click', () => {
+    playSound(clickSound);
+    closeCompanyFormResponsesModal();
+});
+
+document.getElementById('company-form-copy-responses-btn')?.addEventListener('click', () => {
+    copyCompanyFormResponses();
+});
+
+document.getElementById('company-form-responses-modal')?.addEventListener('click', (e) => {
+    if (e.target && e.target.id === 'company-form-responses-modal') {
+        closeCompanyFormResponsesModal();
     }
 });
 
@@ -23197,6 +24125,39 @@ export function closeTopmostActiveLayer() {
         return true;
     }
 
+    const formResponsesModal = document.getElementById('company-form-responses-modal');
+    if (formResponsesModal && (formResponsesModal.classList.contains('active') || formResponsesModal.style.display === 'flex')) {
+        if (typeof closeCompanyFormResponsesModal === 'function') {
+            closeCompanyFormResponsesModal();
+        } else {
+            formResponsesModal.classList.remove('active');
+            formResponsesModal.style.display = 'none';
+        }
+        return true;
+    }
+
+    const formFillModal = document.getElementById('company-form-fill-modal');
+    if (formFillModal && (formFillModal.classList.contains('active') || formFillModal.style.display === 'flex')) {
+        if (typeof closeCompanyFormFillModal === 'function') {
+            closeCompanyFormFillModal();
+        } else {
+            formFillModal.classList.remove('active');
+            formFillModal.style.display = 'none';
+        }
+        return true;
+    }
+
+    const formCreatorModal = document.getElementById('company-form-creator-modal');
+    if (formCreatorModal && (formCreatorModal.classList.contains('active') || formCreatorModal.style.display === 'flex')) {
+        if (typeof closeCompanyFormCreator === 'function') {
+            closeCompanyFormCreator();
+        } else {
+            formCreatorModal.classList.remove('active');
+            formCreatorModal.style.display = 'none';
+        }
+        return true;
+    }
+
     // Modais e Folhas do Catálogo
     const catalogOrderModal = document.getElementById('catalog-order-modal');
     if (catalogOrderModal && (catalogOrderModal.style.display === 'flex' || catalogOrderModal.classList?.contains('active'))) {
@@ -23820,6 +24781,22 @@ if (typeof window !== 'undefined') {
     window.formatAndValidateProfileLink = formatAndValidateProfileLink;
     window.profileSocialLinkFields = profileSocialLinkFields;
     window.setupProfileLinkValidationListeners = setupProfileLinkValidationListeners;
+    // Formulários Comerciais da Conta Empresa (v1.0.142)
+    window.canManageCompanyForms = canManageCompanyForms;
+    window.updateCompanyAttachVisibility = updateCompanyAttachVisibility;
+    window.COMPANY_FORM_TEMPLATES = COMPANY_FORM_TEMPLATES;
+    window.openCompanyFormCreator = openCompanyFormCreator;
+    window.closeCompanyFormCreator = closeCompanyFormCreator;
+    window.renderCompanyFormCreatorFields = renderCompanyFormCreatorFields;
+    window.applyCompanyFormTemplate = applyCompanyFormTemplate;
+    window.submitCompanyForm = submitCompanyForm;
+    window.buildCompanyFormCardHTML = buildCompanyFormCardHTML;
+    window.openCompanyFormFillModal = openCompanyFormFillModal;
+    window.closeCompanyFormFillModal = closeCompanyFormFillModal;
+    window.submitCompanyFormAnswers = submitCompanyFormAnswers;
+    window.openCompanyFormResponsesModal = openCompanyFormResponsesModal;
+    window.closeCompanyFormResponsesModal = closeCompanyFormResponsesModal;
+    window.copyCompanyFormResponses = copyCompanyFormResponses;
 }
 
 if (typeof window !== 'undefined') {

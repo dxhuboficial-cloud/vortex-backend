@@ -13777,3 +13777,789 @@ body.total-black .ringtone-select {
         grid-template-columns: 1fr;
     }
 }
+
+/* ==========================================================================
+   FORMULÁRIOS COMERCIAIS PARA CONTA EMPRESA (VORTEX BIZ 💼)
+   ========================================================================== */
+
+/* Botão de Formulário no Drawer de Anexos */
+.form-attach-circle {
+    background: linear-gradient(135deg, #4f46e5, #7c3aed) !important;
+    color: #fff !important;
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4) !important;
+}
+
+/* Modais de Formulário */
+.company-form-creator-overlay,
+.company-form-fill-overlay,
+.company-form-responses-overlay {
+    z-index: 10005;
+}
+
+.company-form-creator-card,
+.company-form-fill-card,
+.company-form-responses-card {
+    max-width: 520px;
+    width: 94%;
+    max-height: 88vh;
+    display: flex;
+    flex-direction: column;
+    background: rgba(18, 20, 32, 0.98);
+    border: 1px solid rgba(99, 102, 241, 0.35);
+    border-radius: 20px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8), 0 0 25px rgba(99, 102, 241, 0.2);
+    overflow: hidden;
+}
+
+.company-form-modal-top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    background: rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.company-form-title-icon-badge {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(124, 58, 237, 0.3));
+    border: 1px solid rgba(99, 102, 241, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #818cf8;
+    flex-shrink: 0;
+}
+
+.company-form-modal-subtitle {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #818cf8;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-top: 2px;
+}
+
+.company-form-creator-body,
+.company-form-fill-body,
+.company-form-responses-body {
+    padding: 16px 18px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    flex: 1;
+}
+
+/* Modelos Rápidos (Templates) */
+.company-form-templates-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.company-form-section-label {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #818cf8;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.company-form-templates-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.company-form-template-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #e0e0e0;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.company-form-template-chip:hover {
+    background: rgba(99, 102, 241, 0.15);
+    border-color: rgba(99, 102, 241, 0.4);
+    color: #fff;
+}
+
+.company-form-template-chip.active {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(124, 58, 237, 0.4));
+    border-color: #818cf8;
+    color: #fff;
+    box-shadow: 0 0 10px rgba(99, 102, 241, 0.3);
+}
+
+/* Campos de Criação */
+.company-form-field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.company-form-field-label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #cfd3dc;
+}
+
+.company-form-text-input,
+.company-form-textarea,
+.company-form-select {
+    width: 100%;
+    box-sizing: border-box;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    color: #fff;
+    padding: 10px 12px;
+    font-size: 0.9rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.company-form-text-input:focus,
+.company-form-textarea:focus,
+.company-form-select:focus {
+    border-color: #818cf8;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25);
+}
+
+.company-form-textarea {
+    resize: vertical;
+    min-height: 54px;
+}
+
+.company-form-select {
+    cursor: pointer;
+}
+
+/* Perguntas Dinâmicas */
+.company-form-questions-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 4px;
+}
+
+.company-form-questions-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.company-form-add-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(99, 102, 241, 0.2);
+    border: 1px solid rgba(99, 102, 241, 0.4);
+    color: #a5b4fc;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.company-form-add-btn:hover {
+    background: rgba(99, 102, 241, 0.35);
+    color: #fff;
+}
+
+.company-form-fields-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.company-form-field-item {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.company-form-field-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.company-form-field-num {
+    font-size: 0.78rem;
+    font-weight: 800;
+    color: #818cf8;
+    background: rgba(99, 102, 241, 0.15);
+    padding: 2px 8px;
+    border-radius: 6px;
+}
+
+.company-form-field-remove-btn {
+    background: transparent;
+    border: none;
+    color: #ff6b6b;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 6px;
+    transition: background 0.2s;
+}
+
+.company-form-field-remove-btn:hover {
+    background: rgba(255, 107, 107, 0.15);
+}
+
+.company-form-field-remove-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.company-form-field-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+}
+
+.company-form-field-col {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.company-form-field-col.flex-1 {
+    flex: 1;
+    min-width: 0;
+}
+
+.company-form-field-col.w-auto {
+    min-width: 140px;
+}
+
+.company-form-sublabel {
+    font-size: 0.74rem;
+    color: var(--text-dim, #8e8e93);
+    font-weight: 600;
+}
+
+.company-form-options-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.company-form-field-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+.company-form-toggle-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    color: #cfd3dc;
+    cursor: pointer;
+    user-select: none;
+}
+
+/* Footer dos Modais */
+.company-form-modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 14px 18px;
+    background: rgba(0, 0, 0, 0.25);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.company-form-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-size: 0.88rem;
+    font-weight: 700;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s ease;
+}
+
+.company-form-btn-cancel {
+    background: rgba(255, 255, 255, 0.08);
+    color: #ccc;
+}
+
+.company-form-btn-cancel:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+}
+
+.company-form-btn-submit {
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    color: #fff;
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.35);
+}
+
+.company-form-btn-submit:hover {
+    box-shadow: 0 4px 20px rgba(99, 102, 241, 0.5);
+    transform: translateY(-1px);
+}
+
+.company-form-btn-copy {
+    background: rgba(99, 102, 241, 0.25);
+    border: 1px solid rgba(99, 102, 241, 0.5);
+    color: #a5b4fc;
+}
+
+.company-form-btn-copy:hover {
+    background: rgba(99, 102, 241, 0.4);
+    color: #fff;
+}
+
+/* ===== CARD DE FORMULÁRIO NO CHAT ===== */
+.chat-company-form-card {
+    background: linear-gradient(135deg, rgba(20, 22, 36, 0.98), rgba(28, 30, 52, 0.98));
+    border: 1px solid rgba(99, 102, 241, 0.4);
+    border-radius: 16px;
+    padding: 14px 16px;
+    margin: 6px 0;
+    min-width: 250px;
+    max-width: 350px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4), 0 0 15px rgba(99, 102, 241, 0.15);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    user-select: none;
+}
+
+.chat-form-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.chat-form-company-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(99, 102, 241, 0.2);
+    border: 1px solid rgba(99, 102, 241, 0.4);
+    color: #a5b4fc;
+    font-size: 0.68rem;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 6px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.chat-form-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 6px;
+}
+
+.chat-form-status-badge.pending {
+    background: rgba(255, 179, 0, 0.15);
+    color: #ffb300;
+    border: 1px solid rgba(255, 179, 0, 0.3);
+}
+
+.chat-form-status-badge.answered {
+    background: rgba(34, 197, 94, 0.15);
+    color: #4ade80;
+    border: 1px solid rgba(34, 197, 94, 0.35);
+}
+
+.chat-form-status-badge.has-responses {
+    background: rgba(99, 102, 241, 0.2);
+    color: #a5b4fc;
+    border: 1px solid rgba(99, 102, 241, 0.35);
+}
+
+.chat-form-card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.chat-form-card-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(124, 58, 237, 0.35));
+    border: 1px solid rgba(99, 102, 241, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    flex-shrink: 0;
+}
+
+.chat-form-card-title-wrap {
+    flex: 1;
+    min-width: 0;
+}
+
+.chat-form-card-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.chat-form-card-meta {
+    font-size: 0.75rem;
+    color: var(--text-dim, #8e8e93);
+}
+
+.chat-form-card-desc {
+    font-size: 0.82rem;
+    color: #ccc;
+    line-height: 1.4;
+    margin: 0;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 6px 10px;
+    border-radius: 8px;
+    border-left: 3px solid #818cf8;
+}
+
+.chat-form-questions-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 8px;
+    padding: 8px 10px;
+}
+
+.chat-form-q-preview {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.78rem;
+    color: #cfd3dc;
+}
+
+.chat-form-q-num {
+    font-weight: 700;
+    color: #818cf8;
+    flex-shrink: 0;
+}
+
+.chat-form-q-text {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.chat-form-q-req {
+    color: #ff6b6b;
+    font-weight: bold;
+    flex-shrink: 0;
+}
+
+.chat-form-q-more {
+    font-size: 0.72rem;
+    color: var(--text-dim, #8e8e93);
+    font-style: italic;
+    margin-top: 2px;
+}
+
+.chat-form-actions-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 2px;
+}
+
+.chat-form-btn {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s ease;
+    background: rgba(99, 102, 241, 0.25);
+    border: 1px solid rgba(99, 102, 241, 0.45);
+    color: #fff;
+}
+
+.chat-form-btn:hover {
+    background: rgba(99, 102, 241, 0.4);
+    box-shadow: 0 0 12px rgba(99, 102, 241, 0.35);
+}
+
+.chat-form-btn-primary {
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    border: none;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+}
+
+.chat-form-btn-primary:hover {
+    box-shadow: 0 4px 16px rgba(99, 102, 241, 0.55);
+}
+
+.chat-form-btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.05);
+    color: #cfd3dc;
+    transition: all 0.2s ease;
+}
+
+.chat-form-btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+}
+
+/* Modal de Preenchimento */
+.company-form-fill-header-banner {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(124, 58, 237, 0.2));
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 12px;
+    padding: 12px 14px;
+}
+
+.company-form-fill-banner-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 4px 0;
+}
+
+.company-form-fill-banner-desc {
+    font-size: 0.82rem;
+    color: #cfd3dc;
+    line-height: 1.4;
+    margin: 0;
+}
+
+.company-form-fill-fields-container {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.company-form-fill-field-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: border-color 0.2s;
+}
+
+.company-form-fill-field-card.required-error {
+    border-color: #ff4d4f !important;
+    background: rgba(255, 77, 79, 0.05) !important;
+}
+
+.form-fill-label-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.form-fill-q-label {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #fff;
+    line-height: 1.3;
+}
+
+.form-fill-required-tag {
+    font-size: 0.72rem;
+    color: #ff6b6b;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.form-fill-options-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 2px;
+}
+
+.form-fill-option-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: #e0e0e0;
+    transition: all 0.2s ease;
+}
+
+.form-fill-option-item:hover {
+    background: rgba(99, 102, 241, 0.1);
+    border-color: rgba(99, 102, 241, 0.3);
+}
+
+.form-fill-option-item input[type="radio"],
+.form-fill-option-item input[type="checkbox"] {
+    accent-color: #6366f1;
+    cursor: pointer;
+}
+
+/* Modal de Visualização de Respostas */
+.company-form-responses-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.company-form-respondent-box {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 10px 14px;
+}
+
+.company-form-respondent-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-size: cover;
+    background-position: center;
+    background-color: #6366f1;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.company-form-respondent-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.company-form-respondent-name {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+.company-form-respondent-time {
+    font-size: 0.75rem;
+    color: var(--text-dim, #8e8e93);
+}
+
+.company-form-responses-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.company-form-response-qa-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.company-form-response-q {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #a5b4fc;
+}
+
+.company-form-response-a {
+    font-size: 0.88rem;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 8px 10px;
+    border-radius: 8px;
+    border-left: 3px solid #6366f1;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.company-form-answer-pill {
+    display: inline-block;
+    background: rgba(99, 102, 241, 0.2);
+    border: 1px solid rgba(99, 102, 241, 0.4);
+    color: #e0e7ff;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin: 2px 4px 2px 0;
+}
+
+.company-form-no-responses {
+    text-align: center;
+    padding: 30px 16px;
+    color: var(--text-dim, #8e8e93);
+    font-size: 0.9rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}

@@ -4,20 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.141">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.141">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.141">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.141">
-    <link rel="stylesheet" href="style.css?v=1.0.141">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.142">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.142">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.142">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.142">
+    <link rel="stylesheet" href="style.css?v=1.0.142">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.141">
+    <link rel="manifest" href="manifest.json?v=1.0.142">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.141">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.141">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.142">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.142">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -457,6 +457,10 @@
                     <div class="dropdown-item" id="block-contact-trigger">
                         <i data-lucide="ban" id="block-contact-icon"></i>
                         <span id="block-contact-text">Bloquear Contato</span>
+                    </div>
+                    <div class="dropdown-item company-only-item" id="chat-company-form-trigger" style="display: none;">
+                        <i data-lucide="clipboard-list"></i>
+                        <span>Criar Formulário</span>
                     </div>
                     <div class="dropdown-item danger-text" id="delete-contact-trigger" style="display: none;">
                         <i data-lucide="user-x"></i>
@@ -1038,6 +1042,12 @@
                             <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M17.07 14.66l-3.32-3.32a2.47 2.47 0 0 0-3.5 0L6.93 14.66a2.47 2.47 0 0 0 0 3.5l3.32 3.32a2.47 2.47 0 0 0 3.5 0l3.32-3.32a2.47 2.47 0 0 0 0-3.5zm-5.07 5.07a.35.35 0 0 1-.5 0L8.18 16.4a.35.35 0 0 1 0-.5l3.32-3.32a.35.35 0 0 1 .5 0l3.32 3.32a.35.35 0 0 1 0 .5l-3.32 3.33zM6.93 9.34l3.32 3.32a2.47 2.47 0 0 0 3.5 0l3.32-3.32a2.47 2.47 0 0 0 0-3.5L13.75 2.52a2.47 2.47 0 0 0-3.5 0L6.93 5.84a2.47 2.47 0 0 0 0 3.5zm5.07-5.07a.35.35 0 0 1 .5 0l3.32 3.33a.35.35 0 0 1 0 .5l-3.32 3.32a.35.35 0 0 1-.5 0L8.18 8.1a.35.35 0 0 1 0-.5L11.5 4.27z"/></svg>
                         </div>
                         <span>Pix</span>
+                    </div>
+                    <div class="attach-item company-only-attach-item" id="chat-attach-form-btn" title="Criar e Enviar Formulário (Conta Empresa)" role="button" tabindex="0" style="display: none;">
+                        <div class="attach-icon-circle indigo form-attach-circle">
+                            <i data-lucide="clipboard-list"></i>
+                        </div>
+                        <span>Formulário</span>
                     </div>
                 </div>
                 <button id="close-attachment-panel" class="close-btn drawer-cancel-btn">Cancelar</button>
@@ -3044,7 +3054,157 @@
                     </button>
                 </div>
             </div>
-        <!-- Banner Push Flutuante no Celular (In-App Push Banner) -->
+        </div>
+
+        <!-- Modal de Criação de Formulário Comercial (Conta Empresa) -->
+        <div id="company-form-creator-modal" class="custom-modal-overlay company-form-creator-overlay" aria-hidden="true" style="display: none;">
+            <div class="custom-modal-card company-form-creator-card">
+                <div class="panel-top-bar company-form-modal-top-bar">
+                    <div class="share-modal-title-wrap">
+                        <div class="company-form-title-icon-badge">
+                            <i data-lucide="clipboard-list"></i>
+                        </div>
+                        <div>
+                            <h2>Criar Formulário</h2>
+                            <span class="company-form-modal-subtitle">Exclusivo Conta Empresa</span>
+                        </div>
+                    </div>
+                    <div class="header-icon-btn" id="close-company-form-modal-btn" title="Fechar" aria-label="Fechar">
+                        <i data-lucide="x"></i>
+                    </div>
+                </div>
+
+                <div class="company-form-creator-body">
+                    <!-- Modelos Rápidos (Templates) -->
+                    <div class="company-form-templates-section">
+                        <span class="company-form-section-label"><i data-lucide="sparkles"></i> Modelos Rápidos</span>
+                        <div class="company-form-templates-chips">
+                            <button type="button" class="company-form-template-chip" data-template="client_registration">
+                                <i data-lucide="user-check"></i> Cadastro de Cliente
+                            </button>
+                            <button type="button" class="company-form-template-chip" data-template="satisfaction_survey">
+                                <i data-lucide="star"></i> Pesquisa de Satisfação
+                            </button>
+                            <button type="button" class="company-form-template-chip" data-template="service_briefing">
+                                <i data-lucide="briefcase"></i> Briefing de Orçamento
+                            </button>
+                            <button type="button" class="company-form-template-chip active" data-template="custom">
+                                <i data-lucide="edit-3"></i> Personalizado
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Dados Principais do Formulário -->
+                    <div class="company-form-field-group">
+                        <label for="company-form-title-input" class="company-form-field-label">Título do Formulário *</label>
+                        <input type="text" id="company-form-title-input" class="company-form-text-input" placeholder="Ex: Cadastro para Envio do Pedido" maxlength="120" autocomplete="off">
+                    </div>
+
+                    <div class="company-form-field-group">
+                        <label for="company-form-desc-input" class="company-form-field-label">Instruções ou Descrição para o Cliente</label>
+                        <textarea id="company-form-desc-input" class="company-form-textarea" rows="2" placeholder="Ex: Preencha as informações abaixo para darmos andamento ao seu atendimento." maxlength="300"></textarea>
+                    </div>
+
+                    <!-- Lista de Perguntas Dinâmicas -->
+                    <div class="company-form-questions-section">
+                        <div class="company-form-questions-header">
+                            <span class="company-form-section-label"><i data-lucide="list-plus"></i> Perguntas (<span id="company-form-fields-count">0</span>)</span>
+                            <button type="button" id="company-form-add-field-btn" class="company-form-add-btn">
+                                <i data-lucide="plus"></i> Adicionar Pergunta
+                            </button>
+                        </div>
+                        <div id="company-form-fields-container" class="company-form-fields-container">
+                            <!-- Perguntas geradas dinamicamente via JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="company-form-modal-footer">
+                    <button type="button" id="company-form-cancel-btn" class="company-form-btn company-form-btn-cancel">Cancelar</button>
+                    <button type="button" id="company-form-submit-btn" class="company-form-btn company-form-btn-submit">
+                        <i data-lucide="send"></i>
+                        <span>Enviar Formulário</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Preenchimento de Formulário Comercial (Cliente) -->
+        <div id="company-form-fill-modal" class="custom-modal-overlay company-form-fill-overlay" aria-hidden="true" style="display: none;">
+            <div class="custom-modal-card company-form-fill-card">
+                <div class="panel-top-bar company-form-modal-top-bar">
+                    <div class="share-modal-title-wrap">
+                        <div class="company-form-title-icon-badge">
+                            <i data-lucide="file-text"></i>
+                        </div>
+                        <div>
+                            <h2 id="company-form-fill-modal-title">Responder Formulário</h2>
+                            <span id="company-form-fill-modal-subtitle" class="company-form-modal-subtitle">Enviado pela empresa</span>
+                        </div>
+                    </div>
+                    <div class="header-icon-btn" id="close-company-form-fill-btn" title="Fechar" aria-label="Fechar">
+                        <i data-lucide="x"></i>
+                    </div>
+                </div>
+
+                <div class="company-form-fill-body">
+                    <div id="company-form-fill-header-banner" class="company-form-fill-header-banner">
+                        <h3 id="company-form-fill-banner-title" class="company-form-fill-banner-title"></h3>
+                        <p id="company-form-fill-banner-desc" class="company-form-fill-banner-desc"></p>
+                    </div>
+
+                    <div id="company-form-fill-fields-container" class="company-form-fill-fields-container">
+                        <!-- Campos para o cliente responder gerados via JS -->
+                    </div>
+                </div>
+
+                <div class="company-form-modal-footer">
+                    <button type="button" id="company-form-fill-cancel-btn" class="company-form-btn company-form-btn-cancel">Cancelar</button>
+                    <button type="button" id="company-form-fill-submit-btn" class="company-form-btn company-form-btn-submit">
+                        <i data-lucide="check-circle-2"></i>
+                        <span id="company-form-fill-submit-btn-label">Enviar Respostas</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Visualização de Respostas do Formulário -->
+        <div id="company-form-responses-modal" class="custom-modal-overlay company-form-responses-overlay" aria-hidden="true" style="display: none;">
+            <div class="custom-modal-card company-form-responses-card">
+                <div class="panel-top-bar company-form-modal-top-bar">
+                    <div class="share-modal-title-wrap">
+                        <div class="company-form-title-icon-badge">
+                            <i data-lucide="check-check"></i>
+                        </div>
+                        <div>
+                            <h2>Respostas do Formulário</h2>
+                            <span id="company-form-responses-modal-subtitle" class="company-form-modal-subtitle">Respostas recebidas</span>
+                        </div>
+                    </div>
+                    <div class="header-icon-btn" id="close-company-form-responses-btn" title="Fechar" aria-label="Fechar">
+                        <i data-lucide="x"></i>
+                    </div>
+                </div>
+
+                <div class="company-form-responses-body">
+                    <div id="company-form-responses-summary" class="company-form-responses-summary">
+                        <!-- Resumo do formulário e dados do respondente -->
+                    </div>
+
+                    <div id="company-form-responses-list" class="company-form-responses-list">
+                        <!-- Perguntas e respostas injetadas via JS -->
+                    </div>
+                </div>
+
+                <div class="company-form-modal-footer">
+                    <button type="button" id="company-form-copy-responses-btn" class="company-form-btn company-form-btn-copy">
+                        <i data-lucide="copy"></i>
+                        <span>Copiar Respostas</span>
+                    </button>
+                    <button type="button" id="company-form-responses-close-btn" class="company-form-btn company-form-btn-cancel">Fechar</button>
+                </div>
+            </div>
+        </div>
         <div id="mobile-push-banner" class="mobile-push-banner" style="display:none;" aria-hidden="true">
             <div class="mobile-push-card">
                 <div class="mobile-push-avatar-box">
@@ -3065,6 +3225,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.141" defer></script>
+    <script type="module" src="script.js?v=1.0.142" defer></script>
 </body>
 </html>

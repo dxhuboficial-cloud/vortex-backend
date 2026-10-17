@@ -7345,7 +7345,6 @@ test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com 
   assert.ok(jsContent.includes('vortex_customer_info'), 'script.js deve salvar dados do cliente no localStorage (vortex_customer_info)');
 
   // 20. Validar que o vendedor consegue ver claramente a quantidade que o cliente pediu (v1.0.141)
-  assert.strictEqual(versionJson.version, '1.0.141', 'version.json deve ser 1.0.141');
   assert.ok(cssContent.includes('.catalog-order-qty-highlight'), 'style.css deve estilizar o destaque de quantidade pedida na lista de pedidos (.catalog-order-qty-highlight)');
   assert.ok(cssContent.includes('.catalog-order-chip-qty'), 'style.css deve conter badge de quantidade por produto na lista (.catalog-order-chip-qty)');
   assert.ok(cssContent.includes('.catalog-order-qty-badge'), 'style.css deve conter badge de quantidade pedida no modal de detalhes (.catalog-order-qty-badge)');
@@ -7355,6 +7354,101 @@ test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com 
   assert.ok(jsContent.includes('catalog-order-qty-badge'), 'script.js deve renderizar badge de quantidade pedida no modal de detalhes do pedido');
   assert.ok(jsContent.includes('chat-order-qty-pill'), 'script.js deve renderizar pill de quantidade pedida no card do pedido no chat');
   assert.ok(jsContent.includes('catalog-order-total-units-pill'), 'script.js deve renderizar badge com total de unidades na seção de itens');
+
+  // 21. Validar que conta empresa pode criar e enviar formulários na conversa com o cliente (v1.0.142)
+  assert.strictEqual(versionJson.version, '1.0.142', 'version.json deve ser 1.0.142');
+  assert.ok(htmlContent.includes('id="chat-attach-form-btn"'), 'index.html deve conter botão de formulário no drawer de anexos (#chat-attach-form-btn)');
+  assert.ok(htmlContent.includes('id="chat-company-form-trigger"'), 'index.html deve conter gatilho de formulário no menu de opções do chat (#chat-company-form-trigger)');
+  assert.ok(htmlContent.includes('id="company-form-creator-modal"'), 'index.html deve conter modal de criação de formulário (#company-form-creator-modal)');
+  assert.ok(htmlContent.includes('id="company-form-fill-modal"'), 'index.html deve conter modal de preenchimento do formulário (#company-form-fill-modal)');
+  assert.ok(htmlContent.includes('id="company-form-responses-modal"'), 'index.html deve conter modal de respostas do formulário (#company-form-responses-modal)');
+  assert.ok(htmlContent.includes('id="company-form-title-input"'), 'index.html deve conter campo de título do formulário');
+  assert.ok(htmlContent.includes('id="company-form-submit-btn"'), 'index.html deve conter botão de envio do formulário');
+  assert.ok(htmlContent.includes('id="company-form-add-field-btn"'), 'index.html deve conter botão de adicionar perguntas');
+  assert.ok(cssContent.includes('.company-form-creator-card'), 'style.css deve estilizar o modal de criação de formulário');
+  assert.ok(cssContent.includes('.chat-company-form-card'), 'style.css deve estilizar o card de formulário no chat');
+  assert.ok(cssContent.includes('.company-form-fill-card'), 'style.css deve estilizar o modal de preenchimento');
+  assert.ok(cssContent.includes('.company-form-responses-card'), 'style.css deve estilizar o modal de respostas');
+  assert.ok(cssContent.includes('.form-attach-circle'), 'style.css deve conter estilização do ícone de formulário (.form-attach-circle)');
+  assert.ok(jsContent.includes('function canManageCompanyForms'), 'script.js deve conter canManageCompanyForms para controle de permissões de empresa');
+  assert.ok(jsContent.includes('function openCompanyFormCreator'), 'script.js deve conter openCompanyFormCreator para abrir o modal de criação');
+  assert.ok(jsContent.includes('function submitCompanyForm'), 'script.js deve conter submitCompanyForm para envio do formulário no chat');
+  assert.ok(jsContent.includes('function buildCompanyFormCardHTML'), 'script.js deve conter buildCompanyFormCardHTML para renderização no chat');
+  assert.ok(jsContent.includes('function openCompanyFormFillModal'), 'script.js deve conter openCompanyFormFillModal para o cliente responder');
+  assert.ok(jsContent.includes('function submitCompanyFormAnswers'), 'script.js deve conter submitCompanyFormAnswers para salvar respostas');
+  assert.ok(jsContent.includes('function openCompanyFormResponsesModal'), 'script.js deve conter openCompanyFormResponsesModal para visualização das respostas');
+  assert.ok(jsContent.includes('COMPANY_FORM_TEMPLATES'), 'script.js deve conter modelos rápidos (templates) prontos de formulário');
+});
+
+test('Formulários Comerciais para Conta Empresa: Permissões, templates, card interativo no chat e preenchimento de respostas (v1.0.142)', () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+
+  // 1. Permissões de Conta Empresa vs Pessoal vs Admin
+  const canManageCompanyForms = win.canManageCompanyForms;
+  assert.strictEqual(typeof canManageCompanyForms, 'function', 'canManageCompanyForms deve ser uma função');
+  assert.strictEqual(canManageCompanyForms({ accountType: 'personal' }, { email: 'user@gmail.com' }), false, 'Conta pessoal comum não pode criar formulários');
+  assert.strictEqual(canManageCompanyForms({ accountType: 'business' }, { email: 'empresa@gmail.com' }), true, 'Conta empresa DEVE poder criar formulários');
+  assert.strictEqual(canManageCompanyForms({ isBusiness: true }, { email: 'empresa@gmail.com' }), true, 'Conta com isBusiness: true deve poder criar formulários');
+  assert.strictEqual(canManageCompanyForms({ accountType: 'personal' }, { email: 'dxhub.oficial@gmail.com' }), true, 'Admin DEVE poder criar formulários');
+
+  // 2. Templates prontos de formulário comercial
+  const templates = win.COMPANY_FORM_TEMPLATES;
+  assert.ok(templates, 'COMPANY_FORM_TEMPLATES deve existir');
+  assert.ok(templates.client_registration, 'Deve conter template client_registration');
+  assert.ok(templates.satisfaction_survey, 'Deve conter template satisfaction_survey');
+  assert.ok(templates.service_briefing, 'Deve conter template service_briefing');
+  assert.strictEqual(templates.client_registration.title, 'Cadastro de Cliente');
+  assert.strictEqual(templates.satisfaction_survey.title, 'Pesquisa de Satisfação');
+  assert.strictEqual(templates.service_briefing.title, 'Briefing de Orçamento');
+
+  // 3. Renderização do Card de Formulário no Chat (buildCompanyFormCardHTML)
+  const buildCompanyFormCardHTML = win.buildCompanyFormCardHTML;
+  assert.strictEqual(typeof buildCompanyFormCardHTML, 'function', 'buildCompanyFormCardHTML deve ser uma função');
+
+  const mockFormMsg = {
+    id: 'msg_form_test_1',
+    senderUid: 'biz_sender_123',
+    type: 'form',
+    form: {
+      id: 'form_123',
+      title: 'Cadastro para Pedido VIP',
+      description: 'Informe seus dados para entrega rápida.',
+      senderUid: 'biz_sender_123',
+      senderName: 'VORTEX Store',
+      fields: [
+        { id: 'q1', label: 'Nome completo', type: 'text', required: true },
+        { id: 'q2', label: 'WhatsApp', type: 'text', required: true },
+        { id: 'q3', label: 'Tipo de Entrega', type: 'radio', options: ['Motoboy', 'Retirada'], required: true }
+      ],
+      responses: {}
+    }
+  };
+
+  const cardHtml = buildCompanyFormCardHTML(mockFormMsg);
+  assert.ok(cardHtml.includes('chat-company-form-card'), 'Card deve conter classe .chat-company-form-card');
+  assert.ok(cardHtml.includes('Cadastro para Pedido VIP'), 'Card deve exibir o título do formulário');
+  assert.ok(cardHtml.includes('3 perguntas'), 'Card deve exibir a quantidade de perguntas');
+  assert.ok(cardHtml.includes('chat-form-company-pill'), 'Card deve conter pill EMPRESA');
+  assert.ok(cardHtml.includes('chat-form-fill-btn') || cardHtml.includes('chat-form-view-responses-btn'), 'Card deve conter botão interativo de ação');
+
+  // 4. Card quando o cliente já respondeu
+  const mockAnsweredFormMsg = {
+    ...mockFormMsg,
+    form: {
+      ...mockFormMsg.form,
+      responses: {
+        'mock-uid': {
+          respondentUid: 'mock-uid',
+          respondentName: 'Cliente Teste',
+          submittedAt: Date.now(),
+          answers: { q1: 'João Silva', q2: '11999998888', q3: 'Motoboy' }
+        }
+      }
+    }
+  };
+  const answeredCardHtml = buildCompanyFormCardHTML(mockAnsweredFormMsg);
+  assert.ok(answeredCardHtml.includes('chat-form-status-badge') || answeredCardHtml.includes('Ver Minha Resposta') || answeredCardHtml.includes('Respondido'), 'Card deve indicar status respondido quando cliente já preencheu');
 });
 
 
