@@ -1296,7 +1296,7 @@ export function renderNotifications() {
     let filtered = allNotifications.filter(n => {
         if (deletedNotifIds.has(n.id)) return false;
         if (currentNotifFilter === 'vip') return n.type === 'vip';
-        if (currentNotifFilter === 'warning') return n.type === 'warning';
+        if (currentNotifFilter === 'warning') return !n.type || n.type === 'warning' || n.type === 'group_add';
         if (currentNotifFilter === 'alert') return n.type === 'alert';
         return true;
     });
@@ -1315,21 +1315,55 @@ export function renderNotifications() {
 
     listEl.innerHTML = filtered.map(n => {
         const type = n.type || 'warning';
+        const titleRaw = String(n.title || '');
+        const msgRaw = String(n.message || '');
+
         const isVip = type === 'vip';
         const isAlert = type === 'alert';
+        const isLike = type === 'like_post' || type === 'like_story' || type === 'like' || /curtiu|reagiu/i.test(titleRaw) || /curtiu a sua publica/i.test(msgRaw);
+        const isComment = type === 'comment_post' || type === 'comment' || /comentou/i.test(titleRaw) || /comentou na sua publica/i.test(msgRaw);
+        const isGroupAdd = type === 'group_add' || /adicionado a um grupo|adicionado ao grupo/i.test(titleRaw) || /adicionado ao grupo/i.test(msgRaw);
 
         let typeClass = 'warning';
         let badgeText = 'AVISO ⚠️';
-        let iconName = 'alert-triangle';
+        let iconHTML = '<i data-lucide="alert-triangle"></i>';
+        let displayTitle = titleRaw || 'Notificação';
 
         if (isVip) {
             typeClass = 'vip';
             badgeText = 'SELO VIP ⭐';
-            iconName = 'sparkles';
+            iconHTML = '<i data-lucide="sparkles"></i>';
         } else if (isAlert) {
             typeClass = 'alert';
             badgeText = 'ALERTA 🔴';
-            iconName = 'shield-alert';
+            iconHTML = '<i data-lucide="shield-alert"></i>';
+        } else if (isLike) {
+            typeClass = 'like';
+            badgeText = 'CURTIDA';
+            displayTitle = displayTitle.replace(/^(❤️|👍)\s*/, '');
+            iconHTML = `
+                <svg class="notif-custom-svg notif-svg-like" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path>
+                </svg>
+            `;
+        } else if (isComment) {
+            typeClass = 'comment';
+            badgeText = 'COMENTÁRIO';
+            displayTitle = displayTitle.replace(/^💬\s*/, '');
+            iconHTML = `
+                <svg class="notif-custom-svg notif-svg-comment" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+                </svg>
+            `;
+        } else if (isGroupAdd) {
+            typeClass = 'group-add';
+            badgeText = 'GRUPO';
+            iconHTML = `
+                <svg class="notif-custom-svg notif-svg-group-add" viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden="true">
+                    <path d="M10.5 3C5.8 3 2 6.13 2 10c0 1.78.8 3.4 2.13 4.64-.18.96-.68 2.1-1.35 2.86-.2.22-.04.58.26.55 1.48-.15 3.02-.68 4.12-1.35.99.2 2.04.3 3.14.3 4.7 0 8.5-3.13 8.5-7S15.2 3 10.5 3z" fill="currentColor"/>
+                    <path d="M19.87 17.64C21.2 16.4 22 14.78 22 13c0-2.98-2.26-5.52-5.46-6.52.29.88.46 1.82.46 2.82 0 4.86-4.48 8.7-10.12 8.98 1.25 1.65 3.51 2.72 6.12 2.72.9 0 1.77-.1 2.58-.28.98.6 2.34 1.08 3.66 1.22.28.03.44-.31.25-.52-.6-.68-1.05-1.7-1.22-2.58z" fill="currentColor"/>
+                </svg>
+            `;
         }
 
         const isUnread = !readNotifIds.has(n.id);
@@ -1338,11 +1372,11 @@ export function renderNotifications() {
         return `
             <div class="notification-card card-${typeClass} ${isUnread ? 'unread' : ''}" data-id="${n.id}">
                 <div class="notification-icon-box ${typeClass}">
-                    <i data-lucide="${iconName}"></i>
+                    ${iconHTML}
                 </div>
                 <div class="notification-card-content">
                     <div class="notification-card-top">
-                        <span class="notification-card-title">${escapeHTML(n.title || 'Notificação')}</span>
+                        <span class="notification-card-title">${escapeHTML(displayTitle)}</span>
                         <span class="notification-badge ${typeClass}">${badgeText}</span>
                     </div>
                     <div class="notification-card-text">${escapeHTML(n.message || '')}</div>
@@ -8112,13 +8146,16 @@ async function syncGroupReferences(group) {
     await batch.commit();
 }
 
-async function notifyUser(userUid, title, message) {
-    await addDoc(collection(db, 'notifications'), {
+async function notifyUser(userUid, title, message, type = 'warning', icon = '') {
+    const payload = {
         toUid: userUid,
         title,
         message,
         createdAt: Date.now()
-    });
+    };
+    if (type) payload.type = type;
+    if (icon) payload.icon = icon;
+    await addDoc(collection(db, 'notifications'), payload);
 }
 
 /* Notificações de atividade: likes e comentários em posts e stories */
@@ -8134,18 +8171,18 @@ async function sendActivityNotification(toUid, type, context = {}) {
         const sender = context.senderName || 'Alguém';
 
         if (type === 'like_post') {
-            title = `❤️ ${sender} curtiu seu post`;
+            title = `${sender} curtiu seu post`;
             message = `${sender} curtiu a sua publicação no VORTEX VIP ⚡`;
-            icon = 'heart';
+            icon = 'thumbs-up';
         } else if (type === 'comment_post') {
-            title = `💬 ${sender} comentou no seu post`;
+            title = `${sender} comentou no seu post`;
             message = `${sender} comentou na sua publicação no VORTEX VIP ⚡`;
             icon = 'message-circle';
         } else if (type === 'like_story') {
             const emoji = context.emoji || '❤️';
             title = `${emoji} ${sender} reagiu ao seu story`;
             message = `${sender} reagiu com ${emoji} ao seu story no VORTEX VIP ⚡`;
-            icon = 'smile';
+            icon = 'thumbs-up';
         } else {
             return;
         }
@@ -8179,7 +8216,7 @@ async function addGroupMember(memberUid) {
             updatedAt: Date.now()
         });
         await syncGroupReferences(managedGroup);
-        await notifyUser(memberUid, 'Você foi adicionado a um grupo', `Você foi adicionado ao grupo "${managedGroup.name || 'Grupo VIP'}" pelo administrador.`);
+        await notifyUser(memberUid, 'Você foi adicionado a um grupo', `Você foi adicionado ao grupo "${managedGroup.name || 'Grupo VIP'}" pelo administrador.`, 'group_add', 'messages-square');
         await openGroupProfile(managedGroup);
         showToast('Membro adicionado', 'O usuário agora consegue ver o grupo.', 'green');
     } catch (error) {
@@ -20371,6 +20408,17 @@ document.getElementById('confirm-create-group')?.addEventListener('click', async
         });
     });
     await batch.commit();
+
+    const otherMembers = selectedMembers.filter(uid => uid && uid !== currentUser.uid);
+    for (const memberUid of otherMembers) {
+        notifyUser(
+            memberUid,
+            'Você foi adicionado a um grupo',
+            `Você foi adicionado ao grupo "${groupName}" pelo administrador.`,
+            'group_add',
+            'messages-square'
+        ).catch(() => {});
+    }
 
     showToast("Grupo Criado", `Grupo "${groupName}" criado com sucesso!`, "green");
     cleanupGroupCreationListeners();

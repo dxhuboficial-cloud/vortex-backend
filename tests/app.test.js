@@ -7257,6 +7257,14 @@ test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com 
   assert.ok(htmlContent.includes('class="vip-setting-header-row"'), 'Os cards VIP devem usar .vip-setting-header-row no cabeçalho');
   assert.ok(cssContent.includes('.setting-item.setting-vip-themes'), 'style.css deve organizar .setting-vip-themes em coluna');
   assert.ok(cssContent.includes('.setting-item.setting-vip-fonts'), 'style.css deve organizar .setting-vip-fonts em coluna');
+
+  // 10. Validar ícones de curtida (like azul), comentário (balão amarelo) e adição ao grupo (balões de mensagem azuis) nas notificações (v1.0.131)
+  assert.ok(jsContent.includes('notif-svg-like'), 'Notificação de curtida deve exibir o ícone de legal (like) azul');
+  assert.ok(jsContent.includes('notif-svg-comment'), 'Notificação de comentário deve exibir o ícone de balãozinho de conversa amarelo');
+  assert.ok(jsContent.includes('notif-svg-group-add'), 'Notificação de adição ao grupo deve exibir o ícone de balões de mensagem azuis');
+  assert.ok(cssContent.includes('.notification-icon-box.like'), 'style.css deve estilizar .notification-icon-box.like em azul');
+  assert.ok(cssContent.includes('.notification-icon-box.comment'), 'style.css deve estilizar .notification-icon-box.comment em amarelo');
+  assert.ok(cssContent.includes('.notification-icon-box.group-add'), 'style.css deve estilizar .notification-icon-box.group-add em azul');
 });
 
 
