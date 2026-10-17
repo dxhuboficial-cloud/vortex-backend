@@ -7431,7 +7431,8 @@ test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com 
   // 29. Bloqueio de Letras no Número da Casa no Carrinho e Teclado Numérico no Celular (v1.0.150)
   // 30. Organização dos Botões na Loja (Apenas Catálogo e Conversar) (v1.0.151)
   // 31. Correção e Otimização da Interface do Formulário Comercial para Celular (v1.0.152)
-  assert.strictEqual(versionJson.version, '1.0.152', 'version.json deve ser 1.0.152');
+  // 32. Organização e Alinhamento Visual dos Modais no Celular (Pix, Enquete, Respostas e Prévia de Formulário) (v1.0.153)
+  assert.strictEqual(versionJson.version, '1.0.153', 'version.json deve ser 1.0.153');
 });
 
 test('Formulários Comerciais para Conta Empresa: Permissões, templates, card interativo no chat e preenchimento de respostas (v1.0.142)', () => {
@@ -8185,6 +8186,61 @@ test('Correção e Otimização da Interface do Formulário Comercial para Celul
   win.closeCompanyFormCreator();
   assert.strictEqual(modal.style.display, 'none', 'Modal deve ser ocultado ao fechar');
 });
+
+test('Organização e Alinhamento Visual dos Modais no Celular (Pix, Enquete, Respostas e Prévia de Formulário) (v1.0.153)', async () => {
+  const env = createTestEnvironment();
+  const doc = env.sandbox.window.document;
+
+  // 1. Verificação do Modal Enviar Chave Pix no CSS
+  assert.ok(cssContent.includes('.pix-send-card'), 'style.css deve conter .pix-send-card');
+  assert.ok(cssContent.includes('.pix-send-card') && cssContent.includes('padding: 0 !important;'), 'style.css deve conter padding: 0 !important no pix-send-card');
+  assert.ok(cssContent.includes('.pix-modal-top-bar'), 'style.css deve conter .pix-modal-top-bar');
+  assert.ok(cssContent.includes('.pix-send-footer'), 'style.css deve conter .pix-send-footer');
+  assert.ok(cssContent.includes('.pix-send-btn'), 'style.css deve conter .pix-send-btn');
+  assert.ok(cssContent.includes('.pix-send-btn') && cssContent.includes('height: 42px;'), 'style.css deve definir height: 42px para botões do Pix');
+  assert.ok(cssContent.includes('.pix-send-btn') && cssContent.includes('white-space: nowrap;'), 'style.css deve definir white-space: nowrap para evitar quebra no botão Enviar Chave Pix');
+
+  // 2. Verificação do Modal Criar Enquete no CSS
+  assert.ok(cssContent.includes('.poll-creator-card'), 'style.css deve conter .poll-creator-card');
+  assert.ok(cssContent.includes('.poll-creator-card') && cssContent.includes('padding: 0 !important;'), 'style.css deve conter padding: 0 !important no poll-creator-card');
+  assert.ok(cssContent.includes('.poll-modal-top-bar'), 'style.css deve conter .poll-modal-top-bar');
+  assert.ok(cssContent.includes('.poll-setting-row'), 'style.css deve conter .poll-setting-row');
+  assert.ok(cssContent.includes('.poll-setting-title'), 'style.css deve conter .poll-setting-title');
+  assert.ok(cssContent.includes('.poll-creator-footer'), 'style.css deve conter .poll-creator-footer');
+  assert.ok(cssContent.includes('.poll-btn') && cssContent.includes('height: 42px;'), 'style.css deve definir height: 42px para botões da enquete');
+  assert.ok(cssContent.includes('.poll-btn') && cssContent.includes('white-space: nowrap;'), 'style.css deve definir white-space: nowrap para evitar quebra no botão Enviar Enquete');
+
+  // 3. Verificação dos Cabeçalhos de Respostas e Prévia do Formulário no CSS
+  assert.ok(cssContent.includes('.company-form-modal-top-bar h2'), 'style.css deve conter regra específica para h2 em .company-form-modal-top-bar');
+  assert.ok(cssContent.includes('.company-form-modal-top-bar h2') && cssContent.includes('white-space: nowrap;'), 'style.css deve evitar quebra do título em Respostas e Prévia do Formulário');
+  assert.ok(cssContent.includes('.company-form-modal-subtitle') && cssContent.includes('white-space: nowrap;'), 'style.css deve conter white-space: nowrap no subtítulo do formulário');
+
+  // 4. Verificação de Responsividade dos Títulos dos Modais (.share-modal-title-wrap)
+  assert.ok(cssContent.includes('.share-modal-title-wrap h2'), 'style.css deve conter .share-modal-title-wrap h2');
+  assert.ok(cssContent.includes('.share-modal-title-wrap h2') && cssContent.includes('white-space: nowrap;'), 'style.css deve ter white-space: nowrap em .share-modal-title-wrap h2');
+  assert.ok(cssContent.includes('.share-modal-title-wrap h2') && cssContent.includes('text-overflow: ellipsis;'), 'style.css deve ter text-overflow: ellipsis em .share-modal-title-wrap h2');
+
+  // 5. Verificação da Existência dos Modais no DOM
+  const pixModal = doc.getElementById('pix-send-modal');
+  const pollModal = doc.getElementById('poll-creator-modal');
+  const formFillModal = doc.getElementById('company-form-fill-modal');
+  const formRespModal = doc.getElementById('company-form-responses-modal');
+
+  assert.ok(pixModal, '#pix-send-modal deve existir no DOM');
+  assert.ok(pollModal, '#poll-creator-modal deve existir no DOM');
+  assert.ok(formFillModal, '#company-form-fill-modal deve existir no DOM');
+  assert.ok(formRespModal, '#company-form-responses-modal deve existir no DOM');
+
+  // 6. Verificação dos Componentes Internos
+  assert.ok(doc.getElementById('pix-send-confirm-btn'), '#pix-send-confirm-btn deve existir');
+  assert.ok(doc.getElementById('pix-send-cancel-btn'), '#pix-send-cancel-btn deve existir');
+  assert.ok(doc.getElementById('poll-submit-btn'), '#poll-submit-btn deve existir');
+  assert.ok(doc.getElementById('poll-cancel-btn'), '#poll-cancel-btn deve existir');
+  assert.ok(doc.getElementById('poll-allow-multiple-toggle'), '#poll-allow-multiple-toggle deve existir');
+  assert.ok(doc.getElementById('company-form-fill-modal-title'), '#company-form-fill-modal-title deve existir');
+  assert.ok(doc.getElementById('company-form-responses-modal-subtitle'), '#company-form-responses-modal-subtitle deve existir');
+});
+
 
 
 

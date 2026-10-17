@@ -6670,19 +6670,33 @@ input:checked + .slider:before { transform: translateX(22px); }
     display: flex;
     align-items: center;
     gap: 10px;
+    min-width: 0;
+    flex: 1;
+}
+
+.share-modal-title-wrap > div {
+    min-width: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
 }
 
 .share-modal-title-wrap h2 {
     margin: 0;
-    font-size: 1.15rem;
+    font-size: 1.05rem;
     font-weight: 700;
     color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.25;
 }
 
 .share-modal-title-wrap .neon-icon {
     width: 20px;
     height: 20px;
     color: var(--accent-color, #00ff88);
+    flex-shrink: 0;
 }
 
 /* Prévia do post a ser compartilhado */
@@ -7006,21 +7020,25 @@ input:checked + .slider:before { transform: translateX(22px); }
    ========================================================================== */
 
 /* Modal de Criação de Enquete */
-.poll-creator-overlay {
+.poll-creator-overlay,
+.poll-votes-overlay {
     z-index: 2500;
+    padding: 10px 8px !important;
 }
 
-.poll-creator-card {
+.poll-creator-card,
+.poll-votes-card {
     max-width: 480px;
-    width: 92%;
+    width: 95%;
     max-height: 88vh;
     display: flex;
     flex-direction: column;
-    background: rgba(18, 22, 28, 0.96);
+    background: #121420;
     border: 1px solid rgba(0, 255, 136, 0.25);
     border-radius: 20px;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0, 255, 136, 0.15);
     overflow: hidden;
+    padding: 0 !important;
     box-sizing: border-box;
 }
 
@@ -7028,8 +7046,10 @@ input:checked + .slider:before { transform: translateX(22px); }
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 16px 20px;
+    padding: 12px 16px;
+    background: #121420;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    flex-shrink: 0;
 }
 
 .poll-creator-body {
@@ -7147,28 +7167,37 @@ input:checked + .slider:before { transform: translateX(22px); }
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 14px 16px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 12px 14px;
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(0, 255, 136, 0.18);
     border-radius: 14px;
-    gap: 16px;
+    gap: 12px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .poll-setting-info {
     display: flex;
     flex-direction: column;
     gap: 3px;
+    flex: 1;
+    min-width: 0;
 }
 
 .poll-setting-title {
-    font-size: 0.9rem;
+    font-size: 0.88rem;
     font-weight: 600;
     color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.25;
 }
 
 .poll-setting-desc {
-    font-size: 0.75rem;
+    font-size: 0.74rem;
     color: var(--text-dim, #888);
+    line-height: 1.35;
 }
 
 /* Switch Toggle */
@@ -7220,20 +7249,29 @@ input:checked + .slider:before { transform: translateX(22px); }
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 12px;
-    padding: 16px 20px;
+    gap: 10px;
+    padding: 12px 16px;
     border-top: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(10, 12, 16, 0.6);
+    background: #121420;
+    flex-shrink: 0;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .poll-btn {
-    padding: 10px 20px;
-    border-radius: 12px;
+    height: 42px;
+    padding: 0 16px;
+    border-radius: 10px;
     font-size: 0.88rem;
-    font-weight: 600;
+    font-weight: 700;
     cursor: pointer;
     transition: all 0.2s ease;
     border: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    box-sizing: border-box;
 }
 
 .poll-btn-cancel {
@@ -7256,6 +7294,18 @@ input:checked + .slider:before { transform: translateX(22px); }
     background: #00e077;
     box-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
     transform: translateY(-1px);
+}
+
+@media (max-width: 480px) {
+    .poll-creator-footer {
+        padding: 10px 14px;
+    }
+    .poll-creator-footer .poll-btn-cancel {
+        flex: 1;
+    }
+    .poll-creator-footer .poll-btn-submit {
+        flex: 1.5;
+    }
 }
 
 .poll-btn-submit:disabled {
@@ -11156,10 +11206,14 @@ body.theme-rgb .ephemeral-save-btn {
 }
 
 /* ===== MODAL DE ENVIO DE PIX NO CHAT ===== */
+.pix-send-overlay {
+    padding: 10px 8px !important;
+}
+
 .pix-send-card {
     max-width: 440px;
-    width: 92%;
-    background: rgba(18, 22, 28, 0.98);
+    width: 95%;
+    background: #121420;
     border: 1px solid rgba(50, 188, 173, 0.35);
     border-radius: 20px;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8), 0 0 24px rgba(50, 188, 173, 0.2);
@@ -11167,19 +11221,22 @@ body.theme-rgb .ephemeral-save-btn {
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
+    padding: 0 !important;
 }
 
 .pix-modal-top-bar {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 16px 20px;
+    padding: 12px 16px;
+    background: #121420;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    flex-shrink: 0;
 }
 
 .pix-modal-icon-badge {
-    width: 34px;
-    height: 34px;
+    width: 36px;
+    height: 36px;
     border-radius: 10px;
     background: rgba(50, 188, 173, 0.18);
     border: 1px solid rgba(50, 188, 173, 0.4);
@@ -11191,10 +11248,10 @@ body.theme-rgb .ephemeral-save-btn {
 }
 
 .pix-send-body {
-    padding: 20px;
+    padding: 16px;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 14px;
     overflow-y: auto;
     max-height: 70vh;
 }
@@ -11260,23 +11317,30 @@ body.theme-rgb .ephemeral-save-btn {
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 12px;
-    padding: 16px 20px;
+    gap: 10px;
+    padding: 12px 16px;
     border-top: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(10, 12, 16, 0.6);
+    background: #121420;
+    flex-shrink: 0;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .pix-send-btn {
-    padding: 10px 18px;
-    border-radius: 12px;
+    height: 42px;
+    padding: 0 16px;
+    border-radius: 10px;
     font-size: 0.88rem;
-    font-weight: 600;
+    font-weight: 700;
     cursor: pointer;
     transition: all 0.2s ease;
     border: none;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
+    white-space: nowrap;
+    box-sizing: border-box;
 }
 
 .pix-send-btn-cancel {
@@ -11298,6 +11362,18 @@ body.theme-rgb .ephemeral-save-btn {
 .pix-send-btn-submit:hover {
     box-shadow: 0 6px 18px rgba(50, 188, 173, 0.5);
     transform: translateY(-1px);
+}
+
+@media (max-width: 480px) {
+    .pix-send-footer {
+        padding: 10px 14px;
+    }
+    .pix-send-footer .pix-send-btn-cancel {
+        flex: 1;
+    }
+    .pix-send-footer .pix-send-btn-submit {
+        flex: 1.5;
+    }
 }
 
 /* ===== Toque de Chamada (Configurações VIP) ===== */
@@ -14014,15 +14090,42 @@ body.total-black .ringtone-select {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 12px 16px;
+    padding: 12px 14px;
     background: #121420;
     border-bottom: 1px solid rgba(99, 102, 241, 0.22);
     flex-shrink: 0;
+    gap: 8px;
+}
+
+.company-form-modal-top-bar .share-modal-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    flex: 1;
+}
+
+.company-form-modal-top-bar .share-modal-title-wrap > div:last-child {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+}
+
+.company-form-modal-top-bar h2 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .company-form-title-icon-badge {
-    width: 38px;
-    height: 38px;
+    width: 36px;
+    height: 36px;
     border-radius: 10px;
     background: linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(124, 58, 237, 0.3));
     border: 1px solid rgba(99, 102, 241, 0.4);
@@ -14034,13 +14137,29 @@ body.total-black .ringtone-select {
 }
 
 .company-form-modal-subtitle {
-    display: inline-block;
-    font-size: 0.72rem;
+    display: block;
+    font-size: 0.7rem;
     font-weight: 700;
     color: #818cf8;
     text-transform: uppercase;
-    letter-spacing: 0.8px;
+    letter-spacing: 0.6px;
     margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+@media (max-width: 400px) {
+    .company-form-modal-top-bar h2 {
+        font-size: 0.92rem;
+    }
+    .company-form-title-icon-badge {
+        width: 32px;
+        height: 32px;
+    }
+    .company-form-modal-subtitle {
+        font-size: 0.65rem;
+    }
 }
 
 .company-form-creator-body,
