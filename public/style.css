@@ -13261,28 +13261,55 @@ body.total-black .ringtone-select {
 /* ===== CATÁLOGO: Formas de Pagamento no Editor de Produto ===== */
 .catalog-prod-payments-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
     gap: 8px;
     margin-top: 6px;
+}
+
+@media (min-width: 520px) {
+    .catalog-prod-payments-grid {
+        grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
+    }
 }
 
 .catalog-prod-payments-grid .catalog-check {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
+    gap: 6px;
+    padding: 8px 8px;
+    min-height: 44px;
+    height: 44px;
+    box-sizing: border-box;
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 8px;
-    font-size: 0.82rem;
+    font-size: 0.76rem;
     color: #fff;
     cursor: pointer;
     transition: background 0.2s, border-color 0.2s;
+    user-select: none;
+    overflow: hidden;
 }
 
 .catalog-prod-payments-grid .catalog-check:hover {
     background: rgba(255, 255, 255, 0.08);
     border-color: rgba(255, 240, 31, 0.3);
+}
+
+.catalog-prod-payments-grid .catalog-check input[type="checkbox"] {
+    flex-shrink: 0;
+    width: 17px;
+    height: 17px;
+    margin: 0;
+    accent-color: #22c55e;
+}
+
+.catalog-prod-payments-grid .catalog-check span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+    font-weight: 500;
 }
 
 /* ===== CATÁLOGO: Seção de Checkout e Dados de Entrega no Carrinho ===== */

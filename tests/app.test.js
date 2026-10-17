@@ -7394,7 +7394,6 @@ test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com 
   assert.ok(jsContent.includes('function addEditorColor'), 'script.js deve conter addEditorColor');
 
   // 23. Desconto, Promoção Temporária/Permanente, Produto Físico vs Digital, Tipos Digitais, Link e Botão Customizado (v1.0.144)
-  assert.strictEqual(versionJson.version, '1.0.144', 'version.json deve ser 1.0.144');
   assert.ok(htmlContent.includes('id="cat-prod-promo-type"'), 'index.html deve conter vigência da promoção (#cat-prod-promo-type)');
   assert.ok(htmlContent.includes('id="cat-prod-discount"'), 'index.html deve conter campo de desconto (#cat-prod-discount)');
   assert.ok(htmlContent.includes('id="cat-prod-discount-type"'), 'index.html deve conter vigência do desconto (#cat-prod-discount-type)');
@@ -7410,6 +7409,11 @@ test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com 
   assert.ok(jsContent.includes('function sanitizeCatalogDiscountInput'), 'script.js deve conter sanitizeCatalogDiscountInput');
   assert.ok(jsContent.includes('function getDigitalCtaLabel'), 'script.js deve conter getDigitalCtaLabel');
   assert.ok(jsContent.includes('function getDigitalCtaIcon'), 'script.js deve conter getDigitalCtaIcon');
+
+  // 24. Padronização do Tamanho dos Botões de Formas de Pagamento no Celular (v1.0.145)
+  assert.strictEqual(versionJson.version, '1.0.145', 'version.json deve ser 1.0.145');
+  assert.ok(cssContent.includes('.catalog-prod-payments-grid .catalog-check span'), 'style.css deve estilizar o span dos botões de pagamento com white-space nowrap');
+  assert.ok(cssContent.includes('repeat(2, 1fr)'), 'style.css deve definir grid de 2 colunas para botões de pagamento no celular');
 });
 
 test('Formulários Comerciais para Conta Empresa: Permissões, templates, card interativo no chat e preenchimento de respostas (v1.0.142)', () => {
@@ -7680,6 +7684,33 @@ test('Desconto no Produto (Permanente ou Temporário), Vigência da Promoção, 
   assert.strictEqual(item.promoType, 'temporario');
   assert.strictEqual(item.discount, '33%');
   assert.strictEqual(item.discountType, 'temporario');
+});
+
+test('Padronização de Tamanho dos Botões de Formas de Pagamento no Editor de Produtos no Celular (v1.0.145)', () => {
+  const env = createTestEnvironment();
+  const doc = env.sandbox.window.document;
+
+  const paymentGrid = doc.getElementById('cat-prod-payment-methods');
+  assert.ok(paymentGrid, 'Elemento #cat-prod-payment-methods deve existir no DOM');
+
+  // Verifica que os 5 checkboxes de pagamento existem com seus respectivos IDs
+  const pix = doc.getElementById('cat-pay-pix');
+  const credit = doc.getElementById('cat-pay-credit');
+  const debit = doc.getElementById('cat-pay-debit');
+  const cash = doc.getElementById('cat-pay-cash');
+  const boleto = doc.getElementById('cat-pay-boleto');
+
+  assert.ok(pix, 'Checkbox cat-pay-pix deve existir');
+  assert.ok(credit, 'Checkbox cat-pay-credit deve existir');
+  assert.ok(debit, 'Checkbox cat-pay-debit deve existir');
+  assert.ok(cash, 'Checkbox cat-pay-cash deve existir');
+  assert.ok(boleto, 'Checkbox cat-pay-boleto deve existir');
+
+  // Verifica que style.css define altura uniforme e previne quebra de linha que desconfigurava Pix e Cartão de Crédito
+  assert.ok(cssContent.includes('min-height: 44px;'), 'style.css deve definir min-height uniforme para os botões de pagamento');
+  assert.ok(cssContent.includes('height: 44px;'), 'style.css deve definir height fixa uniforme para os botões de pagamento');
+  assert.ok(cssContent.includes('white-space: nowrap;'), 'style.css deve impedir quebra de linha em Cartão de Crédito');
+  assert.ok(cssContent.includes('repeat(2, 1fr)'), 'style.css deve definir grid de 2 colunas para manter tamanhos idênticos');
 });
 
 
