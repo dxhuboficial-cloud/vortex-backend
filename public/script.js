@@ -7194,6 +7194,9 @@ function listenToContacts() {
                 <button class="chat-card-pin-btn" id="pin-btn-${contactUid}" type="button" title="${isPinned ? 'Desafixar conversa' : 'Fixar conversa'}" aria-label="Fixar conversa">
                     <i data-lucide="pin"></i>
                 </button>
+                <button class="group-delete-btn blocked-contact-delete-btn" id="delete-blocked-card-btn-${contactUid}" type="button" title="Excluir contato" aria-label="Excluir contato" style="display:${blockedContactsSet.has(contactUid) ? 'flex' : 'none'};">
+                    <i data-lucide="trash-2"></i>
+                </button>
             `;
 
             card.onclick = () => openDirectChat(contact);
@@ -7209,6 +7212,13 @@ function listenToContacts() {
                 pinBtn.onclick = (event) => {
                     event.stopPropagation();
                     togglePinChat(contactUid);
+                };
+            }
+            const delContactCardBtn = card.querySelector('.blocked-contact-delete-btn');
+            if (delContactCardBtn) {
+                delContactCardBtn.onclick = (event) => {
+                    event.stopPropagation();
+                    deleteBlockedContact(contact);
                 };
             }
 
@@ -8103,6 +8113,13 @@ export async function openContactProfile(contact) {
     if (blockBtn) {
         blockBtn.onclick = () => {
             openBlockContactConfirmation(contact);
+        };
+    }
+
+    const deleteContactBtn = document.getElementById('contact-profile-delete-btn');
+    if (deleteContactBtn) {
+        deleteContactBtn.onclick = () => {
+            deleteBlockedContact(contact);
         };
     }
 
@@ -10894,6 +10911,15 @@ export function listenToBlockedContacts() {
     blockedUnsubscribe = onSnapshot(blockedRef, (snapshot) => {
         blockedContactsSet = new Set(snapshot.docs.map(d => d.id));
         updateActiveChatBlockedUI();
+        if (typeof document !== 'undefined') {
+            document.querySelectorAll('.chat-card[data-uid]').forEach(card => {
+                const uid = card.dataset.uid;
+                const delBtn = document.getElementById(`delete-blocked-card-btn-${uid}`);
+                if (delBtn) {
+                    delBtn.style.display = blockedContactsSet.has(uid) ? 'flex' : 'none';
+                }
+            });
+        }
     }, err => console.warn('Erro ao carregar contatos bloqueados:', err));
 }
 
@@ -10903,6 +10929,7 @@ export function updateActiveChatBlockedUI() {
     const blockTrigger = document.getElementById('block-contact-trigger');
     const blockText = document.getElementById('block-contact-text');
     const blockIcon = document.getElementById('block-contact-icon');
+    const deleteContactTrigger = document.getElementById('delete-contact-trigger');
     const reportText = document.getElementById('report-contact-text');
     const blockedBanner = document.getElementById('chat-blocked-banner');
     const blockedBannerText = document.getElementById('chat-blocked-banner-text');
@@ -10912,6 +10939,7 @@ export function updateActiveChatBlockedUI() {
 
     if (isGroup) {
         if (blockTrigger) blockTrigger.style.display = 'none';
+        if (deleteContactTrigger) deleteContactTrigger.style.display = 'none';
         if (reportText) reportText.innerText = 'Denunciar Grupo';
         if (blockedBanner) blockedBanner.style.display = 'none';
         return;
@@ -10930,6 +10958,9 @@ export function updateActiveChatBlockedUI() {
     if (blockIcon) {
         blockIcon.setAttribute('data-lucide', isBlockedByMe ? 'shield-check' : 'ban');
     }
+    if (deleteContactTrigger) {
+        deleteContactTrigger.style.display = isAnyBlocked ? 'flex' : 'none';
+    }
 
     if (blockedBanner) {
         blockedBanner.style.display = isAnyBlocked ? 'flex' : 'none';
@@ -10945,6 +10976,11 @@ export function updateActiveChatBlockedUI() {
     const unblockBannerBtn = document.getElementById('unblock-banner-btn');
     if (unblockBannerBtn) {
         unblockBannerBtn.style.display = isBlockedByMe ? 'inline-block' : 'none';
+    }
+
+    const deleteContactBannerBtn = document.getElementById('delete-contact-banner-btn');
+    if (deleteContactBannerBtn) {
+        deleteContactBannerBtn.style.display = isAnyBlocked ? 'inline-flex' : 'none';
     }
 
     if (chatInput) {
@@ -10986,14 +11022,26 @@ export let activeBlockTargetContact = null;
 export function updateContactProfileBlockedUI(contactUid) {
     const blockText = document.getElementById('contact-profile-block-text');
     const blockIcon = document.getElementById('contact-profile-block-icon');
+    const deleteContactBtn = document.getElementById('contact-profile-delete-btn');
     const presenceEl = document.getElementById('contact-profile-presence');
     const onlineDotEl = document.getElementById('contact-profile-online-dot');
+    const cardDelBtn = contactUid ? document.getElementById(`delete-blocked-card-btn-${contactUid}`) : null;
+
+    const isBlockedByMe = blockedContactsSet.has(contactUid);
+    const isBlocked = isBlockedByMe || !!(activeChatContact && activeChatContact.uid === contactUid && isBlockedByActiveContact);
+
+    if (deleteContactBtn) {
+        deleteContactBtn.style.display = isBlocked ? 'flex' : 'none';
+    }
+    if (cardDelBtn) {
+        cardDelBtn.style.display = isBlocked ? 'flex' : 'none';
+    }
+
     if (!blockText) return;
 
-    const isBlocked = blockedContactsSet.has(contactUid);
-    blockText.innerText = isBlocked ? 'Desbloquear Contato' : 'Bloquear Contato';
+    blockText.innerText = isBlockedByMe ? 'Desbloquear Contato' : 'Bloquear Contato';
     if (blockIcon) {
-        blockIcon.setAttribute('data-lucide', isBlocked ? 'shield-check' : 'ban');
+        blockIcon.setAttribute('data-lucide', isBlockedByMe ? 'shield-check' : 'ban');
     }
     if (isBlocked) {
         if (presenceEl) presenceEl.innerText = 'Bloqueado';
@@ -11004,6 +11052,54 @@ export function updateContactProfileBlockedUI(contactUid) {
         }
     }
     if (window.lucide) lucide.createIcons();
+}
+
+export async function deleteBlockedContact(targetContact = activeChatContact) {
+    if (!currentUser || !targetContact || targetContact.isGroup) return false;
+    const targetUid = targetContact.uid || targetContact.id;
+    if (!targetUid) return false;
+    const targetName = targetContact.name || 'Contato';
+
+    const isBlocked = blockedContactsSet.has(targetUid) || !!(activeChatContact && activeChatContact.uid === targetUid && isBlockedByActiveContact);
+    if (!isBlocked) {
+        showToast("Ação Indisponível", "Bloqueie o contato antes de excluí-lo.", "red");
+        return false;
+    }
+
+    try {
+        await deleteDoc(doc(db, 'users', currentUser.uid, 'contacts', targetUid));
+        userContactsSet.delete(targetUid);
+
+        if (typeof pinnedChatsSet !== 'undefined' && pinnedChatsSet.has(targetUid)) {
+            pinnedChatsSet.delete(targetUid);
+        }
+
+        const card = document.querySelector(`.chat-card[data-uid="${targetUid}"]`);
+        if (card) {
+            card.remove();
+        }
+
+        const panel = document.getElementById('contact-profile-panel');
+        if (panel && panel.classList.contains('active')) {
+            closeContactProfile();
+        }
+
+        if (activeChatContact && activeChatContact.uid === targetUid) {
+            closeChat();
+        }
+
+        if (typeof applyChatFilter === 'function') {
+            applyChatFilter();
+        }
+
+        showToast("Contato Excluído", `${targetName} foi excluído dos seus contatos.`, "green");
+        playSound(clickSound);
+        return true;
+    } catch (err) {
+        console.error('Erro ao excluir contato bloqueado:', err);
+        showToast("Erro", "Não foi possível excluir o contato.", "red");
+        return false;
+    }
 }
 
 export function openBlockContactConfirmation(contact) {
@@ -11248,6 +11344,7 @@ if (typeof window !== 'undefined') {
     window.updateContactProfileBlockedUI = updateContactProfileBlockedUI;
     window.openBlockContactConfirmation = openBlockContactConfirmation;
     window.toggleBlockContact = toggleBlockContact;
+    window.deleteBlockedContact = deleteBlockedContact;
     window.submitContactReport = submitContactReport;
     window.submitGeneralReport = submitGeneralReport;
     window.openReportModal = openReportModal;
@@ -11258,6 +11355,12 @@ document.getElementById('block-contact-trigger')?.addEventListener('click', () =
     document.getElementById('chat-dropdown-menu')?.classList.remove('active');
     if (!activeChatContact || activeChatContact.isGroup) return;
     openBlockContactConfirmation(activeChatContact);
+});
+
+document.getElementById('delete-contact-trigger')?.addEventListener('click', async () => {
+    document.getElementById('chat-dropdown-menu')?.classList.remove('active');
+    if (!activeChatContact || activeChatContact.isGroup) return;
+    await deleteBlockedContact(activeChatContact);
 });
 
 document.getElementById('confirm-block-contact-btn')?.addEventListener('click', async () => {
@@ -11281,6 +11384,11 @@ document.getElementById('unblock-banner-btn')?.addEventListener('click', async (
         return;
     }
     await toggleBlockContact(activeChatContact);
+});
+
+document.getElementById('delete-contact-banner-btn')?.addEventListener('click', async () => {
+    if (!activeChatContact || activeChatContact.isGroup) return;
+    await deleteBlockedContact(activeChatContact);
 });
 
 document.getElementById('report-contact-trigger')?.addEventListener('click', () => {

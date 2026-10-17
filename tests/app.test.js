@@ -7288,6 +7288,13 @@ test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com 
   assert.ok(jsContent.includes('async function syncUserAvatarToPostsAndStories'), 'script.js deve implementar syncUserAvatarToPostsAndStories');
   assert.ok(jsContent.includes('class="feed-avatar" data-author-uid="'), '.feed-avatar nos posts deve ter data-author-uid para atualização em tempo real');
   assert.ok(jsContent.includes('class="post-author-avatar" data-author-uid="'), '.post-author-avatar deve ter data-author-uid para atualização em tempo real');
+
+  // 14. Validar botão de excluir contato após ser bloqueado (v1.0.135)
+  assert.ok(htmlContent.includes('id="delete-contact-banner-btn"'), 'index.html deve ter o botão #delete-contact-banner-btn no banner de bloqueio');
+  assert.ok(htmlContent.includes('id="contact-profile-delete-btn"'), 'index.html deve ter o botão #contact-profile-delete-btn no painel de dados do contato');
+  assert.ok(htmlContent.includes('id="delete-contact-trigger"'), 'index.html deve ter a opção #delete-contact-trigger no menu do cabeçalho do chat');
+  assert.ok(cssContent.includes('.delete-contact-banner-btn'), 'style.css deve estilizar .delete-contact-banner-btn');
+  assert.ok(jsContent.includes('async function deleteBlockedContact'), 'script.js deve implementar deleteBlockedContact');
 });
 
 

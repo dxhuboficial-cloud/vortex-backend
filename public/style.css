@@ -2200,7 +2200,8 @@ header h1 span {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    flex-wrap: wrap;
+    gap: 10px 12px;
     background: rgba(255, 59, 48, 0.14);
     border: 1px solid rgba(255, 59, 48, 0.35);
     padding: 10px 14px;
@@ -2225,6 +2226,13 @@ header h1 span {
     color: #ff3b30;
 }
 
+.chat-blocked-banner-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
 .unblock-banner-btn {
     background: #ff3b30;
     color: #fff;
@@ -2240,6 +2248,35 @@ header h1 span {
 
 .unblock-banner-btn:hover {
     background: #ff5247;
+    transform: scale(1.03);
+}
+
+.delete-contact-banner-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(255, 59, 48, 0.18);
+    color: #ff6b6b;
+    border: 1px solid rgba(255, 59, 48, 0.55);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s, transform 0.15s;
+    white-space: nowrap;
+}
+
+.delete-contact-banner-btn i,
+.delete-contact-banner-btn svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+}
+
+.delete-contact-banner-btn:hover {
+    background: #ff3b30;
+    color: #fff;
     transform: scale(1.03);
 }
 
@@ -7685,6 +7722,17 @@ input:checked + .slider:before { transform: translateX(22px); }
 .contact-danger-btn:hover {
     background: rgba(255, 59, 48, 0.18);
     border-color: #ff3b30;
+}
+
+.contact-danger-btn.contact-delete-btn {
+    background: rgba(255, 59, 48, 0.16);
+    border-color: rgba(255, 59, 48, 0.45);
+    color: #ff453a;
+}
+
+.contact-danger-btn.contact-delete-btn:hover {
+    background: #ff3b30;
+    color: #fff;
 }
 
 /* Card de Introdução com Recado no Topo da Conversa */

@@ -4,20 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.134">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.134">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.134">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.134">
-    <link rel="stylesheet" href="style.css?v=1.0.134">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.135">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.135">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.135">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.135">
+    <link rel="stylesheet" href="style.css?v=1.0.135">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.134">
+    <link rel="manifest" href="manifest.json?v=1.0.135">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.134">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.134">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.135">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.135">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -453,6 +453,10 @@
                         <i data-lucide="ban" id="block-contact-icon"></i>
                         <span id="block-contact-text">Bloquear Contato</span>
                     </div>
+                    <div class="dropdown-item danger-text" id="delete-contact-trigger" style="display: none;">
+                        <i data-lucide="user-x"></i>
+                        <span>Excluir Contato</span>
+                    </div>
                     <div class="dropdown-item danger-text" id="report-contact-trigger">
                         <i data-lucide="flag"></i>
                         <span id="report-contact-text">Denunciar Contato</span>
@@ -492,7 +496,13 @@
                     <i data-lucide="shield-alert"></i>
                     <span id="chat-blocked-banner-text">Você bloqueou este contato.</span>
                 </div>
-                <button type="button" id="unblock-banner-btn" class="unblock-banner-btn">Desbloquear</button>
+                <div class="chat-blocked-banner-actions">
+                    <button type="button" id="unblock-banner-btn" class="unblock-banner-btn">Desbloquear</button>
+                    <button type="button" id="delete-contact-banner-btn" class="delete-contact-banner-btn" title="Excluir Contato">
+                        <i data-lucide="trash-2"></i>
+                        <span>Excluir Contato</span>
+                    </button>
+                </div>
             </div>
 
             <!-- Banner Flutuante de Banimento Temporário no Chat -->
@@ -1562,6 +1572,10 @@
                     <button id="contact-profile-block-btn" class="contact-danger-btn" type="button">
                         <i data-lucide="ban" id="contact-profile-block-icon"></i>
                         <span id="contact-profile-block-text">Bloquear Contato</span>
+                    </button>
+                    <button id="contact-profile-delete-btn" class="contact-danger-btn contact-delete-btn" type="button" style="display:none;">
+                        <i data-lucide="user-x"></i>
+                        <span>Excluir Contato</span>
                     </button>
                     <button id="contact-profile-report-btn" class="contact-danger-btn" type="button">
                         <i data-lucide="flag"></i>
@@ -2944,6 +2958,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.134" defer></script>
+    <script type="module" src="script.js?v=1.0.135" defer></script>
 </body>
 </html>
