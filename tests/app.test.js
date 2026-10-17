@@ -7343,6 +7343,18 @@ test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com 
   assert.ok(jsContent.includes('function lookupCartCep'), 'script.js deve implementar lookupCartCep para consulta de endereço');
   assert.ok(jsContent.includes('paymentMethods'), 'script.js deve salvar e manipular paymentMethods nos produtos e pedidos');
   assert.ok(jsContent.includes('vortex_customer_info'), 'script.js deve salvar dados do cliente no localStorage (vortex_customer_info)');
+
+  // 20. Validar que o vendedor consegue ver claramente a quantidade que o cliente pediu (v1.0.141)
+  assert.strictEqual(versionJson.version, '1.0.141', 'version.json deve ser 1.0.141');
+  assert.ok(cssContent.includes('.catalog-order-qty-highlight'), 'style.css deve estilizar o destaque de quantidade pedida na lista de pedidos (.catalog-order-qty-highlight)');
+  assert.ok(cssContent.includes('.catalog-order-chip-qty'), 'style.css deve conter badge de quantidade por produto na lista (.catalog-order-chip-qty)');
+  assert.ok(cssContent.includes('.catalog-order-qty-badge'), 'style.css deve conter badge de quantidade pedida no modal de detalhes (.catalog-order-qty-badge)');
+  assert.ok(cssContent.includes('.chat-order-qty-pill'), 'style.css deve estilizar o pill de quantidade no card de chat (.chat-order-qty-pill)');
+  assert.ok(cssContent.includes('.chat-order-items-breakdown'), 'style.css deve conter detalhamento com quantidades no card do pedido no chat (.chat-order-items-breakdown)');
+  assert.ok(jsContent.includes('catalog-order-qty-highlight'), 'script.js deve renderizar destaque de unidades pedidas na lista de pedidos do vendedor');
+  assert.ok(jsContent.includes('catalog-order-qty-badge'), 'script.js deve renderizar badge de quantidade pedida no modal de detalhes do pedido');
+  assert.ok(jsContent.includes('chat-order-qty-pill'), 'script.js deve renderizar pill de quantidade pedida no card do pedido no chat');
+  assert.ok(jsContent.includes('catalog-order-total-units-pill'), 'script.js deve renderizar badge com total de unidades na seção de itens');
 });
 
 

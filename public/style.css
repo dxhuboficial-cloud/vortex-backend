@@ -13538,6 +13538,233 @@ body.total-black .ringtone-select {
     height: 13px;
 }
 
+/* ===== CATÁLOGO: Destaque de Quantidades Pedidas nos Pedidos do Vendedor ===== */
+.catalog-order-items-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    padding: 8px 10px;
+    margin: 4px 0;
+}
+
+.catalog-order-qty-highlight {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    color: var(--accent-color, #fff01f);
+}
+
+.catalog-order-qty-highlight i {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+}
+
+.catalog-order-chips-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 2px;
+}
+
+.catalog-order-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 8px;
+    background: rgba(255, 240, 31, 0.1);
+    border: 1px solid rgba(255, 240, 31, 0.25);
+    border-radius: 6px;
+    font-size: 0.76rem;
+}
+
+.catalog-order-chip-qty {
+    font-weight: 800;
+    color: var(--accent-color, #fff01f);
+}
+
+.catalog-order-chip-name {
+    color: #fff;
+    max-width: 180px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Modal Detalhe do Pedido: Itens com Foto e Destaque da Quantidade */
+.catalog-order-items-header-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2px;
+}
+
+.catalog-order-total-units-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    background: rgba(255, 240, 31, 0.15);
+    border: 1px solid var(--accent-color, #fff01f);
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--accent-color, #fff01f);
+}
+
+.catalog-order-total-units-pill i {
+    width: 13px;
+    height: 13px;
+    flex-shrink: 0;
+}
+
+.catalog-order-item-img {
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    object-fit: cover;
+    flex-shrink: 0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.catalog-order-item-noimg {
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-dim, #8e8e93);
+    flex-shrink: 0;
+}
+
+.catalog-order-item-noimg i {
+    width: 20px;
+    height: 20px;
+}
+
+.catalog-order-qty-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 2px;
+}
+
+.catalog-order-qty-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    background: rgba(255, 240, 31, 0.15);
+    border: 1px solid rgba(255, 240, 31, 0.35);
+    border-radius: 6px;
+    color: var(--accent-color, #fff01f);
+    font-size: 0.76rem;
+    font-weight: 600;
+}
+
+.catalog-order-qty-badge strong {
+    color: var(--accent-color, #fff01f) !important;
+    font-weight: 800;
+    font-size: 0.82rem;
+}
+
+.catalog-order-item-unit-price {
+    font-size: 0.74rem;
+    color: var(--text-dim, #8e8e93);
+}
+
+.catalog-order-detail-item-subtotal {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    flex-shrink: 0;
+}
+
+.catalog-order-detail-item-subtotal small {
+    font-size: 0.68rem;
+    color: var(--text-dim, #8e8e93);
+    text-transform: uppercase;
+}
+
+.catalog-order-detail-item-subtotal span {
+    font-weight: 800;
+    font-size: 0.95rem;
+    color: #fff;
+}
+
+.catalog-order-meta-qty-highlight {
+    color: var(--accent-color, #fff01f) !important;
+    font-weight: 700;
+}
+
+/* Chat: Destaque de Quantidades Pedidas */
+.chat-order-qty-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    color: var(--accent-color, #fff01f);
+    background: rgba(255, 240, 31, 0.08);
+    border: 1px solid rgba(255, 240, 31, 0.2);
+    padding: 4px 10px;
+    border-radius: 8px;
+    margin-top: 4px;
+    width: fit-content;
+}
+
+.chat-order-qty-pill i {
+    width: 14px;
+    height: 14px;
+}
+
+.chat-order-items-breakdown {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+    padding: 8px 10px;
+    margin: 4px 0;
+}
+
+.chat-order-item-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.82rem;
+}
+
+.chat-order-item-qty-tag {
+    font-weight: 800;
+    color: var(--accent-color, #fff01f);
+    background: rgba(255, 240, 31, 0.15);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    flex-shrink: 0;
+}
+
+.chat-order-item-name {
+    flex: 1;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.chat-order-item-price {
+    color: var(--text-dim, #8e8e93);
+    font-size: 0.78rem;
+    flex-shrink: 0;
+}
+
 @media (max-width: 480px) {
     .catalog-field-row {
         flex-direction: column;

@@ -3675,6 +3675,7 @@ export async function submitCatalogOrder() {
             }
 
             const buyerFullName = (`${currentProfile?.name || ''} ${currentProfile?.surname || ''}`).trim() || currentProfile?.name || currentUser.displayName || 'Comprador VORTEX';
+            const totalUnits = finalizedItems.reduce((acc, i) => acc + (Number(i.quantity) || 1), 0);
             const orderDocData = {
                 id: orderId,
                 orderNumber: orderNumber,
@@ -3685,6 +3686,7 @@ export async function submitCatalogOrder() {
                 sellerName: sellerData.name || cart.sellerName || 'Vendedor VORTEX',
                 sellerPixKey: sellerPixKey,
                 items: finalizedItems,
+                totalUnits: totalUnits,
                 total: orderTotal,
                 note: note,
                 customer: customerData,
@@ -3753,6 +3755,9 @@ export async function submitCatalogOrder() {
         }
 
         // 4. Enviar mensagem do pedido no chat com o vendedor
+        const totalUnits = finalizedItems.reduce((acc, i) => acc + (Number(i.quantity) || 1), 0);
+        const itemsSummaryText = finalizedItems.map(i => `${i.quantity}x ${i.name}`).join(', ');
+
         const orderPayload = {
             orderId: orderId,
             orderNumber: orderNumber,
@@ -3760,6 +3765,7 @@ export async function submitCatalogOrder() {
             sellerName: sellerName,
             sellerPixKey: sellerPixKey,
             items: finalizedItems,
+            totalUnits: totalUnits,
             total: orderTotal,
             customer: customerData,
             paymentMethod: selectedPayment,
@@ -3767,7 +3773,7 @@ export async function submitCatalogOrder() {
         };
 
         await sendChatMessage('order', {
-            text: `🛒 Pedido ${orderNumber} • ${finalizedItems.length} ${finalizedItems.length === 1 ? 'item' : 'itens'} • Total: ${formatBRL(orderTotal)}${selectedPayment ? ` • Pagamento: ${selectedPayment}` : ''}`,
+            text: `🛒 Pedido ${orderNumber} • ${totalUnits} ${totalUnits === 1 ? 'unidade' : 'unidades'} (${itemsSummaryText}) • Total: ${formatBRL(orderTotal)}${selectedPayment ? ` • Pagamento: ${selectedPayment}` : ''}`,
             order: orderPayload
         });
 
@@ -4939,8 +4945,18 @@ export function renderOrdersList(container, orders, isSeller) {
 
     container.innerHTML = orders.map(ord => {
         const st = statusLabels[ord.status] || { label: ord.status, cls: '' };
-        const itemsCount = (ord.items || []).reduce((acc, i) => acc + (Number(i.quantity) || 1), 0);
+        const items = Array.isArray(ord.items) ? ord.items : [];
+        const totalUnits = items.reduce((acc, i) => acc + (Number(i.quantity) || 1), 0);
+        const totalProducts = items.length;
         const dateStr = ord.createdAt ? new Date(ord.createdAt).toLocaleDateString('pt-BR') : '';
+
+        // Chips detalhados com quantidade de cada item pedido
+        const itemsChipsHTML = items.map(item => `
+            <div class="catalog-order-chip">
+                <span class="catalog-order-chip-qty">${item.quantity || 1}x</span>
+                <span class="catalog-order-chip-name">${escapeHTML(item.name)}</span>
+            </div>
+        `).join('');
 
         return `
             <div class="catalog-order-card" data-id="${ord.id}">
@@ -4955,8 +4971,19 @@ export function renderOrdersList(container, orders, isSeller) {
                     <i data-lucide="${isSeller ? 'user' : 'store'}"></i>
                     <span>${isSeller ? `Cliente: ${escapeHTML(ord.buyerName || 'Comprador')}` : `Loja: ${escapeHTML(ord.sellerName || 'Vendedor')}`}</span>
                 </div>
+
+                <div class="catalog-order-items-preview">
+                    <div class="catalog-order-qty-highlight">
+                        <i data-lucide="layers"></i>
+                        <span>Quantidade pedida: <strong>${totalUnits} ${totalUnits === 1 ? 'unidade' : 'unidades'}</strong> (${totalProducts} ${totalProducts === 1 ? 'produto' : 'produtos'})</span>
+                    </div>
+                    <div class="catalog-order-chips-wrap">
+                        ${itemsChipsHTML}
+                    </div>
+                </div>
+
                 <div class="catalog-order-summary">
-                    <span>${itemsCount} ${itemsCount === 1 ? 'item' : 'itens'}</span>
+                    <span>${totalUnits} ${totalUnits === 1 ? 'unidade' : 'unidades'} no total</span>
                     <strong class="catalog-order-total">${formatBRL(ord.total)}</strong>
                 </div>
                 <div class="catalog-order-actions">
@@ -5022,15 +5049,34 @@ export async function openOrderDetail(orderId) {
         };
         const st = statusLabels[ord.status] || { label: ord.status, cls: '' };
 
-        const itemsHTML = (ord.items || []).map(item => `
-            <div class="catalog-order-detail-item">
-                <div class="catalog-order-detail-item-info">
-                    <strong>${escapeHTML(item.name)}</strong>
-                    <small>${item.quantity}x ${formatBRL(item.effectivePrice || item.price)}</small>
+        const totalQuantity = (ord.items || []).reduce((acc, i) => acc + (Number(i.quantity) || 1), 0);
+        const totalProducts = (ord.items || []).length;
+
+        const itemsHTML = (ord.items || []).map(item => {
+            const qty = Number(item.quantity) || 1;
+            const unitPrice = Number(item.effectivePrice || item.price || 0);
+            const subtotal = Number(item.subtotal || (unitPrice * qty));
+            const coverImg = item.cover
+                ? `<img src="${item.cover}" alt="${escapeHTML(item.name)}" class="catalog-order-item-img">`
+                : `<div class="catalog-order-item-noimg"><i data-lucide="package"></i></div>`;
+
+            return `
+                <div class="catalog-order-detail-item">
+                    ${coverImg}
+                    <div class="catalog-order-detail-item-info">
+                        <strong>${escapeHTML(item.name)}</strong>
+                        <div class="catalog-order-qty-row">
+                            <span class="catalog-order-qty-badge">Quantidade pedida: <strong>${qty} ${qty === 1 ? 'unidade' : 'unidades'}</strong></span>
+                            <span class="catalog-order-item-unit-price">${formatBRL(unitPrice)} un.</span>
+                        </div>
+                    </div>
+                    <div class="catalog-order-detail-item-subtotal">
+                        <small>Subtotal</small>
+                        <span>${formatBRL(subtotal)}</span>
+                    </div>
                 </div>
-                <span>${formatBRL(item.subtotal || ((item.effectivePrice || item.price) * item.quantity))}</span>
-            </div>
-        `).join('');
+            `;
+        }).join('');
 
         const pixSection = ord.sellerPixKey ? `
             <div class="catalog-pix-box">
@@ -5073,6 +5119,7 @@ export async function openOrderDetail(orderId) {
                     <div class="catalog-order-meta-row"><span>Cliente:</span><strong>${escapeHTML(ord.buyerName || 'Comprador')}</strong></div>
                     <div class="catalog-order-meta-row"><span>Loja:</span><strong>${escapeHTML(ord.sellerName || 'Vendedor')}</strong></div>
                     <div class="catalog-order-meta-row"><span>Data:</span><strong>${ord.createdAt ? new Date(ord.createdAt).toLocaleString('pt-BR') : ''}</strong></div>
+                    <div class="catalog-order-meta-row"><span>Quantidade Pedida:</span><strong class="catalog-order-meta-qty-highlight">${totalQuantity} ${totalQuantity === 1 ? 'unidade' : 'unidades'} (${totalProducts} ${totalProducts === 1 ? 'produto' : 'produtos'})</strong></div>
                     ${ord.paymentMethod ? `<div class="catalog-order-meta-row"><span>Forma de Pagamento:</span><strong class="catalog-payment-highlight">${escapeHTML(ord.paymentMethod)}</strong></div>` : ''}
                     ${ord.note ? `<div class="catalog-order-note-box"><strong>Obs:</strong> ${escapeHTML(ord.note)}</div>` : ''}
                 </div>
@@ -5096,7 +5143,10 @@ export async function openOrderDetail(orderId) {
                 ` : ''}
 
                 <div class="catalog-order-items-list">
-                    <span class="catalog-field-label">Itens do pedido</span>
+                    <div class="catalog-order-items-header-bar">
+                        <span class="catalog-field-label">Itens do pedido (${totalProducts} ${totalProducts === 1 ? 'produto' : 'produtos'})</span>
+                        <span class="catalog-order-total-units-pill"><i data-lucide="package-check"></i> <strong>${totalQuantity} ${totalQuantity === 1 ? 'unidade pedida' : 'unidades pedidas'}</strong></span>
+                    </div>
                     ${itemsHTML}
                 </div>
 
@@ -5230,8 +5280,10 @@ export function buildOrderCardHTML(msg) {
     const orderNumber = ord.orderNumber || (typeof msg.text === 'string' && msg.text.includes('VX-') ? msg.text.match(/VX-\d+/)?.[0] : '') || 'Pedido';
     const total = ord.total ? formatBRL(ord.total) : '';
     const items = Array.isArray(ord.items) ? ord.items : [];
-    const itemsSummary = items.slice(0, 3).map(i => `${i.quantity}x ${escapeHTML(i.name)}`).join(', ') + (items.length > 3 ? ` (+${items.length - 3})` : '');
+    const totalUnits = items.reduce((acc, i) => acc + (Number(i.quantity) || 1), 0);
     const paymentMethod = ord.paymentMethod || '';
+
+    const itemsSummary = items.slice(0, 3).map(i => `${i.quantity}x ${escapeHTML(i.name)}`).join(', ') + (items.length > 3 ? ` (+${items.length - 3})` : '');
 
     return `
         <div class="chat-order-card" data-order-id="${escapeHTML(ord.orderId || '')}">
@@ -5242,8 +5294,26 @@ export function buildOrderCardHTML(msg) {
                 </div>
                 ${total ? `<span class="chat-order-total-badge">${total}</span>` : ''}
             </div>
+
+            <div class="chat-order-qty-pill">
+                <i data-lucide="layers"></i>
+                <span>Quantidade pedida: <strong>${totalUnits} ${totalUnits === 1 ? 'unidade' : 'unidades'}</strong></span>
+            </div>
+
             ${paymentMethod ? `<div class="chat-order-payment-pill"><i data-lucide="credit-card"></i> <span>${escapeHTML(paymentMethod)}</span></div>` : ''}
-            ${itemsSummary ? `<p class="chat-order-items-preview">${itemsSummary}</p>` : ''}
+
+            <div class="chat-order-items-breakdown">
+                ${items.map(i => `
+                    <div class="chat-order-item-row">
+                        <span class="chat-order-item-qty-tag">${i.quantity}x</span>
+                        <span class="chat-order-item-name">${escapeHTML(i.name)}</span>
+                        <span class="chat-order-item-price">${formatBRL((Number(i.effectivePrice) || Number(i.price) || 0) * (Number(i.quantity) || 1))}</span>
+                    </div>
+                `).join('')}
+            </div>
+
+            ${itemsSummary ? `<p class="chat-order-items-preview" style="display:none;">${itemsSummary}</p>` : ''}
+
             <div class="chat-order-actions-row">
                 ${ord.sellerPixKey ? `
                     <button type="button" class="chat-order-pay-btn" title="Copiar Chave Pix">
@@ -14014,7 +14084,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.140';
+export const CURRENT_APP_VERSION = '1.0.141';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
