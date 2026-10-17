@@ -2931,7 +2931,11 @@ body.total-black textarea {
 .neon-line-svg.active #neon-path { animation: neonTrace 1.1s ease-in-out forwards; }
 @keyframes neonTrace { 0% { stroke-dashoffset: 400; opacity: 1; } 100% { stroke-dashoffset: 0; opacity: 0; } }
 
-.member-list-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; background: #141414; border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; margin-bottom: 10px; }
+.member-list-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; background: #141414; border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; margin-bottom: 10px; box-sizing: border-box; }
+.member-list-item.contact-request-item { flex-direction: column; align-items: stretch; gap: 12px; overflow: hidden; }
+.contact-request-info { display: flex; align-items: center; gap: 10px; width: 100%; min-width: 0; }
+.contact-request-actions { display: flex; align-items: center; gap: 8px; width: 100%; box-sizing: border-box; }
+.contact-request-actions .danger-btn { flex: 1; justify-content: center; text-align: center; min-width: 0; }
 .contacts-selection-list { width: 100%; max-height: 160px; overflow-y: auto; background: rgba(0, 0, 0, 0.3); border-radius: 10px; padding: 8px; border: 1px solid #333; }
 .contact-selection-item { display: flex; align-items: center; justify-content: space-between; padding: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); cursor: pointer; }
 .contact-selection-item:hover { background: rgba(255, 255, 255, 0.05); }

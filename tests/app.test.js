@@ -7245,6 +7245,13 @@ test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com 
   assert.ok(htmlContent.includes('class="setting-item status-caption-setting-item"'), 'O bloco de legenda do status deve usar a classe status-caption-setting-item');
   assert.ok(cssContent.includes('.status-caption-setting-item'), 'style.css deve estilizar .status-caption-setting-item em coluna');
   assert.ok(cssContent.includes('.story-duration-setting-item .setting-info'), 'style.css deve alinhar Duração do Story ao lado do ícone em linha');
+
+  // 8. Validar botões Aceitar e Recusar posicionados embaixo no card de Solicitações de Contato (v1.0.129)
+  assert.ok(jsContent.includes('member-list-item contact-request-item'), 'O card de solicitação de contato deve usar a classe contact-request-item');
+  assert.ok(jsContent.includes('class="contact-request-info"'), 'As informações do usuário devem ficar em .contact-request-info');
+  assert.ok(jsContent.includes('class="contact-request-actions"'), 'Os botões Aceitar e Recusar devem ficar em .contact-request-actions');
+  assert.ok(cssContent.includes('.member-list-item.contact-request-item'), 'style.css deve posicionar .contact-request-item em coluna');
+  assert.ok(cssContent.includes('.contact-request-actions'), 'style.css deve estilizar a linha inferior de botões .contact-request-actions');
 });
 
 

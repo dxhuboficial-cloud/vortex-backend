@@ -16068,12 +16068,12 @@ function listenToRequests() {
                 const reqBio = (r.fromBio && r.fromBio.trim()) ? r.fromBio.trim() : 'Disponível no VORTEX ⚡';
                 const isReqAdmin = checkIsAdminUser({ email: r.fromEmail, username: r.fromUsername, name: r.fromName, uid: r.fromUid });
                 return `
-                    <div class="member-list-item">
-                        <div style="display:flex; align-items:center; gap:8px;">
-                            <div class="avatar sm" style="background-image: url('${r.fromAvatar || ''}');">
+                    <div class="member-list-item contact-request-item">
+                        <div class="contact-request-info">
+                            <div class="avatar sm" style="background-image: url('${r.fromAvatar || ''}'); flex-shrink:0;">
                                 ${!r.fromAvatar ? (r.fromName || 'U').charAt(0).toUpperCase() : ''}
                             </div>
-                            <div>
+                            <div style="flex:1; min-width:0;">
                                 <div style="display:flex; align-items:center; gap:4px;">
                                     <span style="font-size:0.88rem; font-weight:600;">${r.fromName}</span>
                                     <i data-lucide="badge-check" class="verified-badge${isReqAdmin ? ' verified-badge-admin' : ''}" ${isReqAdmin ? 'data-admin-badge="true" title="💥Admin⚡"' : ''} style="display:${(r.fromIsVip || r.fromIsVerified) ? 'inline-flex' : 'none'};"></i>
@@ -16082,9 +16082,9 @@ function listenToRequests() {
                                 <div class="search-user-bio">💬 "${reqBio}"</div>
                             </div>
                         </div>
-                        <div style="display:flex; gap:6px;">
-                            <button class="danger-btn accept-req-action" data-id="${r.id}" data-fromuid="${r.fromUid}" data-fromname="${r.fromName}" data-fromavatar="${r.fromAvatar || ''}" data-frombio="${reqBio}" data-fromvip="${Boolean(r.fromIsVip || r.fromIsVerified)}" style="background:var(--accent-color); color:#000; border:none; padding:4px 10px; font-size:0.75rem; font-weight:bold;">Aceitar</button>
-                            <button class="danger-btn reject-req-action" data-id="${r.id}" style="padding:4px 10px; font-size:0.75rem;">Recusar</button>
+                        <div class="contact-request-actions">
+                            <button class="danger-btn accept-req-action" data-id="${r.id}" data-fromuid="${r.fromUid}" data-fromname="${r.fromName}" data-fromavatar="${r.fromAvatar || ''}" data-frombio="${reqBio}" data-fromvip="${Boolean(r.fromIsVip || r.fromIsVerified)}" style="background:var(--accent-color); color:#000; border:none; padding:8px 12px; font-size:0.8rem; font-weight:bold; flex:1;">Aceitar</button>
+                            <button class="danger-btn reject-req-action" data-id="${r.id}" style="padding:8px 12px; font-size:0.8rem; flex:1;">Recusar</button>
                         </div>
                     </div>
                 `;
