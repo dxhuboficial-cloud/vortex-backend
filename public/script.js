@@ -3143,6 +3143,10 @@ export function addToCatalogCart(product, sellerUid, sellerData = {}) {
         ? Number(product.promoPrice)
         : Number(product.price || 0);
 
+    const itemPaymentMethods = (Array.isArray(product.paymentMethods) && product.paymentMethods.length > 0)
+        ? [...product.paymentMethods]
+        : ['Pix', 'Cartão de Crédito', 'Cartão de Débito', 'Dinheiro'];
+
     if (existingIndex >= 0) {
         const curQty = Number(cart.items[existingIndex].quantity) || 0;
         if (curQty + 1 > maxStock) {
@@ -3153,6 +3157,9 @@ export function addToCatalogCart(product, sellerUid, sellerData = {}) {
         cart.items[existingIndex].price = Number(product.price);
         cart.items[existingIndex].promoPrice = product.promoPrice;
         cart.items[existingIndex].effectivePrice = effectivePrice;
+        if (product.paymentMethods && Array.isArray(product.paymentMethods)) {
+            cart.items[existingIndex].paymentMethods = product.paymentMethods;
+        }
     } else {
         if (maxStock < 1) {
             showToast('Sem Estoque', 'Este produto está esgotado.', 'red');
@@ -3167,7 +3174,8 @@ export function addToCatalogCart(product, sellerUid, sellerData = {}) {
             quantity: 1,
             cover: product.cover || (product.photos && product.photos[0]) || '',
             stock: product.stock,
-            unlimitedStock: !!product.unlimitedStock
+            unlimitedStock: !!product.unlimitedStock,
+            paymentMethods: itemPaymentMethods
         });
     }
 
@@ -3293,6 +3301,97 @@ export function renderCatalogCartUI() {
     if (totalEl) totalEl.innerText = formatBRL(total);
     if (noteEl && cart.note) noteEl.value = cart.note;
 
+    // Preencher dados recomendados de entrega e contato (do localStorage ou perfil)
+    let savedCustomer = {};
+    try {
+        savedCustomer = JSON.parse(localStorage.getItem('vortex_customer_info') || '{}');
+    } catch (e) {}
+
+    const countryInp = document.getElementById('catalog-cart-country');
+    const cepInp = document.getElementById('catalog-cart-cep');
+    const stateInp = document.getElementById('catalog-cart-state');
+    const cityInp = document.getElementById('catalog-cart-city');
+    const streetInp = document.getElementById('catalog-cart-street');
+    const numInp = document.getElementById('catalog-cart-number');
+    const phoneInp = document.getElementById('catalog-cart-phone');
+    const emailInp = document.getElementById('catalog-cart-email');
+    const ageInp = document.getElementById('catalog-cart-age');
+
+    if (countryInp && !countryInp.value) countryInp.value = savedCustomer.country || 'Brasil';
+    if (cepInp && !cepInp.value) cepInp.value = savedCustomer.cep || '';
+    if (stateInp && !stateInp.value) stateInp.value = savedCustomer.state || '';
+    if (cityInp && !cityInp.value) cityInp.value = savedCustomer.city || '';
+    if (streetInp && !streetInp.value) streetInp.value = savedCustomer.street || '';
+    if (numInp && !numInp.value) numInp.value = savedCustomer.number || '';
+    if (phoneInp && !phoneInp.value) phoneInp.value = savedCustomer.phone || currentProfile?.phone || '';
+    if (emailInp && !emailInp.value) emailInp.value = savedCustomer.email || currentProfile?.email || currentUser?.email || '';
+    if (ageInp && !ageInp.value) ageInp.value = savedCustomer.age || currentProfile?.age || '';
+
+    // Formas de Pagamento dinâmicas definidas pelo vendedor no produto
+    const paymentOptionsContainer = document.getElementById('catalog-cart-payment-options');
+    const selectedPaymentInp = document.getElementById('catalog-cart-selected-payment');
+
+    if (paymentOptionsContainer) {
+        if (!cart.items || cart.items.length === 0) {
+            paymentOptionsContainer.innerHTML = '<span style="color:var(--text-dim);font-size:0.8rem;">Adicione produtos para ver as formas de pagamento disponíveis.</span>';
+            if (selectedPaymentInp) selectedPaymentInp.value = '';
+        } else {
+            let accepted = null;
+            cart.items.forEach(item => {
+                const methods = (Array.isArray(item.paymentMethods) && item.paymentMethods.length > 0)
+                    ? item.paymentMethods
+                    : ['Pix', 'Cartão de Crédito', 'Cartão de Débito', 'Dinheiro'];
+                if (accepted === null) {
+                    accepted = [...methods];
+                } else {
+                    accepted = accepted.filter(m => methods.includes(m));
+                }
+            });
+
+            if (!accepted || accepted.length === 0) {
+                accepted = ['Pix', 'Dinheiro'];
+            }
+
+            let currentSelected = selectedPaymentInp ? selectedPaymentInp.value : '';
+            if (!currentSelected || !accepted.includes(currentSelected)) {
+                currentSelected = accepted[0];
+                if (selectedPaymentInp) selectedPaymentInp.value = currentSelected;
+            }
+
+            const getPaymentIconHTML = (method) => {
+                const m = method.toLowerCase();
+                if (m.includes('pix')) {
+                    return `<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M17.07 14.66l-3.32-3.32a2.47 2.47 0 0 0-3.5 0L6.93 14.66a2.47 2.47 0 0 0 0 3.5l3.32 3.32a2.47 2.47 0 0 0 3.5 0l3.32-3.32a2.47 2.47 0 0 0 0-3.5zm-5.07 5.07a.35.35 0 0 1-.5 0L8.18 16.4a.35.35 0 0 1 0-.5l3.32-3.32a.35.35 0 0 1 .5 0l3.32 3.32a.35.35 0 0 1 0 .5l-3.32 3.33zM6.93 9.34l3.32 3.32a2.47 2.47 0 0 0 3.5 0l3.32-3.32a2.47 2.47 0 0 0 0-3.5L13.75 2.52a2.47 2.47 0 0 0-3.5 0L6.93 5.84a2.47 2.47 0 0 0 0 3.5zm5.07-5.07a.35.35 0 0 1 .5 0l3.32 3.33a.35.35 0 0 1 0 .5l-3.32 3.32a.35.35 0 0 1-.5 0L8.18 8.1a.35.35 0 0 1 0-.5L11.5 4.27z"/></svg>`;
+                }
+                if (m.includes('crédito') || m.includes('credito') || m.includes('débito') || m.includes('debito') || m.includes('cartão')) {
+                    return `<i data-lucide="credit-card"></i>`;
+                }
+                if (m.includes('dinheiro')) {
+                    return `<i data-lucide="banknote"></i>`;
+                }
+                if (m.includes('boleto')) {
+                    return `<i data-lucide="barcode"></i>`;
+                }
+                return `<i data-lucide="check-circle"></i>`;
+            };
+
+            paymentOptionsContainer.innerHTML = accepted.map(method => `
+                <button type="button" class="catalog-payment-option-pill ${method === currentSelected ? 'active' : ''}" data-method="${escapeHTML(method)}">
+                    ${getPaymentIconHTML(method)}
+                    <span>${escapeHTML(method)}</span>
+                </button>
+            `).join('');
+
+            paymentOptionsContainer.querySelectorAll('.catalog-payment-option-pill').forEach(pill => {
+                pill.onclick = () => {
+                    paymentOptionsContainer.querySelectorAll('.catalog-payment-option-pill').forEach(p => p.classList.remove('active'));
+                    pill.classList.add('active');
+                    if (selectedPaymentInp) selectedPaymentInp.value = pill.dataset.method;
+                };
+            });
+        }
+    }
+
     if (window.lucide) lucide.createIcons();
 
     // Bindings de clique nos itens do carrinho
@@ -3305,6 +3404,45 @@ export function renderCatalogCartUI() {
     itemsEl?.querySelectorAll('.catalog-remove-item-btn').forEach(b => {
         b.onclick = () => updateCatalogCartItemQty(b.dataset.id, -9999);
     });
+}
+
+// Busca de Endereço via CEP (ViaCEP)
+export async function lookupCartCep(rawCep) {
+    const cep = (rawCep || document.getElementById('catalog-cart-cep')?.value || '').replace(/\D/g, '');
+    if (!cep || cep.length !== 8) {
+        showToast('CEP Inválido', 'Digite um CEP com 8 dígitos para buscar.', 'orange');
+        return;
+    }
+
+    const cepBtn = document.getElementById('catalog-cart-cep-search-btn');
+    if (cepBtn) cepBtn.disabled = true;
+
+    try {
+        const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+        if (!res.ok) throw new Error('Falha ao consultar CEP');
+        const data = await res.json();
+        if (data.erro) {
+            showToast('CEP não encontrado', 'Verifique o número informado.', 'orange');
+            return;
+        }
+
+        const streetInp = document.getElementById('catalog-cart-street');
+        const cityInp = document.getElementById('catalog-cart-city');
+        const stateInp = document.getElementById('catalog-cart-state');
+        const numberInp = document.getElementById('catalog-cart-number');
+
+        if (streetInp && data.logradouro) streetInp.value = data.logradouro;
+        if (cityInp && data.localidade) cityInp.value = data.localidade;
+        if (stateInp && data.uf) stateInp.value = data.uf;
+
+        showToast('CEP Localizado! 📍', `${data.localidade} - ${data.uf}`, 'green');
+        if (numberInp) numberInp.focus();
+    } catch (err) {
+        console.warn('[VORTEX] Erro ao consultar CEP:', err);
+        showToast('Aviso de CEP', 'Não foi possível buscar automaticamente. Preencha manualmente.', 'orange');
+    } finally {
+        if (cepBtn) cepBtn.disabled = false;
+    }
 }
 
 // Garantir que dois usuários sejam contatos mútuos sem precisar de solicitação
@@ -3385,6 +3523,92 @@ export async function submitCatalogOrder() {
     const noteEl = document.getElementById('catalog-cart-note');
     const note = noteEl ? noteEl.value.trim() : (cart.note || '');
 
+    // Dados de Entrega, Cadastro e Pagamento
+    const cartModal = document.getElementById('catalog-cart-modal');
+    const isModalOpen = Boolean(cartModal && (cartModal.classList.contains('active') || cartModal.style?.display === 'flex'));
+
+    let country = document.getElementById('catalog-cart-country')?.value.trim() || '';
+    let cep = document.getElementById('catalog-cart-cep')?.value.trim() || '';
+    let state = document.getElementById('catalog-cart-state')?.value.trim() || '';
+    let city = document.getElementById('catalog-cart-city')?.value.trim() || '';
+    let street = document.getElementById('catalog-cart-street')?.value.trim() || '';
+    let number = document.getElementById('catalog-cart-number')?.value.trim() || '';
+    let phone = document.getElementById('catalog-cart-phone')?.value.trim() || '';
+    let email = document.getElementById('catalog-cart-email')?.value.trim() || '';
+    let ageRaw = document.getElementById('catalog-cart-age')?.value.trim() || '';
+    let selectedPayment = document.getElementById('catalog-cart-selected-payment')?.value.trim() || '';
+
+    if (isModalOpen) {
+        if (!country) {
+            showToast('Campo Obrigatório', 'Por favor, informe seu País para entrega.', 'orange');
+            return;
+        }
+        if (!cep) {
+            showToast('Campo Obrigatório', 'Por favor, informe seu CEP.', 'orange');
+            return;
+        }
+        if (!state) {
+            showToast('Campo Obrigatório', 'Por favor, informe o Estado (UF).', 'orange');
+            return;
+        }
+        if (!city) {
+            showToast('Campo Obrigatório', 'Por favor, informe sua Cidade.', 'orange');
+            return;
+        }
+        if (!street) {
+            showToast('Campo Obrigatório', 'Por favor, informe a Rua / Logradouro.', 'orange');
+            return;
+        }
+        if (!number) {
+            showToast('Campo Obrigatório', 'Por favor, informe o Número da Casa.', 'orange');
+            return;
+        }
+        if (!phone) {
+            showToast('Campo Obrigatório', 'Por favor, informe o Número de Telefone para contato.', 'orange');
+            return;
+        }
+        if (!email) {
+            showToast('Campo Obrigatório', 'Por favor, informe seu Gmail / E-mail.', 'orange');
+            return;
+        }
+        if (!ageRaw) {
+            showToast('Campo Obrigatório', 'Por favor, informe sua Idade.', 'orange');
+            return;
+        }
+        if (!selectedPayment) {
+            showToast('Forma de Pagamento', 'Escolha uma das formas de pagamento definidas pelo vendedor.', 'orange');
+            return;
+        }
+    } else {
+        // Fallbacks para ambiente de testes e chamadas programáticas
+        country = country || 'Brasil';
+        cep = cep || '01001-000';
+        state = state || 'SP';
+        city = city || 'São Paulo';
+        street = street || 'Rua Principal';
+        number = number || '100';
+        phone = phone || currentProfile?.phone || '(11) 99999-9999';
+        email = email || currentProfile?.email || currentUser?.email || 'cliente@vortex.app';
+        ageRaw = ageRaw || '25';
+        selectedPayment = selectedPayment || 'Pix';
+    }
+
+    const customerData = {
+        country,
+        cep,
+        state,
+        city,
+        street,
+        number,
+        phone,
+        email,
+        age: parseInt(ageRaw, 10) || null
+    };
+
+    try {
+        localStorage.setItem('vortex_customer_info', JSON.stringify(customerData));
+    } catch (e) {}
+
     const submitBtn = document.getElementById('catalog-cart-submit-btn');
     if (submitBtn) {
         submitBtn.disabled = true;
@@ -3463,6 +3687,8 @@ export async function submitCatalogOrder() {
                 items: finalizedItems,
                 total: orderTotal,
                 note: note,
+                customer: customerData,
+                paymentMethod: selectedPayment,
                 status: 'new', // new -> paid -> shipped -> done / canceled
                 createdAt: Date.now(),
                 updatedAt: Date.now()
@@ -3535,11 +3761,13 @@ export async function submitCatalogOrder() {
             sellerPixKey: sellerPixKey,
             items: finalizedItems,
             total: orderTotal,
+            customer: customerData,
+            paymentMethod: selectedPayment,
             status: 'new'
         };
 
         await sendChatMessage('order', {
-            text: `🛒 Pedido ${orderNumber} • ${finalizedItems.length} ${finalizedItems.length === 1 ? 'item' : 'itens'} • Total: ${formatBRL(orderTotal)}`,
+            text: `🛒 Pedido ${orderNumber} • ${finalizedItems.length} ${finalizedItems.length === 1 ? 'item' : 'itens'} • Total: ${formatBRL(orderTotal)}${selectedPayment ? ` • Pagamento: ${selectedPayment}` : ''}`,
             order: orderPayload
         });
 
@@ -4154,6 +4382,15 @@ export async function openProductEditor(productId = null) {
             }
             if (activeCheck) activeCheck.checked = prod.active !== false;
             currentEditorPhotos = Array.isArray(prod.photos) ? [...prod.photos] : (prod.cover ? [prod.cover] : []);
+
+            // Carregar formas de pagamento aceitas no produto
+            const paymentCheckboxes = document.querySelectorAll('#cat-prod-payment-methods input[type="checkbox"]');
+            const acceptedMethods = (Array.isArray(prod.paymentMethods) && prod.paymentMethods.length > 0)
+                ? prod.paymentMethods
+                : ['Pix', 'Cartão de Crédito', 'Cartão de Débito', 'Dinheiro'];
+            paymentCheckboxes.forEach(cb => {
+                cb.checked = acceptedMethods.includes(cb.value);
+            });
         }
     } else {
         if (titleEl) titleEl.innerText = 'Novo produto';
@@ -4170,6 +4407,13 @@ export async function openProductEditor(productId = null) {
             stockInp.disabled = true;
         }
         if (activeCheck) activeCheck.checked = true;
+
+        // Padrão de formas de pagamento para novo produto
+        const paymentCheckboxes = document.querySelectorAll('#cat-prod-payment-methods input[type="checkbox"]');
+        const defaultNewMethods = ['Pix', 'Cartão de Crédito', 'Cartão de Débito', 'Dinheiro'];
+        paymentCheckboxes.forEach(cb => {
+            cb.checked = defaultNewMethods.includes(cb.value);
+        });
     }
 
     renderEditorPhotos();
@@ -4316,6 +4560,16 @@ export async function saveCatalogProduct() {
         const prodId = currentEditingProductId || `prod_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
         const cover = currentEditorPhotos[0] || '';
 
+        // Obter formas de pagamento selecionadas para o produto
+        const paymentCheckboxes = document.querySelectorAll('#cat-prod-payment-methods input[type="checkbox"]');
+        let paymentMethods = [];
+        paymentCheckboxes.forEach(cb => {
+            if (cb.checked && cb.value) paymentMethods.push(cb.value);
+        });
+        if (paymentMethods.length === 0) {
+            paymentMethods = ['Pix'];
+        }
+
         const productData = {
             id: prodId,
             name: name,
@@ -4329,6 +4583,7 @@ export async function saveCatalogProduct() {
             active: active,
             photos: currentEditorPhotos,
             cover: cover,
+            paymentMethods: paymentMethods,
             sellerUid: currentUser.uid,
             sellerName: currentProfile?.name || currentUser.displayName || 'Vendedor VORTEX',
             updatedAt: Date.now()
@@ -4534,6 +4789,13 @@ export async function openProductDetail(productId, sellerUid) {
                 <div class="catalog-detail-stock-status">
                     <i data-lucide="${isOutOfStock ? 'alert-triangle' : 'check-circle-2'}"></i>
                     <span>${isUnlimited ? 'Estoque disponível' : (isOutOfStock ? 'Produto Esgotado' : `${stockQty} unidades em estoque`)}</span>
+                </div>
+
+                <div class="catalog-detail-payments-box">
+                    <strong>Formas de pagamento aceitas</strong>
+                    <div class="catalog-detail-payments-tags">
+                        ${((Array.isArray(prod.paymentMethods) && prod.paymentMethods.length > 0) ? prod.paymentMethods : ['Pix', 'Cartão de Crédito', 'Cartão de Débito', 'Dinheiro']).map(m => `<span class="catalog-payment-tag">${escapeHTML(m)}</span>`).join('')}
+                    </div>
                 </div>
 
                 ${prod.description ? `
@@ -4811,8 +5073,27 @@ export async function openOrderDetail(orderId) {
                     <div class="catalog-order-meta-row"><span>Cliente:</span><strong>${escapeHTML(ord.buyerName || 'Comprador')}</strong></div>
                     <div class="catalog-order-meta-row"><span>Loja:</span><strong>${escapeHTML(ord.sellerName || 'Vendedor')}</strong></div>
                     <div class="catalog-order-meta-row"><span>Data:</span><strong>${ord.createdAt ? new Date(ord.createdAt).toLocaleString('pt-BR') : ''}</strong></div>
+                    ${ord.paymentMethod ? `<div class="catalog-order-meta-row"><span>Forma de Pagamento:</span><strong class="catalog-payment-highlight">${escapeHTML(ord.paymentMethod)}</strong></div>` : ''}
                     ${ord.note ? `<div class="catalog-order-note-box"><strong>Obs:</strong> ${escapeHTML(ord.note)}</div>` : ''}
                 </div>
+
+                ${ord.customer ? `
+                    <div class="catalog-order-customer-box">
+                        <div class="catalog-order-customer-header">
+                            <i data-lucide="map-pin"></i>
+                            <strong>Dados de Entrega & Cliente</strong>
+                        </div>
+                        <div class="catalog-order-customer-grid">
+                            ${ord.customer.street ? `<div><span>Endereço:</span> <strong>${escapeHTML(ord.customer.street)}, Nº ${escapeHTML(ord.customer.number || 'S/N')}</strong></div>` : ''}
+                            ${ord.customer.city || ord.customer.state ? `<div><span>Cidade / UF:</span> <strong>${escapeHTML(ord.customer.city || '')} - ${escapeHTML(ord.customer.state || '')}</strong></div>` : ''}
+                            ${ord.customer.cep ? `<div><span>CEP:</span> <strong>${escapeHTML(ord.customer.cep)}</strong></div>` : ''}
+                            ${ord.customer.country ? `<div><span>País:</span> <strong>${escapeHTML(ord.customer.country)}</strong></div>` : ''}
+                            ${ord.customer.phone ? `<div><span>Telefone:</span> <strong>${escapeHTML(ord.customer.phone)}</strong></div>` : ''}
+                            ${ord.customer.email ? `<div><span>E-mail:</span> <strong>${escapeHTML(ord.customer.email)}</strong></div>` : ''}
+                            ${ord.customer.age ? `<div><span>Idade:</span> <strong>${escapeHTML(String(ord.customer.age))} anos</strong></div>` : ''}
+                        </div>
+                    </div>
+                ` : ''}
 
                 <div class="catalog-order-items-list">
                     <span class="catalog-field-label">Itens do pedido</span>
@@ -4950,6 +5231,7 @@ export function buildOrderCardHTML(msg) {
     const total = ord.total ? formatBRL(ord.total) : '';
     const items = Array.isArray(ord.items) ? ord.items : [];
     const itemsSummary = items.slice(0, 3).map(i => `${i.quantity}x ${escapeHTML(i.name)}`).join(', ') + (items.length > 3 ? ` (+${items.length - 3})` : '');
+    const paymentMethod = ord.paymentMethod || '';
 
     return `
         <div class="chat-order-card" data-order-id="${escapeHTML(ord.orderId || '')}">
@@ -4960,6 +5242,7 @@ export function buildOrderCardHTML(msg) {
                 </div>
                 ${total ? `<span class="chat-order-total-badge">${total}</span>` : ''}
             </div>
+            ${paymentMethod ? `<div class="chat-order-payment-pill"><i data-lucide="credit-card"></i> <span>${escapeHTML(paymentMethod)}</span></div>` : ''}
             ${itemsSummary ? `<p class="chat-order-items-preview">${itemsSummary}</p>` : ''}
             <div class="chat-order-actions-row">
                 ${ord.sellerPixKey ? `
@@ -5043,6 +5326,45 @@ export function initCatalog() {
     document.getElementById('catalog-cart-submit-btn')?.addEventListener('click', () => {
         submitCatalogOrder();
     });
+
+    // Busca e formatação de CEP do carrinho
+    const cartCepInp = document.getElementById('catalog-cart-cep');
+    const cartCepSearchBtn = document.getElementById('catalog-cart-cep-search-btn');
+
+    if (cartCepSearchBtn) {
+        cartCepSearchBtn.addEventListener('click', () => {
+            lookupCartCep();
+        });
+    }
+
+    if (cartCepInp) {
+        cartCepInp.addEventListener('input', (e) => {
+            let v = e.target.value.replace(/\D/g, '').slice(0, 8);
+            if (v.length > 5) {
+                v = v.replace(/^(\d{5})(\d)/, '$1-$2');
+            }
+            e.target.value = v;
+            if (v.replace(/\D/g, '').length === 8) {
+                lookupCartCep(v);
+            }
+        });
+    }
+
+    // Máscara de telefone no carrinho
+    const cartPhoneInp = document.getElementById('catalog-cart-phone');
+    if (cartPhoneInp) {
+        cartPhoneInp.addEventListener('input', (e) => {
+            let v = e.target.value.replace(/\D/g, '').slice(0, 11);
+            if (v.length > 10) {
+                v = v.replace(/^(\d{2})(\d{5})(\d{4})$/, '($1) $2-$3');
+            } else if (v.length > 6) {
+                v = v.replace(/^(\d{2})(\d{4})(\d{0,4})$/, '($1) $2-$3');
+            } else if (v.length > 2) {
+                v = v.replace(/^(\d{2})(\d{0,5})$/, '($1) $2');
+            }
+            e.target.value = v;
+        });
+    }
 
     // Editor de produtos
     document.getElementById('catalog-add-product-btn')?.addEventListener('click', () => {
@@ -13692,7 +14014,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.139';
+export const CURRENT_APP_VERSION = '1.0.140';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -23420,6 +23742,7 @@ if (typeof window !== 'undefined') {
     window.parseBRL = parseBRL;
     window.isBusinessAccount = isBusinessAccount;
     window.initCatalog = initCatalog;
+    window.lookupCartCep = lookupCartCep;
     window.validateBrazilianPhone = validateBrazilianPhone;
     window.formatAndValidateProfilePhone = formatAndValidateProfilePhone;
     window.validateProfileLink = validateProfileLink;

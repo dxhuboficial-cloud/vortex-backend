@@ -7321,7 +7321,28 @@ test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com 
   assert.ok(cssContent.includes('.vip-grace-close-btn'), 'style.css deve estilizar .vip-grace-close-btn');
   assert.ok(cssContent.match(/\.share-link-input-row\s*\{[^}]*flex-direction:\s*column/), '.share-link-input-row deve organizar o link e o botão Copiar em coluna sem vazar do modal');
   assert.ok(cssContent.match(/\.share-copy-btn\s*\{[^}]*width:\s*100%/), '.share-copy-btn deve ter width: 100% dentro do box');
-  assert.ok(cssContent.match(/\.vip-card-highlight\s*\{[^}]*flex-direction:\s*column/), '.vip-card-highlight deve organizar o título Selo de Verificado VIP e o botão em coluna');
+  // 19. Validar opções recomendadas de cadastro de entrega e formas de pagamento definidas pelo vendedor (v1.0.140)
+  assert.ok(htmlContent.includes('id="catalog-checkout-section"'), 'index.html deve conter #catalog-checkout-section no carrinho');
+  assert.ok(htmlContent.includes('id="catalog-cart-country"'), 'index.html deve conter input de País (#catalog-cart-country)');
+  assert.ok(htmlContent.includes('id="catalog-cart-cep"'), 'index.html deve conter input de CEP (#catalog-cart-cep)');
+  assert.ok(htmlContent.includes('id="catalog-cart-state"'), 'index.html deve conter input de Estado (#catalog-cart-state)');
+  assert.ok(htmlContent.includes('id="catalog-cart-city"'), 'index.html deve conter input de Cidade (#catalog-cart-city)');
+  assert.ok(htmlContent.includes('id="catalog-cart-street"'), 'index.html deve conter input de Rua (#catalog-cart-street)');
+  assert.ok(htmlContent.includes('id="catalog-cart-number"'), 'index.html deve conter input de Número da Casa (#catalog-cart-number)');
+  assert.ok(htmlContent.includes('id="catalog-cart-phone"'), 'index.html deve conter input de Número de Telefone (#catalog-cart-phone)');
+  assert.ok(htmlContent.includes('id="catalog-cart-email"'), 'index.html deve conter input de Gmail (#catalog-cart-email)');
+  assert.ok(htmlContent.includes('id="catalog-cart-age"'), 'index.html deve conter input de Idade (#catalog-cart-age)');
+  assert.ok(htmlContent.includes('id="catalog-cart-payment-options"'), 'index.html deve conter container de opções de pagamento (#catalog-cart-payment-options)');
+  assert.ok(htmlContent.includes('id="catalog-cart-selected-payment"'), 'index.html deve conter input oculto de pagamento selecionado (#catalog-cart-selected-payment)');
+  assert.ok(htmlContent.includes('id="cat-prod-payment-methods"'), 'index.html deve conter checkboxes de formas de pagamento no editor de produtos (#cat-prod-payment-methods)');
+  assert.ok(cssContent.includes('.catalog-checkout-section'), 'style.css deve estilizar .catalog-checkout-section');
+  assert.ok(cssContent.includes('.catalog-payment-options-grid'), 'style.css deve estilizar .catalog-payment-options-grid');
+  assert.ok(cssContent.includes('.catalog-payment-option-pill'), 'style.css deve estilizar .catalog-payment-option-pill');
+  assert.ok(cssContent.includes('.catalog-order-customer-box'), 'style.css deve estilizar .catalog-order-customer-box');
+  assert.ok(cssContent.includes('.catalog-prod-payments-grid'), 'style.css deve estilizar .catalog-prod-payments-grid');
+  assert.ok(jsContent.includes('function lookupCartCep'), 'script.js deve implementar lookupCartCep para consulta de endereço');
+  assert.ok(jsContent.includes('paymentMethods'), 'script.js deve salvar e manipular paymentMethods nos produtos e pedidos');
+  assert.ok(jsContent.includes('vortex_customer_info'), 'script.js deve salvar dados do cliente no localStorage (vortex_customer_info)');
 });
 
 

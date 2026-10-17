@@ -4,20 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.139">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.139">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.139">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.139">
-    <link rel="stylesheet" href="style.css?v=1.0.139">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.140">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.140">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.140">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.140">
+    <link rel="stylesheet" href="style.css?v=1.0.140">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.139">
+    <link rel="manifest" href="manifest.json?v=1.0.140">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.139">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.139">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.140">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.140">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -2819,6 +2819,32 @@
                     </label>
 
                     <div class="catalog-field-group">
+                        <span class="catalog-field-label">Formas de Pagamento aceitas neste produto *</span>
+                        <div class="catalog-prod-payments-grid" id="cat-prod-payment-methods">
+                            <label class="catalog-check" for="cat-pay-pix">
+                                <input type="checkbox" id="cat-pay-pix" value="Pix" checked>
+                                <span>Pix</span>
+                            </label>
+                            <label class="catalog-check" for="cat-pay-credit">
+                                <input type="checkbox" id="cat-pay-credit" value="Cartão de Crédito" checked>
+                                <span>Cartão de Crédito</span>
+                            </label>
+                            <label class="catalog-check" for="cat-pay-debit">
+                                <input type="checkbox" id="cat-pay-debit" value="Cartão de Débito" checked>
+                                <span>Cartão de Débito</span>
+                            </label>
+                            <label class="catalog-check" for="cat-pay-cash">
+                                <input type="checkbox" id="cat-pay-cash" value="Dinheiro" checked>
+                                <span>Dinheiro</span>
+                            </label>
+                            <label class="catalog-check" for="cat-pay-boleto">
+                                <input type="checkbox" id="cat-pay-boleto" value="Boleto">
+                                <span>Boleto Bancário</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="catalog-field-group">
                         <span class="catalog-field-label">Fotos (até 5)</span>
                         <div id="cat-prod-photos-list" class="catalog-photo-list"></div>
                         <input id="cat-prod-photo-input" type="file" accept="image/*" multiple style="display:none;">
@@ -2852,9 +2878,85 @@
                 <div class="catalog-sheet-body">
                     <div id="catalog-cart-seller" class="catalog-cart-seller"></div>
                     <div id="catalog-cart-items" class="catalog-cart-items"></div>
-                    <div class="catalog-field-group">
-                        <label class="catalog-field-label" for="catalog-cart-note">Observação para o vendedor</label>
-                        <textarea id="catalog-cart-note" rows="2" maxlength="300" placeholder="Endereço de entrega, horário, detalhes..."></textarea>
+                    <!-- Dados de Entrega, Cadastro e Pagamento Recomendados -->
+                    <div class="catalog-checkout-section" id="catalog-checkout-section">
+                        <div class="catalog-section-title-row">
+                            <i data-lucide="map-pin" class="catalog-section-icon"></i>
+                            <div>
+                                <span class="catalog-section-title">Dados de Entrega e Cadastro</span>
+                                <small class="catalog-section-subtitle">Opções recomendadas para preenchimento antes de finalizar</small>
+                            </div>
+                        </div>
+
+                        <!-- País e CEP -->
+                        <div class="catalog-field-row">
+                            <div class="catalog-field-group">
+                                <label class="catalog-field-label" for="catalog-cart-country">País *</label>
+                                <input id="catalog-cart-country" type="text" maxlength="40" placeholder="Ex.: Brasil" value="Brasil">
+                            </div>
+                            <div class="catalog-field-group">
+                                <label class="catalog-field-label" for="catalog-cart-cep">CEP *</label>
+                                <div class="catalog-input-with-action">
+                                    <input id="catalog-cart-cep" type="text" inputmode="numeric" maxlength="9" placeholder="00000-000">
+                                    <button type="button" id="catalog-cart-cep-search-btn" class="catalog-inline-btn" title="Buscar CEP"><i data-lucide="search"></i></button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Estado e Cidade -->
+                        <div class="catalog-field-row">
+                            <div class="catalog-field-group">
+                                <label class="catalog-field-label" for="catalog-cart-state">Estado (UF) *</label>
+                                <input id="catalog-cart-state" type="text" maxlength="30" placeholder="Ex.: SP">
+                            </div>
+                            <div class="catalog-field-group">
+                                <label class="catalog-field-label" for="catalog-cart-city">Cidade *</label>
+                                <input id="catalog-cart-city" type="text" maxlength="60" placeholder="Sua cidade">
+                            </div>
+                        </div>
+
+                        <!-- Rua e Número da Casa -->
+                        <div class="catalog-field-row">
+                            <div class="catalog-field-group catalog-field-grow">
+                                <label class="catalog-field-label" for="catalog-cart-street">Rua / Logradouro *</label>
+                                <input id="catalog-cart-street" type="text" maxlength="100" placeholder="Nome da rua ou avenida">
+                            </div>
+                            <div class="catalog-field-group catalog-field-sm">
+                                <label class="catalog-field-label" for="catalog-cart-number">Nº da Casa *</label>
+                                <input id="catalog-cart-number" type="text" maxlength="15" placeholder="123">
+                            </div>
+                        </div>
+
+                        <!-- Telefone e Gmail -->
+                        <div class="catalog-field-row">
+                            <div class="catalog-field-group">
+                                <label class="catalog-field-label" for="catalog-cart-phone">Número de Telefone *</label>
+                                <input id="catalog-cart-phone" type="tel" inputmode="tel" maxlength="16" placeholder="(11) 99999-9999">
+                            </div>
+                            <div class="catalog-field-group">
+                                <label class="catalog-field-label" for="catalog-cart-email">Gmail / E-mail *</label>
+                                <input id="catalog-cart-email" type="email" placeholder="cliente@gmail.com">
+                            </div>
+                        </div>
+
+                        <!-- Idade -->
+                        <div class="catalog-field-group">
+                            <label class="catalog-field-label" for="catalog-cart-age">Idade *</label>
+                            <input id="catalog-cart-age" type="number" inputmode="numeric" min="1" max="120" placeholder="Ex.: 25">
+                        </div>
+
+                        <!-- Forma de Pagamento (definida pelo vendedor no produto) -->
+                        <div class="catalog-field-group" id="catalog-cart-payment-group">
+                            <label class="catalog-field-label">Forma de Pagamento (Definida no Produto) *</label>
+                            <div id="catalog-cart-payment-options" class="catalog-payment-options-grid"></div>
+                            <input type="hidden" id="catalog-cart-selected-payment" value="">
+                        </div>
+
+                        <!-- Observação -->
+                        <div class="catalog-field-group">
+                            <label class="catalog-field-label" for="catalog-cart-note">Observação para o vendedor</label>
+                            <textarea id="catalog-cart-note" rows="2" maxlength="300" placeholder="Endereço de entrega, horário, detalhes..."></textarea>
+                        </div>
                     </div>
                 </div>
                 <div class="catalog-sheet-footer catalog-cart-footer">
@@ -2963,6 +3065,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.139" defer></script>
+    <script type="module" src="script.js?v=1.0.140" defer></script>
 </body>
 </html>

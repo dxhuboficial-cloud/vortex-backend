@@ -13257,3 +13257,296 @@ body.total-black .ringtone-select {
 @keyframes catalogSpin {
     to { transform: rotate(360deg); }
 }
+
+/* ===== CATÁLOGO: Formas de Pagamento no Editor de Produto ===== */
+.catalog-prod-payments-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 8px;
+    margin-top: 6px;
+}
+
+.catalog-prod-payments-grid .catalog-check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    font-size: 0.82rem;
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+}
+
+.catalog-prod-payments-grid .catalog-check:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 240, 31, 0.3);
+}
+
+/* ===== CATÁLOGO: Seção de Checkout e Dados de Entrega no Carrinho ===== */
+.catalog-checkout-section {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px dashed rgba(255, 255, 255, 0.12);
+}
+
+.catalog-section-title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 2px;
+}
+
+.catalog-section-icon {
+    width: 20px;
+    height: 20px;
+    color: var(--accent-color, #fff01f);
+    flex-shrink: 0;
+}
+
+.catalog-section-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #fff;
+    display: block;
+}
+
+.catalog-section-subtitle {
+    font-size: 0.75rem;
+    color: var(--text-dim, #8e8e93);
+    display: block;
+    margin-top: 1px;
+}
+
+.catalog-field-row {
+    display: flex;
+    gap: 10px;
+}
+
+.catalog-field-row .catalog-field-group {
+    flex: 1;
+    min-width: 0;
+    margin-bottom: 0;
+}
+
+.catalog-field-grow {
+    flex: 2 !important;
+}
+
+.catalog-field-sm {
+    flex: 1 !important;
+    max-width: 100px;
+}
+
+.catalog-input-with-action {
+    display: flex;
+    align-items: center;
+    position: relative;
+    width: 100%;
+}
+
+.catalog-input-with-action input {
+    padding-right: 42px !important;
+}
+
+.catalog-inline-btn {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255, 240, 31, 0.15);
+    border: 1px solid rgba(255, 240, 31, 0.35);
+    color: var(--accent-color, #fff01f);
+    border-radius: 6px;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.15s;
+    padding: 0;
+}
+
+.catalog-inline-btn:hover {
+    background: var(--accent-color, #fff01f);
+    color: #000;
+}
+
+.catalog-inline-btn i {
+    width: 15px;
+    height: 15px;
+}
+
+/* Formas de Pagamento no Carrinho */
+.catalog-payment-options-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 8px;
+    margin-top: 6px;
+}
+
+.catalog-payment-option-pill {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    color: var(--text-color, #fff);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.catalog-payment-option-pill:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 240, 31, 0.4);
+}
+
+.catalog-payment-option-pill.active {
+    background: rgba(255, 240, 31, 0.15);
+    border-color: var(--accent-color, #fff01f);
+    color: var(--accent-color, #fff01f);
+    box-shadow: 0 0 10px rgba(255, 240, 31, 0.2);
+}
+
+.catalog-payment-option-pill svg,
+.catalog-payment-option-pill i {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+/* Detalhes do Produto: Tags de Formas de Pagamento */
+.catalog-detail-payments-box {
+    margin-top: 14px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.catalog-detail-payments-box strong {
+    font-size: 0.8rem;
+    color: var(--text-dim, #8e8e93);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.catalog-detail-payments-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.catalog-payment-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    background: rgba(255, 240, 31, 0.1);
+    border: 1px solid rgba(255, 240, 31, 0.25);
+    color: var(--accent-color, #fff01f);
+    border-radius: 14px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+/* Detalhes do Pedido: Caixa de Dados do Cliente e Pagamento */
+.catalog-order-customer-box {
+    margin-top: 12px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.catalog-order-customer-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: var(--accent-color, #fff01f);
+}
+
+.catalog-order-customer-header i {
+    width: 16px;
+    height: 16px;
+}
+
+.catalog-order-customer-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 12px;
+    font-size: 0.8rem;
+}
+
+.catalog-order-customer-grid div {
+    display: flex;
+    flex-direction: column;
+}
+
+.catalog-order-customer-grid span {
+    color: var(--text-dim, #8e8e93);
+    font-size: 0.72rem;
+}
+
+.catalog-order-customer-grid strong {
+    color: #fff;
+    font-weight: 600;
+    word-break: break-word;
+}
+
+.catalog-payment-highlight {
+    color: var(--accent-color, #fff01f) !important;
+    font-weight: 700;
+}
+
+.chat-order-payment-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--accent-color, #fff01f);
+    background: rgba(255, 240, 31, 0.1);
+    border: 1px solid rgba(255, 240, 31, 0.25);
+    padding: 3px 8px;
+    border-radius: 6px;
+    margin-top: 4px;
+    width: fit-content;
+}
+
+.chat-order-payment-pill i {
+    width: 13px;
+    height: 13px;
+}
+
+@media (max-width: 480px) {
+    .catalog-field-row {
+        flex-direction: column;
+        gap: 12px;
+    }
+    .catalog-field-sm {
+        max-width: 100% !important;
+    }
+    .catalog-order-customer-grid {
+        grid-template-columns: 1fr;
+    }
+}
