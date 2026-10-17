@@ -7314,6 +7314,14 @@ test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com 
   assert.ok(jsContent.includes('function refreshContactProfilePresenceUI'), 'script.js deve implementar refreshContactProfilePresenceUI');
   assert.ok(jsContent.includes('ONLINE_PRESENCE_TTL_MS'), 'script.js deve ter ONLINE_PRESENCE_TTL_MS para expirar status online obsoleto');
   assert.ok(htmlContent.includes('id="contact-profile-presence" class="contact-profile-presence">Visto recentemente</span>'), '#contact-profile-presence deve iniciar com Visto recentemente no index.html');
+
+  // 18. Validar botão × no aviso de tolerância VIP, organização do botão Copiar no compartilhamento e organização do card Selo de Verificado VIP (v1.0.139)
+  assert.ok(htmlContent.includes('id="vip-grace-close-btn"'), 'index.html deve ter o botão × (#vip-grace-close-btn) para fechar o aviso VIP');
+  assert.ok(jsContent.includes('function dismissVipGraceBanner'), 'script.js deve implementar dismissVipGraceBanner');
+  assert.ok(cssContent.includes('.vip-grace-close-btn'), 'style.css deve estilizar .vip-grace-close-btn');
+  assert.ok(cssContent.match(/\.share-link-input-row\s*\{[^}]*flex-direction:\s*column/), '.share-link-input-row deve organizar o link e o botão Copiar em coluna sem vazar do modal');
+  assert.ok(cssContent.match(/\.share-copy-btn\s*\{[^}]*width:\s*100%/), '.share-copy-btn deve ter width: 100% dentro do box');
+  assert.ok(cssContent.match(/\.vip-card-highlight\s*\{[^}]*flex-direction:\s*column/), '.vip-card-highlight deve organizar o título Selo de Verificado VIP e o botão em coluna');
 });
 
 

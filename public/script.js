@@ -1920,6 +1920,21 @@ export function showAdminBadgeToast(event, element) {
 }
 
 
+export let vipGraceBannerDismissed = false;
+
+export function dismissVipGraceBanner() {
+    vipGraceBannerDismissed = true;
+    const banner = document.getElementById('vip-grace-banner');
+    if (banner) {
+        banner.style.display = 'none';
+    }
+    try {
+        if (typeof sessionStorage !== 'undefined') {
+            sessionStorage.setItem('vortex_vip_grace_dismissed', 'true');
+        }
+    } catch (_) {}
+}
+
 export function checkVipSubscriptionLifecycle() {
     if (!currentUser || !currentProfile) return;
     const sub = getVipSubscriptionState(currentProfile);
@@ -1927,13 +1942,25 @@ export function checkVipSubscriptionLifecycle() {
     const daysLeftEl = document.getElementById('vip-grace-days-left');
 
     if (sub.status === 'grace_period') {
+        let isDismissed = vipGraceBannerDismissed;
+        try {
+            if (!isDismissed && typeof sessionStorage !== 'undefined' && sessionStorage.getItem('vortex_vip_grace_dismissed') === 'true') {
+                isDismissed = true;
+            }
+        } catch (_) {}
         if (banner) {
-            banner.style.display = 'flex';
+            banner.style.display = isDismissed ? 'none' : 'flex';
             if (daysLeftEl) {
                 daysLeftEl.innerText = `${sub.graceDaysRemaining} ${sub.graceDaysRemaining === 1 ? 'dia' : 'dias'}`;
             }
         }
     } else {
+        vipGraceBannerDismissed = false;
+        try {
+            if (typeof sessionStorage !== 'undefined') {
+                sessionStorage.removeItem('vortex_vip_grace_dismissed');
+            }
+        } catch (_) {}
         if (banner) banner.style.display = 'none';
     }
 
@@ -13665,7 +13692,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.138';
+export const CURRENT_APP_VERSION = '1.0.139';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -20825,6 +20852,13 @@ export async function requestVipSubscription() {
 // Vinculação de Eventos do Modal de Pagamento
 document.getElementById('subscribe-btn')?.addEventListener('click', requestVipSubscription);
 document.getElementById('vip-grace-renew-btn')?.addEventListener('click', openVipPaymentModal);
+document.getElementById('vip-grace-close-btn')?.addEventListener('click', (e) => {
+    if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+    dismissVipGraceBanner();
+});
+if (typeof window !== 'undefined') {
+    window.dismissVipGraceBanner = dismissVipGraceBanner;
+}
 document.getElementById('close-vip-payment-modal')?.addEventListener('click', closeVipPaymentModal);
 document.getElementById('close-vip-success-btn')?.addEventListener('click', closeVipPaymentModal);
 
