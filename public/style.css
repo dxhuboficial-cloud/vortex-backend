@@ -12478,10 +12478,20 @@ body.total-black .ringtone-select {
     color: var(--text-dim, #b2b2ba);
     margin: 0;
     padding: 0;
-    display: block;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     line-height: 1.35;
     letter-spacing: 0.25px;
     user-select: none;
+    white-space: nowrap;
+}
+
+.catalog-field-label svg,
+.catalog-field-label i {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
 }
 
 .catalog-field-group > .catalog-field-label,

@@ -3104,11 +3104,93 @@ export function getDigitalCtaIcon(ctaKey) {
     }
 }
 
+export function calculatePromoFromDiscount(basePrice, discountStr) {
+    const price = parseBRL(basePrice);
+    if (!price || price <= 0 || discountStr === null || discountStr === undefined) {
+        return null;
+    }
+    const clean = String(discountStr).trim();
+    if (!clean) return null;
+
+    if (clean.includes('%')) {
+        const pctVal = parseFloat(clean.replace('%', '').replace(',', '.'));
+        if (isNaN(pctVal) || pctVal <= 0) return null;
+        if (pctVal >= 100) return 0;
+        const discounted = price * (1 - (pctVal / 100));
+        return Math.max(0, Math.round(discounted * 100) / 100);
+    } else {
+        const val = parseBRL(clean);
+        if (val <= 0) return null;
+        const discounted = price - val;
+        return Math.max(0, Math.round(discounted * 100) / 100);
+    }
+}
+
+export function calculateDiscountFromPromo(basePrice, promoPrice) {
+    const p = parseBRL(basePrice);
+    const promo = parseBRL(promoPrice);
+    if (!p || p <= 0 || !promo || promo <= 0 || promo >= p) return null;
+    const diff = p - promo;
+    const pct = Math.round((diff / p) * 100);
+    if (pct > 0 && pct < 100) {
+        return `${pct}%`;
+    }
+    return diff.toFixed(2).replace('.', ',');
+}
+
 export function attachCatalogNumericGuards() {
     const priceInp = document.getElementById('cat-prod-price');
     const promoInp = document.getElementById('cat-prod-promo');
     const stockInp = document.getElementById('cat-prod-stock');
     const discountInp = document.getElementById('cat-prod-discount');
+
+    function syncCatalogPricing(triggerSource) {
+        if (!priceInp || !promoInp || !discountInp) return;
+        const priceVal = priceInp.value.trim();
+        const discountVal = discountInp.value.trim();
+        const promoVal = promoInp.value.trim();
+
+        if (triggerSource === 'discount') {
+            if (!discountVal) {
+                if (promoInp._autoDiscount) {
+                    promoInp.value = '';
+                    promoInp._autoDiscount = false;
+                }
+                return;
+            }
+            if (priceVal) {
+                const calculated = calculatePromoFromDiscount(priceVal, discountVal);
+                if (calculated !== null) {
+                    promoInp.value = calculated.toFixed(2).replace('.', ',');
+                    promoInp._autoDiscount = true;
+                }
+            }
+        } else if (triggerSource === 'price') {
+            if (discountVal && priceVal) {
+                const calculated = calculatePromoFromDiscount(priceVal, discountVal);
+                if (calculated !== null) {
+                    promoInp.value = calculated.toFixed(2).replace('.', ',');
+                    promoInp._autoDiscount = true;
+                }
+            }
+        } else if (triggerSource === 'promo') {
+            if (!promoVal) {
+                if (discountInp._autoPromo) {
+                    discountInp.value = '';
+                    discountInp._autoPromo = false;
+                }
+                return;
+            }
+            promoInp._autoDiscount = false;
+            if (priceVal) {
+                const calcDiscount = calculateDiscountFromPromo(priceVal, promoVal);
+                if (calcDiscount) {
+                    discountInp.value = calcDiscount;
+                    discountInp._autoPromo = true;
+                }
+            }
+        }
+    }
 
     [priceInp, promoInp].forEach(inp => {
         if (!inp || inp._hasCatalogGuard) return;
@@ -3138,6 +3220,11 @@ export function attachCatalogNumericGuards() {
             const sanitized = sanitizeCatalogDecimalInput(inp.value);
             if (inp.value !== sanitized) {
                 inp.value = sanitized;
+            }
+            if (inp === priceInp) {
+                syncCatalogPricing('price');
+            } else if (inp === promoInp) {
+                syncCatalogPricing('promo');
             }
         });
 
@@ -3178,6 +3265,7 @@ export function attachCatalogNumericGuards() {
             if (discountInp.value !== sanitized) {
                 discountInp.value = sanitized;
             }
+            syncCatalogPricing('discount');
         });
 
         discountInp.addEventListener('paste', (e) => {
@@ -4942,6 +5030,11 @@ export async function saveCatalogProduct() {
         promoPrice = parseBRL(promoRaw);
         if (promoPrice >= price) {
             showToast('Aviso de Promoção', 'O preço promocional deve ser menor que o preço normal.', 'orange');
+        }
+    } else if (discount) {
+        const calculated = calculatePromoFromDiscount(price, discount);
+        if (calculated !== null && calculated < price) {
+            promoPrice = calculated;
         }
     }
 
@@ -14773,7 +14866,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.146';
+export const CURRENT_APP_VERSION = '1.0.147';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -25453,6 +25546,8 @@ if (typeof window !== 'undefined') {
     window.sanitizeCatalogDecimalInput = sanitizeCatalogDecimalInput;
     window.sanitizeCatalogIntegerInput = sanitizeCatalogIntegerInput;
     window.sanitizeCatalogDiscountInput = sanitizeCatalogDiscountInput;
+    window.calculatePromoFromDiscount = calculatePromoFromDiscount;
+    window.calculateDiscountFromPromo = calculateDiscountFromPromo;
     window.getDigitalCtaLabel = getDigitalCtaLabel;
     window.getDigitalCtaIcon = getDigitalCtaIcon;
     window.attachCatalogNumericGuards = attachCatalogNumericGuards;

@@ -7415,9 +7415,13 @@ test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com 
   assert.ok(cssContent.includes('repeat(2, 1fr)'), 'style.css deve definir grid de 2 colunas para botões de pagamento no celular');
 
   // 25. Padronização do Tamanho dos Botões de Formas de Pagamento no Carrinho no Celular (v1.0.146)
-  assert.strictEqual(versionJson.version, '1.0.146', 'version.json deve ser 1.0.146');
   assert.ok(cssContent.includes('.catalog-payment-options-grid'), 'style.css deve conter .catalog-payment-options-grid');
   assert.ok(cssContent.includes('.catalog-payment-option-pill span'), 'style.css deve conter .catalog-payment-option-pill span com nowrap');
+
+  // 26. Organização das Opções no PC e Atualização Automática de Preço por Desconto (v1.0.147)
+  assert.strictEqual(versionJson.version, '1.0.147', 'version.json deve ser 1.0.147');
+  assert.ok(jsContent.includes('function calculatePromoFromDiscount'), 'script.js deve conter calculatePromoFromDiscount');
+  assert.ok(jsContent.includes('function calculateDiscountFromPromo'), 'script.js deve conter calculateDiscountFromPromo');
 });
 
 test('Formulários Comerciais para Conta Empresa: Permissões, templates, card interativo no chat e preenchimento de respostas (v1.0.142)', () => {
@@ -7734,6 +7738,70 @@ test('Padronização de Tamanho dos Botões de Formas de Pagamento no Carrinho (
   assert.ok(cssContent.includes('min-height: 44px;'), 'style.css deve conter min-height: 44px');
   assert.ok(cssContent.includes('height: 44px;'), 'style.css deve conter height: 44px');
   assert.ok(cssContent.includes('white-space: nowrap;'), 'style.css deve conter white-space: nowrap');
+});
+
+test('Organização das Opções no PC e Atualização Automática de Preço pelo Desconto (v1.0.147)', () => {
+  const env = createTestEnvironment();
+  const doc = env.sandbox.window.document;
+  const win = env.sandbox.window;
+
+  // 1. Verificação do layout no DOM: Promoção e Desconto organizados em linhas de 2 colunas
+  const priceInp = doc.getElementById('cat-prod-price');
+  const promoInp = doc.getElementById('cat-prod-promo');
+  const promoTypeSel = doc.getElementById('cat-prod-promo-type');
+  const discountInp = doc.getElementById('cat-prod-discount');
+  const discountTypeSel = doc.getElementById('cat-prod-discount-type');
+
+  assert.ok(priceInp, 'cat-prod-price deve existir');
+  assert.ok(promoInp, 'cat-prod-promo deve existir');
+  assert.ok(promoTypeSel, 'cat-prod-promo-type deve existir');
+  assert.ok(discountInp, 'cat-prod-discount deve existir');
+  assert.ok(discountTypeSel, 'cat-prod-discount-type deve existir');
+
+  // Verifica que no HTML Promoção e Desconto estão em blocos de linha organizados
+  assert.ok(htmlContent.includes('Opção 1: Promoção'), 'index.html deve conter bloco organizado de Promoção');
+  assert.ok(htmlContent.includes('Opção 2: Desconto'), 'index.html deve conter bloco organizado de Desconto');
+  assert.ok(cssContent.includes('.catalog-field-label'), 'style.css deve estilizar catalog-field-label');
+
+  // 2. Testes de cálculo de desconto percentual e valor fixo
+  const calculatePromoFromDiscount = win.calculatePromoFromDiscount;
+  const calculateDiscountFromPromo = win.calculateDiscountFromPromo;
+  assert.strictEqual(typeof calculatePromoFromDiscount, 'function', 'calculatePromoFromDiscount deve ser função');
+  assert.strictEqual(typeof calculateDiscountFromPromo, 'function', 'calculateDiscountFromPromo deve ser função');
+
+  // Desconto percentual (10% de 100 -> 90)
+  assert.strictEqual(calculatePromoFromDiscount('100,00', '10%'), 90);
+  assert.strictEqual(calculatePromoFromDiscount('200,00', '25%'), 150);
+  assert.strictEqual(calculatePromoFromDiscount('50,00', '50%'), 25);
+
+  // Desconto em valor fixo (15 de 100 -> 85)
+  assert.strictEqual(calculatePromoFromDiscount('100,00', '15,00'), 85);
+  assert.strictEqual(calculatePromoFromDiscount('100,00', '15'), 85);
+  assert.strictEqual(calculatePromoFromDiscount('80,00', '20,50'), 59.5);
+
+  // Cálculo inverso do desconto (preço normal 100, promocional 80 -> 20%)
+  assert.strictEqual(calculateDiscountFromPromo('100,00', '80,00'), '20%');
+
+  // 3. Teste de digitação em tempo real no formulário
+  win.attachCatalogNumericGuards();
+
+  priceInp.value = '100,00';
+  priceInp.dispatchEvent(new win.Event('input'));
+
+  // Digita desconto de 10% -> preço promocional muda automaticamente para 90,00
+  discountInp.value = '10%';
+  discountInp.dispatchEvent(new win.Event('input'));
+  assert.strictEqual(promoInp.value, '90,00', 'Preço promocional deve mudar para 90,00 ao digitar 10% no desconto');
+
+  // Digita desconto fixo de 15,00 -> preço promocional muda para 85,00
+  discountInp.value = '15,00';
+  discountInp.dispatchEvent(new win.Event('input'));
+  assert.strictEqual(promoInp.value, '85,00', 'Preço promocional deve mudar para 85,00 ao digitar 15,00 no desconto');
+
+  // Altera preço base para 200,00 -> preço promocional recalcula para 185,00
+  priceInp.value = '200,00';
+  priceInp.dispatchEvent(new win.Event('input'));
+  assert.strictEqual(promoInp.value, '185,00', 'Preço promocional deve recalcular ao alterar o preço base');
 });
 
 

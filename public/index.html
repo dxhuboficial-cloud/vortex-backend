@@ -4,20 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.146">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.146">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.146">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.146">
-    <link rel="stylesheet" href="style.css?v=1.0.146">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.147">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.147">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.147">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.147">
+    <link rel="stylesheet" href="style.css?v=1.0.147">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.146">
+    <link rel="manifest" href="manifest.json?v=1.0.147">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.146">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.146">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.147">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.147">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -2790,18 +2790,17 @@
                         <textarea id="cat-prod-desc" rows="3" maxlength="600" placeholder="Detalhes, material, tamanho..."></textarea>
                     </div>
 
-                    <div class="catalog-field-row">
-                        <div class="catalog-field-group">
-                            <label class="catalog-field-label" for="cat-prod-price">Preço (R$) *</label>
-                            <input id="cat-prod-price" type="text" inputmode="decimal" placeholder="0,00" autocomplete="off">
-                        </div>
-                        <div class="catalog-field-group">
-                            <label class="catalog-field-label" for="cat-prod-promo">Preço promocional</label>
-                            <input id="cat-prod-promo" type="text" inputmode="decimal" placeholder="Opcional" autocomplete="off">
-                        </div>
+                    <div class="catalog-field-group">
+                        <label class="catalog-field-label" for="cat-prod-price">Preço (R$) *</label>
+                        <input id="cat-prod-price" type="text" inputmode="decimal" placeholder="0,00" autocomplete="off">
                     </div>
 
+                    <!-- Opção 1: Promoção (Preço promocional e Vigência) -->
                     <div class="catalog-field-row">
+                        <div class="catalog-field-group">
+                            <label class="catalog-field-label" for="cat-prod-promo"><i data-lucide="tag"></i> Preço promocional</label>
+                            <input id="cat-prod-promo" type="text" inputmode="decimal" placeholder="Opcional" autocomplete="off">
+                        </div>
                         <div class="catalog-field-group">
                             <label class="catalog-field-label" for="cat-prod-promo-type"><i data-lucide="clock"></i> Promoção: Vigência</label>
                             <select id="cat-prod-promo-type" class="catalog-select-field">
@@ -2809,8 +2808,12 @@
                                 <option value="permanente">🔒 Permanente</option>
                             </select>
                         </div>
+                    </div>
+
+                    <!-- Opção 2: Desconto (Desconto e Vigência) -->
+                    <div class="catalog-field-row">
                         <div class="catalog-field-group">
-                            <label class="catalog-field-label" for="cat-prod-discount"><i data-lucide="tag"></i> Desconto</label>
+                            <label class="catalog-field-label" for="cat-prod-discount"><i data-lucide="percent"></i> Desconto</label>
                             <input id="cat-prod-discount" type="text" placeholder="Ex.: 10% ou 15,00" autocomplete="off">
                         </div>
                         <div class="catalog-field-group">
@@ -3348,6 +3351,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.146" defer></script>
+    <script type="module" src="script.js?v=1.0.147" defer></script>
 </body>
 </html>
