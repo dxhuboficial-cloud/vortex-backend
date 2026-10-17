@@ -3072,10 +3072,43 @@ export function sanitizeCatalogIntegerInput(val) {
     return String(val).replace(/\D/g, '');
 }
 
+export function sanitizeCatalogDiscountInput(val) {
+    if (val === null || val === undefined) return '';
+    let s = String(val).replace(/[^0-9.,%]/g, '');
+    const pctIdx = s.indexOf('%');
+    if (pctIdx !== -1) {
+        s = s.substring(0, pctIdx + 1);
+    }
+    return s;
+}
+
+export function getDigitalCtaLabel(ctaKey) {
+    switch (ctaKey) {
+        case 'abrir': return 'Abrir';
+        case 'assinar': return 'Assinar';
+        case 'saiba_mais': return 'Saiba mais';
+        case 'ver': return 'Ver';
+        case 'testar': return 'Testar';
+        default: return 'Abrir';
+    }
+}
+
+export function getDigitalCtaIcon(ctaKey) {
+    switch (ctaKey) {
+        case 'abrir': return 'external-link';
+        case 'assinar': return 'check-circle';
+        case 'saiba_mais': return 'info';
+        case 'ver': return 'eye';
+        case 'testar': return 'play';
+        default: return 'external-link';
+    }
+}
+
 export function attachCatalogNumericGuards() {
     const priceInp = document.getElementById('cat-prod-price');
     const promoInp = document.getElementById('cat-prod-promo');
     const stockInp = document.getElementById('cat-prod-stock');
+    const discountInp = document.getElementById('cat-prod-discount');
 
     [priceInp, promoInp].forEach(inp => {
         if (!inp || inp._hasCatalogGuard) return;
@@ -3119,6 +3152,45 @@ export function attachCatalogNumericGuards() {
             inp.dispatchEvent(new Event('input', { bubbles: true }));
         });
     });
+
+    if (discountInp && !discountInp._hasCatalogGuard) {
+        discountInp._hasCatalogGuard = true;
+
+        discountInp.addEventListener('keydown', (e) => {
+            if (['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(e.key)) {
+                return;
+            }
+            if (e.ctrlKey || e.metaKey) {
+                return;
+            }
+            if (e.key === ',' || e.key === '.' || e.key === '%') {
+                return;
+            }
+            if (/^[0-9]$/.test(e.key)) {
+                return;
+            }
+            // Bloqueia qualquer letra ou símbolo
+            e.preventDefault();
+        });
+
+        discountInp.addEventListener('input', () => {
+            const sanitized = sanitizeCatalogDiscountInput(discountInp.value);
+            if (discountInp.value !== sanitized) {
+                discountInp.value = sanitized;
+            }
+        });
+
+        discountInp.addEventListener('paste', (e) => {
+            const pasteData = (e.clipboardData || window.clipboardData)?.getData('text') || '';
+            const clean = sanitizeCatalogDiscountInput(pasteData);
+            e.preventDefault();
+            const start = discountInp.selectionStart ?? discountInp.value.length;
+            const end = discountInp.selectionEnd ?? discountInp.value.length;
+            const nextVal = discountInp.value.slice(0, start) + clean + discountInp.value.slice(end);
+            discountInp.value = sanitizeCatalogDiscountInput(nextVal);
+            discountInp.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+    }
 
     if (stockInp && !stockInp._hasCatalogGuard) {
         stockInp._hasCatalogGuard = true;
@@ -3276,6 +3348,14 @@ export function addToCatalogCart(product, sellerUid, sellerData = {}, options = 
         cart.items[existingIndex].price = Number(product.price);
         cart.items[existingIndex].promoPrice = product.promoPrice;
         cart.items[existingIndex].effectivePrice = effectivePrice;
+        if (product.discount) cart.items[existingIndex].discount = product.discount;
+        if (product.discountType) cart.items[existingIndex].discountType = product.discountType;
+        if (product.promoType) cart.items[existingIndex].promoType = product.promoType;
+        cart.items[existingIndex].kind = product.kind || (product.isDigital ? 'digital' : 'fisico');
+        cart.items[existingIndex].isDigital = product.kind === 'digital' || !!product.isDigital;
+        cart.items[existingIndex].digitalType = product.digitalType || null;
+        cart.items[existingIndex].digitalLink = product.digitalLink || null;
+        cart.items[existingIndex].digitalCta = product.digitalCta || null;
         if (product.paymentMethods && Array.isArray(product.paymentMethods)) {
             cart.items[existingIndex].paymentMethods = product.paymentMethods;
         }
@@ -3299,7 +3379,15 @@ export function addToCatalogCart(product, sellerUid, sellerData = {}, options = 
             selectedColorHex: selColorHex || null,
             selectedSize: selSize,
             selectedVoltage: selVoltage,
-            weight: product.weight || null
+            weight: product.weight || null,
+            kind: product.kind || (product.isDigital ? 'digital' : 'fisico'),
+            isDigital: product.kind === 'digital' || !!product.isDigital,
+            digitalType: product.digitalType || null,
+            digitalLink: product.digitalLink || null,
+            digitalCta: product.digitalCta || null,
+            discount: product.discount || null,
+            discountType: product.discountType || null,
+            promoType: product.promoType || null
         });
     }
 
@@ -4374,6 +4462,23 @@ export function renderCatalogGrid(container, products, isOwner) {
             stockBadge = `<span class="catalog-badge-stock low">Resta apenas ${stockQty}</span>`;
         }
 
+        const isDigital = (prod.kind === 'digital' || !!prod.isDigital);
+        const digitalBadge = isDigital
+            ? `<span class="catalog-badge-digital"><i data-lucide="laptop"></i> ${escapeHTML(prod.digitalType || 'Digital')}</span>`
+            : '';
+
+        let promoBadge = '';
+        if (hasPromo) {
+            const isTemp = (prod.promoType === 'temporario');
+            promoBadge = `<span class="catalog-badge-promo ${isTemp ? 'catalog-badge-promo-temp' : ''}">${isTemp ? '⏳ OFERTA TEMPORÁRIA' : 'OFERTA'}</span>`;
+        }
+
+        let discountBadge = '';
+        if (prod.discount) {
+            const isTemp = (prod.discountType === 'temporario');
+            discountBadge = `<span class="catalog-badge-discount ${isTemp ? 'temp' : ''}">${escapeHTML(prod.discount)} OFF</span>`;
+        }
+
         const coverSrc = prod.cover || (prod.photos && prod.photos[0]) || '';
         const mediaHTML = coverSrc
             ? `<img src="${coverSrc}" alt="${escapeHTML(prod.name)}" class="catalog-card-img" loading="lazy">`
@@ -4401,9 +4506,11 @@ export function renderCatalogGrid(container, products, isOwner) {
             <div class="catalog-card ${isOutOfStock ? 'out-of-stock' : ''}" data-id="${prod.id}">
                 <div class="catalog-card-media-wrap">
                     ${mediaHTML}
+                    ${digitalBadge}
+                    ${discountBadge}
                     ${stockBadge}
                     ${statusPill}
-                    ${hasPromo ? '<span class="catalog-badge-promo">OFERTA</span>' : ''}
+                    ${promoBadge}
                 </div>
                 <div class="catalog-card-info">
                     ${prod.category ? `<span class="catalog-card-category">${escapeHTML(prod.category)}</span>` : ''}
@@ -4506,6 +4613,15 @@ export async function openProductEditor(productId = null) {
     const descInp = document.getElementById('cat-prod-desc');
     const priceInp = document.getElementById('cat-prod-price');
     const promoInp = document.getElementById('cat-prod-promo');
+    const promoTypeSel = document.getElementById('cat-prod-promo-type');
+    const discountInp = document.getElementById('cat-prod-discount');
+    const discountTypeSel = document.getElementById('cat-prod-discount-type');
+    const kindSel = document.getElementById('cat-prod-kind');
+    const digitalSection = document.getElementById('cat-prod-digital-section');
+    const digitalTypeSel = document.getElementById('cat-prod-digital-type');
+    const digitalLinkInp = document.getElementById('cat-prod-digital-link');
+    const digitalCtaGroup = document.getElementById('cat-prod-digital-cta-group');
+    const digitalCtaSel = document.getElementById('cat-prod-digital-cta');
     const catSel = document.getElementById('cat-prod-category');
     const skuInp = document.getElementById('cat-prod-sku');
     const stockInp = document.getElementById('cat-prod-stock');
@@ -4534,6 +4650,21 @@ export async function openProductEditor(productId = null) {
             if (descInp) descInp.value = prod.description || '';
             if (priceInp) priceInp.value = prod.price !== undefined ? String(prod.price) : '';
             if (promoInp) promoInp.value = prod.promoPrice !== undefined && prod.promoPrice !== null ? String(prod.promoPrice) : '';
+            if (promoTypeSel) promoTypeSel.value = prod.promoType || 'temporario';
+            if (discountInp) discountInp.value = prod.discount || '';
+            if (discountTypeSel) discountTypeSel.value = prod.discountType || 'temporario';
+
+            const isDigital = (prod.kind === 'digital' || !!prod.isDigital);
+            if (kindSel) kindSel.value = isDigital ? 'digital' : 'fisico';
+            if (digitalSection) digitalSection.style.display = isDigital ? 'block' : 'none';
+            if (digitalTypeSel) digitalTypeSel.value = prod.digitalType || 'App';
+            if (digitalLinkInp) digitalLinkInp.value = prod.digitalLink || '';
+            if (digitalCtaSel) digitalCtaSel.value = prod.digitalCta || 'abrir';
+            if (digitalCtaGroup) {
+                const hasLink = prod.digitalLink && String(prod.digitalLink).trim().length > 0;
+                digitalCtaGroup.style.display = hasLink ? 'block' : 'none';
+            }
+
             if (catSel) catSel.value = prod.category || '';
             if (skuInp) skuInp.value = prod.sku || '';
             if (unlimitedCheck) unlimitedCheck.checked = !!prod.unlimitedStock;
@@ -4566,6 +4697,15 @@ export async function openProductEditor(productId = null) {
         if (descInp) descInp.value = '';
         if (priceInp) priceInp.value = '';
         if (promoInp) promoInp.value = '';
+        if (promoTypeSel) promoTypeSel.value = 'temporario';
+        if (discountInp) discountInp.value = '';
+        if (discountTypeSel) discountTypeSel.value = 'temporario';
+        if (kindSel) kindSel.value = 'fisico';
+        if (digitalSection) digitalSection.style.display = 'none';
+        if (digitalTypeSel) digitalTypeSel.value = 'App';
+        if (digitalLinkInp) digitalLinkInp.value = '';
+        if (digitalCtaSel) digitalCtaSel.value = 'abrir';
+        if (digitalCtaGroup) digitalCtaGroup.style.display = 'none';
         if (catSel) catSel.value = '';
         if (skuInp) skuInp.value = '';
         if (unlimitedCheck) unlimitedCheck.checked = true;
@@ -4772,6 +4912,14 @@ export async function saveCatalogProduct() {
     const desc = document.getElementById('cat-prod-desc')?.value.trim() || '';
     const priceRaw = document.getElementById('cat-prod-price')?.value;
     const promoRaw = document.getElementById('cat-prod-promo')?.value;
+    const promoType = document.getElementById('cat-prod-promo-type')?.value || 'temporario';
+    const discount = document.getElementById('cat-prod-discount')?.value.trim() || '';
+    const discountType = document.getElementById('cat-prod-discount-type')?.value || 'temporario';
+    const kind = document.getElementById('cat-prod-kind')?.value || 'fisico';
+    const isDigital = (kind === 'digital');
+    const digitalType = isDigital ? (document.getElementById('cat-prod-digital-type')?.value || 'App') : '';
+    let digitalLink = isDigital ? (document.getElementById('cat-prod-digital-link')?.value.trim() || '') : '';
+    const digitalCta = isDigital ? (document.getElementById('cat-prod-digital-cta')?.value || 'abrir') : '';
     const category = document.getElementById('cat-prod-category')?.value || '';
     const sku = document.getElementById('cat-prod-sku')?.value.trim() || '';
     const isUnlimited = !!document.getElementById('cat-prod-unlimited')?.checked;
@@ -4794,6 +4942,16 @@ export async function saveCatalogProduct() {
         promoPrice = parseBRL(promoRaw);
         if (promoPrice >= price) {
             showToast('Aviso de Promoção', 'O preço promocional deve ser menor que o preço normal.', 'orange');
+        }
+    }
+
+    if (isDigital) {
+        if (!digitalLink) {
+            showToast('Link Obrigatório', 'Informe o link de acesso para o produto digital.', 'orange');
+            return;
+        }
+        if (!/^https?:\/\//i.test(digitalLink)) {
+            digitalLink = 'https://' + digitalLink;
         }
     }
 
@@ -4841,6 +4999,14 @@ export async function saveCatalogProduct() {
             description: desc,
             price: price,
             promoPrice: promoPrice,
+            promoType: promoType,
+            discount: discount,
+            discountType: discountType,
+            kind: kind,
+            isDigital: isDigital,
+            digitalType: digitalType,
+            digitalLink: digitalLink,
+            digitalCta: digitalCta,
             category: category,
             sku: sku,
             unlimitedStock: isUnlimited,
@@ -5124,6 +5290,36 @@ export async function openProductDetail(productId, sellerUid) {
             specsBadgesHTML += `<span class="catalog-detail-spec-badge"><i data-lucide="scale"></i> Peso: <strong>${escapeHTML(weight)}</strong></span>`;
         }
 
+        let digitalBadgeHTML = '';
+        if (prod.kind === 'digital' || prod.isDigital) {
+            digitalBadgeHTML = `<span class="catalog-detail-spec-badge catalog-digital-badge"><i data-lucide="laptop"></i> Digital: <strong>${escapeHTML(prod.digitalType || 'Digital')}</strong></span>`;
+        }
+
+        let promoBadgeHTML = '';
+        if (hasPromo) {
+            promoBadgeHTML = `<span class="catalog-detail-spec-badge catalog-promo-badge"><i data-lucide="flame"></i> Promoção: <strong>${prod.promoType === 'permanente' ? 'Permanente' : 'Temporária ⏳'}</strong></span>`;
+        }
+
+        let discountBadgeHTML = '';
+        if (prod.discount) {
+            discountBadgeHTML = `<span class="catalog-detail-spec-badge catalog-discount-badge"><i data-lucide="tag"></i> Desconto: <strong>${escapeHTML(prod.discount)} (${prod.discountType === 'permanente' ? 'Permanente' : 'Temporário ⏳'})</strong></span>`;
+        }
+
+        let digitalCtaBtnHTML = '';
+        if ((prod.kind === 'digital' || prod.isDigital) && prod.digitalLink) {
+            const ctaKey = prod.digitalCta || 'abrir';
+            const ctaLabel = getDigitalCtaLabel(ctaKey);
+            const ctaIcon = getDigitalCtaIcon(ctaKey);
+            digitalCtaBtnHTML = `
+                <div class="catalog-digital-cta-container">
+                    <a href="${escapeHTML(prod.digitalLink)}" target="_blank" rel="noopener noreferrer" class="catalog-digital-cta-btn">
+                        <i data-lucide="${ctaIcon}"></i>
+                        <span>${ctaLabel}</span>
+                    </a>
+                </div>
+            `;
+        }
+
         content.innerHTML = `
             ${galleryHTML}
             <div class="catalog-detail-body">
@@ -5137,7 +5333,7 @@ export async function openProductDetail(productId, sellerUid) {
                     <span>${isUnlimited ? 'Estoque disponível' : (isOutOfStock ? 'Produto Esgotado' : `${stockQty} unidades em estoque`)}</span>
                 </div>
 
-                ${specsBadgesHTML ? `<div class="catalog-detail-specs-row" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;">${specsBadgesHTML}</div>` : ''}
+                ${(digitalBadgeHTML || promoBadgeHTML || discountBadgeHTML || specsBadgesHTML) ? `<div class="catalog-detail-specs-row" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;">${digitalBadgeHTML}${promoBadgeHTML}${discountBadgeHTML}${specsBadgesHTML}</div>` : ''}
 
                 ${variationsHTML}
 
@@ -5154,6 +5350,8 @@ export async function openProductDetail(productId, sellerUid) {
                         <p>${escapeHTML(prod.description)}</p>
                     </div>
                 ` : ''}
+
+                ${digitalCtaBtnHTML}
 
                 <div class="catalog-detail-actions">
                     ${isOwner ? `
@@ -5884,6 +6082,27 @@ export function initCatalog() {
         addEditorColor();
     });
     attachCatalogNumericGuards();
+
+    // Alternância Produto Físico vs Digital
+    document.getElementById('cat-prod-kind')?.addEventListener('change', (e) => {
+        const isDigital = e.target.value === 'digital';
+        const digitalSec = document.getElementById('cat-prod-digital-section');
+        if (digitalSec) digitalSec.style.display = isDigital ? 'block' : 'none';
+    });
+
+    // Exibição dinâmica da seleção de botão CTA após o link ser preenchido
+    const digitalLinkInput = document.getElementById('cat-prod-digital-link');
+    if (digitalLinkInput) {
+        const handleLinkInput = () => {
+            const hasLink = (digitalLinkInput.value || '').trim().length > 0;
+            const ctaGroup = document.getElementById('cat-prod-digital-cta-group');
+            if (ctaGroup) {
+                ctaGroup.style.display = hasLink ? 'block' : 'none';
+            }
+        };
+        digitalLinkInput.addEventListener('input', handleLinkInput);
+        digitalLinkInput.addEventListener('change', handleLinkInput);
+    }
 
     // Checkbox de estoque ilimitado
     document.getElementById('cat-prod-unlimited')?.addEventListener('change', (e) => {
@@ -14554,7 +14773,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.143';
+export const CURRENT_APP_VERSION = '1.0.144';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -25230,9 +25449,12 @@ if (typeof window !== 'undefined') {
     window.openCompanyFormResponsesModal = openCompanyFormResponsesModal;
     window.closeCompanyFormResponsesModal = closeCompanyFormResponsesModal;
     window.copyCompanyFormResponses = copyCompanyFormResponses;
-    // Variações e Validação Numérica do Catálogo (v1.0.143)
+    // Variações e Validação Numérica do Catálogo (v1.0.143 / v1.0.144)
     window.sanitizeCatalogDecimalInput = sanitizeCatalogDecimalInput;
     window.sanitizeCatalogIntegerInput = sanitizeCatalogIntegerInput;
+    window.sanitizeCatalogDiscountInput = sanitizeCatalogDiscountInput;
+    window.getDigitalCtaLabel = getDigitalCtaLabel;
+    window.getDigitalCtaIcon = getDigitalCtaIcon;
     window.attachCatalogNumericGuards = attachCatalogNumericGuards;
     window.currentEditorColors = currentEditorColors;
     window.renderEditorColors = renderEditorColors;

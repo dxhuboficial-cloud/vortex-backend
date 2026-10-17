@@ -4,20 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.143">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.143">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.143">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.143">
-    <link rel="stylesheet" href="style.css?v=1.0.143">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.144">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.144">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.144">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.144">
+    <link rel="stylesheet" href="style.css?v=1.0.144">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.143">
+    <link rel="manifest" href="manifest.json?v=1.0.144">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.143">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.143">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.144">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.144">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -2803,6 +2803,27 @@
 
                     <div class="catalog-field-row">
                         <div class="catalog-field-group">
+                            <label class="catalog-field-label" for="cat-prod-promo-type"><i data-lucide="clock"></i> Promoção: Vigência</label>
+                            <select id="cat-prod-promo-type" class="catalog-select-field">
+                                <option value="temporario">⏳ Temporário</option>
+                                <option value="permanente">🔒 Permanente</option>
+                            </select>
+                        </div>
+                        <div class="catalog-field-group">
+                            <label class="catalog-field-label" for="cat-prod-discount"><i data-lucide="tag"></i> Desconto</label>
+                            <input id="cat-prod-discount" type="text" placeholder="Ex.: 10% ou 15,00" autocomplete="off">
+                        </div>
+                        <div class="catalog-field-group">
+                            <label class="catalog-field-label" for="cat-prod-discount-type"><i data-lucide="shield-check"></i> Desconto: Vigência</label>
+                            <select id="cat-prod-discount-type" class="catalog-select-field">
+                                <option value="temporario">⏳ Temporário</option>
+                                <option value="permanente">🔒 Permanente</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="catalog-field-row">
+                        <div class="catalog-field-group">
                             <label class="catalog-field-label" for="cat-prod-category">Categoria</label>
                             <select id="cat-prod-category"></select>
                         </div>
@@ -2828,8 +2849,63 @@
                         <span>Visível na vitrine</span>
                     </label>
 
-                    <!-- Variações & Especificações do Produto -->
+                    <!-- Tipo de Produto: Físico vs Digital -->
                     <div class="catalog-editor-section-card">
+                        <div class="catalog-editor-section-title">
+                            <i data-lucide="layers"></i>
+                            <span>Tipo de Produto (Físico ou Digital)</span>
+                        </div>
+
+                        <div class="catalog-field-group">
+                            <label class="catalog-field-label" for="cat-prod-kind">Escolha o formato do produto *</label>
+                            <select id="cat-prod-kind" class="catalog-select-field">
+                                <option value="fisico">📦 Produto Físico (entrega, envio, variações)</option>
+                                <option value="digital">💻 Produto Digital (acesso online, link, download)</option>
+                            </select>
+                        </div>
+
+                        <!-- Seção dinâmica para Produto Digital (liberada quando for Digital) -->
+                        <div id="cat-prod-digital-section" class="catalog-digital-section" style="display: none;">
+                            <div class="catalog-digital-section-title">
+                                <i data-lucide="laptop"></i>
+                                <span>Configurações do Produto Digital</span>
+                            </div>
+
+                            <div class="catalog-field-group">
+                                <label class="catalog-field-label" for="cat-prod-digital-type">Tipo de Produto Digital *</label>
+                                <select id="cat-prod-digital-type" class="catalog-select-field">
+                                    <option value="App">📱 App (Aplicativo)</option>
+                                    <option value="Site">🌐 Site (Website / Plataforma)</option>
+                                    <option value="App + Site">📲 App + Site</option>
+                                    <option value="Planos">💳 Planos / Assinaturas</option>
+                                    <option value="Cursos">🎓 Cursos / Treinamentos</option>
+                                    <option value="Ebooks">📚 Ebooks / Livros Digitais</option>
+                                </select>
+                            </div>
+
+                            <div class="catalog-field-group">
+                                <label class="catalog-field-label" for="cat-prod-digital-link"><i data-lucide="link"></i> Link do Produto Digital *</label>
+                                <input id="cat-prod-digital-link" type="text" placeholder="https://exemplo.com/seu-link" autocomplete="off">
+                                <small class="catalog-field-hint" style="color:var(--text-dim);font-size:0.75rem;margin-top:2px;">Insira o link para onde o cliente será direcionado (download, acesso, inscrição ou checkout).</small>
+                            </div>
+
+                            <!-- Seleção que aparece APÓS o link ser preenchido -->
+                            <div id="cat-prod-digital-cta-group" class="catalog-field-group" style="display: none;">
+                                <label class="catalog-field-label" for="cat-prod-digital-cta"><i data-lucide="mouse-pointer-click"></i> Botão de Ação (Aparece para o cliente)</label>
+                                <select id="cat-prod-digital-cta" class="catalog-select-field">
+                                    <option value="abrir">Abrir</option>
+                                    <option value="assinar">Assinar</option>
+                                    <option value="saiba_mais">Saiba mais</option>
+                                    <option value="ver">Ver</option>
+                                    <option value="testar">Testar</option>
+                                </select>
+                                <small class="catalog-field-hint" style="color:var(--text-dim);font-size:0.75rem;margin-top:2px;">Defina como será o texto do botão exibido ao cliente na loja e nos detalhes.</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Variações & Especificações do Produto -->
+                    <div id="cat-prod-physical-section" class="catalog-editor-section-card">
                         <div class="catalog-editor-section-title">
                             <i data-lucide="sliders"></i>
                             <span>Variações & Especificações</span>
@@ -3272,6 +3348,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.143" defer></script>
+    <script type="module" src="script.js?v=1.0.144" defer></script>
 </body>
 </html>

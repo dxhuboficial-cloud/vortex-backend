@@ -7379,7 +7379,6 @@ test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com 
   assert.ok(jsContent.includes('COMPANY_FORM_TEMPLATES'), 'script.js deve conter modelos rápidos (templates) prontos de formulário');
 
   // 22. Validação Numérica e Variações do Catálogo: 5 Cores, Peso, Tamanho, Voltagem 110V/220V/Escolha do Cliente (v1.0.143)
-  assert.strictEqual(versionJson.version, '1.0.143', 'version.json deve ser 1.0.143');
   assert.ok(htmlContent.includes('id="cat-prod-colors-list"'), 'index.html deve conter lista de cores no editor (#cat-prod-colors-list)');
   assert.ok(htmlContent.includes('id="cat-prod-add-color-btn"'), 'index.html deve conter botão para adicionar cores (#cat-prod-add-color-btn)');
   assert.ok(htmlContent.includes('id="cat-prod-weight"'), 'index.html deve conter campo de peso (#cat-prod-weight)');
@@ -7393,6 +7392,24 @@ test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com 
   assert.ok(jsContent.includes('function attachCatalogNumericGuards'), 'script.js deve conter attachCatalogNumericGuards');
   assert.ok(jsContent.includes('function renderEditorColors'), 'script.js deve conter renderEditorColors');
   assert.ok(jsContent.includes('function addEditorColor'), 'script.js deve conter addEditorColor');
+
+  // 23. Desconto, Promoção Temporária/Permanente, Produto Físico vs Digital, Tipos Digitais, Link e Botão Customizado (v1.0.144)
+  assert.strictEqual(versionJson.version, '1.0.144', 'version.json deve ser 1.0.144');
+  assert.ok(htmlContent.includes('id="cat-prod-promo-type"'), 'index.html deve conter vigência da promoção (#cat-prod-promo-type)');
+  assert.ok(htmlContent.includes('id="cat-prod-discount"'), 'index.html deve conter campo de desconto (#cat-prod-discount)');
+  assert.ok(htmlContent.includes('id="cat-prod-discount-type"'), 'index.html deve conter vigência do desconto (#cat-prod-discount-type)');
+  assert.ok(htmlContent.includes('id="cat-prod-kind"'), 'index.html deve conter escolha de produto físico ou digital (#cat-prod-kind)');
+  assert.ok(htmlContent.includes('id="cat-prod-digital-section"'), 'index.html deve conter seção dinâmica de produto digital (#cat-prod-digital-section)');
+  assert.ok(htmlContent.includes('id="cat-prod-digital-type"'), 'index.html deve conter tipos digitais (#cat-prod-digital-type)');
+  assert.ok(htmlContent.includes('id="cat-prod-digital-link"'), 'index.html deve conter link do produto digital (#cat-prod-digital-link)');
+  assert.ok(htmlContent.includes('id="cat-prod-digital-cta-group"'), 'index.html deve conter grupo do botão CTA (#cat-prod-digital-cta-group)');
+  assert.ok(htmlContent.includes('id="cat-prod-digital-cta"'), 'index.html deve conter seleção do botão CTA (#cat-prod-digital-cta)');
+  assert.ok(cssContent.includes('.catalog-badge-digital'), 'style.css deve conter .catalog-badge-digital');
+  assert.ok(cssContent.includes('.catalog-digital-cta-btn'), 'style.css deve conter .catalog-digital-cta-btn');
+  assert.ok(cssContent.includes('.catalog-badge-promo-temp'), 'style.css deve conter .catalog-badge-promo-temp');
+  assert.ok(jsContent.includes('function sanitizeCatalogDiscountInput'), 'script.js deve conter sanitizeCatalogDiscountInput');
+  assert.ok(jsContent.includes('function getDigitalCtaLabel'), 'script.js deve conter getDigitalCtaLabel');
+  assert.ok(jsContent.includes('function getDigitalCtaIcon'), 'script.js deve conter getDigitalCtaIcon');
 });
 
 test('Formulários Comerciais para Conta Empresa: Permissões, templates, card interativo no chat e preenchimento de respostas (v1.0.142)', () => {
@@ -7568,6 +7585,101 @@ test('Validação Numérica (bloqueio de letras em preço e estoque) e Variaçõ
   assert.ok(cardHtml.includes('Preto'), 'Card deve exibir a cor Preto');
   assert.ok(cardHtml.includes('220V'), 'Card deve exibir a voltagem 220V');
   assert.ok(cardHtml.includes('chat-order-item-vars'), 'Card deve conter bloco chat-order-item-vars');
+});
+
+test('Desconto no Produto (Permanente ou Temporário), Vigência da Promoção, Produto Físico vs Digital, Tipos Digitais, Link e Botão Customizado (v1.0.144)', () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+
+  // 1. Sanitização do campo de desconto (bloqueia letras e aceita números, vírgula, ponto e %)
+  const sanitizeDiscount = win.sanitizeCatalogDiscountInput;
+  assert.strictEqual(typeof sanitizeDiscount, 'function', 'sanitizeCatalogDiscountInput deve ser função');
+  assert.strictEqual(sanitizeDiscount('10%'), '10%');
+  assert.strictEqual(sanitizeDiscount('15,00'), '15,00');
+  assert.strictEqual(sanitizeDiscount('25.50%'), '25.50%');
+  assert.strictEqual(sanitizeDiscount('desconto20%off'), '20%', 'Deve remover letras e manter números e %');
+  assert.strictEqual(sanitizeDiscount('apenas_letras'), '', 'Sem números deve retornar vazio');
+
+  // 2. Mapeamento de CTA (rótulo e ícone)
+  const getCtaLabel = win.getDigitalCtaLabel;
+  const getCtaIcon = win.getDigitalCtaIcon;
+  assert.strictEqual(getCtaLabel('abrir'), 'Abrir');
+  assert.strictEqual(getCtaLabel('assinar'), 'Assinar');
+  assert.strictEqual(getCtaLabel('saiba_mais'), 'Saiba mais');
+  assert.strictEqual(getCtaLabel('ver'), 'Ver');
+  assert.strictEqual(getCtaLabel('testar'), 'Testar');
+
+  assert.strictEqual(getCtaIcon('abrir'), 'external-link');
+  assert.strictEqual(getCtaIcon('assinar'), 'check-circle');
+  assert.strictEqual(getCtaIcon('saiba_mais'), 'info');
+  assert.strictEqual(getCtaIcon('ver'), 'eye');
+  assert.strictEqual(getCtaIcon('testar'), 'play');
+
+  // 3. Comportamento no DOM do Editor:
+  // Físico vs Digital e exibição condicional do grupo de CTA após link ser preenchido
+  const kindSel = win.document.getElementById('cat-prod-kind');
+  const digitalSec = win.document.getElementById('cat-prod-digital-section');
+  const linkInp = win.document.getElementById('cat-prod-digital-link');
+  const ctaGroup = win.document.getElementById('cat-prod-digital-cta-group');
+
+  assert.ok(kindSel, 'Elemento #cat-prod-kind deve existir');
+  assert.ok(digitalSec, 'Elemento #cat-prod-digital-section deve existir');
+  assert.ok(linkInp, 'Elemento #cat-prod-digital-link deve existir');
+  assert.ok(ctaGroup, 'Elemento #cat-prod-digital-cta-group deve existir');
+
+  // Inicialmente físico -> seção digital oculta
+  kindSel.value = 'fisico';
+  kindSel.dispatchEvent(new win.Event('change'));
+  assert.strictEqual(digitalSec.style.display, 'none');
+
+  // Vendedor seleciona digital -> seção digital fica visível
+  kindSel.value = 'digital';
+  kindSel.dispatchEvent(new win.Event('change'));
+  assert.strictEqual(digitalSec.style.display, 'block');
+
+  // Sem link -> grupo de CTA oculto
+  linkInp.value = '';
+  linkInp.dispatchEvent(new win.Event('input'));
+  assert.strictEqual(ctaGroup.style.display, 'none');
+
+  // Preenche o link -> grupo de CTA aparece
+  linkInp.value = 'https://meuapp.com/download';
+  linkInp.dispatchEvent(new win.Event('input'));
+  assert.strictEqual(ctaGroup.style.display, 'block', 'Grupo de CTA deve aparecer após preencher o link');
+
+  // 4. Inclusão de produtos digitais no carrinho com CTA, link e vigência de promoção/desconto
+  const addToCatalogCart = win.addToCatalogCart;
+  win.clearCatalogCart();
+
+  const mockDigitalProd = {
+    id: 'prod_digital_app_1',
+    name: 'Curso VORTEX Masterclass',
+    price: 297.00,
+    promoPrice: 197.00,
+    promoType: 'temporario',
+    discount: '33%',
+    discountType: 'temporario',
+    kind: 'digital',
+    isDigital: true,
+    digitalType: 'Cursos',
+    digitalLink: 'https://vortex.com/curso-masterclass',
+    digitalCta: 'assinar',
+    stock: 999,
+    unlimitedStock: true
+  };
+
+  addToCatalogCart(mockDigitalProd, 'seller_biz_2', { name: 'Escola Vortex' });
+
+  const cart = win.getCatalogCart();
+  assert.strictEqual(cart.items.length, 1);
+  const item = cart.items[0];
+  assert.strictEqual(item.isDigital, true);
+  assert.strictEqual(item.digitalType, 'Cursos');
+  assert.strictEqual(item.digitalLink, 'https://vortex.com/curso-masterclass');
+  assert.strictEqual(item.digitalCta, 'assinar');
+  assert.strictEqual(item.promoType, 'temporario');
+  assert.strictEqual(item.discount, '33%');
+  assert.strictEqual(item.discountType, 'temporario');
 });
 
 

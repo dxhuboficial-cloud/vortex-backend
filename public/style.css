@@ -14844,3 +14844,144 @@ body.total-black .ringtone-select {
 .catalog-order-var-pill strong {
     color: #fff;
 }
+
+/* ==========================================================================
+   VORTEX VIP v1.0.144 - Desconto, Promoção Temporária/Permanente,
+   Produto Digital (Tipos, Links & Botões de Ação)
+   ========================================================================== */
+
+/* Badges de Produto Digital e Desconto */
+.catalog-badge-digital {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    background: linear-gradient(135deg, #0284c7, #6366f1);
+    color: #ffffff;
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+    z-index: 2;
+}
+
+.catalog-badge-promo-temp {
+    background: linear-gradient(135deg, #f59e0b, #ef4444) !important;
+    color: #ffffff !important;
+    animation: promoPulse 2s infinite ease-in-out;
+}
+
+@keyframes promoPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+.catalog-badge-discount {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: #10b981;
+    color: #000;
+    font-weight: 800;
+    font-size: 0.68rem;
+    padding: 3px 7px;
+    border-radius: 6px;
+    text-transform: uppercase;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+    z-index: 2;
+}
+
+.catalog-badge-discount.temp {
+    background: #f59e0b;
+    color: #000;
+}
+
+/* Seção de Produto Digital no Editor */
+.catalog-digital-section {
+    background: rgba(14, 165, 233, 0.05);
+    border: 1px solid rgba(14, 165, 233, 0.25);
+    border-radius: 10px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 6px;
+}
+
+.catalog-digital-section-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #38bdf8;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Botão de Ação CTA para Produto Digital */
+.catalog-digital-cta-container {
+    width: 100%;
+    margin: 8px 0 4px 0;
+}
+
+.catalog-digital-cta-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 12px 18px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #2563eb, #7c3aed);
+    color: #ffffff;
+    font-size: 0.95rem;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+    border: none;
+    transition: transform 0.15s ease, filter 0.15s ease, box-shadow 0.15s ease;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+    box-sizing: border-box;
+}
+
+.catalog-digital-cta-btn:hover {
+    filter: brightness(1.12);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(37, 99, 235, 0.5);
+    color: #ffffff;
+    text-decoration: none;
+}
+
+.catalog-digital-cta-btn:active {
+    transform: translateY(0);
+}
+
+.catalog-digital-cta-btn i {
+    width: 18px;
+    height: 18px;
+}
+
+/* Badges nos Detalhes */
+.catalog-detail-spec-badge.catalog-digital-badge {
+    background: rgba(14, 165, 233, 0.15);
+    border-color: rgba(14, 165, 233, 0.35);
+    color: #38bdf8;
+}
+
+.catalog-detail-spec-badge.catalog-promo-badge {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.35);
+    color: #f87171;
+}
+
+.catalog-detail-spec-badge.catalog-discount-badge {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: rgba(16, 185, 129, 0.35);
+    color: #34d399;
+}
