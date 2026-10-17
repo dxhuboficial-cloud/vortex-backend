@@ -7308,6 +7308,12 @@ test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com 
   assert.ok(jsContent.includes('function compareAppVersions'), 'script.js deve implementar compareAppVersions');
   assert.ok(jsContent.includes('function getEffectiveAppVersion'), 'script.js deve implementar getEffectiveAppVersion');
   assert.ok(jsContent.includes("localStorage.setItem('vortex_applied_version'"), 'triggerPwaUpdate deve salvar a versão aplicada para o botão Atualizar sumir após atualizar');
+
+  // 17. Validar correção de presença online fantasma no perfil e no chat (v1.0.138)
+  assert.ok(jsContent.includes('function isContactTrulyOnline'), 'script.js deve implementar isContactTrulyOnline com validação de RTDB e TTL de heartbeat');
+  assert.ok(jsContent.includes('function refreshContactProfilePresenceUI'), 'script.js deve implementar refreshContactProfilePresenceUI');
+  assert.ok(jsContent.includes('ONLINE_PRESENCE_TTL_MS'), 'script.js deve ter ONLINE_PRESENCE_TTL_MS para expirar status online obsoleto');
+  assert.ok(htmlContent.includes('id="contact-profile-presence" class="contact-profile-presence">Visto recentemente</span>'), '#contact-profile-presence deve iniciar com Visto recentemente no index.html');
 });
 
 

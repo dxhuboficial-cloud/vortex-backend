@@ -1543,28 +1543,120 @@ export function renderNotifications() {
     attachNotificationSwipeHandlers(listEl);
 }
 
+export const ONLINE_PRESENCE_TTL_MS = 75000; // 75s de tolerância máxima (heartbeat a cada 25s)
+const rtdbContactPresenceMap = new Map();
+const contactUserDataMap = new Map();
+let activeContactProfileUid = null;
+let activeContactProfileRtdbUnsubscribe = null;
+let activeChatRtdbPresenceUnsubscribe = null;
+
+export function extractPresenceTimestampMs(val) {
+    if (!val) return 0;
+    if (typeof val === 'number') return val;
+    if (typeof val.toMillis === 'function') return val.toMillis();
+    if (typeof val.seconds === 'number') return val.seconds * 1000;
+    const parsed = new Date(val).getTime();
+    return Number.isFinite(parsed) ? parsed : 0;
+}
+
+export function getContactLastSeenTimestamp(userData, contactUid = '') {
+    const uid = contactUid || userData?.uid || '';
+    const uData = userData || (uid ? contactUserDataMap.get(uid) : null);
+    const fsMs = extractPresenceTimestampMs(uData?.lastSeen);
+    const rtdbPres = uid ? rtdbContactPresenceMap.get(uid) : null;
+    const rtdbMs = extractPresenceTimestampMs(rtdbPres?.last_changed);
+    const best = Math.max(fsMs, rtdbMs);
+    return best > 0 ? best : (uData?.lastSeen || null);
+}
+
+export function isContactTrulyOnline(userData, contactUid = '') {
+    const uid = contactUid || userData?.uid || '';
+    if (uid && (blockedContactsSet.has(uid) || (activeChatContact?.uid === uid && isBlockedByActiveContact))) {
+        return false;
+    }
+    const uData = userData || (uid ? contactUserDataMap.get(uid) : null);
+    if (!uData || uData.ghostMode || !uData.online) return false;
+
+    if (uid && rtdbContactPresenceMap.has(uid)) {
+        const rtdbPres = rtdbContactPresenceMap.get(uid);
+        if (!rtdbPres || rtdbPres.state === 'offline') {
+            const rtdbChangedMs = extractPresenceTimestampMs(rtdbPres?.last_changed);
+            const fsLastSeenMs = extractPresenceTimestampMs(uData.lastSeen);
+            if (!rtdbPres || !fsLastSeenMs || !rtdbChangedMs || rtdbChangedMs >= fsLastSeenMs - 5000) {
+                return false;
+            }
+        } else if (rtdbPres.state === 'online') {
+            const rtdbChangedMs = extractPresenceTimestampMs(rtdbPres.last_changed);
+            const fsLastSeenMs = extractPresenceTimestampMs(uData.lastSeen);
+            const latestMs = Math.max(rtdbChangedMs, fsLastSeenMs);
+            if (latestMs > 0 && (Date.now() - latestMs) > ONLINE_PRESENCE_TTL_MS) {
+                return false;
+            }
+        }
+    }
+
+    const lastSeenMs = extractPresenceTimestampMs(uData.lastSeen);
+    if (lastSeenMs > 0 && (Date.now() - lastSeenMs) > ONLINE_PRESENCE_TTL_MS) {
+        return false;
+    }
+
+    return true;
+}
+
+export function refreshContactProfilePresenceUI(contactUid = activeContactProfileUid) {
+    if (!contactUid) return;
+    const presenceEl = document.getElementById('contact-profile-presence');
+    const onlineDotEl = document.getElementById('contact-profile-online-dot');
+    const isBlocked = blockedContactsSet.has(contactUid) || !!(activeChatContact && activeChatContact.uid === contactUid && isBlockedByActiveContact);
+
+    if (isBlocked) {
+        if (presenceEl) presenceEl.innerText = 'Bloqueado';
+        if (onlineDotEl) onlineDotEl.style.display = 'none';
+        return;
+    }
+
+    const uData = (activeContactProfileUid === contactUid && activeContactProfileData)
+        ? activeContactProfileData
+        : contactUserDataMap.get(contactUid);
+
+    const isOnline = isContactTrulyOnline(uData, contactUid);
+    if (onlineDotEl) {
+        onlineDotEl.style.display = isOnline ? 'block' : 'none';
+    }
+    if (presenceEl) {
+        const lastSeenTs = getContactLastSeenTimestamp(uData, contactUid);
+        presenceEl.innerText = isOnline
+            ? 'Online agora'
+            : (lastSeenTs ? `Visto por último: ${formatLastSeen(lastSeenTs)}` : 'Visto recentemente');
+    }
+}
+
 function setupPresence(uid) {
     const userDocRef = doc(db, 'users', uid);
     const myConnectionsRef = ref(rtdb, `presence/${uid}`);
     const connectedRef = ref(rtdb, '.info/connected');
 
     if (!currentProfile.ghostMode) {
-        updateDoc(userDocRef, { online: true, lastSeen: Date.now() }).catch(() => {});
-        rtdbSet(myConnectionsRef, { state: 'online', last_changed: Date.now() }).catch(() => {});
+        const ts = Date.now();
+        updateDoc(userDocRef, { online: true, lastSeen: ts }).catch(() => {});
+        rtdbSet(myConnectionsRef, { state: 'online', last_changed: ts }).catch(() => {});
     }
 
     onValue(connectedRef, (snap) => {
         if (snap.val() === true) {
-            rtdbSet(myConnectionsRef, { state: 'online', last_changed: rtdbTimestamp() });
             onDisconnect(myConnectionsRef).set({ state: 'offline', last_changed: rtdbTimestamp() });
             if (!currentProfile.ghostMode) {
-                updateDoc(userDocRef, { online: true, lastSeen: Date.now() }).catch(() => {});
+                const ts = Date.now();
+                rtdbSet(myConnectionsRef, { state: 'online', last_changed: ts }).catch(() => {});
+                updateDoc(userDocRef, { online: true, lastSeen: ts }).catch(() => {});
+            } else {
+                rtdbSet(myConnectionsRef, { state: 'offline', last_changed: Date.now() }).catch(() => {});
             }
         }
     });
 
     const setOffline = () => {
-        if (!currentProfile.ghostMode && currentUser) {
+        if (currentUser) {
             const ts = Date.now();
             rtdbSet(myConnectionsRef, { state: 'offline', last_changed: ts }).catch(() => {});
             updateDoc(userDocRef, { online: false, lastSeen: ts }).catch(() => {});
@@ -1587,13 +1679,30 @@ function setupPresence(uid) {
     window.addEventListener('pagehide', setOffline);
     window.addEventListener('beforeunload', setOffline);
 
-    // Heartbeat de presença ativo a cada 45s enquanto a aba estiver visível
+    // Heartbeat de presença ativo a cada 25s enquanto a aba estiver visível
     setInterval(() => {
         if (!currentProfile.ghostMode && currentUser && document.visibilityState === 'visible') {
-            updateDoc(userDocRef, { online: true, lastSeen: Date.now() }).catch(() => {});
-            rtdbSet(myConnectionsRef, { state: 'online', last_changed: Date.now() }).catch(() => {});
+            const ts = Date.now();
+            updateDoc(userDocRef, { online: true, lastSeen: ts }).catch(() => {});
+            rtdbSet(myConnectionsRef, { state: 'online', last_changed: ts }).catch(() => {});
         }
-    }, 45000);
+    }, 25000);
+
+    // Verificação periódica para expirar status online fantasma de contatos inativos
+    setInterval(() => {
+        contactUserDataMap.forEach((uData, cUid) => {
+            const dot = document.getElementById(`online-dot-${cUid}`);
+            if (dot) {
+                dot.style.display = isContactTrulyOnline(uData, cUid) ? 'block' : 'none';
+            }
+        });
+        if (activeChatContact && !activeChatContact.isGroup) {
+            refreshDirectChatStatus();
+        }
+        if (activeContactProfileUid) {
+            refreshContactProfilePresenceUI(activeContactProfileUid);
+        }
+    }, 15000);
 }
 
 function applyPrivacyModeState() {
@@ -7437,10 +7546,11 @@ function listenToContacts() {
                 const dot = document.getElementById(`online-dot-${contactUid}`);
                 if (uSnap.exists()) {
                     const uData = uSnap.data();
+                    contactUserDataMap.set(contactUid, uData);
                     const liveAvatar = uData.avatar || '';
                     const liveName = uData.name || contact.name || 'Contato';
 
-                    const isOnline = !!(uData.online && !uData.ghostMode);
+                    const isOnline = isContactTrulyOnline(uData, contactUid);
                     if (dot) dot.style.display = isOnline ? 'block' : 'none';
                     if (avatar) {
                         setAvatarContent(avatar, liveAvatar, liveName, `avatar-initial-${contactUid}`);
@@ -7451,10 +7561,16 @@ function listenToContacts() {
 
                     contact.avatar = liveAvatar;
                     contact.name = liveName;
+                    contact.online = uData.online;
+                    contact.lastSeen = uData.lastSeen;
+                    contact.ghostMode = uData.ghostMode;
 
                     if (activeChatContact?.uid === contactUid) {
                         activeChatContact.avatar = liveAvatar;
                         activeChatContact.name = liveName;
+                        activeChatContact.online = uData.online;
+                        activeChatContact.lastSeen = uData.lastSeen;
+                        activeChatContact.ghostMode = uData.ghostMode;
                         const chatAvatar = document.getElementById('chat-window-avatar');
                         const chatName = document.getElementById('chat-window-name');
                         if (chatAvatar) {
@@ -7464,6 +7580,10 @@ function listenToContacts() {
                         }
                         if (chatName) chatName.innerText = liveName;
                     }
+                    if (activeContactProfileUid === contactUid) {
+                        activeContactProfileData = uData;
+                        refreshContactProfilePresenceUI(contactUid);
+                    }
                 }
             });
             activityUnsubscribes.push(userContactProfileUnsub);
@@ -7471,19 +7591,22 @@ function listenToContacts() {
             const presenceRef = ref(rtdb, `presence/${contactUid}`);
             const presUnsub = onValue(presenceRef, (pSnap) => {
                 const pVal = pSnap.val();
+                if (pVal) {
+                    rtdbContactPresenceMap.set(contactUid, pVal);
+                } else {
+                    rtdbContactPresenceMap.delete(contactUid);
+                }
                 const dot = document.getElementById(`online-dot-${contactUid}`);
-                if (pVal && pVal.state === 'online') {
-                    if (dot) dot.style.display = 'block';
-                    if (activeChatContact?.uid === contactUid) {
-                        const chatDot = document.getElementById('chat-window-online-dot');
-                        if (chatDot) chatDot.style.display = 'block';
-                    }
-                } else if (pVal && pVal.state === 'offline') {
-                    if (dot) dot.style.display = 'none';
-                    if (activeChatContact?.uid === contactUid) {
-                        const chatDot = document.getElementById('chat-window-online-dot');
-                        if (chatDot) chatDot.style.display = 'none';
-                    }
+                const cachedUser = contactUserDataMap.get(contactUid) || { ...contact, online: pVal?.state === 'online' };
+                const isOnline = isContactTrulyOnline(cachedUser, contactUid);
+                if (dot) dot.style.display = isOnline ? 'block' : 'none';
+                if (activeChatContact?.uid === contactUid) {
+                    const chatDot = document.getElementById('chat-window-online-dot');
+                    if (chatDot) chatDot.style.display = isOnline ? 'block' : 'none';
+                    refreshDirectChatStatus();
+                }
+                if (activeContactProfileUid === contactUid) {
+                    refreshContactProfilePresenceUI(contactUid);
                 }
             });
             activityUnsubscribes.push(presUnsub);
@@ -7710,6 +7833,11 @@ export function closeContactProfile() {
         activeContactProfileUnsubscribe();
         activeContactProfileUnsubscribe = null;
     }
+    if (activeContactProfileRtdbUnsubscribe) {
+        activeContactProfileRtdbUnsubscribe();
+        activeContactProfileRtdbUnsubscribe = null;
+    }
+    activeContactProfileUid = null;
     activeContactProfileData = null;
     playSound(clickSound);
 }
@@ -8002,6 +8130,13 @@ export async function openContactProfile(contact) {
         activeContactProfileUnsubscribe();
         activeContactProfileUnsubscribe = null;
     }
+    if (activeContactProfileRtdbUnsubscribe) {
+        activeContactProfileRtdbUnsubscribe();
+        activeContactProfileRtdbUnsubscribe = null;
+    }
+
+    activeContactProfileUid = contactUid;
+    activeContactProfileData = contactUserDataMap.get(contactUid) || contact;
 
     const panel = document.getElementById('contact-profile-panel');
     const avatarEl = document.getElementById('contact-profile-avatar');
@@ -8044,11 +8179,28 @@ export async function openContactProfile(contact) {
 
     updateContactProfileSocialUI(contact);
     updateContactProfileBlockedUI(contactUid);
+    refreshContactProfilePresenceUI(contactUid);
 
-    // Listener em tempo real dos dados do contato (sincroniza Recado / Bio instantaneamente)
+    if (typeof rtdb !== 'undefined') {
+        try {
+            const pRef = ref(rtdb, `presence/${contactUid}`);
+            activeContactProfileRtdbUnsubscribe = onValue(pRef, (pSnap) => {
+                const pVal = pSnap.val();
+                if (pVal) {
+                    rtdbContactPresenceMap.set(contactUid, pVal);
+                } else {
+                    rtdbContactPresenceMap.delete(contactUid);
+                }
+                refreshContactProfilePresenceUI(contactUid);
+            });
+        } catch (_) {}
+    }
+
+    // Listener em tempo real dos dados do contato (sincroniza Recado / Bio e Presença instantaneamente)
     activeContactProfileUnsubscribe = onSnapshot(doc(db, 'users', contactUid), (snap) => {
         if (!snap.exists()) return;
         const uData = snap.data();
+        contactUserDataMap.set(contactUid, uData);
         activeContactProfileData = uData;
 
         const liveName = uData.name || contact.name || 'Contato';
@@ -8069,7 +8221,6 @@ export async function openContactProfile(contact) {
             (uData.name && uData.name.includes('DX Hub')) ||
             (contact.name && contact.name.includes('DX Hub'))
         );
-        const isOnline = !!(uData.online && !uData.ghostMode && !blockedContactsSet.has(contactUid));
 
         if (nameEl) nameEl.innerText = liveName;
         if (usernameEl) usernameEl.innerText = liveUsername;
@@ -8081,16 +8232,9 @@ export async function openContactProfile(contact) {
         if (avatarEl) {
             setAvatarContent(avatarEl, liveAvatar, liveName, 'contact-profile-avatar-initial');
         }
-        if (onlineDotEl) onlineDotEl.style.display = isOnline ? 'block' : 'none';
-        if (presenceEl) {
-            if (blockedContactsSet.has(contactUid)) {
-                presenceEl.innerText = 'Bloqueado';
-            } else {
-                presenceEl.innerText = isOnline ? 'Online agora' : (uData.lastSeen ? `Visto por último: ${formatLastSeen(uData.lastSeen)}` : 'Visto recentemente');
-            }
-        }
         updateContactProfileSocialUI(uData);
         updateContactProfileBlockedUI(contactUid);
+        refreshContactProfilePresenceUI(contactUid);
     }, (error) => console.error('Erro ao ouvir perfil do contato:', error));
 
     // Ações dos botões
@@ -8989,15 +9133,19 @@ function refreshDirectChatStatus() {
         return;
     }
 
-    if (activeContactUserData) {
-        const isOnline = !!(activeContactUserData.online && !activeContactUserData.ghostMode);
+    const targetUid = activeChatContact?.uid || '';
+    const userData = activeContactUserData || (targetUid ? contactUserDataMap.get(targetUid) : null);
+
+    if (userData) {
+        const isOnline = isContactTrulyOnline(userData, targetUid);
         if (isOnline) {
             statusEl.className = 'status-animated status-online';
             statusEl.innerText = 'Online';
             if (chatDot) chatDot.style.display = 'block';
         } else {
+            const lastSeenTs = getContactLastSeenTimestamp(userData, targetUid);
             statusEl.className = 'status-animated status-offline';
-            statusEl.innerText = formatLastSeen(activeContactUserData.lastSeen);
+            statusEl.innerText = formatLastSeen(lastSeenTs);
             if (chatDot) chatDot.style.display = 'none';
         }
     } else {
@@ -9053,7 +9201,8 @@ export function openDirectChat(contact) {
     }
     const openChatDot = document.getElementById('chat-window-online-dot');
     if (openChatDot) {
-        openChatDot.style.display = (contact.online && !contact.ghostMode) ? 'block' : 'none';
+        const initOnline = isContactTrulyOnline(contactUserDataMap.get(contact.uid) || contact, contact.uid);
+        openChatDot.style.display = initOnline ? 'block' : 'none';
     }
     if (typeof updateChatPinUI === 'function') updateChatPinUI();
     startBioBubbleTimer();
@@ -9103,6 +9252,10 @@ export function openDirectChat(contact) {
     }
     
     if (contactStatusUnsubscribe) contactStatusUnsubscribe();
+    if (activeChatRtdbPresenceUnsubscribe) {
+        activeChatRtdbPresenceUnsubscribe();
+        activeChatRtdbPresenceUnsubscribe = null;
+    }
     if (activeChatActivityUnsubscribe) activeChatActivityUnsubscribe();
     if (blockedByContactUnsubscribe) blockedByContactUnsubscribe();
     if (activeContactActivityTimer) {
@@ -9112,6 +9265,21 @@ export function openDirectChat(contact) {
     activeContactActivity = null;
     activeContactUserData = null;
     isBlockedByActiveContact = false;
+
+    if (typeof rtdb !== 'undefined') {
+        try {
+            const presRef = ref(rtdb, `presence/${contact.uid}`);
+            activeChatRtdbPresenceUnsubscribe = onValue(presRef, (pSnap) => {
+                const pVal = pSnap.val();
+                if (pVal) {
+                    rtdbContactPresenceMap.set(contact.uid, pVal);
+                } else {
+                    rtdbContactPresenceMap.delete(contact.uid);
+                }
+                refreshDirectChatStatus();
+            });
+        } catch (_) {}
+    }
 
     blockedByContactUnsubscribe = onSnapshot(
         doc(db, 'users', contact.uid, 'blocked', currentUser.uid),
@@ -9157,6 +9325,7 @@ export function openDirectChat(contact) {
     contactStatusUnsubscribe = onSnapshot(doc(db, 'users', contact.uid), (snap) => {
         if (snap.exists()) {
             activeContactUserData = snap.data();
+            contactUserDataMap.set(contact.uid, activeContactUserData);
             refreshDirectChatStatus();
 
             const liveAvatar = activeContactUserData.avatar || '';
@@ -9167,11 +9336,17 @@ export function openDirectChat(contact) {
                 activeChatContact.avatar = liveAvatar;
                 activeChatContact.name = liveName;
                 activeChatContact.status = liveBio;
+                activeChatContact.online = activeContactUserData.online;
+                activeChatContact.lastSeen = activeContactUserData.lastSeen;
+                activeChatContact.ghostMode = activeContactUserData.ghostMode;
             }
 
             contact.avatar = liveAvatar;
             contact.name = liveName;
             contact.status = liveBio;
+            contact.online = activeContactUserData.online;
+            contact.lastSeen = activeContactUserData.lastSeen;
+            contact.ghostMode = activeContactUserData.ghostMode;
 
             const curAvatarEl = document.getElementById('chat-window-avatar');
             const curNameEl = document.getElementById('chat-window-name');
@@ -9179,7 +9354,7 @@ export function openDirectChat(contact) {
                 setAvatarContent(curAvatarEl, liveAvatar, liveName, 'chat-window-avatar-initial');
                 const chatDot = document.getElementById('chat-window-online-dot');
                 if (chatDot) {
-                    const isOnline = activeContactUserData && activeContactUserData.online && !activeContactUserData.ghostMode && !blockedContactsSet.has(contact.uid) && !isBlockedByActiveContact;
+                    const isOnline = isContactTrulyOnline(activeContactUserData, contact.uid);
                     chatDot.style.display = isOnline ? 'block' : 'none';
                 }
             }
@@ -9192,7 +9367,7 @@ export function openDirectChat(contact) {
                 setAvatarContent(listAvatarEl, liveAvatar, liveName, `avatar-initial-${contact.uid}`);
                 const listDot = document.getElementById(`online-dot-${contact.uid}`);
                 if (listDot) {
-                    const isOnline = activeContactUserData && activeContactUserData.online && !activeContactUserData.ghostMode;
+                    const isOnline = isContactTrulyOnline(activeContactUserData, contact.uid);
                     listDot.style.display = isOnline ? 'block' : 'none';
                 }
             }
@@ -11047,9 +11222,7 @@ export function updateContactProfileBlockedUI(contactUid) {
         if (presenceEl) presenceEl.innerText = 'Bloqueado';
         if (onlineDotEl) onlineDotEl.style.display = 'none';
     } else {
-        if (presenceEl) {
-            presenceEl.innerText = (activeContactProfileData && activeContactProfileData.online) ? 'Online agora' : 'Visto recentemente';
-        }
+        refreshContactProfilePresenceUI(contactUid);
     }
     if (window.lucide) lucide.createIcons();
 }
@@ -13492,7 +13665,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.137';
+export const CURRENT_APP_VERSION = '1.0.138';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -21162,6 +21335,10 @@ function closeChat() {
     currentChatEphemeralDuration = 'off';
     updateChatEphemeralUI('off');
     if (contactStatusUnsubscribe) contactStatusUnsubscribe();
+    if (activeChatRtdbPresenceUnsubscribe) {
+        activeChatRtdbPresenceUnsubscribe();
+        activeChatRtdbPresenceUnsubscribe = null;
+    }
     if (activeChatActivityUnsubscribe) activeChatActivityUnsubscribe();
     if (blockedByContactUnsubscribe) {
         blockedByContactUnsubscribe();
@@ -23086,6 +23263,8 @@ if (typeof window !== 'undefined') {
     window.sendPixMessage = sendPixMessage;
     window.openContactProfile = openContactProfile;
     window.closeContactProfile = closeContactProfile;
+    window.isContactTrulyOnline = isContactTrulyOnline;
+    window.refreshContactProfilePresenceUI = refreshContactProfilePresenceUI;
     window.updateChatBioBubble = updateChatBioBubble;
     window.startBioBubbleTimer = startBioBubbleTimer;
     window.getBioBubbleTimer = () => bioBubbleTimer;
