@@ -2624,6 +2624,21 @@ input.input-invalid:focus {
     box-shadow: 0 0 15px rgba(255, 59, 48, 0.4);
 }
 
+.status-caption-setting-item {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px;
+}
+
+.status-caption-setting-item input[type="text"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    text-align: left !important;
+    box-sizing: border-box;
+    padding: 10px 14px;
+}
+
 .status-media-setting-item {
     display: flex !important;
     flex-direction: column !important;
@@ -9750,6 +9765,13 @@ body.theme-rgb .ephemeral-save-btn {
     align-items: stretch !important;
     gap: 10px;
     margin-bottom: 12px;
+}
+
+.story-duration-setting-item .setting-info {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 8px !important;
 }
 
 .story-duration-chips {

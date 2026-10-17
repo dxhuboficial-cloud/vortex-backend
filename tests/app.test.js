@@ -7240,6 +7240,11 @@ test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com 
   assert.ok(doc.getElementById('status-media-label-text'), '#status-media-label-text deve existir');
   assert.ok(doc.getElementById('choose-status-media-label'), '#choose-status-media-label deve existir');
   assert.ok(cssContent.includes('.status-media-setting-item'), 'style.css deve estilizar .status-media-setting-item em coluna');
+
+  // 7. Validar título "Legenda" em cima do input e "Duração do Story" ao lado do ícone verde (v1.0.128)
+  assert.ok(htmlContent.includes('class="setting-item status-caption-setting-item"'), 'O bloco de legenda do status deve usar a classe status-caption-setting-item');
+  assert.ok(cssContent.includes('.status-caption-setting-item'), 'style.css deve estilizar .status-caption-setting-item em coluna');
+  assert.ok(cssContent.includes('.story-duration-setting-item .setting-info'), 'style.css deve alinhar Duração do Story ao lado do ícone em linha');
 });
 
 
