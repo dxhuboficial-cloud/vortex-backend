@@ -7295,6 +7295,12 @@ test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com 
   assert.ok(htmlContent.includes('id="delete-contact-trigger"'), 'index.html deve ter a opção #delete-contact-trigger no menu do cabeçalho do chat');
   assert.ok(cssContent.includes('.delete-contact-banner-btn'), 'style.css deve estilizar .delete-contact-banner-btn');
   assert.ok(jsContent.includes('async function deleteBlockedContact'), 'script.js deve implementar deleteBlockedContact');
+
+  // 15. Validar organização dos textos e botão de renovação no banner de vencimento VIP (v1.0.136)
+  assert.ok(htmlContent.includes('class="vip-grace-top"'), 'index.html deve agrupar o ícone e textos dentro de .vip-grace-top');
+  assert.ok(cssContent.includes('.vip-grace-top'), 'style.css deve estilizar .vip-grace-top');
+  assert.ok(cssContent.match(/\.vip-grace-banner\s*\{[^}]*flex-direction:\s*column/), '.vip-grace-banner deve ter flex-direction: column');
+  assert.ok(cssContent.match(/\.vip-grace-renew-btn\s*\{[^}]*width:\s*100%/), '.vip-grace-renew-btn deve ocupar 100% da largura na parte inferior do card');
 });
 
 
