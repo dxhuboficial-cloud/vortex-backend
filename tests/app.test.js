@@ -7430,7 +7430,8 @@ test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com 
   // 28. Padronização dos Botões em Minhas Compras e Correção do Título Amassado no Celular (v1.0.149)
   // 29. Bloqueio de Letras no Número da Casa no Carrinho e Teclado Numérico no Celular (v1.0.150)
   // 30. Organização dos Botões na Loja (Apenas Catálogo e Conversar) (v1.0.151)
-  assert.strictEqual(versionJson.version, '1.0.151', 'version.json deve ser 1.0.151');
+  // 31. Correção e Otimização da Interface do Formulário Comercial para Celular (v1.0.152)
+  assert.strictEqual(versionJson.version, '1.0.152', 'version.json deve ser 1.0.152');
 });
 
 test('Formulários Comerciais para Conta Empresa: Permissões, templates, card interativo no chat e preenchimento de respostas (v1.0.142)', () => {
@@ -8116,6 +8117,75 @@ test('Organização dos Botões na Loja (Apenas Catálogo e Conversar) e Layout 
   await win.openStorefront('seller_buy_enabled_2', mockSellerBuyEnabled);
   assert.strictEqual(chatBtn.style.display, 'none', 'Botão Conversar deve ser ocultado quando o usuário for o próprio vendedor');
 });
+
+test('Correção e Otimização da Interface do Formulário Comercial para Celular (v1.0.152)', async () => {
+  const env = createTestEnvironment();
+  const doc = env.sandbox.window.document;
+  const win = env.sandbox.window;
+
+  // 1. Verificação de regras CSS essenciais para Mobile no style.css
+  assert.ok(cssContent.includes('.company-form-creator-card'), 'style.css deve conter .company-form-creator-card');
+  assert.ok(cssContent.includes('padding: 0 !important;'), 'style.css deve remover padding duplo do modal');
+  assert.ok(cssContent.includes('.company-form-field-row'), 'style.css deve conter .company-form-field-row');
+  assert.ok(cssContent.includes('flex-direction: column;'), 'style.css deve definir flex-direction: column (mobile-first) para .company-form-field-row');
+  assert.ok(cssContent.includes('.company-form-templates-chips'), 'style.css deve conter .company-form-templates-chips');
+  assert.ok(cssContent.includes('overflow-x: auto;'), 'style.css deve definir rolagem horizontal para os templates');
+  assert.ok(cssContent.includes('flex-wrap: nowrap;'), 'style.css deve manter templates em linha única no mobile');
+  assert.ok(cssContent.includes('.company-form-modal-footer'), 'style.css deve conter .company-form-modal-footer');
+  assert.ok(cssContent.includes('background: #121420;'), 'style.css deve ter fundo opaco no rodapé para não vazar conteúdo');
+  assert.ok(cssContent.includes('.company-form-textarea'), 'style.css deve conter .company-form-textarea');
+  assert.ok(cssContent.includes('font-family: inherit;'), 'style.css deve herdar tipografia no textarea');
+  assert.ok(cssContent.includes('resize: none;'), 'style.css deve desativar redimensionamento quebrado no textarea');
+
+  // 2. Verificação de responsividade para telas maiores (@media min-width: 600px)
+  assert.ok(cssContent.includes('@media (min-width: 600px)'), 'style.css deve ter media query para telas maiores');
+  assert.ok(cssContent.includes('flex-direction: row;'), 'style.css deve voltar para row em telas maiores');
+
+  // 3. Verificação no DOM e Abertura do Modal de Criação de Formulário
+  const modal = doc.getElementById('company-form-creator-modal');
+  assert.ok(modal, '#company-form-creator-modal deve existir no DOM');
+
+  const fieldsContainer = doc.getElementById('company-form-fields-container');
+  assert.ok(fieldsContainer, '#company-form-fields-container deve existir no DOM');
+
+  // 4. Teste de Abertura com Conta Empresa
+  win.setCurrentUser({ uid: 'biz_user_1', displayName: 'Empresa Teste', email: 'empresa@teste.com' });
+  win.setCurrentProfile({
+    uid: 'biz_user_1',
+    name: 'Empresa Teste',
+    accountType: 'business'
+  });
+  win.setActiveChatContact({ uid: 'client_user_2', name: 'Cliente Teste' });
+
+  win.openCompanyFormCreator();
+  assert.strictEqual(modal.style.display, 'flex', 'Modal deve estar visível como flex');
+  assert.ok(modal.classList.contains('active'), 'Modal deve ter classe active');
+
+  // 5. Teste de Templates Rápidos
+  win.applyCompanyFormTemplate('satisfaction_survey');
+  const titleInput = doc.getElementById('company-form-title-input');
+  assert.strictEqual(titleInput.value, 'Pesquisa de Satisfação', 'Input de título deve refletir o template aplicado');
+
+  const fieldsCountEl = doc.getElementById('company-form-fields-count');
+  assert.ok(fieldsCountEl, '#company-form-fields-count deve existir');
+  const initialCount = parseInt(fieldsCountEl.innerText || '0', 10);
+  assert.ok(initialCount > 0, 'Template de pesquisa deve conter perguntas');
+  assert.ok(fieldsContainer.innerHTML.includes('company-form-field-row'), 'Campos do template devem conter .company-form-field-row');
+  assert.ok(fieldsContainer.innerHTML.includes('company-form-sublabel'), 'Campos do template devem conter rótulos .company-form-sublabel');
+
+  // 6. Teste de Adicionar Pergunta
+  const addBtn = doc.getElementById('company-form-add-field-btn');
+  assert.ok(addBtn, '#company-form-add-field-btn deve existir');
+  await addBtn.dispatchEvent('click');
+  const newCount = parseInt(fieldsCountEl.innerText || '0', 10);
+  assert.strictEqual(newCount, initialCount + 1, 'Contador de perguntas deve ser incrementado após adicionar pergunta');
+  assert.ok(fieldsContainer.innerHTML.includes('data-field-index'), 'Container deve conter data-field-index atualizado');
+
+  // 7. Fechamento do Modal
+  win.closeCompanyFormCreator();
+  assert.strictEqual(modal.style.display, 'none', 'Modal deve ser ocultado ao fechar');
+});
+
 
 
 
