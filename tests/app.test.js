@@ -7281,6 +7281,13 @@ test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com 
   assert.ok(cssContent.match(/\.notification-card\.card-group-add\s*\{[^}]*#bf5af2/i), 'Notificação de grupo deve ser roxa (#bf5af2)');
   assert.ok(cssContent.match(/\.notification-card\.card-comment\s*\{[^}]*#34c759/i), 'Notificação de comentário deve ser verde (#34c759)');
   assert.ok(cssContent.match(/\.notification-card\.card-story-like\s*\{[^}]*#ff2d85/i), 'Notificação de curtida de story deve ser rosa (#ff2d85)');
+
+  // 13. Validar sincronização em tempo real da foto de perfil nos posts (v1.0.134)
+  assert.ok(jsContent.includes('function getLiveAuthorAvatar'), 'script.js deve implementar getLiveAuthorAvatar');
+  assert.ok(jsContent.includes('function updateAuthorAvatarsInDOM'), 'script.js deve implementar updateAuthorAvatarsInDOM');
+  assert.ok(jsContent.includes('async function syncUserAvatarToPostsAndStories'), 'script.js deve implementar syncUserAvatarToPostsAndStories');
+  assert.ok(jsContent.includes('class="feed-avatar" data-author-uid="'), '.feed-avatar nos posts deve ter data-author-uid para atualização em tempo real');
+  assert.ok(jsContent.includes('class="post-author-avatar" data-author-uid="'), '.post-author-avatar deve ter data-author-uid para atualização em tempo real');
 });
 
 

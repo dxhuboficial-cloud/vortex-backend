@@ -2677,6 +2677,9 @@ function updateProfileDOM() {
     if (nameEl) nameEl.innerText = `${currentProfile.name} ${currentProfile.surname}`.trim();
     if (avatarEl) avatarEl.style.backgroundImage = currentProfile.avatar ? `url('${currentProfile.avatar}')` : '';
     if (editPreview) editPreview.style.backgroundImage = currentProfile.avatar ? `url('${currentProfile.avatar}')` : '';
+    if (currentUser && currentUser.uid && currentProfile.avatar && typeof updateAuthorAvatarsInDOM === 'function') {
+        updateAuthorAvatarsInDOM(currentUser.uid, currentProfile.avatar);
+    }
 
     const isVip = checkIsVipUser(currentProfile);
     const sub = getVipSubscriptionState(currentProfile);
@@ -5034,12 +5037,13 @@ function listenToStories() {
             if (!visibleStories.length) return;
 
             const author = visibleStories[0];
+            const liveStoryAvatar = getLiveAuthorAvatar(uid, author.authorAvatar);
 
             const item = document.createElement('div');
             item.className = 'story-item';
             item.innerHTML = `
                 <div class="story-ring active">
-                    <div class="avatar" style="background-image: url('${author.authorAvatar || ''}');" role="img"></div>
+                    <div class="avatar" data-author-uid="${uid}" style="background-image: url('${liveStoryAvatar}');" role="img"></div>
                 </div>
                 <span>${author.authorName}</span>
             `;
@@ -5087,7 +5091,10 @@ function openStoryViewer(stories, author, options = {}) {
     const previewFooter = document.getElementById('story-preview-footer');
 
     if (usernameEl) usernameEl.innerText = author?.authorName || currentProfile?.name || 'Você';
-    if (avatarEl) avatarEl.style.backgroundImage = (author?.authorAvatar || currentProfile?.avatar) ? `url('${author?.authorAvatar || currentProfile?.avatar}')` : '';
+    const storyAvatarUrl = (isPreview || isMyStory)
+        ? (currentProfile?.avatar || author?.authorAvatar || '')
+        : getLiveAuthorAvatar(authorUid, author?.authorAvatar || currentProfile?.avatar || '');
+    if (avatarEl) avatarEl.style.backgroundImage = storyAvatarUrl ? `url('${storyAvatarUrl}')` : '';
 
     const storyBadge = document.getElementById('story-verified-badge');
     if (storyBadge) {
@@ -5097,8 +5104,13 @@ function openStoryViewer(stories, author, options = {}) {
         updateVerifiedBadgeElement(storyBadge, storyUser);
         if (!isPreview && !isMyStory && author?.authorUid) {
             getDoc(doc(db, 'users', author.authorUid)).then(snap => {
-                if (snap.exists() && storyBadge) {
-                    updateVerifiedBadgeElement(storyBadge, snap.data());
+                if (snap.exists()) {
+                    const uData = snap.data();
+                    if (storyBadge) updateVerifiedBadgeElement(storyBadge, uData);
+                    if (uData.avatar) {
+                        updateAuthorAvatarsInDOM(author.authorUid, uData.avatar);
+                        if (avatarEl) avatarEl.style.backgroundImage = `url('${uData.avatar}')`;
+                    }
                 }
             }).catch(() => {});
         }
@@ -16864,7 +16876,41 @@ window.getCurrentProfile = () => currentProfile;
 window.renderPostsFeed = renderPostsFeed;
 
 export const authorVipCache = new Map();
+export const authorAvatarCache = new Map();
+let cachedFeedPosts = [];
 const authorListenersMap = new Map();
+
+export function getLiveAuthorAvatar(authorUid, fallbackAvatar = '') {
+    if (authorUid && currentUser && authorUid === currentUser.uid && currentProfile && currentProfile.avatar) {
+        return currentProfile.avatar;
+    }
+    if (authorUid && authorAvatarCache.has(authorUid)) {
+        const cached = authorAvatarCache.get(authorUid);
+        if (cached) return cached;
+    }
+    return fallbackAvatar || '';
+}
+
+export function updateAuthorAvatarsInDOM(authorUid, avatarUrl) {
+    if (!authorUid || !avatarUrl) return;
+    authorAvatarCache.set(authorUid, avatarUrl);
+    if (Array.isArray(cachedFeedPosts)) {
+        cachedFeedPosts.forEach(p => {
+            if (p && p.authorUid === authorUid) {
+                p.authorAvatar = avatarUrl;
+            }
+        });
+    }
+    if (typeof document !== 'undefined') {
+        const avatars = document.querySelectorAll(`.feed-avatar[data-author-uid="${authorUid}"], .post-author-avatar[data-author-uid="${authorUid}"], .story-item .avatar[data-author-uid="${authorUid}"]`);
+        avatars.forEach(el => {
+            el.style.backgroundImage = `url('${avatarUrl}')`;
+        });
+    }
+}
+
+window.getLiveAuthorAvatar = getLiveAuthorAvatar;
+window.updateAuthorAvatarsInDOM = updateAuthorAvatarsInDOM;
 
 export function isAuthorVipUser(authorUid, data = {}) {
     if (authorUid && currentUser && authorUid === currentUser.uid) {
@@ -16902,6 +16948,9 @@ export function syncFeedAuthorsVipStatus(posts = []) {
                     const uData = snap.data();
                     const isVip = checkIsVipUser(uData);
                     authorVipCache.set(uid, isVip);
+                    if (uData.avatar) {
+                        updateAuthorAvatarsInDOM(uid, uData.avatar);
+                    }
                     const badges = document.querySelectorAll(`.verified-badge[data-author-uid="${uid}"]`);
                     badges.forEach(b => {
                         updateVerifiedBadgeElement(b, uData);
@@ -16940,6 +16989,7 @@ function resolvePostChunkedMedia(container, postsList) {
 }
 
 function renderPostsFeed(posts = []) {
+    cachedFeedPosts = posts;
     const feedList = document.getElementById('feed-list');
     const countLabel = document.getElementById('posts-count-label');
     const previewFeed = document.getElementById('posts-feed-list');
@@ -16959,7 +17009,8 @@ function renderPostsFeed(posts = []) {
                 const authorName = post.authorName || 'Usuário';
                 const isPostAuthorVip = isAuthorVipUser(post.authorUid, post);
                 const isPostAuthorAdmin = checkIsAdminUser({ uid: post.authorUid, name: authorName, email: post.authorEmail, username: post.authorUsername });
-                const avatar = post.authorAvatar ? `style="background-image: url('${post.authorAvatar}')"` : '';
+                const resolvedAvatar = getLiveAuthorAvatar(post.authorUid, post.authorAvatar);
+                const avatar = resolvedAvatar ? `style="background-image: url('${resolvedAvatar}')"` : '';
                 const likes = Array.isArray(post.likes) ? post.likes.length : 0;
                 const comments = (Array.isArray(post.comments) ? post.comments : []).filter(c => !isUserAccountDeleted(c.authorUid) && !c.isDeleted && !c.deleted);
                 const caption = post.caption || '';
@@ -16985,7 +17036,7 @@ function renderPostsFeed(posts = []) {
                     <article class="post-card" id="preview-post-card-${post.id}">
                         <div class="post-head">
                             <div class="post-author">
-                                <div class="post-author-avatar" ${avatar}></div>
+                                <div class="post-author-avatar" data-author-uid="${post.authorUid || ''}" ${avatar}></div>
                                 <div>
                                     <div class="post-author-name">
                                         <span>${escapeHTML(authorName)}</span>
@@ -17064,7 +17115,8 @@ function renderPostsFeed(posts = []) {
         const authorName = post.authorName || 'Usuário';
         const isPostAuthorVip = isAuthorVipUser(post.authorUid, post);
         const isPostAuthorAdmin = checkIsAdminUser({ uid: post.authorUid, name: authorName, email: post.authorEmail, username: post.authorUsername });
-        const avatar = post.authorAvatar ? `style="background-image: url('${post.authorAvatar}')"` : '';
+        const resolvedAvatar = getLiveAuthorAvatar(post.authorUid, post.authorAvatar);
+        const avatar = resolvedAvatar ? `style="background-image: url('${resolvedAvatar}')"` : '';
         const likes = Array.isArray(post.likes) ? post.likes.length : 0;
         const rawComments = (Array.isArray(post.comments) ? post.comments : []).filter(c => !isUserAccountDeleted(c.authorUid) && !c.isDeleted && !c.deleted);
         const sortedComments = getSortedPostComments(rawComments);
@@ -17092,7 +17144,7 @@ function renderPostsFeed(posts = []) {
             <article class="feed-card" id="post-card-${post.id}">
                 <div class="feed-header">
                     <div class="feed-author">
-                        <div class="feed-avatar" ${avatar}></div>
+                        <div class="feed-avatar" data-author-uid="${post.authorUid || ''}" ${avatar}></div>
                         <div>
                             <div class="feed-username">
                                 <span>${escapeHTML(authorName)}</span>
@@ -17892,7 +17944,8 @@ export function openPostShareModal(post) {
     const authorName = post.authorName || 'Usuário';
     if (authorEl) authorEl.innerText = authorName;
     if (avatarEl) {
-        avatarEl.style.backgroundImage = post.authorAvatar ? `url('${post.authorAvatar}')` : '';
+        const liveAvatar = getLiveAuthorAvatar(post.authorUid, post.authorAvatar);
+        avatarEl.style.backgroundImage = liveAvatar ? `url('${liveAvatar}')` : '';
     }
     if (captionEl) {
         captionEl.innerText = post.caption ? `"${post.caption}"` : 'Confira esta publicação no VORTEX VIP!';
@@ -19735,6 +19788,10 @@ document.getElementById('save-profile-btn')?.addEventListener('click', async () 
         website3Title
     };
     updateProfileDOM();
+    if (currentUser && currentUser.uid && currentProfile.avatar) {
+        updateAuthorAvatarsInDOM(currentUser.uid, currentProfile.avatar);
+        syncUserAvatarToPostsAndStories(currentUser.uid, currentProfile.avatar);
+    }
     showToast("Perfil Salvo", "Dados atualizados com sucesso!", "green");
     document.getElementById('profile-edit-panel')?.classList.remove('active');
 });
@@ -19793,6 +19850,34 @@ export async function compressImage(file, maxSize = 512, quality = 0.75) {
     });
 }
 
+export async function syncUserAvatarToPostsAndStories(uid, avatarDataUrl) {
+    if (!uid || !avatarDataUrl || typeof collection !== 'function' || typeof query !== 'function' || typeof where !== 'function' || typeof getDocs !== 'function' || typeof db === 'undefined') return;
+    try {
+        const postsSnap = await getDocs(query(collection(db, 'posts'), where('authorUid', '==', uid)));
+        if (postsSnap && typeof postsSnap.forEach === 'function') {
+            postsSnap.forEach(pDoc => {
+                if (pDoc && pDoc.ref) {
+                    updateDoc(pDoc.ref, { authorAvatar: avatarDataUrl }).catch(() => {});
+                }
+            });
+        }
+    } catch (e) {
+        // Silencioso
+    }
+    try {
+        const storiesSnap = await getDocs(query(collection(db, 'stories'), where('authorUid', '==', uid)));
+        if (storiesSnap && typeof storiesSnap.forEach === 'function') {
+            storiesSnap.forEach(sDoc => {
+                if (sDoc && sDoc.ref) {
+                    updateDoc(sDoc.ref, { authorAvatar: avatarDataUrl }).catch(() => {});
+                }
+            });
+        }
+    } catch (e) {
+        // Silencioso
+    }
+}
+
 export async function updateProfileAvatar(avatarDataUrl) {
     if (!avatarDataUrl) return;
     currentProfile.avatar = avatarDataUrl;
@@ -19803,11 +19888,13 @@ export async function updateProfileAvatar(avatarDataUrl) {
     if (userAvatar) userAvatar.style.backgroundImage = `url('${avatarDataUrl}')`;
 
     if (currentUser && currentUser.uid) {
+        updateAuthorAvatarsInDOM(currentUser.uid, avatarDataUrl);
         try {
             await updateDoc(doc(db, 'users', currentUser.uid), {
                 avatar: avatarDataUrl,
                 updatedAt: Date.now()
             });
+            syncUserAvatarToPostsAndStories(currentUser.uid, avatarDataUrl);
             showToast('Foto atualizada', 'Sua foto de perfil foi salva!', 'green');
         } catch (err) {
             console.error('Erro ao salvar foto de perfil no Firestore:', err);
@@ -19815,6 +19902,8 @@ export async function updateProfileAvatar(avatarDataUrl) {
         }
     }
 }
+
+window.updateProfileAvatar = updateProfileAvatar;
 
 const profileEditAvatarPreview = document.getElementById('profile-edit-avatar-preview');
 if (profileEditAvatarPreview) {
