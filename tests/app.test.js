@@ -7252,6 +7252,11 @@ test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com 
   assert.ok(jsContent.includes('class="contact-request-actions"'), 'Os botões Aceitar e Recusar devem ficar em .contact-request-actions');
   assert.ok(cssContent.includes('.member-list-item.contact-request-item'), 'style.css deve posicionar .contact-request-item em coluna');
   assert.ok(cssContent.includes('.contact-request-actions'), 'style.css deve estilizar a linha inferior de botões .contact-request-actions');
+
+  // 9. Validar organização de Temas VORTEX VIP e Fonte de Texto Animada VIP nas Configurações (v1.0.130)
+  assert.ok(htmlContent.includes('class="vip-setting-header-row"'), 'Os cards VIP devem usar .vip-setting-header-row no cabeçalho');
+  assert.ok(cssContent.includes('.setting-item.setting-vip-themes'), 'style.css deve organizar .setting-vip-themes em coluna');
+  assert.ok(cssContent.includes('.setting-item.setting-vip-fonts'), 'style.css deve organizar .setting-vip-fonts em coluna');
 });
 
 

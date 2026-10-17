@@ -8387,36 +8387,83 @@ body.theme-rgb .chat-tab-pill.active {
 /* ==========================================================================
    Seletores VIP nas Configurações (#vip-theme-selector & #vip-font-selector)
    ========================================================================== */
+.setting-item.setting-vip-themes,
+.setting-item.setting-vip-fonts {
+    display: flex;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+    gap: 12px;
+    padding: 15px 16px;
+}
+.setting-item.setting-vip-themes .setting-info,
+.setting-item.setting-vip-fonts .setting-info {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+}
+.vip-setting-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+}
+.setting-info .vip-setting-title {
+    font-size: 0.96rem;
+    font-weight: 600;
+    color: #ffffff;
+}
+.setting-info .vip-exclusive-tag,
 .vip-exclusive-tag {
     background: linear-gradient(135deg, #ffd700, #ff8800);
-    color: #000;
-    font-size: 0.68rem;
-    font-weight: 700;
-    padding: 2px 6px;
-    border-radius: 6px;
+    color: #000 !important;
+    font-size: 0.68rem !important;
+    font-weight: 800 !important;
+    padding: 3px 9px;
+    border-radius: 999px;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
+    gap: 3px;
+    white-space: nowrap;
+    line-height: 1.1;
+    flex-shrink: 0;
 }
 .vip-theme-selector,
 .vip-font-selector {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-top: 8px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    width: 100%;
+    margin-top: 2px;
 }
 .vip-theme-option,
 .vip-font-option {
     background: rgba(255, 255, 255, 0.06);
     border: 1px solid rgba(255, 255, 255, 0.12);
     color: #ddd;
-    padding: 6px 10px;
-    border-radius: 8px;
-    font-size: 0.78rem;
+    padding: 9px 10px;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    font-weight: 500;
     cursor: pointer;
     transition: all 0.2s ease;
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    justify-content: center;
+    gap: 5px;
+    width: 100%;
+    box-sizing: border-box;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.vip-font-selector .vip-font-option:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
 }
 .vip-theme-option:hover,
 .vip-font-option:hover {
