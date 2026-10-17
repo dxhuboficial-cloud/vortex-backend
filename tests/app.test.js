@@ -7301,6 +7301,13 @@ test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com 
   assert.ok(cssContent.includes('.vip-grace-top'), 'style.css deve estilizar .vip-grace-top');
   assert.ok(cssContent.match(/\.vip-grace-banner\s*\{[^}]*flex-direction:\s*column/), '.vip-grace-banner deve ter flex-direction: column');
   assert.ok(cssContent.match(/\.vip-grace-renew-btn\s*\{[^}]*width:\s*100%/), '.vip-grace-renew-btn deve ocupar 100% da largura na parte inferior do card');
+
+  // 16. Validar que o botão Atualizar some depois que for atualizado e que CURRENT_APP_VERSION acompanha version.json (v1.0.137)
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
+  assert.ok(jsContent.includes(`CURRENT_APP_VERSION = '${versionJson.version}'`), 'CURRENT_APP_VERSION em script.js deve estar sincronizado com version.json');
+  assert.ok(jsContent.includes('function compareAppVersions'), 'script.js deve implementar compareAppVersions');
+  assert.ok(jsContent.includes('function getEffectiveAppVersion'), 'script.js deve implementar getEffectiveAppVersion');
+  assert.ok(jsContent.includes("localStorage.setItem('vortex_applied_version'"), 'triggerPwaUpdate deve salvar a versão aplicada para o botão Atualizar sumir após atualizar');
 });
 
 

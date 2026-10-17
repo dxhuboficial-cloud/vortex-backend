@@ -13492,10 +13492,56 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.106';
+export const CURRENT_APP_VERSION = '1.0.137';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
+let latestRemoteVersion = null;
+
+export function compareAppVersions(v1, v2) {
+    const parts1 = String(v1 || '0.0.0').split('.').map(n => parseInt(n, 10) || 0);
+    const parts2 = String(v2 || '0.0.0').split('.').map(n => parseInt(n, 10) || 0);
+    const len = Math.max(parts1.length, parts2.length);
+    for (let i = 0; i < len; i++) {
+        const a = parts1[i] || 0;
+        const b = parts2[i] || 0;
+        if (a > b) return 1;
+        if (a < b) return -1;
+    }
+    return 0;
+}
+
+export function getEffectiveAppVersion() {
+    let bestVersion = CURRENT_APP_VERSION;
+    try {
+        if (typeof document !== 'undefined' && typeof document.querySelector === 'function') {
+            const linkEl = document.querySelector('link[href*="style.css?v="]');
+            const scriptEl = document.querySelector('script[src*="script.js?v="]');
+            const href = (scriptEl && scriptEl.getAttribute('src')) || (linkEl && linkEl.getAttribute('href')) || '';
+            const match = href.match(/[?&]v=([0-9]+\.[0-9]+\.[0-9]+)/);
+            if (match && match[1] && compareAppVersions(match[1], bestVersion) > 0) {
+                bestVersion = match[1];
+            }
+        }
+        if (typeof localStorage !== 'undefined') {
+            const applied = localStorage.getItem('vortex_applied_version');
+            if (applied && compareAppVersions(applied, bestVersion) > 0) {
+                bestVersion = applied;
+            }
+        }
+    } catch (_) {}
+    return bestVersion;
+}
+
+function wasRecentlyUpdated() {
+    try {
+        if (typeof sessionStorage !== 'undefined') {
+            const ts = parseInt(sessionStorage.getItem('vortex_just_updated') || '0', 10);
+            if (ts && (Date.now() - ts) < 30000) return true;
+        }
+    } catch (_) {}
+    return false;
+}
 
 export function setDeferredPrompt(promptEvent) {
     pwaDeferredPrompt = promptEvent;
@@ -13581,7 +13627,7 @@ export function updateInstallUIVisibility() {
             return;
         }
 
-        // Instalado e sem atualização pendente
+        // Instalado e sem atualização pendente: ocultar o botão Atualizar
         if (headerBtn) headerBtn.style.display = 'none';
         if (settingRow) {
             settingRow.style.display = 'none';
@@ -13655,11 +13701,36 @@ export function closePwaIosModal() {
 }
 
 export async function triggerPwaUpdate() {
+    // Ocultar imediatamente o botão de Atualizar ao clicar
+    pwaUpdateAvailable = false;
+    const workerToActivate = pwaWaitingWorker;
+    pwaWaitingWorker = null;
+
+    try {
+        const targetVer = latestRemoteVersion || getEffectiveAppVersion();
+        if (typeof localStorage !== 'undefined' && targetVer) {
+            localStorage.setItem('vortex_applied_version', targetVer);
+        }
+        if (typeof sessionStorage !== 'undefined') {
+            sessionStorage.setItem('vortex_just_updated', String(Date.now()));
+        }
+    } catch (_) {}
+
+    updateInstallUIVisibility();
     showToast('Atualizando VORTEX VIP ⚡', 'Baixando a versão mais recente e reiniciando o aplicativo...', 'yellow');
 
     try {
-        if (pwaWaitingWorker) {
-            pwaWaitingWorker.postMessage({ type: 'SKIP_WAITING' });
+        if (typeof fetch === 'function') {
+            const verRes = await fetch('/version.json?t=' + Date.now(), { cache: 'no-store' }).catch(() => null);
+            if (verRes && verRes.ok) {
+                const verData = await verRes.json().catch(() => null);
+                if (verData && verData.version && typeof localStorage !== 'undefined') {
+                    localStorage.setItem('vortex_applied_version', verData.version);
+                }
+            }
+        }
+        if (workerToActivate) {
+            workerToActivate.postMessage({ type: 'SKIP_WAITING' });
         }
         if (pwaRegistration && typeof pwaRegistration.update === 'function') {
             await pwaRegistration.update();
@@ -13689,13 +13760,19 @@ export async function checkForAppUpdates(manual = false) {
         const res = await fetch('/version.json?t=' + Date.now(), { cache: 'no-store' });
         if (res.ok) {
             const data = await res.json();
-            if (data && data.version && data.version !== CURRENT_APP_VERSION) {
+            const effectiveVersion = getEffectiveAppVersion();
+            if (data && data.version && compareAppVersions(data.version, effectiveVersion) > 0 && !wasRecentlyUpdated()) {
+                latestRemoteVersion = data.version;
                 pwaUpdateAvailable = true;
                 updateInstallUIVisibility();
                 if (manual) {
                     showToast('Nova Versão Encontrada! ⚡', 'Versão ' + data.version + ' disponível. Toque em Atualizar!', 'yellow');
                 }
                 return true;
+            } else {
+                // Já está na versão mais recente: garantir que o botão Atualizar suma
+                pwaUpdateAvailable = false;
+                updateInstallUIVisibility();
             }
         }
     } catch (err) {
@@ -13703,13 +13780,13 @@ export async function checkForAppUpdates(manual = false) {
     }
 
     if (manual) {
-        showToast('Aplicativo Atualizado ✅', 'Você já está utilizando a versão mais recente do VORTEX VIP (v' + CURRENT_APP_VERSION + ').', 'green');
+        showToast('Aplicativo Atualizado ✅', 'Você já está utilizando a versão mais recente do VORTEX VIP (v' + getEffectiveAppVersion() + ').', 'green');
     }
     return false;
 }
 
 export async function triggerPwaInstall() {
-    if (isAppInstalledPwa() && pwaUpdateAvailable) {
+    if (pwaUpdateAvailable) {
         await triggerPwaUpdate();
         return;
     }
@@ -13748,9 +13825,15 @@ if (typeof window !== 'undefined') {
 
                 // 1. Se já existe um worker em espera
                 if (reg.waiting) {
-                    pwaWaitingWorker = reg.waiting;
-                    pwaUpdateAvailable = true;
-                    updateInstallUIVisibility();
+                    if (wasRecentlyUpdated()) {
+                        reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+                        pwaUpdateAvailable = false;
+                        updateInstallUIVisibility();
+                    } else {
+                        pwaWaitingWorker = reg.waiting;
+                        pwaUpdateAvailable = true;
+                        updateInstallUIVisibility();
+                    }
                 }
 
                 // 2. Se um novo worker for baixado
@@ -13759,6 +13842,12 @@ if (typeof window !== 'undefined') {
                     if (newWorker) {
                         newWorker.addEventListener('statechange', () => {
                             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                if (wasRecentlyUpdated()) {
+                                    newWorker.postMessage({ type: 'SKIP_WAITING' });
+                                    pwaUpdateAvailable = false;
+                                    updateInstallUIVisibility();
+                                    return;
+                                }
                                 pwaWaitingWorker = newWorker;
                                 pwaUpdateAvailable = true;
                                 updateInstallUIVisibility();
@@ -13780,6 +13869,8 @@ if (typeof window !== 'undefined') {
         navigator.serviceWorker.addEventListener('controllerchange', () => {
             if (!refreshing) {
                 refreshing = true;
+                pwaUpdateAvailable = false;
+                updateInstallUIVisibility();
                 window.location.reload();
             }
         });
@@ -13900,6 +13991,8 @@ if (typeof window !== 'undefined') {
     window.formatWebsiteLink = formatWebsiteLink;
     window.updateContactProfileSocialUI = updateContactProfileSocialUI;
     window.CURRENT_APP_VERSION = CURRENT_APP_VERSION;
+    window.compareAppVersions = compareAppVersions;
+    window.getEffectiveAppVersion = getEffectiveAppVersion;
     window.isPwaUpdateAvailable = isPwaUpdateAvailable;
     window.setPwaUpdateAvailable = setPwaUpdateAvailable;
     window.setPwaIsInstalled = setPwaIsInstalled;
