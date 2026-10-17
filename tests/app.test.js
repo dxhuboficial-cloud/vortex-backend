@@ -7428,7 +7428,8 @@ test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com 
 
   // 27. Opção para o Vendedor Ativar e Desativar o Botão de Compra da Loja (v1.0.148)
   // 28. Padronização dos Botões em Minhas Compras e Correção do Título Amassado no Celular (v1.0.149)
-  assert.strictEqual(versionJson.version, '1.0.149', 'version.json deve ser 1.0.149');
+  // 29. Bloqueio de Letras no Número da Casa no Carrinho e Teclado Numérico no Celular (v1.0.150)
+  assert.strictEqual(versionJson.version, '1.0.150', 'version.json deve ser 1.0.150');
 });
 
 test('Formulários Comerciais para Conta Empresa: Permissões, templates, card interativo no chat e preenchimento de respostas (v1.0.142)', () => {
@@ -7936,6 +7937,114 @@ test('Padronização dos Botões em Minhas Compras e Correção do Título Amass
   assert.ok(htmlContent.includes('class="catalog-store-control-title"'), '.catalog-store-control-title deve existir');
   assert.ok(htmlContent.includes('Botão de Compra da Loja'), 'Título deve ser Botão de Compra da Loja');
 });
+
+test('Bloqueio de Letras no Número da Casa no Carrinho e Teclado Numérico no Celular (v1.0.150)', () => {
+  const env = createTestEnvironment();
+  const doc = env.sandbox.window.document;
+  const win = env.sandbox.window;
+
+  // 1. Verificação dos atributos no HTML (#catalog-cart-number)
+  assert.ok(htmlContent.includes('id="catalog-cart-number"'), '#catalog-cart-number deve existir no HTML');
+  assert.ok(htmlContent.includes('inputmode="numeric"'), '#catalog-cart-number deve conter inputmode="numeric" para acionar teclado numérico no celular');
+  assert.ok(htmlContent.includes('pattern="[0-9]*"'), '#catalog-cart-number deve conter pattern="[0-9]*" para navegadores mobile');
+
+  const cartNumberInp = doc.getElementById('catalog-cart-number');
+  assert.ok(cartNumberInp, 'Elemento #catalog-cart-number deve existir no DOM');
+
+  // 2. Função de sanitização exportada sanitizeCatalogHouseNumber
+  const sanitizeHouseNumber = win.sanitizeCatalogHouseNumber;
+  assert.strictEqual(typeof sanitizeHouseNumber, 'function', 'sanitizeCatalogHouseNumber deve ser função');
+  assert.strictEqual(sanitizeHouseNumber('123'), '123', 'Dígitos numéricos devem ser preservados');
+  assert.strictEqual(sanitizeHouseNumber('123abc456'), '123456', 'Letras entre números devem ser removidas');
+  assert.strictEqual(sanitizeHouseNumber('Rua 10, Apto 204'), '10204', 'Espaços, pontuação e letras devem ser removidos');
+  assert.strictEqual(sanitizeHouseNumber('apenas_letras'), '', 'Texto sem dígitos deve retornar string vazia');
+  assert.strictEqual(sanitizeHouseNumber(null), '', 'null deve retornar string vazia');
+  assert.strictEqual(sanitizeHouseNumber(undefined), '', 'undefined deve retornar string vazia');
+  assert.strictEqual(sanitizeHouseNumber(789), '789', 'Número primitivo deve ser convertido e retornado como string');
+
+  // 3. Evento input em tempo real no DOM
+  cartNumberInp.value = '100A';
+  cartNumberInp.dispatchEvent('input');
+  assert.strictEqual(cartNumberInp.value, '100', 'Evento input deve remover letras digitadas imediatamente');
+
+  cartNumberInp.value = 'Rua 42, Bloco B, Apt 301';
+  cartNumberInp.dispatchEvent('input');
+  assert.strictEqual(cartNumberInp.value, '42301', 'Evento input deve sanitizar qualquer texto colado ou digitado');
+
+  // 4. Evento keydown: bloqueio preventDefault em letras e liberação de números e teclas de controle
+  let aPrevented = false;
+  let eventA = { key: 'a', defaultPrevented: false, preventDefault() { aPrevented = true; this.defaultPrevented = true; } };
+  cartNumberInp.dispatchEvent('keydown', eventA);
+  assert.strictEqual(aPrevented, true, 'Tecla "a" deve ser bloqueada no keydown');
+
+  let zPrevented = false;
+  let eventZ = { key: 'Z', defaultPrevented: false, preventDefault() { zPrevented = true; this.defaultPrevented = true; } };
+  cartNumberInp.dispatchEvent('keydown', eventZ);
+  assert.strictEqual(zPrevented, true, 'Tecla "Z" deve ser bloqueada no keydown');
+
+  let spacePrevented = false;
+  let eventSpace = { key: ' ', defaultPrevented: false, preventDefault() { spacePrevented = true; this.defaultPrevented = true; } };
+  cartNumberInp.dispatchEvent('keydown', eventSpace);
+  assert.strictEqual(spacePrevented, true, 'Tecla Espaço deve ser bloqueada no keydown');
+
+  let digitPrevented = false;
+  let eventDigit = { key: '7', defaultPrevented: false, preventDefault() { digitPrevented = true; this.defaultPrevented = true; } };
+  cartNumberInp.dispatchEvent('keydown', eventDigit);
+  assert.strictEqual(digitPrevented, false, 'Tecla numérica "7" não deve ser bloqueada');
+
+  let backspacePrevented = false;
+  let eventBackspace = { key: 'Backspace', defaultPrevented: false, preventDefault() { backspacePrevented = true; this.defaultPrevented = true; } };
+  cartNumberInp.dispatchEvent('keydown', eventBackspace);
+  assert.strictEqual(backspacePrevented, false, 'Tecla "Backspace" não deve ser bloqueada');
+
+  // 5. Evento paste: colagem de texto com letras é sanitizada
+  let pastePrevented = false;
+  let pasteEvent = {
+    clipboardData: {
+      getData: (format) => '123ABC456'
+    },
+    defaultPrevented: false,
+    preventDefault() { this.defaultPrevented = true; pastePrevented = true; }
+  };
+  cartNumberInp.value = '';
+  cartNumberInp.dispatchEvent('paste', pasteEvent);
+  assert.strictEqual(pastePrevented, true, 'Paste deve ter preventDefault acionado');
+  assert.strictEqual(cartNumberInp.value, '123456', 'Valor colado deve conter apenas números');
+
+  // 6. Submissão do carrinho: número com apenas letras é rejeitado como campo obrigatório
+  const submitBtn = doc.getElementById('catalog-cart-submit-btn');
+  assert.ok(submitBtn, '#catalog-cart-submit-btn deve existir');
+  const cartModal = doc.getElementById('catalog-cart-modal');
+  cartModal.style.display = 'flex'; // modal aberto
+
+  win.setCurrentUser({ uid: 'buyer_user_123', displayName: 'Cliente Teste' });
+  win.clearCatalogCart();
+  win.addToCatalogCart({
+    id: 'prod_test_number',
+    name: 'Produto Teste',
+    price: 50.0,
+    stock: 10
+  }, 'seller_test_user_456', { name: 'Vendedor Loja' });
+
+  doc.getElementById('catalog-cart-country').value = 'Brasil';
+  doc.getElementById('catalog-cart-cep').value = '01001-000';
+  doc.getElementById('catalog-cart-state').value = 'SP';
+  doc.getElementById('catalog-cart-city').value = 'São Paulo';
+  doc.getElementById('catalog-cart-street').value = 'Av Paulista';
+  doc.getElementById('catalog-cart-number').value = 'SEM_NUMERO'; // Apenas letras
+  doc.getElementById('catalog-cart-phone').value = '(11) 99999-9999';
+  doc.getElementById('catalog-cart-email').value = 'cliente@teste.com';
+  doc.getElementById('catalog-cart-age').value = '30';
+  doc.getElementById('catalog-cart-selected-payment').value = 'Pix';
+
+  const toastContainer = doc.getElementById('toast-container');
+  win.submitCatalogOrder();
+  const lastToast = toastContainer.children[0];
+  assert.ok(lastToast, 'Toast de erro deve ser exibido');
+  assert.ok(lastToast.innerHTML.includes('Campo Obrigatório'), 'Deve exibir toast de campo obrigatório');
+  assert.ok(lastToast.innerHTML.includes('Número da Casa'), 'Toast deve informar sobre o Número da Casa');
+});
+
 
 
 

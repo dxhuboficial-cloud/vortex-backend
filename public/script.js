@@ -3072,6 +3072,11 @@ export function sanitizeCatalogIntegerInput(val) {
     return String(val).replace(/\D/g, '');
 }
 
+export function sanitizeCatalogHouseNumber(val) {
+    if (val === null || val === undefined) return '';
+    return String(val).replace(/\D/g, '');
+}
+
 export function sanitizeCatalogDiscountInput(val) {
     if (val === null || val === undefined) return '';
     let s = String(val).replace(/[^0-9.,%]/g, '');
@@ -3844,7 +3849,7 @@ export async function submitCatalogOrder() {
         showToast('Erro', 'Vendedor do pedido não identificado.', 'red');
         return;
     }
-    if (cart.sellerUid === currentUser.uid) {
+    if (currentUser && cart.sellerUid === currentUser.uid) {
         showToast('Aviso', 'Você não pode comprar de si mesmo.', 'orange');
         return;
     }
@@ -3861,7 +3866,7 @@ export async function submitCatalogOrder() {
     let state = document.getElementById('catalog-cart-state')?.value.trim() || '';
     let city = document.getElementById('catalog-cart-city')?.value.trim() || '';
     let street = document.getElementById('catalog-cart-street')?.value.trim() || '';
-    let number = document.getElementById('catalog-cart-number')?.value.trim() || '';
+    let number = sanitizeCatalogHouseNumber(document.getElementById('catalog-cart-number')?.value || '').trim();
     let phone = document.getElementById('catalog-cart-phone')?.value.trim() || '';
     let email = document.getElementById('catalog-cart-email')?.value.trim() || '';
     let ageRaw = document.getElementById('catalog-cart-age')?.value.trim() || '';
@@ -6318,6 +6323,40 @@ export function initCatalog() {
                 v = v.replace(/^(\d{2})(\d{0,5})$/, '($1) $2');
             }
             e.target.value = v;
+        });
+    }
+
+    // Bloqueio de letras no número da casa do carrinho (v1.0.150)
+    const cartNumberInp = document.getElementById('catalog-cart-number');
+    if (cartNumberInp) {
+        cartNumberInp.addEventListener('input', (e) => {
+            const clean = sanitizeCatalogHouseNumber(e.target.value).slice(0, 15);
+            if (e.target.value !== clean) {
+                e.target.value = clean;
+            }
+        });
+        cartNumberInp.addEventListener('paste', (e) => {
+            const pasteData = (e.clipboardData || window.clipboardData)?.getData('text');
+            if (pasteData) {
+                e.preventDefault();
+                const clean = sanitizeCatalogHouseNumber(pasteData);
+                const start = e.target.selectionStart ?? e.target.value.length;
+                const end = e.target.selectionEnd ?? e.target.value.length;
+                const current = e.target.value || '';
+                const nextVal = current.substring(0, start) + clean + current.substring(end);
+                e.target.value = sanitizeCatalogHouseNumber(nextVal).slice(0, 15);
+                const newPos = Math.min(start + clean.length, e.target.value.length);
+                e.target.setSelectionRange?.(newPos, newPos);
+                e.target.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        });
+        cartNumberInp.addEventListener('keydown', (e) => {
+            const controlKeys = ['Backspace', 'Tab', 'Enter', 'Escape', 'Delete', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'];
+            if (controlKeys.includes(e.key)) return;
+            if (e.ctrlKey || e.metaKey) return;
+            if (!/^[0-9]$/.test(e.key)) {
+                e.preventDefault();
+            }
         });
     }
 
@@ -15038,7 +15077,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.149';
+export const CURRENT_APP_VERSION = '1.0.150';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -25718,6 +25757,7 @@ if (typeof window !== 'undefined') {
     // Variações e Validação Numérica do Catálogo (v1.0.143 / v1.0.144)
     window.sanitizeCatalogDecimalInput = sanitizeCatalogDecimalInput;
     window.sanitizeCatalogIntegerInput = sanitizeCatalogIntegerInput;
+    window.sanitizeCatalogHouseNumber = sanitizeCatalogHouseNumber;
     window.sanitizeCatalogDiscountInput = sanitizeCatalogDiscountInput;
     window.calculatePromoFromDiscount = calculatePromoFromDiscount;
     window.calculateDiscountFromPromo = calculateDiscountFromPromo;
