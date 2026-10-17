@@ -5144,6 +5144,17 @@ input:checked + .slider:before { transform: translateX(22px); }
 }
 
 /* Botão de Disparo para Escolher Música nos Compositores */
+.music-setting-item {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+}
+
+.music-setting-item .choose-music-trigger-btn,
+.music-setting-item .composer-selected-music-card {
+    margin-top: 0;
+}
+
 .choose-music-trigger-btn {
     display: inline-flex;
     align-items: center;

@@ -7229,6 +7229,11 @@ test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com 
   assert.ok(cssContent.includes('.catalog-field-label'), 'style.css deve conter regra para .catalog-field-label');
   assert.ok(cssContent.includes('.catalog-stock-check'), 'style.css deve conter regra para .catalog-stock-check');
   assert.ok(!cssContent.match(/\.catalog-field-label\s*\{[^}]*margin-bottom:\s*-[0-9]/), 'catalog-field-label não deve ter margin-bottom negativa');
+
+  // 5. Validar remoção do título lateral "Trilha Sonora (Música)" no painel Postar Status VIP (v1.0.126)
+  assert.ok(!htmlContent.includes('Trilha Sonora (Música)'), 'O título "Trilha Sonora (Música)" não deve existir no painel de Status');
+  assert.ok(doc.getElementById('status-add-music-btn'), 'O botão #status-add-music-btn deve continuar existindo');
+  assert.ok(cssContent.includes('.music-setting-item'), 'style.css deve estilizar .music-setting-item em coluna com largura total');
 });
 
 
