@@ -7427,7 +7427,8 @@ test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com 
   assert.ok(jsContent.includes('function calculateDiscountFromPromo'), 'script.js deve conter calculateDiscountFromPromo');
 
   // 27. Opção para o Vendedor Ativar e Desativar o Botão de Compra da Loja (v1.0.148)
-  assert.strictEqual(versionJson.version, '1.0.148', 'version.json deve ser 1.0.148');
+  // 28. Padronização dos Botões em Minhas Compras e Correção do Título Amassado no Celular (v1.0.149)
+  assert.strictEqual(versionJson.version, '1.0.149', 'version.json deve ser 1.0.149');
 });
 
 test('Formulários Comerciais para Conta Empresa: Permissões, templates, card interativo no chat e preenchimento de respostas (v1.0.142)', () => {
@@ -7885,6 +7886,55 @@ test('Opção para o Vendedor Desativar e Ativar o Botão de Compra da Loja e po
   cart = win.getCatalogCart();
   assert.strictEqual(cart.items.length, 1, 'Deve adicionar o item ao carrinho quando compras estiverem ativadas');
   assert.strictEqual(cart.items[0].productId, 'prod_test_1', 'Item correto deve estar no carrinho');
+});
+
+test('Padronização dos Botões em Minhas Compras e Correção do Título Amassado no Celular (v1.0.149)', () => {
+  const env = createTestEnvironment();
+  const doc = env.sandbox.window.document;
+  const win = env.sandbox.window;
+
+  // 1. Verificação das regras de CSS para os botões de ação em Minhas Compras
+  assert.ok(cssContent.includes('.catalog-order-actions'), 'style.css deve conter .catalog-order-actions');
+  assert.ok(cssContent.includes('.cat-view-order-btn') || cssContent.includes('.catalog-order-actions .catalog-primary-btn'), 'style.css deve conter regras para cat-view-order-btn');
+  assert.ok(cssContent.includes('.cat-pay-pix-btn') || cssContent.includes('.catalog-order-actions .catalog-secondary-btn'), 'style.css deve conter regras para cat-pay-pix-btn');
+  assert.ok(cssContent.includes('min-height: 38px') || cssContent.includes('height: 38px'), 'style.css deve definir altura padronizada de 38px para botões de ação de pedidos');
+
+  // 2. Verificação das regras de CSS para o título e card de controle da loja no celular
+  assert.ok(cssContent.includes('.catalog-store-control-card'), 'style.css deve conter .catalog-store-control-card');
+  assert.ok(cssContent.includes('.catalog-store-control-title'), 'style.css deve conter .catalog-store-control-title');
+  assert.ok(cssContent.includes('white-space: nowrap;'), 'style.css deve conter white-space: nowrap');
+  assert.ok(cssContent.includes('@media (min-width: 600px)'), 'style.css deve conter media query de 600px para o catálogo');
+
+  // 3. Renderização de card de compra com os dois botões (Ver detalhes e Pagar com Pix)
+  const container = doc.createElement('div');
+  const mockOrders = [
+    {
+      id: 'ord_test_101',
+      orderNumber: 'VX-185078',
+      createdAt: Date.now(),
+      status: 'new',
+      sellerName: 'DX HUB DIGITAL',
+      sellerPixKey: 'pix@dxhub.com',
+      total: 135.00,
+      items: [
+        { name: 'DX Hub Digital Defender', quantity: 3, price: 45.00 }
+      ]
+    }
+  ];
+
+  win.renderOrdersList(container, mockOrders, false);
+
+  assert.ok(container.innerHTML.includes('catalog-order-actions'), '.catalog-order-actions deve existir no card de pedido');
+  assert.ok(container.innerHTML.includes('cat-view-order-btn'), 'Botão Ver detalhes deve ser renderizado');
+  assert.ok(container.innerHTML.includes('cat-pay-pix-btn'), 'Botão Pagar com Pix deve ser renderizado quando sellerPixKey estiver presente e status for new');
+  assert.ok(container.innerHTML.includes('Ver detalhes'), 'Texto do botão deve conter Ver detalhes');
+  assert.ok(container.innerHTML.includes('Pagar com Pix'), 'Texto do botão deve conter Pagar com Pix');
+
+  // 4. Verificação no DOM do card de controle da loja (#catalog-store-buy-control)
+  const buyControl = doc.getElementById('catalog-store-buy-control');
+  assert.ok(buyControl, '#catalog-store-buy-control deve existir');
+  assert.ok(htmlContent.includes('class="catalog-store-control-title"'), '.catalog-store-control-title deve existir');
+  assert.ok(htmlContent.includes('Botão de Compra da Loja'), 'Título deve ser Botão de Compra da Loja');
 });
 
 

@@ -13013,9 +13013,57 @@ body.total-black .ringtone-select {
     color: var(--accent-color, #fff01f);
 }
 
+/* Ações dos Pedidos (Minhas Compras & Pedidos) */
 .catalog-order-actions {
     display: flex;
+    align-items: center;
     gap: 8px;
+    margin-top: 8px;
+}
+
+.catalog-order-actions .catalog-primary-btn,
+.catalog-order-actions .catalog-secondary-btn,
+.catalog-order-actions .cat-view-order-btn,
+.catalog-order-actions .cat-pay-pix-btn {
+    flex: 1 1 0;
+    min-width: 0;
+    height: 38px;
+    min-height: 38px;
+    max-height: 38px;
+    padding: 0 10px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    box-sizing: border-box;
+    white-space: nowrap;
+    text-decoration: none;
+}
+
+.catalog-order-actions .catalog-primary-btn span,
+.catalog-order-actions .catalog-secondary-btn span,
+.catalog-order-actions .cat-view-order-btn span,
+.catalog-order-actions .cat-pay-pix-btn span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1;
+}
+
+.catalog-order-actions .catalog-primary-btn i,
+.catalog-order-actions .catalog-primary-btn svg,
+.catalog-order-actions .catalog-secondary-btn i,
+.catalog-order-actions .catalog-secondary-btn svg,
+.catalog-order-actions .cat-view-order-btn i,
+.catalog-order-actions .cat-view-order-btn svg,
+.catalog-order-actions .cat-pay-pix-btn i,
+.catalog-order-actions .cat-pay-pix-btn svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
 }
 
 /* Detalhe do Pedido Modal */
@@ -15050,9 +15098,9 @@ body.total-black .ringtone-select {
 /* ===== CATÁLOGO: Controle de Ativação do Botão de Compra da Loja (v1.0.148) ===== */
 .catalog-store-control-card {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
     padding: 12px 14px;
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.1);
@@ -15063,46 +15111,70 @@ body.total-black .ringtone-select {
 .catalog-store-control-left {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 4px;
     min-width: 0;
+    width: 100%;
 }
 
 .catalog-store-control-title {
     display: flex;
     align-items: center;
-    gap: 6px;
-    font-size: 0.88rem;
+    gap: 7px;
+    font-size: 0.92rem;
     font-weight: 700;
     color: #fff;
+    white-space: nowrap;
 }
 
 .catalog-store-control-title i,
 .catalog-store-control-title svg {
-    width: 16px;
-    height: 16px;
+    width: 17px;
+    height: 17px;
     color: var(--accent-color, #fff01f);
     flex-shrink: 0;
 }
 
 .catalog-store-control-desc {
-    font-size: 0.76rem;
+    font-size: 0.78rem;
     color: var(--text-dim, #8e8e93);
-    line-height: 1.3;
+    line-height: 1.35;
+    word-break: break-word;
 }
 
 .catalog-store-buy-toggle {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 6px;
-    padding: 8px 14px;
+    padding: 9px 14px;
     border-radius: 10px;
-    font-size: 0.8rem;
+    font-size: 0.82rem;
     font-weight: 700;
     border: 1px solid transparent;
     cursor: pointer;
     transition: all 0.2s ease;
     white-space: nowrap;
-    flex-shrink: 0;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+@media (min-width: 600px) {
+    .catalog-store-control-card {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+    }
+
+    .catalog-store-control-left {
+        flex: 1;
+        width: auto;
+    }
+
+    .catalog-store-buy-toggle {
+        width: auto;
+        flex-shrink: 0;
+    }
 }
 
 .catalog-store-buy-toggle.active {
