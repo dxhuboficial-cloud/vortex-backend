@@ -2624,6 +2624,23 @@ input.input-invalid:focus {
     box-shadow: 0 0 15px rgba(255, 59, 48, 0.4);
 }
 
+.status-media-setting-item {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px;
+}
+
+.status-media-setting-item .choose-media-btn {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 16px;
+}
+
+.status-media-setting-item .status-media-preview-box {
+    margin-top: 0;
+}
+
 .choose-media-btn {
     background: rgba(255, 59, 48, 0.18);
     border: 1.5px solid #ff3b30;

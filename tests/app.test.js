@@ -7234,6 +7234,12 @@ test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com 
   assert.ok(!htmlContent.includes('Trilha Sonora (Música)'), 'O título "Trilha Sonora (Música)" não deve existir no painel de Status');
   assert.ok(doc.getElementById('status-add-music-btn'), 'O botão #status-add-music-btn deve continuar existindo');
   assert.ok(cssContent.includes('.music-setting-item'), 'style.css deve estilizar .music-setting-item em coluna com largura total');
+
+  // 6. Validar título "Foto ou Vídeo (15s a 1 min)" posicionado em cima do botão Escolher Mídia (v1.0.127)
+  assert.ok(htmlContent.includes('class="setting-item status-media-setting-item"'), 'O bloco de mídia do status deve usar a classe status-media-setting-item');
+  assert.ok(doc.getElementById('status-media-label-text'), '#status-media-label-text deve existir');
+  assert.ok(doc.getElementById('choose-status-media-label'), '#choose-status-media-label deve existir');
+  assert.ok(cssContent.includes('.status-media-setting-item'), 'style.css deve estilizar .status-media-setting-item em coluna');
 });
 
 
