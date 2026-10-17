@@ -7429,7 +7429,8 @@ test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com 
   // 27. Opção para o Vendedor Ativar e Desativar o Botão de Compra da Loja (v1.0.148)
   // 28. Padronização dos Botões em Minhas Compras e Correção do Título Amassado no Celular (v1.0.149)
   // 29. Bloqueio de Letras no Número da Casa no Carrinho e Teclado Numérico no Celular (v1.0.150)
-  assert.strictEqual(versionJson.version, '1.0.150', 'version.json deve ser 1.0.150');
+  // 30. Organização dos Botões na Loja (Apenas Catálogo e Conversar) (v1.0.151)
+  assert.strictEqual(versionJson.version, '1.0.151', 'version.json deve ser 1.0.151');
 });
 
 test('Formulários Comerciais para Conta Empresa: Permissões, templates, card interativo no chat e preenchimento de respostas (v1.0.142)', () => {
@@ -8044,6 +8045,78 @@ test('Bloqueio de Letras no Número da Casa no Carrinho e Teclado Numérico no C
   assert.ok(lastToast.innerHTML.includes('Campo Obrigatório'), 'Deve exibir toast de campo obrigatório');
   assert.ok(lastToast.innerHTML.includes('Número da Casa'), 'Toast deve informar sobre o Número da Casa');
 });
+
+test('Organização dos Botões na Loja (Apenas Catálogo e Conversar) e Layout Responsivo (v1.0.151)', async () => {
+  const env = createTestEnvironment();
+  const doc = env.sandbox.window.document;
+  const win = env.sandbox.window;
+
+  // 1. Verificação da estrutura no HTML
+  assert.ok(htmlContent.includes('class="catalog-store-bar"'), '.catalog-store-bar deve existir no HTML');
+  assert.ok(htmlContent.includes('class="catalog-store-bar-main"'), '.catalog-store-bar-main deve existir no HTML');
+  assert.ok(htmlContent.includes('class="catalog-store-actions"'), '.catalog-store-actions deve existir no HTML');
+  assert.ok(htmlContent.includes('id="catalog-store-badge-catalog"'), '#catalog-store-badge-catalog deve existir no HTML');
+  assert.ok(htmlContent.includes('id="catalog-store-chat-btn"'), '#catalog-store-chat-btn deve existir no HTML');
+
+  // 2. Verificação das regras no CSS
+  assert.ok(cssContent.includes('.catalog-store-bar-main'), 'style.css deve conter .catalog-store-bar-main');
+  assert.ok(cssContent.includes('.catalog-store-actions'), 'style.css deve conter .catalog-store-actions');
+  assert.ok(cssContent.includes('.catalog-store-actions .catalog-store-badge-catalog-only'), 'style.css deve conter regras para os botões dentro de .catalog-store-actions');
+  assert.ok(cssContent.includes('border-radius: 999px'), 'style.css deve definir border-radius: 999px (formato pill) para os botões');
+
+  // 3. Verificação no DOM
+  const badgeEl = doc.getElementById('catalog-store-badge-catalog');
+  const chatBtn = doc.getElementById('catalog-store-chat-btn');
+  const infoEl = doc.getElementById('catalog-store-info');
+  assert.ok(badgeEl, '#catalog-store-badge-catalog deve existir');
+  assert.ok(chatBtn, '#catalog-store-chat-btn deve existir');
+  assert.ok(infoEl, '#catalog-store-info deve existir');
+
+  // 4. Teste de openStorefront com storeBuyEnabled: false (loja apenas catálogo)
+  const mockSellerCatalogOnly = {
+    uid: 'seller_cat_only_1',
+    name: 'DX HUB DIGITAL',
+    status: 'Loja Oficial VORTEX',
+    storeBuyEnabled: false
+  };
+
+  win.setCurrentUser({ uid: 'buyer_user_1', displayName: 'Cliente' });
+  await win.openStorefront('seller_cat_only_1', mockSellerCatalogOnly);
+
+  // O badge deve estar visível como inline-flex
+  assert.strictEqual(badgeEl.style.display, 'inline-flex', 'Badge Apenas Catálogo deve ser exibido quando compras estiverem desativadas');
+  // O botão de chat deve estar visível
+  assert.strictEqual(chatBtn.style.display, 'inline-flex', 'Botão Conversar deve ser exibido para clientes');
+  // infoEl NÃO deve conter o badge espremido junto com o nome
+  assert.ok(!infoEl.innerHTML.includes('catalog-store-badge-catalog-only'), 'infoEl não deve conter o badge de catálogo para não amassar o título');
+  assert.ok(infoEl.innerHTML.includes('DX HUB DIGITAL'), 'infoEl deve conter o nome da loja');
+  assert.ok(infoEl.innerHTML.includes('Loja Oficial VORTEX'), 'infoEl deve conter o status da loja');
+
+  // 5. Clique no badge exibe explicação amigável via toast
+  const toastContainer = doc.getElementById('toast-container');
+  badgeEl.onclick();
+  const lastToast = toastContainer.children[0];
+  assert.ok(lastToast, 'Toast deve ser gerado ao clicar no badge');
+  assert.ok(lastToast.innerHTML.includes('Apenas Catálogo'), 'Toast deve informar sobre modo vitrine / catálogo');
+
+  // 6. Teste de openStorefront com storeBuyEnabled: true (loja com compras ativadas)
+  const mockSellerBuyEnabled = {
+    uid: 'seller_buy_enabled_2',
+    name: 'Super Loja Eletro',
+    status: 'Melhores preços',
+    storeBuyEnabled: true
+  };
+
+  await win.openStorefront('seller_buy_enabled_2', mockSellerBuyEnabled);
+  assert.strictEqual(badgeEl.style.display, 'none', 'Badge Apenas Catálogo deve estar oculto quando compras estiverem ativadas');
+  assert.strictEqual(chatBtn.style.display, 'inline-flex', 'Botão Conversar deve continuar visível');
+
+  // 7. Teste de visualização da própria loja pelo vendedor
+  win.setCurrentUser({ uid: 'seller_buy_enabled_2', displayName: 'Dono da Loja' });
+  await win.openStorefront('seller_buy_enabled_2', mockSellerBuyEnabled);
+  assert.strictEqual(chatBtn.style.display, 'none', 'Botão Conversar deve ser ocultado quando o usuário for o próprio vendedor');
+});
+
 
 
 

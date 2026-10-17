@@ -4417,12 +4417,17 @@ export async function openStorefront(sellerUid, sellerData = {}) {
     const infoEl = document.getElementById('catalog-store-info');
     if (infoEl) {
         infoEl.innerHTML = `
-            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                <strong>${escapeHTML(sellerData.name || 'Loja')}</strong>
-                ${!isStoreBuyEnabled ? `<span class="catalog-store-badge-catalog-only"><i data-lucide="eye"></i> Apenas Catálogo</span>` : ''}
-            </div>
+            <strong>${escapeHTML(sellerData.name || 'Loja')}</strong>
             <small>${escapeHTML(sellerData.status || 'Loja Oficial VORTEX')}</small>
         `;
+    }
+
+    const badgeCatalogEl = document.getElementById('catalog-store-badge-catalog');
+    if (badgeCatalogEl) {
+        badgeCatalogEl.style.display = !isStoreBuyEnabled ? 'inline-flex' : 'none';
+        badgeCatalogEl.onclick = () => {
+            showToast('Apenas Catálogo', 'Esta loja opera em modo vitrine. Os pedidos pelo carrinho estão desativados pelo vendedor.', 'blue');
+        };
     }
 
     const chatBtn = document.getElementById('catalog-store-chat-btn');
@@ -15077,7 +15082,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.150';
+export const CURRENT_APP_VERSION = '1.0.151';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;

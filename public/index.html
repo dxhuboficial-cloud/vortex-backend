@@ -4,20 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.150">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.150">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.150">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.150">
-    <link rel="stylesheet" href="style.css?v=1.0.150">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.151">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.151">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.151">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.151">
+    <link rel="stylesheet" href="style.css?v=1.0.151">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.150">
+    <link rel="manifest" href="manifest.json?v=1.0.151">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.150">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.150">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.151">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.151">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -2729,9 +2729,14 @@
                 <!-- Vitrine de uma loja -->
                 <section id="catalog-view-storefront" class="catalog-view" style="display:none;">
                     <div class="catalog-store-bar">
-                        <button type="button" id="catalog-store-back-btn" class="catalog-link-btn"><i data-lucide="chevron-left"></i><span>Lojas</span></button>
-                        <div id="catalog-store-info" class="catalog-store-info"></div>
-                        <button type="button" id="catalog-store-chat-btn" class="catalog-secondary-btn"><i data-lucide="message-square"></i><span>Conversar</span></button>
+                        <div class="catalog-store-bar-main">
+                            <button type="button" id="catalog-store-back-btn" class="catalog-link-btn"><i data-lucide="chevron-left"></i><span>Lojas</span></button>
+                            <div id="catalog-store-info" class="catalog-store-info"></div>
+                        </div>
+                        <div id="catalog-store-actions" class="catalog-store-actions">
+                            <span id="catalog-store-badge-catalog" class="catalog-store-badge-catalog-only" style="display:none;" title="Esta loja opera em modo apenas catálogo. Compras desativadas pelo vendedor."><i data-lucide="eye"></i><span>Apenas Catálogo</span></span>
+                            <button type="button" id="catalog-store-chat-btn" class="catalog-secondary-btn"><i data-lucide="message-square"></i><span>Conversar</span></button>
+                        </div>
                     </div>
                     <div class="catalog-search-row">
                         <i data-lucide="search"></i>
@@ -3373,6 +3378,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.150" defer></script>
+    <script type="module" src="script.js?v=1.0.151" defer></script>
 </body>
 </html>
