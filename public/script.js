@@ -3027,6 +3027,7 @@ export let activeCatalogSellerData = null;
 export let activeCatalogTab = 'stores';
 export let currentEditingProductId = null;
 export let currentEditorPhotos = [];
+export let currentEditorColors = []; // até 5 cores: [{ hex, name }]
 export let catalogSellerProductsCache = [];
 export let catalogSellerCategoriesCache = [];
 let catalogOrdersUnsubscribe = null;
@@ -3050,6 +3051,110 @@ export function parseBRL(val) {
     }
     const n = parseFloat(s);
     return isNaN(n) ? 0 : n;
+}
+
+// Sanitização e Bloqueio de Letras nos Campos Numéricos (Preço, Promoção e Estoque)
+export function sanitizeCatalogDecimalInput(val) {
+    if (val === null || val === undefined) return '';
+    let s = String(val).replace(/[^\d.,]/g, '');
+    const firstSep = s.search(/[.,]/);
+    if (firstSep !== -1) {
+        const sepChar = s[firstSep];
+        const pre = s.substring(0, firstSep);
+        const post = s.substring(firstSep + 1).replace(/[.,]/g, '');
+        s = pre + sepChar + post;
+    }
+    return s;
+}
+
+export function sanitizeCatalogIntegerInput(val) {
+    if (val === null || val === undefined) return '';
+    return String(val).replace(/\D/g, '');
+}
+
+export function attachCatalogNumericGuards() {
+    const priceInp = document.getElementById('cat-prod-price');
+    const promoInp = document.getElementById('cat-prod-promo');
+    const stockInp = document.getElementById('cat-prod-stock');
+
+    [priceInp, promoInp].forEach(inp => {
+        if (!inp || inp._hasCatalogGuard) return;
+        inp._hasCatalogGuard = true;
+
+        inp.addEventListener('keydown', (e) => {
+            if (['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(e.key)) {
+                return;
+            }
+            if (e.ctrlKey || e.metaKey) {
+                return;
+            }
+            if (e.key === ',' || e.key === '.') {
+                if (inp.value.includes(',') || inp.value.includes('.')) {
+                    e.preventDefault();
+                }
+                return;
+            }
+            if (/^[0-9]$/.test(e.key)) {
+                return;
+            }
+            // Bloqueia qualquer letra ou símbolo
+            e.preventDefault();
+        });
+
+        inp.addEventListener('input', () => {
+            const sanitized = sanitizeCatalogDecimalInput(inp.value);
+            if (inp.value !== sanitized) {
+                inp.value = sanitized;
+            }
+        });
+
+        inp.addEventListener('paste', (e) => {
+            const pasteData = (e.clipboardData || window.clipboardData)?.getData('text') || '';
+            const clean = sanitizeCatalogDecimalInput(pasteData);
+            e.preventDefault();
+            const start = inp.selectionStart ?? inp.value.length;
+            const end = inp.selectionEnd ?? inp.value.length;
+            const nextVal = inp.value.slice(0, start) + clean + inp.value.slice(end);
+            inp.value = sanitizeCatalogDecimalInput(nextVal);
+            inp.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+    });
+
+    if (stockInp && !stockInp._hasCatalogGuard) {
+        stockInp._hasCatalogGuard = true;
+
+        stockInp.addEventListener('keydown', (e) => {
+            if (['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(e.key)) {
+                return;
+            }
+            if (e.ctrlKey || e.metaKey) {
+                return;
+            }
+            if (/^[0-9]$/.test(e.key)) {
+                return;
+            }
+            // Bloqueia 'e', 'E', '+', '-', '.', ',' e qualquer letra
+            e.preventDefault();
+        });
+
+        stockInp.addEventListener('input', () => {
+            const sanitized = sanitizeCatalogIntegerInput(stockInp.value);
+            if (stockInp.value !== sanitized) {
+                stockInp.value = sanitized;
+            }
+        });
+
+        stockInp.addEventListener('paste', (e) => {
+            const pasteData = (e.clipboardData || window.clipboardData)?.getData('text') || '';
+            const clean = sanitizeCatalogIntegerInput(pasteData);
+            e.preventDefault();
+            const start = stockInp.selectionStart ?? stockInp.value.length;
+            const end = stockInp.selectionEnd ?? stockInp.value.length;
+            const nextVal = stockInp.value.slice(0, start) + clean + stockInp.value.slice(end);
+            stockInp.value = sanitizeCatalogIntegerInput(nextVal);
+            stockInp.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+    }
 }
 
 export function isBusinessAccount(profile = currentProfile) {
@@ -3120,7 +3225,7 @@ export function updateCatalogCartBadge() {
     if (barTotal) barTotal.innerText = formatBRL(total);
 }
 
-export function addToCatalogCart(product, sellerUid, sellerData = {}) {
+export function addToCatalogCart(product, sellerUid, sellerData = {}, options = {}) {
     if (!product || !sellerUid) return;
     const cart = getCatalogCart();
 
@@ -3134,7 +3239,21 @@ export function addToCatalogCart(product, sellerUid, sellerData = {}) {
     cart.sellerName = sellerData.name || sellerData.storeName || 'Vendedor VORTEX';
     cart.sellerPixKey = sellerData.pixKey || '';
 
-    const existingIndex = cart.items.findIndex(i => i.productId === product.id);
+    const selColor = options.selectedColor
+        ? (typeof options.selectedColor === 'object' ? (options.selectedColor.name || options.selectedColor.hex) : String(options.selectedColor))
+        : null;
+    const selColorHex = (options.selectedColor && typeof options.selectedColor === 'object')
+        ? options.selectedColor.hex
+        : (Array.isArray(product.colors) ? product.colors.find(c => c.name === selColor)?.hex : null);
+    const selSize = options.selectedSize ? String(options.selectedSize) : null;
+    const selVoltage = options.selectedVoltage ? String(options.selectedVoltage) : null;
+
+    const existingIndex = cart.items.findIndex(i =>
+        i.productId === product.id &&
+        (i.selectedColor || '') === (selColor || '') &&
+        (i.selectedSize || '') === (selSize || '') &&
+        (i.selectedVoltage || '') === (selVoltage || '')
+    );
     const maxStock = (product.unlimitedStock || product.stock === null || product.stock === undefined || product.stock < 0)
         ? Infinity
         : Number(product.stock);
@@ -3175,23 +3294,39 @@ export function addToCatalogCart(product, sellerUid, sellerData = {}) {
             cover: product.cover || (product.photos && product.photos[0]) || '',
             stock: product.stock,
             unlimitedStock: !!product.unlimitedStock,
-            paymentMethods: itemPaymentMethods
+            paymentMethods: itemPaymentMethods,
+            selectedColor: selColor,
+            selectedColorHex: selColorHex || null,
+            selectedSize: selSize,
+            selectedVoltage: selVoltage,
+            weight: product.weight || null
         });
     }
 
     saveCatalogCart(cart);
     playSound(clickSound);
     showToast('Adicionado! 🛒', `${product.name} adicionado ao carrinho.`, 'green');
+    updateCatalogCartBadge();
 }
 
-export function updateCatalogCartItemQty(productId, delta) {
+export function updateCatalogCartItemQty(target, delta) {
     const cart = getCatalogCart();
-    const item = cart.items.find(i => i.productId === productId);
-    if (!item) return;
+    let item = null;
+    let itemIndex = -1;
+
+    if (typeof target === 'number' || (typeof target === 'string' && /^\d+$/.test(target) && Number(target) < cart.items.length)) {
+        itemIndex = Number(target);
+        item = cart.items[itemIndex];
+    }
+    if (!item) {
+        itemIndex = cart.items.findIndex(i => i.productId === target);
+        item = cart.items[itemIndex];
+    }
+    if (!item || itemIndex < 0) return;
 
     const newQty = (Number(item.quantity) || 0) + delta;
     if (newQty <= 0) {
-        cart.items = cart.items.filter(i => i.productId !== productId);
+        cart.items.splice(itemIndex, 1);
     } else {
         const maxStock = (item.unlimitedStock || item.stock === null || item.stock === undefined || item.stock < 0)
             ? Infinity
@@ -3211,6 +3346,7 @@ export function updateCatalogCartItemQty(productId, delta) {
 
     saveCatalogCart(cart);
     renderCatalogCartUI();
+    updateCatalogCartBadge();
 }
 
 export function openCatalogCartModal() {
@@ -3264,26 +3400,34 @@ export function renderCatalogCartUI() {
             if (submitBtn) submitBtn.disabled = true;
         } else {
             if (submitBtn) submitBtn.disabled = false;
-            itemsEl.innerHTML = cart.items.map(item => {
+            itemsEl.innerHTML = cart.items.map((item, idx) => {
                 const subtotal = (Number(item.effectivePrice) || Number(item.price) || 0) * (Number(item.quantity) || 1);
                 const coverImg = item.cover
                     ? `<img src="${item.cover}" alt="${escapeHTML(item.name)}" class="catalog-cart-item-img">`
                     : `<div class="catalog-cart-item-noimg"><i data-lucide="package"></i></div>`;
+                const varsHTML = (item.selectedColor || item.selectedSize || item.selectedVoltage) ? `
+                    <div class="catalog-cart-item-variations">
+                        ${item.selectedColor ? `<span class="catalog-variation-pill">${item.selectedColorHex ? `<span class="catalog-var-dot" style="background:${escapeHTML(item.selectedColorHex)}"></span>` : ''}Cor: <strong>${escapeHTML(item.selectedColor)}</strong></span>` : ''}
+                        ${item.selectedSize ? `<span class="catalog-variation-pill">Tam: <strong>${escapeHTML(item.selectedSize)}</strong></span>` : ''}
+                        ${item.selectedVoltage ? `<span class="catalog-variation-pill">⚡ <strong>${escapeHTML(item.selectedVoltage)}</strong></span>` : ''}
+                    </div>
+                ` : '';
                 return `
-                    <div class="catalog-cart-item" data-id="${item.productId}">
+                    <div class="catalog-cart-item" data-id="${item.productId}" data-idx="${idx}">
                         ${coverImg}
                         <div class="catalog-cart-item-info">
                             <strong>${escapeHTML(item.name)}</strong>
+                            ${varsHTML}
                             <span class="catalog-cart-item-price">${formatBRL(item.effectivePrice || item.price)}</span>
                             <div class="catalog-cart-qty-ctrl">
-                                <button type="button" class="catalog-qty-btn cat-qty-minus" data-id="${item.productId}">−</button>
+                                <button type="button" class="catalog-qty-btn cat-qty-minus" data-idx="${idx}" data-id="${item.productId}">−</button>
                                 <span class="catalog-qty-val">${item.quantity}</span>
-                                <button type="button" class="catalog-qty-btn cat-qty-plus" data-id="${item.productId}">+</button>
+                                <button type="button" class="catalog-qty-btn cat-qty-plus" data-idx="${idx}" data-id="${item.productId}">+</button>
                             </div>
                         </div>
                         <div class="catalog-cart-item-subtotal">
                             <span>${formatBRL(subtotal)}</span>
-                            <button type="button" class="catalog-remove-item-btn" data-id="${item.productId}" title="Remover item">
+                            <button type="button" class="catalog-remove-item-btn" data-idx="${idx}" data-id="${item.productId}" title="Remover item">
                                 <i data-lucide="trash-2"></i>
                             </button>
                         </div>
@@ -3396,13 +3540,13 @@ export function renderCatalogCartUI() {
 
     // Bindings de clique nos itens do carrinho
     itemsEl?.querySelectorAll('.cat-qty-minus').forEach(b => {
-        b.onclick = () => updateCatalogCartItemQty(b.dataset.id, -1);
+        b.onclick = () => updateCatalogCartItemQty(b.dataset.idx !== undefined ? Number(b.dataset.idx) : b.dataset.id, -1);
     });
     itemsEl?.querySelectorAll('.cat-qty-plus').forEach(b => {
-        b.onclick = () => updateCatalogCartItemQty(b.dataset.id, 1);
+        b.onclick = () => updateCatalogCartItemQty(b.dataset.idx !== undefined ? Number(b.dataset.idx) : b.dataset.id, 1);
     });
     itemsEl?.querySelectorAll('.catalog-remove-item-btn').forEach(b => {
-        b.onclick = () => updateCatalogCartItemQty(b.dataset.id, -9999);
+        b.onclick = () => updateCatalogCartItemQty(b.dataset.idx !== undefined ? Number(b.dataset.idx) : b.dataset.id, -9999);
     });
 }
 
@@ -3670,7 +3814,12 @@ export async function submitCatalogOrder() {
                     effectivePrice: effectivePrice,
                     quantity: reqQty,
                     subtotal: subtotal,
-                    cover: pData.cover || (pData.photos && pData.photos[0]) || ''
+                    cover: pData.cover || (pData.photos && pData.photos[0]) || '',
+                    selectedColor: item.selectedColor || null,
+                    selectedColorHex: item.selectedColorHex || null,
+                    selectedSize: item.selectedSize || null,
+                    selectedVoltage: item.selectedVoltage || null,
+                    weight: item.weight || pData.weight || null
                 });
             }
 
@@ -4349,6 +4498,7 @@ export async function openProductEditor(productId = null) {
 
     currentEditingProductId = productId;
     currentEditorPhotos = [];
+    currentEditorColors = [];
 
     const modal = document.getElementById('catalog-product-editor-modal');
     const titleEl = document.getElementById('catalog-editor-title');
@@ -4362,6 +4512,11 @@ export async function openProductEditor(productId = null) {
     const unlimitedCheck = document.getElementById('cat-prod-unlimited');
     const activeCheck = document.getElementById('cat-prod-active');
     const deleteBtn = document.getElementById('cat-prod-delete-btn');
+    const weightInp = document.getElementById('cat-prod-weight');
+    const sizeInp = document.getElementById('cat-prod-size');
+    const voltageSel = document.getElementById('cat-prod-voltage');
+
+    attachCatalogNumericGuards();
 
     // Preencher select de categorias
     if (catSel) {
@@ -4387,6 +4542,12 @@ export async function openProductEditor(productId = null) {
                 stockInp.disabled = !!prod.unlimitedStock;
             }
             if (activeCheck) activeCheck.checked = prod.active !== false;
+            if (weightInp) weightInp.value = prod.weight || '';
+            if (sizeInp) sizeInp.value = prod.size || '';
+            if (voltageSel) voltageSel.value = prod.voltageOption || prod.voltage || 'none';
+            currentEditorColors = Array.isArray(prod.colors)
+                ? prod.colors.slice(0, 5).map(c => typeof c === 'string' ? { hex: '#3b82f6', name: c } : { hex: c.hex || '#000000', name: c.name || '' })
+                : [];
             currentEditorPhotos = Array.isArray(prod.photos) ? [...prod.photos] : (prod.cover ? [prod.cover] : []);
 
             // Carregar formas de pagamento aceitas no produto
@@ -4413,6 +4574,10 @@ export async function openProductEditor(productId = null) {
             stockInp.disabled = true;
         }
         if (activeCheck) activeCheck.checked = true;
+        if (weightInp) weightInp.value = '';
+        if (sizeInp) sizeInp.value = '';
+        if (voltageSel) voltageSel.value = 'none';
+        currentEditorColors = [];
 
         // Padrão de formas de pagamento para novo produto
         const paymentCheckboxes = document.querySelectorAll('#cat-prod-payment-methods input[type="checkbox"]');
@@ -4423,6 +4588,7 @@ export async function openProductEditor(productId = null) {
     }
 
     renderEditorPhotos();
+    renderEditorColors();
 
     if (modal) {
         modal.style.display = 'flex';
@@ -4439,6 +4605,91 @@ export function closeProductEditor() {
     }
     currentEditingProductId = null;
     currentEditorPhotos = [];
+    currentEditorColors = [];
+}
+
+const defaultColorsPalette = [
+    { hex: '#000000', name: 'Preto' },
+    { hex: '#ffffff', name: 'Branco' },
+    { hex: '#2563eb', name: 'Azul' },
+    { hex: '#dc2626', name: 'Vermelho' },
+    { hex: '#16a34a', name: 'Verde' }
+];
+
+export function renderEditorColors() {
+    const list = document.getElementById('cat-prod-colors-list');
+    const counter = document.getElementById('cat-prod-colors-count');
+    const addBtn = document.getElementById('cat-prod-add-color-btn');
+    if (!list) return;
+
+    if (counter) {
+        counter.innerText = `${currentEditorColors.length}/5`;
+    }
+
+    if (addBtn) {
+        const isMax = currentEditorColors.length >= 5;
+        addBtn.disabled = isMax;
+        addBtn.style.opacity = isMax ? '0.45' : '1';
+        addBtn.style.pointerEvents = isMax ? 'none' : 'auto';
+    }
+
+    if (currentEditorColors.length === 0) {
+        list.innerHTML = `<span class="catalog-colors-empty-msg">Nenhuma cor cadastrada (opcional, até 5 cores).</span>`;
+        return;
+    }
+
+    list.innerHTML = currentEditorColors.map((c, idx) => `
+        <div class="catalog-color-editor-row" data-idx="${idx}">
+            <div class="catalog-color-picker-wrap" style="background-color: ${escapeHTML(c.hex || '#000000')}">
+                <input type="color" class="catalog-color-picker-input" data-idx="${idx}" value="${escapeHTML(c.hex || '#000000')}" title="Escolher tom da cor">
+            </div>
+            <input type="text" class="catalog-color-name-input" data-idx="${idx}" maxlength="25" placeholder="Nome da cor (ex.: Preto, Branco, Azul)" value="${escapeHTML(c.name || '')}">
+            <button type="button" class="catalog-color-del-btn" data-idx="${idx}" title="Remover cor">
+                <i data-lucide="trash-2"></i>
+            </button>
+        </div>
+    `).join('');
+
+    if (window.lucide) lucide.createIcons();
+
+    list.querySelectorAll('.catalog-color-picker-input').forEach(inp => {
+        inp.addEventListener('input', (e) => {
+            const idx = Number(inp.dataset.idx);
+            if (currentEditorColors[idx]) {
+                currentEditorColors[idx].hex = e.target.value;
+                const wrap = inp.closest('.catalog-color-picker-wrap');
+                if (wrap) wrap.style.backgroundColor = e.target.value;
+            }
+        });
+    });
+
+    list.querySelectorAll('.catalog-color-name-input').forEach(inp => {
+        inp.addEventListener('input', (e) => {
+            const idx = Number(inp.dataset.idx);
+            if (currentEditorColors[idx]) {
+                currentEditorColors[idx].name = e.target.value;
+            }
+        });
+    });
+
+    list.querySelectorAll('.catalog-color-del-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const idx = Number(btn.dataset.idx);
+            currentEditorColors.splice(idx, 1);
+            renderEditorColors();
+        });
+    });
+}
+
+export function addEditorColor() {
+    if (currentEditorColors.length >= 5) {
+        showToast('Limite de Cores', 'Você pode adicionar no máximo 5 cores por produto.', 'orange');
+        return;
+    }
+    const nextIdx = currentEditorColors.length;
+    const def = defaultColorsPalette[nextIdx] || { hex: '#3b82f6', name: `Cor ${nextIdx + 1}` };
+    currentEditorColors.push({ hex: def.hex, name: def.name });
+    renderEditorColors();
 }
 
 export function renderEditorPhotos() {
@@ -4576,6 +4827,14 @@ export async function saveCatalogProduct() {
             paymentMethods = ['Pix'];
         }
 
+        const weight = document.getElementById('cat-prod-weight')?.value.trim() || '';
+        const size = document.getElementById('cat-prod-size')?.value.trim() || '';
+        const voltageOption = document.getElementById('cat-prod-voltage')?.value || 'none';
+        const cleanColors = currentEditorColors.slice(0, 5).map(c => ({
+            hex: c.hex || '#000000',
+            name: (c.name || '').trim() || (c.hex || 'Cor')
+        }));
+
         const productData = {
             id: prodId,
             name: name,
@@ -4590,6 +4849,10 @@ export async function saveCatalogProduct() {
             photos: currentEditorPhotos,
             cover: cover,
             paymentMethods: paymentMethods,
+            colors: cleanColors,
+            weight: weight,
+            size: size,
+            voltageOption: voltageOption,
             sellerUid: currentUser.uid,
             sellerName: currentProfile?.name || currentUser.displayName || 'Vendedor VORTEX',
             updatedAt: Date.now()
@@ -4784,6 +5047,83 @@ export async function openProductDetail(productId, sellerUid) {
         const stockQty = Number(prod.stock) || 0;
         const isOutOfStock = !isUnlimited && stockQty <= 0;
 
+        const colors = Array.isArray(prod.colors) ? prod.colors : [];
+        const voltageOption = prod.voltageOption || prod.voltage || 'none';
+        const weight = prod.weight || '';
+        const sizeRaw = prod.size || '';
+        const sizeList = sizeRaw ? sizeRaw.split(/[,/]/).map(s => s.trim()).filter(Boolean) : [];
+
+        let variationsHTML = '';
+
+        // Seletor de Cores (até 5)
+        if (colors.length > 0) {
+            variationsHTML += `
+                <div class="catalog-detail-option-group">
+                    <label class="catalog-detail-option-title">
+                        <i data-lucide="palette"></i>
+                        <span>Cor: <strong id="catalog-detail-selected-color-name">${escapeHTML(colors[0].name || colors[0].hex)}</strong></span>
+                    </label>
+                    <div class="catalog-detail-color-options" id="catalog-detail-color-selector">
+                        ${colors.map((c, idx) => `
+                            <button type="button" class="catalog-color-chip ${idx === 0 ? 'active' : ''}" data-idx="${idx}" data-hex="${escapeHTML(c.hex)}" data-name="${escapeHTML(c.name || c.hex)}">
+                                <span class="catalog-color-chip-circle" style="background-color: ${escapeHTML(c.hex)}"></span>
+                                <span class="catalog-color-chip-label">${escapeHTML(c.name || c.hex)}</span>
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Seletor de Tamanho
+        if (sizeList.length > 1) {
+            variationsHTML += `
+                <div class="catalog-detail-option-group">
+                    <label class="catalog-detail-option-title">
+                        <i data-lucide="maximize-2"></i>
+                        <span>Tamanho: <strong id="catalog-detail-selected-size-name">${escapeHTML(sizeList[0])}</strong></span>
+                    </label>
+                    <div class="catalog-detail-size-options" id="catalog-detail-size-selector">
+                        ${sizeList.map((s, idx) => `
+                            <button type="button" class="catalog-size-chip ${idx === 0 ? 'active' : ''}" data-size="${escapeHTML(s)}">${escapeHTML(s)}</button>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Seletor de Voltagem quando o vendedor deixa sobre escolha do cliente
+        if (voltageOption === 'bivolt_choice') {
+            variationsHTML += `
+                <div class="catalog-detail-option-group">
+                    <label class="catalog-detail-option-title">
+                        <i data-lucide="zap"></i>
+                        <span>Escolha a Voltagem *</span>
+                    </label>
+                    <div class="catalog-detail-voltage-options" id="catalog-detail-voltage-selector">
+                        <button type="button" class="catalog-voltage-chip active" data-voltage="110V">⚡ 110V</button>
+                        <button type="button" class="catalog-voltage-chip" data-voltage="220V">⚡ 220V</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Especificações fixas (Voltagem fixa 110V / 220V / Bivolt, Peso, Tamanho único)
+        let specsBadgesHTML = '';
+        if (voltageOption === '110v') {
+            specsBadgesHTML += `<span class="catalog-detail-spec-badge"><i data-lucide="zap"></i> Voltagem: <strong>110V</strong></span>`;
+        } else if (voltageOption === '220v') {
+            specsBadgesHTML += `<span class="catalog-detail-spec-badge"><i data-lucide="zap"></i> Voltagem: <strong>220V</strong></span>`;
+        } else if (voltageOption === 'bivolt_auto') {
+            specsBadgesHTML += `<span class="catalog-detail-spec-badge"><i data-lucide="zap"></i> Voltagem: <strong>Bivolt (110V/220V)</strong></span>`;
+        }
+        if (sizeList.length === 1) {
+            specsBadgesHTML += `<span class="catalog-detail-spec-badge"><i data-lucide="maximize-2"></i> Tamanho: <strong>${escapeHTML(sizeList[0])}</strong></span>`;
+        }
+        if (weight) {
+            specsBadgesHTML += `<span class="catalog-detail-spec-badge"><i data-lucide="scale"></i> Peso: <strong>${escapeHTML(weight)}</strong></span>`;
+        }
+
         content.innerHTML = `
             ${galleryHTML}
             <div class="catalog-detail-body">
@@ -4796,6 +5136,10 @@ export async function openProductDetail(productId, sellerUid) {
                     <i data-lucide="${isOutOfStock ? 'alert-triangle' : 'check-circle-2'}"></i>
                     <span>${isUnlimited ? 'Estoque disponível' : (isOutOfStock ? 'Produto Esgotado' : `${stockQty} unidades em estoque`)}</span>
                 </div>
+
+                ${specsBadgesHTML ? `<div class="catalog-detail-specs-row" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;">${specsBadgesHTML}</div>` : ''}
+
+                ${variationsHTML}
 
                 <div class="catalog-detail-payments-box">
                     <strong>Formas de pagamento aceitas</strong>
@@ -4836,8 +5180,69 @@ export async function openProductDetail(productId, sellerUid) {
             };
         });
 
+        // Interação com seletor de cores
+        content.querySelectorAll('.catalog-color-chip').forEach(chip => {
+            chip.onclick = () => {
+                content.querySelectorAll('.catalog-color-chip').forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                const nameEl = document.getElementById('catalog-detail-selected-color-name');
+                if (nameEl) nameEl.innerText = chip.dataset.name;
+            };
+        });
+
+        // Interação com seletor de tamanho
+        content.querySelectorAll('.catalog-size-chip').forEach(chip => {
+            chip.onclick = () => {
+                content.querySelectorAll('.catalog-size-chip').forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                const nameEl = document.getElementById('catalog-detail-selected-size-name');
+                if (nameEl) nameEl.innerText = chip.dataset.size;
+            };
+        });
+
+        // Interação com seletor de voltagem (110V ou 220V)
+        content.querySelectorAll('.catalog-voltage-chip').forEach(chip => {
+            chip.onclick = () => {
+                content.querySelectorAll('.catalog-voltage-chip').forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+            };
+        });
+
         document.getElementById('catalog-detail-add-cart-btn')?.addEventListener('click', () => {
-            addToCatalogCart(prod, sellerUid, activeCatalogSellerData || {});
+            let selectedColor = null;
+            const activeColorChip = content.querySelector('.catalog-color-chip.active');
+            if (activeColorChip) {
+                selectedColor = {
+                    hex: activeColorChip.dataset.hex,
+                    name: activeColorChip.dataset.name
+                };
+            }
+
+            let selectedSize = null;
+            const activeSizeChip = content.querySelector('.catalog-size-chip.active');
+            if (activeSizeChip) {
+                selectedSize = activeSizeChip.dataset.size;
+            } else if (sizeList.length === 1) {
+                selectedSize = sizeList[0];
+            }
+
+            let selectedVoltage = null;
+            if (voltageOption === 'bivolt_choice') {
+                const activeVoltChip = content.querySelector('.catalog-voltage-chip.active');
+                selectedVoltage = activeVoltChip ? activeVoltChip.dataset.voltage : '110V';
+            } else if (voltageOption === '110v') {
+                selectedVoltage = '110V';
+            } else if (voltageOption === '220v') {
+                selectedVoltage = '220V';
+            } else if (voltageOption === 'bivolt_auto') {
+                selectedVoltage = 'Bivolt';
+            }
+
+            addToCatalogCart(prod, sellerUid, activeCatalogSellerData || {}, {
+                selectedColor,
+                selectedSize,
+                selectedVoltage
+            });
             closeProductDetail();
         });
 
@@ -4951,12 +5356,19 @@ export function renderOrdersList(container, orders, isSeller) {
         const dateStr = ord.createdAt ? new Date(ord.createdAt).toLocaleDateString('pt-BR') : '';
 
         // Chips detalhados com quantidade de cada item pedido
-        const itemsChipsHTML = items.map(item => `
-            <div class="catalog-order-chip">
-                <span class="catalog-order-chip-qty">${item.quantity || 1}x</span>
-                <span class="catalog-order-chip-name">${escapeHTML(item.name)}</span>
-            </div>
-        `).join('');
+        const itemsChipsHTML = items.map(item => {
+            const varParts = [];
+            if (item.selectedColor) varParts.push(item.selectedColor);
+            if (item.selectedSize) varParts.push(item.selectedSize);
+            if (item.selectedVoltage) varParts.push(item.selectedVoltage);
+            const varText = varParts.length > 0 ? ` (${varParts.join(', ')})` : '';
+            return `
+                <div class="catalog-order-chip">
+                    <span class="catalog-order-chip-qty">${item.quantity || 1}x</span>
+                    <span class="catalog-order-chip-name">${escapeHTML(item.name)}${escapeHTML(varText)}</span>
+                </div>
+            `;
+        }).join('');
 
         return `
             <div class="catalog-order-card" data-id="${ord.id}">
@@ -5060,11 +5472,18 @@ export async function openOrderDetail(orderId) {
                 ? `<img src="${item.cover}" alt="${escapeHTML(item.name)}" class="catalog-order-item-img">`
                 : `<div class="catalog-order-item-noimg"><i data-lucide="package"></i></div>`;
 
+            const varBadges = [];
+            if (item.selectedColor) varBadges.push(`<span class="catalog-order-var-pill">🎨 Cor: <strong>${escapeHTML(item.selectedColor)}</strong></span>`);
+            if (item.selectedSize) varBadges.push(`<span class="catalog-order-var-pill">📐 Tamanho: <strong>${escapeHTML(item.selectedSize)}</strong></span>`);
+            if (item.selectedVoltage) varBadges.push(`<span class="catalog-order-var-pill">⚡ Voltagem: <strong>${escapeHTML(item.selectedVoltage)}</strong></span>`);
+            if (item.weight) varBadges.push(`<span class="catalog-order-var-pill">⚖️ Peso: <strong>${escapeHTML(item.weight)}</strong></span>`);
+
             return `
                 <div class="catalog-order-detail-item">
                     ${coverImg}
                     <div class="catalog-order-detail-item-info">
                         <strong>${escapeHTML(item.name)}</strong>
+                        ${varBadges.length > 0 ? `<div class="catalog-order-item-vars-row">${varBadges.join('')}</div>` : ''}
                         <div class="catalog-order-qty-row">
                             <span class="catalog-order-qty-badge">Quantidade pedida: <strong>${qty} ${qty === 1 ? 'unidade' : 'unidades'}</strong></span>
                             <span class="catalog-order-item-unit-price">${formatBRL(unitPrice)} un.</span>
@@ -5306,7 +5725,16 @@ export function buildOrderCardHTML(msg) {
                 ${items.map(i => `
                     <div class="chat-order-item-row">
                         <span class="chat-order-item-qty-tag">${i.quantity}x</span>
-                        <span class="chat-order-item-name">${escapeHTML(i.name)}</span>
+                        <div class="chat-order-item-info-col" style="display:flex;flex-direction:column;min-width:0;flex:1;">
+                            <span class="chat-order-item-name">${escapeHTML(i.name)}</span>
+                            ${(i.selectedColor || i.selectedSize || i.selectedVoltage) ? `
+                                <div class="chat-order-item-vars">
+                                    ${i.selectedColor ? `<span class="chat-var-tag">Cor: ${escapeHTML(i.selectedColor)}</span>` : ''}
+                                    ${i.selectedSize ? `<span class="chat-var-tag">Tam: ${escapeHTML(i.selectedSize)}</span>` : ''}
+                                    ${i.selectedVoltage ? `<span class="chat-var-tag">⚡ ${escapeHTML(i.selectedVoltage)}</span>` : ''}
+                                </div>
+                            ` : ''}
+                        </div>
                         <span class="chat-order-item-price">${formatBRL((Number(i.effectivePrice) || Number(i.price) || 0) * (Number(i.quantity) || 1))}</span>
                     </div>
                 `).join('')}
@@ -5451,6 +5879,11 @@ export function initCatalog() {
     document.getElementById('cat-prod-delete-btn')?.addEventListener('click', () => {
         if (currentEditingProductId) deleteCatalogProduct(currentEditingProductId);
     });
+    document.getElementById('cat-prod-add-color-btn')?.addEventListener('click', () => {
+        playSound(clickSound);
+        addEditorColor();
+    });
+    attachCatalogNumericGuards();
 
     // Checkbox de estoque ilimitado
     document.getElementById('cat-prod-unlimited')?.addEventListener('change', (e) => {
@@ -14121,7 +14554,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.142';
+export const CURRENT_APP_VERSION = '1.0.143';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -24797,6 +25230,13 @@ if (typeof window !== 'undefined') {
     window.openCompanyFormResponsesModal = openCompanyFormResponsesModal;
     window.closeCompanyFormResponsesModal = closeCompanyFormResponsesModal;
     window.copyCompanyFormResponses = copyCompanyFormResponses;
+    // Variações e Validação Numérica do Catálogo (v1.0.143)
+    window.sanitizeCatalogDecimalInput = sanitizeCatalogDecimalInput;
+    window.sanitizeCatalogIntegerInput = sanitizeCatalogIntegerInput;
+    window.attachCatalogNumericGuards = attachCatalogNumericGuards;
+    window.currentEditorColors = currentEditorColors;
+    window.renderEditorColors = renderEditorColors;
+    window.addEditorColor = addEditorColor;
 }
 
 if (typeof window !== 'undefined') {

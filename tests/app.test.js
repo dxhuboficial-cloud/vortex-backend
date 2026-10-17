@@ -7356,7 +7356,6 @@ test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com 
   assert.ok(jsContent.includes('catalog-order-total-units-pill'), 'script.js deve renderizar badge com total de unidades na seção de itens');
 
   // 21. Validar que conta empresa pode criar e enviar formulários na conversa com o cliente (v1.0.142)
-  assert.strictEqual(versionJson.version, '1.0.142', 'version.json deve ser 1.0.142');
   assert.ok(htmlContent.includes('id="chat-attach-form-btn"'), 'index.html deve conter botão de formulário no drawer de anexos (#chat-attach-form-btn)');
   assert.ok(htmlContent.includes('id="chat-company-form-trigger"'), 'index.html deve conter gatilho de formulário no menu de opções do chat (#chat-company-form-trigger)');
   assert.ok(htmlContent.includes('id="company-form-creator-modal"'), 'index.html deve conter modal de criação de formulário (#company-form-creator-modal)');
@@ -7378,6 +7377,22 @@ test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com 
   assert.ok(jsContent.includes('function submitCompanyFormAnswers'), 'script.js deve conter submitCompanyFormAnswers para salvar respostas');
   assert.ok(jsContent.includes('function openCompanyFormResponsesModal'), 'script.js deve conter openCompanyFormResponsesModal para visualização das respostas');
   assert.ok(jsContent.includes('COMPANY_FORM_TEMPLATES'), 'script.js deve conter modelos rápidos (templates) prontos de formulário');
+
+  // 22. Validação Numérica e Variações do Catálogo: 5 Cores, Peso, Tamanho, Voltagem 110V/220V/Escolha do Cliente (v1.0.143)
+  assert.strictEqual(versionJson.version, '1.0.143', 'version.json deve ser 1.0.143');
+  assert.ok(htmlContent.includes('id="cat-prod-colors-list"'), 'index.html deve conter lista de cores no editor (#cat-prod-colors-list)');
+  assert.ok(htmlContent.includes('id="cat-prod-add-color-btn"'), 'index.html deve conter botão para adicionar cores (#cat-prod-add-color-btn)');
+  assert.ok(htmlContent.includes('id="cat-prod-weight"'), 'index.html deve conter campo de peso (#cat-prod-weight)');
+  assert.ok(htmlContent.includes('id="cat-prod-size"'), 'index.html deve conter campo de tamanho (#cat-prod-size)');
+  assert.ok(htmlContent.includes('id="cat-prod-voltage"'), 'index.html deve conter seletor de voltagem (#cat-prod-voltage)');
+  assert.ok(cssContent.includes('.catalog-colors-list'), 'style.css deve conter estilos para lista de cores (.catalog-colors-list)');
+  assert.ok(cssContent.includes('.catalog-voltage-chip'), 'style.css deve conter estilos para chips de voltagem (.catalog-voltage-chip)');
+  assert.ok(cssContent.includes('.catalog-color-chip'), 'style.css deve conter estilos para chips de cor (.catalog-color-chip)');
+  assert.ok(jsContent.includes('function sanitizeCatalogDecimalInput'), 'script.js deve conter sanitizeCatalogDecimalInput para bloqueio de letras em preço');
+  assert.ok(jsContent.includes('function sanitizeCatalogIntegerInput'), 'script.js deve conter sanitizeCatalogIntegerInput para bloqueio de letras em estoque');
+  assert.ok(jsContent.includes('function attachCatalogNumericGuards'), 'script.js deve conter attachCatalogNumericGuards');
+  assert.ok(jsContent.includes('function renderEditorColors'), 'script.js deve conter renderEditorColors');
+  assert.ok(jsContent.includes('function addEditorColor'), 'script.js deve conter addEditorColor');
 });
 
 test('Formulários Comerciais para Conta Empresa: Permissões, templates, card interativo no chat e preenchimento de respostas (v1.0.142)', () => {
@@ -7449,6 +7464,110 @@ test('Formulários Comerciais para Conta Empresa: Permissões, templates, card i
   };
   const answeredCardHtml = buildCompanyFormCardHTML(mockAnsweredFormMsg);
   assert.ok(answeredCardHtml.includes('chat-form-status-badge') || answeredCardHtml.includes('Ver Minha Resposta') || answeredCardHtml.includes('Respondido'), 'Card deve indicar status respondido quando cliente já preencheu');
+});
+
+test('Validação Numérica (bloqueio de letras em preço e estoque) e Variações do Catálogo (5 cores, peso, tamanho, voltagem 110v/220v/escolha do cliente) (v1.0.143)', () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+
+  // 1. Sanitização Numérica e Bloqueio de Letras
+  const sanitizeDecimal = win.sanitizeCatalogDecimalInput;
+  const sanitizeInteger = win.sanitizeCatalogIntegerInput;
+  assert.strictEqual(typeof sanitizeDecimal, 'function', 'sanitizeCatalogDecimalInput deve ser função');
+  assert.strictEqual(typeof sanitizeInteger, 'function', 'sanitizeCatalogIntegerInput deve ser função');
+
+  // Preço e Preço de Promoção: aceita apenas números e separador decimal, bloqueia qualquer letra
+  assert.strictEqual(sanitizeDecimal('150.00'), '150.00');
+  assert.strictEqual(sanitizeDecimal('150,50'), '150,50');
+  assert.strictEqual(sanitizeDecimal('abc150def'), '150', 'Deve remover letras abc e def');
+  assert.strictEqual(sanitizeDecimal('R$ 99,90'), '99,90', 'Deve remover R$ e espaços');
+  assert.strictEqual(sanitizeDecimal('apenas_letras'), '', 'Texto sem número deve retornar vazio');
+
+  // Estoque: aceita estritamente números inteiros, bloqueia letras, 'e', '+' e '-'
+  assert.strictEqual(sanitizeInteger('100'), '100');
+  assert.strictEqual(sanitizeInteger('1e5'), '15', 'Deve remover expoente e');
+  assert.strictEqual(sanitizeInteger('abc50-'), '50', 'Deve remover letras e hífen');
+  assert.strictEqual(sanitizeInteger('12,5'), '125', 'Deve aceitar estritamente inteiros');
+
+  // 2. Gerenciamento de Cores do Produto (até 5)
+  const addEditorColor = win.addEditorColor;
+  assert.strictEqual(typeof addEditorColor, 'function', 'addEditorColor deve ser função');
+  win.currentEditorColors.length = 0;
+
+  for (let i = 0; i < 5; i++) {
+    addEditorColor();
+  }
+  assert.strictEqual(win.currentEditorColors.length, 5, 'Deve permitir adicionar até 5 cores');
+  // Tentativa de adicionar 6ª cor deve ser bloqueada
+  addEditorColor();
+  assert.strictEqual(win.currentEditorColors.length, 5, 'Não deve ultrapassar o limite de 5 cores');
+
+  // 3. Variações e Escolha do Cliente (Cor, Tamanho, Voltagem) no Carrinho
+  const addToCatalogCart = win.addToCatalogCart;
+  assert.strictEqual(typeof addToCatalogCart, 'function', 'addToCatalogCart deve ser função');
+
+  const mockProduct = {
+    id: 'prod_bivolt_1',
+    name: 'Liquidificador Turbo Power',
+    price: 199.90,
+    promoPrice: 179.90,
+    stock: 10,
+    unlimitedStock: false,
+    weight: '1.8kg',
+    size: 'Único',
+    voltageOption: 'bivolt_choice',
+    colors: [
+      { hex: '#000000', name: 'Preto' },
+      { hex: '#dc2626', name: 'Vermelho' }
+    ]
+  };
+
+  win.clearCatalogCart();
+
+  // Cliente 1 escolhe 110V Vermelho
+  addToCatalogCart(mockProduct, 'seller_biz_1', { name: 'Eletro Store' }, {
+    selectedColor: 'Vermelho',
+    selectedSize: 'Único',
+    selectedVoltage: '110V'
+  });
+
+  // Cliente 2 escolhe 220V Preto
+  addToCatalogCart(mockProduct, 'seller_biz_1', { name: 'Eletro Store' }, {
+    selectedColor: 'Preto',
+    selectedSize: 'Único',
+    selectedVoltage: '220V'
+  });
+
+  const cart = win.getCatalogCart();
+  assert.strictEqual(cart.items.length, 2, 'Carrinho deve ter 2 itens com variações distintas');
+  assert.strictEqual(cart.items[0].selectedVoltage, '110V');
+  assert.strictEqual(cart.items[0].selectedColor, 'Vermelho');
+  assert.strictEqual(cart.items[1].selectedVoltage, '220V');
+  assert.strictEqual(cart.items[1].selectedColor, 'Preto');
+
+  // 4. Renderização no Card de Pedido do Chat
+  const buildOrderCardHTML = win.buildOrderCardHTML;
+  const mockOrderMsg = {
+    id: 'msg_order_var_1',
+    type: 'order',
+    order: {
+      orderId: 'ord_123',
+      orderNumber: 'VX-889900',
+      total: 359.80,
+      paymentMethod: 'Pix',
+      items: [
+        { name: 'Liquidificador Turbo Power', quantity: 1, price: 179.90, selectedColor: 'Vermelho', selectedVoltage: '110V' },
+        { name: 'Liquidificador Turbo Power', quantity: 1, price: 179.90, selectedColor: 'Preto', selectedVoltage: '220V' }
+      ]
+    }
+  };
+
+  const cardHtml = buildOrderCardHTML(mockOrderMsg);
+  assert.ok(cardHtml.includes('Vermelho'), 'Card deve exibir a cor Vermelho');
+  assert.ok(cardHtml.includes('110V'), 'Card deve exibir a voltagem 110V');
+  assert.ok(cardHtml.includes('Preto'), 'Card deve exibir a cor Preto');
+  assert.ok(cardHtml.includes('220V'), 'Card deve exibir a voltagem 220V');
+  assert.ok(cardHtml.includes('chat-order-item-vars'), 'Card deve conter bloco chat-order-item-vars');
 });
 
 

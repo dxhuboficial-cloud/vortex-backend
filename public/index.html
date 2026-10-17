@@ -4,20 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.142">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.142">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.142">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.142">
-    <link rel="stylesheet" href="style.css?v=1.0.142">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.143">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.143">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.143">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.143">
+    <link rel="stylesheet" href="style.css?v=1.0.143">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.142">
+    <link rel="manifest" href="manifest.json?v=1.0.143">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.142">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.142">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.143">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.143">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -2793,11 +2793,11 @@
                     <div class="catalog-field-row">
                         <div class="catalog-field-group">
                             <label class="catalog-field-label" for="cat-prod-price">Preço (R$) *</label>
-                            <input id="cat-prod-price" type="text" inputmode="decimal" placeholder="0,00">
+                            <input id="cat-prod-price" type="text" inputmode="decimal" placeholder="0,00" autocomplete="off">
                         </div>
                         <div class="catalog-field-group">
                             <label class="catalog-field-label" for="cat-prod-promo">Preço promocional</label>
-                            <input id="cat-prod-promo" type="text" inputmode="decimal" placeholder="Opcional">
+                            <input id="cat-prod-promo" type="text" inputmode="decimal" placeholder="Opcional" autocomplete="off">
                         </div>
                     </div>
 
@@ -2815,7 +2815,7 @@
                     <div class="catalog-field-row catalog-stock-row">
                         <div class="catalog-field-group">
                             <label class="catalog-field-label" for="cat-prod-stock">Estoque</label>
-                            <input id="cat-prod-stock" type="number" inputmode="numeric" min="0" step="1" placeholder="Quantidade">
+                            <input id="cat-prod-stock" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="Quantidade" autocomplete="off">
                         </div>
                         <label class="catalog-check catalog-stock-check" for="cat-prod-unlimited">
                             <input id="cat-prod-unlimited" type="checkbox" checked>
@@ -2827,6 +2827,53 @@
                         <input id="cat-prod-active" type="checkbox" checked>
                         <span>Visível na vitrine</span>
                     </label>
+
+                    <!-- Variações & Especificações do Produto -->
+                    <div class="catalog-editor-section-card">
+                        <div class="catalog-editor-section-title">
+                            <i data-lucide="sliders"></i>
+                            <span>Variações & Especificações</span>
+                        </div>
+
+                        <!-- 5 Cores do Produto -->
+                        <div class="catalog-field-group">
+                            <div class="catalog-field-header-row">
+                                <label class="catalog-field-label"><i data-lucide="palette"></i> Cores do produto (até 5 cores)</label>
+                                <span id="cat-prod-colors-count" class="catalog-badge-counter">0/5</span>
+                            </div>
+                            <div id="cat-prod-colors-list" class="catalog-colors-list"></div>
+                            <div class="catalog-colors-add-bar">
+                                <button type="button" id="cat-prod-add-color-btn" class="catalog-secondary-btn" style="font-size:0.8rem;padding:6px 14px;">
+                                    <i data-lucide="plus"></i> <span>Adicionar cor</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Peso e Tamanho -->
+                        <div class="catalog-field-row">
+                            <div class="catalog-field-group">
+                                <label class="catalog-field-label" for="cat-prod-weight"><i data-lucide="scale"></i> Peso do produto</label>
+                                <input id="cat-prod-weight" type="text" maxlength="30" placeholder="Ex.: 250g, 1.5kg">
+                            </div>
+                            <div class="catalog-field-group">
+                                <label class="catalog-field-label" for="cat-prod-size"><i data-lucide="maximize-2"></i> Tamanho / Dimensões</label>
+                                <input id="cat-prod-size" type="text" maxlength="50" placeholder="Ex.: P, M, G ou 38, 40">
+                            </div>
+                        </div>
+
+                        <!-- Voltagem (110V, 220V ou Escolha do Cliente) -->
+                        <div class="catalog-field-group">
+                            <label class="catalog-field-label" for="cat-prod-voltage"><i data-lucide="zap"></i> Voltagem do Produto</label>
+                            <select id="cat-prod-voltage" class="catalog-select-field">
+                                <option value="none">Não se aplica / Sem voltagem</option>
+                                <option value="110v">110V (Fixo)</option>
+                                <option value="220v">220V (Fixo)</option>
+                                <option value="bivolt_choice">Deixar o cliente escolher (110V ou 220V)</option>
+                                <option value="bivolt_auto">Bivolt Automático (110V / 220V)</option>
+                            </select>
+                            <small class="catalog-field-hint" style="color:var(--text-dim);font-size:0.75rem;margin-top:2px;">Marque se o produto opera em 110V, 220V ou se o cliente escolhe a voltagem no momento da compra.</small>
+                        </div>
+                    </div>
 
                     <div class="catalog-field-group">
                         <span class="catalog-field-label">Formas de Pagamento aceitas neste produto *</span>
@@ -3225,6 +3272,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.142" defer></script>
+    <script type="module" src="script.js?v=1.0.143" defer></script>
 </body>
 </html>
