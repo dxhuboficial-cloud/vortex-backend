@@ -7273,6 +7273,14 @@ test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com 
   assert.ok(htmlContent.includes('class="notifications-header-text"'), 'O cabeçalho de notificações deve usar .notifications-header-text');
   assert.ok(!htmlContent.includes('id="close-notifications-btn" class="close-btn drawer-cancel-btn'), 'O botão fechar notificações não deve herdar margin-top de drawer-cancel-btn');
   assert.ok(cssContent.includes('.notification-swipe-delete-bg'), 'style.css deve estilizar o fundo vermelho de exclusão por swipe');
+
+  // 12. Validar correção de encolhimento (flex-shrink: 0), grupo roxo, comentário verde e curtida de story rosa (v1.0.133)
+  assert.ok(jsContent.includes('notif-svg-story-like'), 'Notificação de curtida de story deve exibir o ícone de coração rosa');
+  assert.ok(cssContent.includes('.notification-icon-box.story-like'), 'style.css deve estilizar .notification-icon-box.story-like em rosa');
+  assert.ok(cssContent.match(/\.notification-swipe-wrapper\s*\{[^}]*flex-shrink:\s*0/), '.notification-swipe-wrapper deve ter flex-shrink: 0 para não amassar os cards');
+  assert.ok(cssContent.match(/\.notification-card\.card-group-add\s*\{[^}]*#bf5af2/i), 'Notificação de grupo deve ser roxa (#bf5af2)');
+  assert.ok(cssContent.match(/\.notification-card\.card-comment\s*\{[^}]*#34c759/i), 'Notificação de comentário deve ser verde (#34c759)');
+  assert.ok(cssContent.match(/\.notification-card\.card-story-like\s*\{[^}]*#ff2d85/i), 'Notificação de curtida de story deve ser rosa (#ff2d85)');
 });
 
 

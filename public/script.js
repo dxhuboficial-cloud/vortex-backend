@@ -1455,7 +1455,8 @@ export function renderNotifications() {
 
         const isVip = type === 'vip';
         const isAlert = type === 'alert';
-        const isLike = type === 'like_post' || type === 'like_story' || type === 'like' || /curtiu|reagiu/i.test(titleRaw) || /curtiu a sua publica/i.test(msgRaw);
+        const isStoryLike = type === 'like_story' || type === 'story_like' || (/story/i.test(titleRaw) && /curtiu|reagiu/i.test(titleRaw)) || /ao seu story/i.test(msgRaw);
+        const isLike = !isStoryLike && (type === 'like_post' || type === 'like' || /curtiu|reagiu/i.test(titleRaw) || /curtiu a sua publica/i.test(msgRaw));
         const isComment = type === 'comment_post' || type === 'comment' || /comentou/i.test(titleRaw) || /comentou na sua publica/i.test(msgRaw);
         const isGroupAdd = type === 'group_add' || /adicionado a um grupo|adicionado ao grupo/i.test(titleRaw) || /adicionado ao grupo/i.test(msgRaw);
 
@@ -1472,6 +1473,15 @@ export function renderNotifications() {
             typeClass = 'alert';
             badgeText = 'ALERTA 🔴';
             iconHTML = '<i data-lucide="shield-alert"></i>';
+        } else if (isStoryLike) {
+            typeClass = 'story-like';
+            badgeText = 'STORY';
+            displayTitle = displayTitle.replace(/^(❤️|🩷|👍|🔥|😍|👏|😂|😮|😢)\s*/, '');
+            iconHTML = `
+                <svg class="notif-custom-svg notif-svg-story-like" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                </svg>
+            `;
         } else if (isLike) {
             typeClass = 'like';
             badgeText = 'CURTIDA';
@@ -8322,9 +8332,9 @@ async function sendActivityNotification(toUid, type, context = {}) {
             icon = 'message-circle';
         } else if (type === 'like_story') {
             const emoji = context.emoji || '❤️';
-            title = `${emoji} ${sender} reagiu ao seu story`;
+            title = `${sender} reagiu ao seu story`;
             message = `${sender} reagiu com ${emoji} ao seu story no VORTEX VIP ⚡`;
-            icon = 'thumbs-up';
+            icon = 'heart';
         } else {
             return;
         }
