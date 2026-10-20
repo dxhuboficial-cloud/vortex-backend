@@ -7437,7 +7437,8 @@ test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com 
   // 35. Separação de Redes Sociais e Sites Oficiais (v1.0.156)
   // 36. Alinhamento de Nome e Título ao Lado da Foto na Prévia do Compartilhar (v1.0.157)
   // 37. Padronização e Balanceamento do Tamanho do Botão Salvar em Mensagens Temporárias (v1.0.158)
-  assert.strictEqual(versionJson.version, '1.0.158', 'version.json deve ser 1.0.158');
+  // 38. Correção do Alinhamento dos Botões Salvar e Cancelar no Modal de Mensagens Temporárias (v1.0.159)
+  assert.strictEqual(versionJson.version, '1.0.159', 'version.json deve ser 1.0.159');
 });
 
 test('Formulários Comerciais para Conta Empresa: Permissões, templates, card interativo no chat e preenchimento de respostas (v1.0.142)', () => {
@@ -8554,6 +8555,45 @@ test('Padronização e Balanceamento do Tamanho do Botão Salvar em Mensagens Te
   assert.ok(cancelBtn, '#cancel-ephemeral-btn deve existir no DOM');
   assert.ok(modal, '#chat-ephemeral-modal deve existir no DOM');
 });
+
+test('Correção do Alinhamento dos Botões Salvar e Cancelar no Modal de Mensagens Temporárias (v1.0.159)', () => {
+  const env = createTestEnvironment();
+  const doc = env.sandbox.window.document;
+
+  // 1. Verificação no CSS: container com align-items: center e botões com margin: 0 !important;
+  assert.ok(
+    cssContent.includes('.ephemeral-actions-row') && cssContent.includes('align-items: center;'),
+    'style.css deve configurar align-items: center na linha de botões de mensagens temporárias'
+  );
+  assert.ok(
+    cssContent.includes('.ephemeral-save-btn') && cssContent.includes('margin: 0 !important;'),
+    'style.css deve configurar margin: 0 !important no botão salvar'
+  );
+  assert.ok(
+    cssContent.includes('.ephemeral-cancel-btn') && cssContent.includes('margin: 0 !important;'),
+    'style.css deve configurar margin: 0 !important no botão cancelar'
+  );
+
+  // 2. Verificação no DOM e HTML: remoção de modal-cancel-btn (que causava margin-top: 5px)
+  const cancelBtn = doc.getElementById('cancel-ephemeral-btn');
+  const saveBtn = doc.getElementById('save-ephemeral-btn');
+  const modal = doc.getElementById('chat-ephemeral-modal');
+
+  assert.ok(saveBtn, '#save-ephemeral-btn deve existir no DOM');
+  assert.ok(cancelBtn, '#cancel-ephemeral-btn deve existir no DOM');
+  assert.ok(modal, '#chat-ephemeral-modal deve existir no DOM');
+
+  // Não deve conter a classe modal-cancel-btn que empurrava o botão 5px para baixo
+  assert.ok(
+    !cancelBtn.classList || !cancelBtn.classList.contains('modal-cancel-btn'),
+    '#cancel-ephemeral-btn não deve ter a classe modal-cancel-btn'
+  );
+  assert.ok(
+    !htmlContent.includes('id="cancel-ephemeral-btn" class="ephemeral-cancel-btn close-btn modal-cancel-btn"'),
+    'index.html não deve conter modal-cancel-btn em #cancel-ephemeral-btn'
+  );
+});
+
 
 
 
