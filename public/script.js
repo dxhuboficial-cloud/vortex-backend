@@ -9333,6 +9333,8 @@ export function closeContactProfile() {
     if (phoneCard) phoneCard.style.display = 'none';
     const socialSec = document.getElementById('contact-profile-social-section');
     if (socialSec) socialSec.style.display = 'none';
+    const websitesSec = document.getElementById('contact-profile-websites-section');
+    if (websitesSec) websitesSec.style.display = 'none';
     if (activeContactProfileUnsubscribe) {
         activeContactProfileUnsubscribe();
         activeContactProfileUnsubscribe = null;
@@ -9479,6 +9481,7 @@ export function updateContactProfileSocialUI(data) {
     }
 
     const socialSec = document.getElementById('contact-profile-social-section');
+    const websitesSec = document.getElementById('contact-profile-websites-section');
     const pixPill = document.getElementById('contact-profile-pix-pill');
     const ytLink = document.getElementById('contact-profile-youtube-link');
     const instaLink = document.getElementById('contact-profile-instagram-link');
@@ -9490,6 +9493,7 @@ export function updateContactProfileSocialUI(data) {
     const w3Link = document.getElementById('contact-profile-website3-link');
 
     let hasAnySocial = false;
+    let hasAnyWebsite = false;
 
     if (pixPill) {
         if (pixKey) {
@@ -9565,7 +9569,7 @@ export function updateContactProfileSocialUI(data) {
             }
             w1Link.title = customTitle1 ? `Acessar ${customTitle1}` : 'Acessar Site Oficial 1';
             w1Link.style.display = 'inline-flex';
-            hasAnySocial = true;
+            hasAnyWebsite = true;
         } else {
             w1Link.style.display = 'none';
         }
@@ -9586,7 +9590,7 @@ export function updateContactProfileSocialUI(data) {
             }
             w2Link.title = customTitle2 ? `Acessar ${customTitle2}` : 'Acessar Site Oficial 2';
             w2Link.style.display = 'inline-flex';
-            hasAnySocial = true;
+            hasAnyWebsite = true;
         } else {
             w2Link.style.display = 'none';
         }
@@ -9607,7 +9611,7 @@ export function updateContactProfileSocialUI(data) {
             }
             w3Link.title = customTitle3 ? `Acessar ${customTitle3}` : 'Acessar Site Oficial 3';
             w3Link.style.display = 'inline-flex';
-            hasAnySocial = true;
+            hasAnyWebsite = true;
         } else {
             w3Link.style.display = 'none';
         }
@@ -9615,6 +9619,9 @@ export function updateContactProfileSocialUI(data) {
 
     if (socialSec) {
         socialSec.style.display = hasAnySocial ? 'block' : 'none';
+    }
+    if (websitesSec) {
+        websitesSec.style.display = hasAnyWebsite ? 'block' : 'none';
     }
     if (typeof window !== 'undefined' && window.lucide) {
         window.lucide.createIcons();
@@ -15206,7 +15213,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.155';
+export const CURRENT_APP_VERSION = '1.0.156';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;

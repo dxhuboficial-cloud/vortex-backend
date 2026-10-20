@@ -10764,7 +10764,8 @@ body.theme-rgb .ephemeral-save-btn {
     transform: scale(1.05);
 }
 
-.contact-profile-social-section {
+.contact-profile-social-section,
+.contact-profile-websites-section {
     margin-bottom: 14px;
 }
 
@@ -11057,6 +11058,12 @@ body.theme-rgb .ephemeral-save-btn {
     color: #ffffff;
     box-shadow: 0 0 14px rgba(168, 85, 247, 0.5);
     transform: translateY(-1px);
+}
+
+.business-websites-header {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 /* Inputs de Título e Link para Sites de Conta Empresa */

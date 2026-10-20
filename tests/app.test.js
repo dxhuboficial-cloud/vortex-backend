@@ -7434,7 +7434,8 @@ test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com 
   // 32. Organização e Alinhamento Visual dos Modais no Celular (Pix, Enquete, Respostas e Prévia de Formulário) (v1.0.153)
   // 33. Chamadas Recebidas com o App Fechado: Push FCM, Service Worker e Notificação com Atender/Recusar (v1.0.154)
   // 34. Correção dos Ícones Grandes dos Modais no Celular (v1.0.155)
-  assert.strictEqual(versionJson.version, '1.0.155', 'version.json deve ser 1.0.155');
+  // 35. Separação de Redes Sociais e Sites Oficiais (v1.0.156)
+  assert.strictEqual(versionJson.version, '1.0.156', 'version.json deve ser 1.0.156');
 });
 
 test('Formulários Comerciais para Conta Empresa: Permissões, templates, card interativo no chat e preenchimento de respostas (v1.0.142)', () => {
@@ -8420,6 +8421,59 @@ test('Correção dos Ícones Grandes dos Modais no Celular (Respostas, Formulár
   assert.ok(respModal.querySelector('.company-form-title-icon-badge'), 'Modal de respostas deve conter .company-form-title-icon-badge');
   assert.ok(creatorModal.querySelector('.company-form-title-icon-badge'), 'Modal de criação de formulário deve conter .company-form-title-icon-badge');
   assert.ok(pixModal.querySelector('.pix-modal-icon-badge'), 'Modal Pix deve conter .pix-modal-icon-badge');
+});
+
+test('Separação de Redes Sociais e Sites Oficiais nos Dados do Contato e no Editar Perfil (v1.0.156)', () => {
+  const env = createTestEnvironment();
+  const doc = env.sandbox.window.document;
+  const win = env.sandbox.window;
+
+  // 1. Verificação da existência das duas seções independentes no DOM e HTML
+  assert.ok(env.elements['contact-profile-social-section'], '#contact-profile-social-section deve existir no DOM');
+  assert.ok(env.elements['contact-profile-websites-section'], '#contact-profile-websites-section deve existir no DOM');
+  assert.ok(htmlContent.includes('id="contact-profile-websites-section"'), 'public/index.html deve conter contact-profile-websites-section');
+  assert.ok(htmlContent.includes('Sites Oficiais'), 'public/index.html deve conter o título Sites Oficiais');
+
+  // 2. Verificação de estilos no CSS
+  assert.ok(cssContent.includes('.contact-profile-websites-section'), 'style.css deve conter .contact-profile-websites-section');
+  assert.ok(cssContent.includes('.business-websites-header'), 'style.css deve conter .business-websites-header');
+
+  // 4. Teste de isolamento de exibição: Contato com AMBOS (Redes Sociais e Sites Oficiais)
+  const updateContactProfileSocialUI = win.updateContactProfileSocialUI;
+  updateContactProfileSocialUI({
+    accountType: 'business',
+    whatsapp: 'https://wa.me/5511999998888',
+    tiktok: '@canal.tiktok',
+    website1: 'https://playappdx.com.br',
+    website1Title: 'Play App DX'
+  });
+  assert.strictEqual(env.elements['contact-profile-social-section'].style.display, 'block', 'Seção Redes Sociais deve estar visível');
+  assert.strictEqual(env.elements['contact-profile-websites-section'].style.display, 'block', 'Seção Sites Oficiais deve estar visível');
+  assert.strictEqual(env.elements['contact-profile-website1-link'].style.display, 'inline-flex', 'Pill Play App DX deve estar visível');
+  assert.strictEqual(env.elements['contact-profile-website1-label'].innerText, 'Play App DX', 'Label da pill deve ser Play App DX');
+
+  // 5. Teste de isolamento: Contato com APENAS Sites Oficiais (sem redes sociais)
+  updateContactProfileSocialUI({
+    accountType: 'business',
+    website1: 'https://siteoficial.com.br',
+    website1Title: 'Portal Oficial'
+  });
+  assert.strictEqual(env.elements['contact-profile-social-section'].style.display, 'none', 'Seção Redes Sociais deve ficar oculta quando não houver redes');
+  assert.strictEqual(env.elements['contact-profile-websites-section'].style.display, 'block', 'Seção Sites Oficiais deve estar visível');
+
+  // 6. Teste de isolamento: Contato com APENAS Redes Sociais (sem sites oficiais)
+  updateContactProfileSocialUI({
+    accountType: 'personal',
+    instagram: '@instagram.pessoal',
+    youtube: '@youtube.pessoal'
+  });
+  assert.strictEqual(env.elements['contact-profile-social-section'].style.display, 'block', 'Seção Redes Sociais deve estar visível');
+  assert.strictEqual(env.elements['contact-profile-websites-section'].style.display, 'none', 'Seção Sites Oficiais deve ficar oculta quando não houver sites');
+
+  // 7. Fechamento do perfil oculta ambas as seções
+  win.closeContactProfile();
+  assert.strictEqual(env.elements['contact-profile-social-section'].style.display, 'none', 'Redes Sociais deve ser ocultado no fechamento');
+  assert.strictEqual(env.elements['contact-profile-websites-section'].style.display, 'none', 'Sites Oficiais deve ser ocultado no fechamento');
 });
 
 
