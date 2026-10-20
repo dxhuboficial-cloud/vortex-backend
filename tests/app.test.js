@@ -9654,10 +9654,10 @@ test('Etiqueta de Anúncio e Opção Anúncio vs Conteúdo Normal para Stories e
   const env = createTestEnvironment();
   const win = env.sandbox.window;
 
-  // 1. Integridade de Versionamento (v1.0.167)
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.167', 'script.js deve ter CURRENT_APP_VERSION 1.0.167');
-  assert.ok(htmlContent.includes('script.js?v=1.0.167'), 'index.html deve referenciar script.js com ?v=1.0.167');
-  assert.ok(htmlContent.includes('style.css?v=1.0.167'), 'index.html deve referenciar style.css com ?v=1.0.167');
+  // 1. Integridade de Versionamento (v1.0.167+)
+  assert.ok(['1.0.167', '1.0.168'].includes(win.CURRENT_APP_VERSION) || parseInt(win.CURRENT_APP_VERSION.split('.')[2], 10) >= 167, 'script.js deve ter versão compatível');
+  assert.ok(htmlContent.includes(`script.js?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar script.js com a versão atual');
+  assert.ok(htmlContent.includes(`style.css?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar style.css com a versão atual');
 
   // 2. Elementos DOM no index.html
   const storyAdBadge = win.document.getElementById('story-ad-badge');
@@ -9800,26 +9800,112 @@ test('Etiqueta de Anúncio e Opção Anúncio vs Conteúdo Normal para Stories e
   assert.strictEqual(searchAd[0].id, 'post_ad_1', 'Post encontrado deve ser post_ad_1');
 });
 
+test('Permissões e Ferramentas para Administradores Promovidos em Grupos (v1.0.168)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
 
+  // 1. Integridade de Versionamento (v1.0.168)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.168', 'script.js deve ter versão 1.0.168');
+  assert.ok(htmlContent.includes('script.js?v=1.0.168'), 'index.html deve referenciar script.js com a versão 1.0.168');
+  assert.ok(htmlContent.includes('style.css?v=1.0.168'), 'index.html deve referenciar style.css com a versão 1.0.168');
 
+  // 2. Validação da Função Auxiliar isUserGroupAdmin
+  const isUserGroupAdmin = win.isUserGroupAdmin;
+  assert.ok(typeof isUserGroupAdmin === 'function', 'isUserGroupAdmin deve ser uma função exportada');
 
+  const mockGroup = {
+    creatorUid: 'creator_111',
+    admins: ['creator_111', 'promoted_admin_222']
+  };
 
+  // Creator
+  assert.strictEqual(isUserGroupAdmin(mockGroup, { uid: 'creator_111' }), true, 'Criador deve ser reconhecido como admin');
+  assert.strictEqual(isUserGroupAdmin(mockGroup, 'creator_111'), true, 'Criador deve ser reconhecido como admin passando UID string');
 
+  // Promoted Admin
+  assert.strictEqual(isUserGroupAdmin(mockGroup, { uid: 'promoted_admin_222' }), true, 'Admin promovido deve ser reconhecido como admin');
+  assert.strictEqual(isUserGroupAdmin(mockGroup, 'promoted_admin_222'), true, 'Admin promovido deve ser reconhecido como admin passando UID string');
 
+  // Regular Member
+  assert.strictEqual(isUserGroupAdmin(mockGroup, { uid: 'member_333' }), false, 'Membro comum NÃO deve ser reconhecido como admin');
+  assert.strictEqual(isUserGroupAdmin(mockGroup, 'member_333'), false, 'Membro comum NÃO deve ser reconhecido como admin passando UID string');
 
+  // Casos nulos ou indefinidos
+  assert.strictEqual(isUserGroupAdmin(null, { uid: 'creator_111' }), false, 'Grupo nulo deve retornar false');
+  assert.strictEqual(isUserGroupAdmin(mockGroup, null), false, 'Usuário nulo deve retornar false');
 
+  // 3. Configuração de Grupo no Firestore para Testes de Ação
+  const testGroupId = 'group_admin_test_168';
+  const testGroupDoc = {
+    id: testGroupId,
+    groupId: testGroupId,
+    name: 'Grupo VIP Oficial',
+    description: 'Descrição original do grupo',
+    creatorUid: 'creator_111',
+    members: ['creator_111', 'promoted_admin_222', 'other_admin_444', 'member_333'],
+    admins: ['creator_111', 'promoted_admin_222', 'other_admin_444'],
+    paused: false,
+    avatar: ''
+  };
+  env.firestoreDocs[`groups/${testGroupId}`] = { ...testGroupDoc };
 
+  // 4. Cenário: Membro Comum acessa o perfil do grupo
+  win.setCurrentUser({ uid: 'member_333', displayName: 'Membro Normal' });
+  win.setCurrentProfile({ uid: 'member_333', name: 'Membro Normal' });
+  await win.openGroupProfile({ ...testGroupDoc });
 
+  assert.strictEqual(env.elements['group-admin-fields'].style.display, 'none', 'Campos de admin devem estar ocultos para membro comum');
+  assert.strictEqual(env.elements['delete-group-profile-btn'].style.display, 'none', 'Botão de apagar grupo deve estar oculto para membro comum');
+  assert.strictEqual(env.elements['group-avatar-input-label'].style.display, 'none', 'Edição de foto do grupo deve estar oculta para membro comum');
 
+  // Membro comum tenta acionar o salvamento -> Bloqueado
+  env.elements['group-profile-name'].value = 'Nome Tentado por Membro';
+  await env.elements['save-group-profile'].click();
+  assert.strictEqual(env.firestoreDocs[`groups/${testGroupId}`].name, 'Grupo VIP Oficial', 'Membro comum NÃO pode salvar alterações no grupo');
 
+  // 5. Cenário: Administrador Promovido acessa o perfil do grupo
+  win.setCurrentUser({ uid: 'promoted_admin_222', displayName: 'Admin Promovido' });
+  win.setCurrentProfile({ uid: 'promoted_admin_222', name: 'Admin Promovido' });
+  await win.openGroupProfile({ ...testGroupDoc });
 
+  assert.strictEqual(env.elements['group-admin-fields'].style.display, 'flex', 'Campos de admin devem estar visíveis para admin promovido');
+  assert.strictEqual(env.elements['delete-group-profile-btn'].style.display, 'flex', 'Botão de apagar grupo deve estar visível para admin promovido');
+  assert.strictEqual(env.elements['group-avatar-input-label'].style.display, 'inline-flex', 'Edição de foto deve estar visível para admin promovido');
 
+  // 6. Admin Promovido Salva Nome e Descrição
+  env.elements['group-profile-name'].value = 'Grupo VIP Oficial - Alterado por Admin';
+  env.elements['group-profile-description'].value = 'Nova descrição configurada pelo admin promovido.';
+  await env.elements['save-group-profile'].click();
 
+  assert.strictEqual(env.firestoreDocs[`groups/${testGroupId}`].name, 'Grupo VIP Oficial - Alterado por Admin', 'Admin promovido DEVE conseguir salvar o novo nome');
+  assert.strictEqual(env.firestoreDocs[`groups/${testGroupId}`].description, 'Nova descrição configurada pelo admin promovido.', 'Admin promovido DEVE conseguir salvar a nova descrição');
 
+  // 7. Admin Promovido Pausa o Grupo
+  await env.elements['toggle-group-pause'].click();
+  assert.strictEqual(env.firestoreDocs[`groups/${testGroupId}`].paused, true, 'Admin promovido DEVE conseguir pausar o envio de mensagens no grupo');
 
+  // 8. Admin Promovido Adiciona Novo Membro
+  await win.addGroupMember('novo_membro_555');
+  assert.ok(env.firestoreDocs[`groups/${testGroupId}`].members.includes('novo_membro_555'), 'Admin promovido DEVE conseguir adicionar novo membro ao grupo');
 
+  // 9. Salvaguardas e Permissões de Remoção de Membros
+  // - Admin promovido NÃO pode remover o criador do grupo
+  await win.removeGroupMember('creator_111');
+  assert.ok(env.firestoreDocs[`groups/${testGroupId}`].members.includes('creator_111'), 'Criador do grupo NÃO pode ser removido por outro admin');
 
+  // - Admin promovido NÃO pode remover outro administrador
+  await win.removeGroupMember('other_admin_444');
+  assert.ok(env.firestoreDocs[`groups/${testGroupId}`].members.includes('other_admin_444'), 'Admin promovido NÃO pode remover outro admin');
 
+  // - Admin promovido PODE remover membro comum
+  win.confirm = () => true;
+  await win.removeGroupMember('member_333');
+  assert.strictEqual(env.firestoreDocs[`groups/${testGroupId}`].members.includes('member_333'), false, 'Admin promovido DEVE conseguir remover membro comum');
+
+  // 10. Admin Promovido Promove Novo Membro
+  await win.promoteGroupMember('novo_membro_555');
+  assert.ok(env.firestoreDocs[`groups/${testGroupId}`].admins.includes('novo_membro_555'), 'Admin promovido DEVE conseguir promover membro comum a administrador');
+});
 
 
 

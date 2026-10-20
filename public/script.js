@@ -10777,9 +10777,31 @@ export async function openContactProfile(contact) {
     if (window.lucide) lucide.createIcons();
 }
 
+export function isUserGroupAdmin(group, user = currentUser) {
+    if (!group || !user) return false;
+    const uid = typeof user === 'string' ? user : (user.uid || '');
+    if (!uid) return false;
+    if (group.creatorUid === uid) return true;
+    if (Array.isArray(group.admins) && group.admins.includes(uid)) return true;
+    return false;
+}
+
 async function openGroupProfile(group) {
     if (!currentUser) return;
-    managedGroup = { ...group, groupId: group.groupId || group.id };
+    const groupId = group.groupId || group.id || group.uid;
+    if (!groupId) return;
+
+    let groupData = { ...group, groupId };
+    try {
+        const groupSnap = await getDoc(doc(db, 'groups', groupId));
+        if (groupSnap.exists()) {
+            groupData = { ...groupData, ...groupSnap.data(), groupId };
+        }
+    } catch (e) {
+        console.warn('Erro ao carregar dados iniciais do grupo:', e);
+    }
+    managedGroup = groupData;
+
     if (managedGroupUnsubscribe) managedGroupUnsubscribe();
     managedGroupUnsubscribe = onSnapshot(doc(db, 'groups', managedGroup.groupId), (groupSnap) => {
         if (!groupSnap.exists()) {
@@ -10796,11 +10818,18 @@ async function openGroupProfile(group) {
         pendingGroupAvatar = managedGroup.avatar || '';
         const liveTitle = document.getElementById('group-profile-title');
         if (liveTitle) liveTitle.innerText = managedGroup.name || 'Grupo VIP';
+
+        const liveIsAdmin = isUserGroupAdmin(managedGroup, currentUser);
+        const liveAdminFields = document.getElementById('group-admin-fields');
+        const liveDeleteBtn = document.getElementById('delete-group-profile-btn');
+        const liveAvatarInputLabel = document.getElementById('group-avatar-input-label');
+        if (liveAdminFields) liveAdminFields.style.display = liveIsAdmin ? 'flex' : 'none';
+        if (liveDeleteBtn) liveDeleteBtn.style.display = liveIsAdmin ? 'flex' : 'none';
+        if (liveAvatarInputLabel) liveAvatarInputLabel.style.display = liveIsAdmin ? 'inline-flex' : 'none';
     }, (err) => {
         console.warn('Erro ao carregar dados do grupo em tempo real:', err);
     });
-    const isAdmin = managedGroup.creatorUid === currentUser.uid ||
-        (Array.isArray(managedGroup.admins) && managedGroup.admins.includes(currentUser.uid));
+    const isAdmin = isUserGroupAdmin(managedGroup, currentUser);
     const panel = document.getElementById('group-profile-panel');
     const avatar = document.getElementById('group-profile-avatar');
     const title = document.getElementById('group-profile-title');
@@ -11020,7 +11049,10 @@ async function sendActivityNotification(toUid, type, context = {}) {
 }
 
 async function addGroupMember(memberUid) {
-    if (!managedGroup || managedGroup.creatorUid !== currentUser?.uid || !memberUid) return;
+    if (!managedGroup || !isUserGroupAdmin(managedGroup, currentUser) || !memberUid) {
+        showToast('Sem permissão', 'Apenas administradores do grupo podem adicionar membros.', 'red');
+        return;
+    }
     if ((managedGroup.members || []).includes(memberUid)) return;
 
     try {
@@ -11040,7 +11072,20 @@ async function addGroupMember(memberUid) {
 }
 
 async function removeGroupMember(memberUid) {
-    if (!managedGroup || managedGroup.creatorUid !== currentUser?.uid || !memberUid || memberUid === managedGroup.creatorUid) return;
+    if (!managedGroup || !isUserGroupAdmin(managedGroup, currentUser) || !memberUid) {
+        showToast('Sem permissão', 'Apenas administradores do grupo podem remover membros.', 'red');
+        return;
+    }
+    if (memberUid === managedGroup.creatorUid) {
+        showToast('Ação não permitida', 'O criador do grupo não pode ser removido.', 'red');
+        return;
+    }
+    const isCurrentUserCreator = currentUser?.uid === managedGroup.creatorUid;
+    const isTargetAdmin = Array.isArray(managedGroup.admins) && managedGroup.admins.includes(memberUid);
+    if (!isCurrentUserCreator && isTargetAdmin) {
+        showToast('Sem permissão', 'Apenas o criador do grupo pode remover outro administrador.', 'red');
+        return;
+    }
     if (!window.confirm('Remover este usuário do grupo?')) return;
 
     try {
@@ -11064,9 +11109,8 @@ async function removeGroupMember(memberUid) {
 
 async function promoteGroupMember(memberUid) {
     if (!managedGroup || !currentUser || !memberUid) return;
-    // Apenas criador pode promover admins
-    if (managedGroup.creatorUid !== currentUser.uid) {
-        showToast('Sem permissão', 'Somente o criador do grupo pode promover administradores.', 'red');
+    if (!isUserGroupAdmin(managedGroup, currentUser)) {
+        showToast('Sem permissão', 'Somente administradores do grupo podem promover outros administradores.', 'red');
         return;
     }
     try {
@@ -11306,7 +11350,17 @@ function openGroupChat(group) {
     if (typeof applyChatFilter === 'function') applyChatFilter();
 
     activeGroupDoc = group;
-    setActiveChatContact({ uid: groupId, name: group.name || 'Grupo VIP', avatar: group.avatar || '', isGroup: true, paused: !!group.paused, members: group.members || [] });
+    setActiveChatContact({
+        uid: groupId,
+        name: group.name || 'Grupo VIP',
+        avatar: group.avatar || '',
+        isGroup: true,
+        groupId: groupId,
+        creatorUid: group.creatorUid || '',
+        admins: group.admins || [],
+        paused: !!group.paused,
+        members: group.members || []
+    });
     applyChatWallpaper(groupId);
 
     const nameEl = document.getElementById('chat-window-name');
@@ -11440,6 +11494,9 @@ function openGroupChat(group) {
                 activeChatContact.members = activeGroupDoc.members || [];
                 activeChatContact.avatar = activeGroupDoc.avatar || '';
                 activeChatContact.name = activeGroupDoc.name || activeChatContact.name || 'Grupo VIP';
+                activeChatContact.groupId = groupId;
+                activeChatContact.creatorUid = activeGroupDoc.creatorUid || activeChatContact.creatorUid || '';
+                activeChatContact.admins = activeGroupDoc.admins || activeChatContact.admins || [];
 
                 const aEl = document.getElementById('chat-window-avatar');
                 const nEl = document.getElementById('chat-window-name');
@@ -11456,13 +11513,14 @@ function openGroupChat(group) {
                     nEl.innerText = activeChatContact.name;
                 }
 
+                const isLiveAdmin = isUserGroupAdmin(activeGroupDoc, currentUser);
                 const cInp = document.getElementById('chat-input-main');
                 const cBtn = document.getElementById('chat-send-btn-main');
                 if (cInp) {
-                    cInp.disabled = !!activeGroupDoc.paused;
-                    cInp.placeholder = activeGroupDoc.paused ? 'Grupo pausado pelo administrador' : 'Digite uma mensagem...';
+                    cInp.disabled = !!(activeGroupDoc.paused && !isLiveAdmin);
+                    cInp.placeholder = (activeGroupDoc.paused && !isLiveAdmin) ? 'Grupo pausado pelo administrador' : 'Digite uma mensagem...';
                 }
-                if (cBtn) cBtn.disabled = !!activeGroupDoc.paused;
+                if (cBtn) cBtn.disabled = !!(activeGroupDoc.paused && !isLiveAdmin);
                 updateGroupChatHeaderStatus();
             }
         });
@@ -11470,13 +11528,14 @@ function openGroupChat(group) {
 
     showToast('Grupo', `${group.name || 'Grupo VIP'} aberto.`, 'blue');
 
+    const isChatAdmin = isUserGroupAdmin(group, currentUser);
     const chatInput = document.getElementById('chat-input-main');
     const chatSendButton = document.getElementById('chat-send-btn-main');
     if (chatInput) {
-        chatInput.disabled = !!group.paused;
-        chatInput.placeholder = group.paused ? 'Grupo pausado pelo administrador' : 'Digite uma mensagem...';
+        chatInput.disabled = !!(group.paused && !isChatAdmin);
+        chatInput.placeholder = (group.paused && !isChatAdmin) ? 'Grupo pausado pelo administrador' : 'Digite uma mensagem...';
     }
-    if (chatSendButton) chatSendButton.disabled = !!group.paused;
+    if (chatSendButton) chatSendButton.disabled = !!(group.paused && !isChatAdmin);
     updateActiveChatBlockedUI();
     loadRealtimeMessages();
 }
@@ -16192,7 +16251,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.167';
+export const CURRENT_APP_VERSION = '1.0.168';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -17285,8 +17344,11 @@ async function sendChatMessage(type = 'text', payload = {}) {
             }
         }
         if (activeChatContact.isGroup && activeChatContact.paused) {
-            showToast('Grupo pausado', 'O administrador pausou o envio de mensagens.', 'red');
-            return;
+            const isGroupAdmin = isUserGroupAdmin(activeChatContact, currentUser) || (activeGroupDoc && isUserGroupAdmin(activeGroupDoc, currentUser));
+            if (!isGroupAdmin) {
+                showToast('Grupo pausado', 'O administrador pausou o envio de mensagens.', 'red');
+                return;
+            }
         }
         // Verificar se o grupo está banido pelo ADM
         if (activeChatContact.isGroup && activeGroupDoc) {
@@ -24936,7 +24998,10 @@ document.getElementById('close-group-profile')?.addEventListener('click', () => 
 });
 
 document.getElementById('save-group-profile')?.addEventListener('click', async () => {
-    if (!managedGroup || managedGroup.creatorUid !== currentUser?.uid) return;
+    if (!managedGroup || !isUserGroupAdmin(managedGroup, currentUser)) {
+        showToast('Sem permissão', 'Apenas administradores do grupo podem salvar alterações.', 'red');
+        return;
+    }
     const name = document.getElementById('group-profile-name')?.value.trim();
     const description = document.getElementById('group-profile-description')?.value.trim() || '';
     if (!name) {
@@ -24966,7 +25031,10 @@ document.getElementById('save-group-profile')?.addEventListener('click', async (
 });
 
 document.getElementById('toggle-group-pause')?.addEventListener('click', async () => {
-    if (!managedGroup || managedGroup.creatorUid !== currentUser?.uid) return;
+    if (!managedGroup || !isUserGroupAdmin(managedGroup, currentUser)) {
+        showToast('Sem permissão', 'Apenas administradores do grupo podem pausar ou despausar.', 'red');
+        return;
+    }
     managedGroup.paused = !managedGroup.paused;
     try {
         await updateDoc(doc(db, 'groups', managedGroup.groupId), { paused: managedGroup.paused, updatedAt: Date.now() });
@@ -25005,7 +25073,9 @@ document.getElementById('chat-leave-group-trigger')?.addEventListener('click', (
 });
 
 document.getElementById('delete-group-profile-btn')?.addEventListener('click', () => {
-    if (managedGroup?.creatorUid === currentUser?.uid) deleteGroup(managedGroup);
+    if (managedGroup && isUserGroupAdmin(managedGroup, currentUser)) {
+        deleteGroup(managedGroup);
+    }
 });
 
 function compressGroupImage(file) {
@@ -25031,7 +25101,10 @@ function compressGroupImage(file) {
 }
 
 document.getElementById('group-avatar-input')?.addEventListener('change', async (event) => {
-    if (managedGroup?.creatorUid !== currentUser?.uid) return;
+    if (!managedGroup || !isUserGroupAdmin(managedGroup, currentUser)) {
+        showToast('Sem permissão', 'Apenas administradores do grupo podem alterar a imagem.', 'red');
+        return;
+    }
     const file = event.target.files?.[0];
     if (!file || !file.type.startsWith('image/')) return;
     try {
@@ -27397,6 +27470,12 @@ if (typeof window !== 'undefined') {
     // Conta Empresa: Anúncio vs Conteúdo Normal para Stories e Posts (v1.0.167)
     window.getPostAdBadgeHTML = getPostAdBadgeHTML;
     window.initBusinessPostControls = initBusinessPostControls;
+    // Grupo: Permissões de Administrador Promovido (v1.0.168)
+    window.isUserGroupAdmin = isUserGroupAdmin;
+    window.openGroupProfile = openGroupProfile;
+    window.addGroupMember = addGroupMember;
+    window.removeGroupMember = removeGroupMember;
+    window.promoteGroupMember = promoteGroupMember;
 }
 
 if (typeof window !== 'undefined') {
