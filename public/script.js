@@ -6071,18 +6071,28 @@ export async function openOrderDetail(orderId) {
 
             return `
                 <div class="catalog-order-detail-item">
-                    ${coverImg}
-                    <div class="catalog-order-detail-item-info">
-                        <strong>${escapeHTML(item.name)}</strong>
-                        ${varBadges.length > 0 ? `<div class="catalog-order-item-vars-row">${varBadges.join('')}</div>` : ''}
-                        <div class="catalog-order-qty-row">
-                            <span class="catalog-order-qty-badge">Quantidade pedida: <strong>${qty} ${qty === 1 ? 'unidade' : 'unidades'}</strong></span>
-                            <span class="catalog-order-item-unit-price">${formatBRL(unitPrice)} un.</span>
+                    <div class="catalog-order-detail-item-header">
+                        ${coverImg}
+                        <div class="catalog-order-detail-item-info">
+                            <strong class="catalog-order-detail-item-title">${escapeHTML(item.name)}</strong>
+                            ${varBadges.length > 0 ? `<div class="catalog-order-item-vars-row">${varBadges.join('')}</div>` : ''}
+                        </div>
+                        <div class="catalog-order-detail-item-subtotal">
+                            <small>Subtotal</small>
+                            <span>${formatBRL(subtotal)}</span>
                         </div>
                     </div>
-                    <div class="catalog-order-detail-item-subtotal">
-                        <small>Subtotal</small>
-                        <span>${formatBRL(subtotal)}</span>
+                    <div class="catalog-order-qty-row">
+                        <span class="catalog-order-qty-badge">
+                            <i data-lucide="package-check"></i>
+                            <span class="catalog-order-qty-label">Quantidade pedida:</span>
+                            <strong>${qty} ${qty === 1 ? 'unidade' : 'unidades'}</strong>
+                        </span>
+                        <div class="catalog-order-item-unit-price">
+                            <span class="catalog-order-unit-bullet">•</span>
+                            <span class="catalog-order-unit-label">Valor un.:</span>
+                            <strong>${formatBRL(unitPrice)}</strong>
+                        </div>
                     </div>
                 </div>
             `;
@@ -6155,7 +6165,7 @@ export async function openOrderDetail(orderId) {
                 <div class="catalog-order-items-list">
                     <div class="catalog-order-items-header-bar">
                         <span class="catalog-field-label">Itens do pedido (${totalProducts} ${totalProducts === 1 ? 'produto' : 'produtos'})</span>
-                        <span class="catalog-order-total-units-pill"><i data-lucide="package-check"></i> <strong>${totalQuantity} ${totalQuantity === 1 ? 'unidade pedida' : 'unidades pedidas'}</strong></span>
+                        <span class="catalog-order-total-units-pill"><i data-lucide="package-check"></i> <span>Total:</span> <strong>${totalQuantity} ${totalQuantity === 1 ? 'unidade pedida' : 'unidades pedidas'}</strong></span>
                     </div>
                     ${itemsHTML}
                 </div>
@@ -15213,7 +15223,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.161';
+export const CURRENT_APP_VERSION = '1.0.162';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;

@@ -7440,7 +7440,8 @@ test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com 
   // 38. Correção do Alinhamento dos Botões Salvar e Cancelar no Modal de Mensagens Temporárias (v1.0.159)
   // 39. Padronização de Tamanho de Conta Pessoal/Empresa, Validação Estrita de Chave Pix e Limite de 45 Caracteres no Recado/Bio (v1.0.160)
   // 40. Busca de Posts na Tela do Feed Reels (v1.0.161)
-  assert.strictEqual(versionJson.version, '1.0.161', 'version.json deve ser 1.0.161');
+  // 41. Organização das Opções de Unidade Pedida e Quantidade Pedida no Detalhe do Pedido (v1.0.162)
+  assert.strictEqual(versionJson.version, '1.0.162', 'version.json deve ser 1.0.162');
 });
 
 test('Formulários Comerciais para Conta Empresa: Permissões, templates, card interativo no chat e preenchimento de respostas (v1.0.142)', () => {
@@ -8876,6 +8877,108 @@ test('Busca de Posts na Tela do Feed Reels: Barra de pesquisa, normalização se
   assert.strictEqual(searchInput.value, '', 'Campo de busca deve estar vazio');
   assert.strictEqual(countLabel.innerText, '3 postagens', 'Contador deve voltar para 3 postagens');
   assert.ok(feedList.innerHTML.includes('post-card-post_1') && feedList.innerHTML.includes('post-card-post_2'), 'Todos os posts devem ser reexibidos');
+});
+
+test('Organização das Opções de Unidade Pedida e Quantidade Pedida no Detalhe do Pedido (v1.0.162)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+  const doc = env.sandbox.document;
+
+  // 1. Verificação das Regras CSS de Layout e Responsividade
+  assert.ok(cssContent.includes('.catalog-order-detail-item-header'), 'style.css deve conter cabeçalho do item com foto, título e subtotal');
+  assert.ok(cssContent.includes('.catalog-order-qty-row'), 'style.css deve conter linha dedicada para quantidade pedida e valor unitário');
+  assert.ok(cssContent.includes('.catalog-order-qty-badge'), 'style.css deve conter badge de quantidade pedida');
+  assert.ok(cssContent.includes('.catalog-order-total-units-pill'), 'style.css deve conter pill com total de unidades pedidas');
+  assert.ok(cssContent.includes('.catalog-order-item-unit-price'), 'style.css deve estilizar o valor unitário');
+  assert.ok(cssContent.includes('white-space: nowrap'), 'Badges e pills devem ter white-space: nowrap para evitar quebras de texto');
+  assert.ok(cssContent.includes('body.theme-hacker .catalog-order-qty-badge'), 'style.css deve conter suporte ao tema Hacker');
+  assert.ok(cssContent.includes('body.theme-cyberpunk .catalog-order-qty-badge'), 'style.css deve conter suporte ao tema Cyberpunk');
+
+  // 2. Mock de Pedido com 2 Produtos (1 unidade e 3 unidades)
+  const sampleOrder = {
+    orderNumber: 'VX-566064',
+    buyerUid: 'buyer_123',
+    buyerName: 'Deyvison Brito',
+    sellerUid: 'seller_dx',
+    sellerName: 'Loja Oficial VORTEX',
+    sellerPixKey: 'empresa.virtual.dx.bt@gmail.com',
+    status: 'new',
+    createdAt: Date.now(),
+    total: 80.00,
+    items: [
+      {
+        id: 'prod_1',
+        name: 'Fotos em ícone para apps',
+        quantity: 1,
+        price: 20.00,
+        subtotal: 20.00,
+        cover: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe'
+      },
+      {
+        id: 'prod_2',
+        name: 'Pack de Wallpapers VIP',
+        quantity: 3,
+        price: 20.00,
+        subtotal: 60.00,
+        selectedColor: 'Neon Blue'
+      }
+    ],
+    customer: {
+      street: 'Avenida São Vicente',
+      number: '474',
+      city: 'Carnaubal',
+      state: 'CE',
+      cep: '62375-000',
+      country: 'Brasil',
+      phone: '(88) 99663-0823',
+      email: 'bdeyvison0@gmail.com',
+      age: 20
+    }
+  };
+
+  env.firestoreDocs['orders/ord_test_vx_999'] = sampleOrder;
+
+  const openOrderDetail = win.openOrderDetail;
+  assert.strictEqual(typeof openOrderDetail, 'function', 'openOrderDetail deve ser uma função');
+
+  await openOrderDetail('ord_test_vx_999');
+
+  const content = doc.getElementById('catalog-order-content');
+  assert.ok(content, '#catalog-order-content deve existir no DOM');
+  const html = content.innerHTML;
+
+  // 3. Validação do Header de Itens: Exibição Clara do Total de Unidades Pedidas
+  assert.ok(html.includes('Itens do pedido (2 produtos)'), 'Deve indicar o total de produtos no pedido');
+  assert.ok(html.includes('catalog-order-total-units-pill'), 'Deve conter o pill com total de unidades');
+  assert.ok(html.includes('Total:') && html.includes('4 unidades pedidas'), 'Total de unidades deve somar 1 + 3 = 4 unidades pedidas');
+
+  // 4. Validação do Primeiro Item (1 unidade pedida)
+  assert.ok(html.includes('Fotos em ícone para apps'), 'Deve exibir o nome do primeiro item');
+  assert.ok(html.includes('catalog-order-detail-item-header'), 'Card do item deve conter cabeçalho estruturado');
+  assert.ok(html.includes('Quantidade pedida:') && html.includes('1 unidade'), 'Primeiro item deve indicar "1 unidade" no singular');
+  assert.ok(html.includes('Valor un.:') && html.includes('20,00'), 'Deve exibir valor unitário organizado');
+  assert.ok(html.includes('Subtotal') && html.includes('20,00'), 'Subtotal do primeiro item deve ser R$ 20,00');
+
+  // 5. Validação do Segundo Item (3 unidades pedidas)
+  assert.ok(html.includes('Pack de Wallpapers VIP'), 'Deve exibir o nome do segundo item');
+  assert.ok(html.includes('3 unidades'), 'Segundo item deve indicar "3 unidades" no plural');
+  assert.ok(html.includes('Subtotal') && html.includes('60,00'), 'Subtotal do segundo item deve ser R$ 60,00');
+
+  // 6. Pedido com 1 único produto e 1 única unidade (como na imagem do usuário)
+  const singleItemOrder = {
+    ...sampleOrder,
+    orderNumber: 'VX-566064',
+    items: [sampleOrder.items[0]],
+    total: 20.00
+  };
+  env.firestoreDocs['orders/ord_single_1'] = singleItemOrder;
+  await openOrderDetail('ord_single_1');
+
+  const singleHtml = content.innerHTML;
+  assert.ok(singleHtml.includes('Itens do pedido (1 produto)'), 'Deve indicar (1 produto)');
+  assert.ok(singleHtml.includes('1 unidade pedida'), 'Total de unidades deve ser no singular "1 unidade pedida"');
+  assert.ok(singleHtml.includes('Quantidade pedida:'), 'Item deve conter o badge de Quantidade pedida');
+  assert.ok(singleHtml.includes('1 unidade'), 'Item deve exibir 1 unidade no singular');
 });
 
 

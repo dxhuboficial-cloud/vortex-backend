@@ -13515,28 +13515,25 @@ body.total-black .ringtone-select {
 
 .catalog-order-detail-item {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 10px;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 12px;
     background: rgba(255, 255, 255, 0.03);
-    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 12px;
     font-size: 0.85rem;
 }
 
 .catalog-order-detail-item-info strong {
     display: block;
     color: #fff;
+    font-weight: 700;
 }
 
 .catalog-order-detail-item-info small {
     display: block;
     color: var(--text-dim, #8e8e93);
     font-size: 0.72rem;
-}
-
-.catalog-order-detail-item span {
-    font-weight: 700;
-    color: #fff;
 }
 
 .catalog-pix-box {
@@ -14099,46 +14096,59 @@ body.total-black .ringtone-select {
     text-overflow: ellipsis;
 }
 
-/* Modal Detalhe do Pedido: Itens com Foto e Destaque da Quantidade */
+/* Modal Detalhe do Pedido: Itens com Foto e Destaque da Quantidade Organizada (v1.0.162) */
 .catalog-order-items-header-bar {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 2px;
+    gap: 8px;
+    margin-bottom: 4px;
+    flex-wrap: wrap;
 }
 
 .catalog-order-total-units-pill {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
-    padding: 3px 10px;
-    background: rgba(255, 240, 31, 0.15);
+    gap: 6px;
+    padding: 4px 12px;
+    background: rgba(255, 240, 31, 0.12);
     border: 1px solid var(--accent-color, #fff01f);
-    border-radius: 12px;
-    font-size: 0.75rem;
+    border-radius: 14px;
+    font-size: 0.76rem;
     font-weight: 700;
     color: var(--accent-color, #fff01f);
+    white-space: nowrap;
 }
 
 .catalog-order-total-units-pill i {
-    width: 13px;
-    height: 13px;
+    width: 14px;
+    height: 14px;
     flex-shrink: 0;
 }
 
+.catalog-order-total-units-pill span {
+    font-size: 0.74rem;
+    opacity: 0.9;
+}
+
+.catalog-order-total-units-pill strong {
+    color: var(--accent-color, #fff01f);
+    font-weight: 800;
+}
+
 .catalog-order-item-img {
-    width: 44px;
-    height: 44px;
-    border-radius: 8px;
+    width: 46px;
+    height: 46px;
+    border-radius: 10px;
     object-fit: cover;
     flex-shrink: 0;
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .catalog-order-item-noimg {
-    width: 44px;
-    height: 44px;
-    border-radius: 8px;
+    width: 46px;
+    height: 46px;
+    border-radius: 10px;
     background: rgba(255, 255, 255, 0.05);
     display: flex;
     align-items: center;
@@ -14152,25 +14162,84 @@ body.total-black .ringtone-select {
     height: 20px;
 }
 
+.catalog-order-detail-item-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+}
+
+.catalog-order-detail-item-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.catalog-order-detail-item-title {
+    display: block;
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 700;
+    line-height: 1.35;
+    word-break: break-word;
+}
+
+.catalog-order-detail-item-subtotal {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    flex-shrink: 0;
+    text-align: right;
+}
+
+.catalog-order-detail-item-subtotal small {
+    font-size: 0.68rem;
+    color: var(--text-dim, #8e8e93);
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.catalog-order-detail-item-subtotal span {
+    font-weight: 800;
+    font-size: 0.95rem;
+    color: #fff;
+    white-space: nowrap;
+}
+
+/* Linha Organizada: Quantidade Pedida + Valor Unitário */
 .catalog-order-qty-row {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 8px;
     flex-wrap: wrap;
-    margin-top: 2px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    width: 100%;
 }
 
 .catalog-order-qty-badge {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    padding: 2px 8px;
-    background: rgba(255, 240, 31, 0.15);
+    gap: 6px;
+    padding: 3px 9px;
+    background: rgba(255, 240, 31, 0.12);
     border: 1px solid rgba(255, 240, 31, 0.35);
     border-radius: 6px;
     color: var(--accent-color, #fff01f);
     font-size: 0.76rem;
     font-weight: 600;
+    white-space: nowrap;
+}
+
+.catalog-order-qty-badge i {
+    width: 13px;
+    height: 13px;
+    flex-shrink: 0;
 }
 
 .catalog-order-qty-badge strong {
@@ -14180,32 +14249,66 @@ body.total-black .ringtone-select {
 }
 
 .catalog-order-item-unit-price {
-    font-size: 0.74rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
     color: var(--text-dim, #8e8e93);
+    white-space: nowrap;
 }
 
-.catalog-order-detail-item-subtotal {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    flex-shrink: 0;
+.catalog-order-item-unit-price strong {
+    color: #e0e0e0;
+    font-weight: 700;
 }
 
-.catalog-order-detail-item-subtotal small {
-    font-size: 0.68rem;
-    color: var(--text-dim, #8e8e93);
-    text-transform: uppercase;
-}
-
-.catalog-order-detail-item-subtotal span {
-    font-weight: 800;
-    font-size: 0.95rem;
-    color: #fff;
+.catalog-order-unit-bullet {
+    color: var(--text-dim, #666);
+    margin-right: 2px;
 }
 
 .catalog-order-meta-qty-highlight {
     color: var(--accent-color, #fff01f) !important;
     font-weight: 700;
+}
+
+body.theme-hacker .catalog-order-qty-badge,
+body.theme-hacker .catalog-order-total-units-pill {
+    background: rgba(0, 255, 102, 0.12);
+    border-color: rgba(0, 255, 102, 0.4);
+    color: #00ff66;
+}
+
+body.theme-cyberpunk .catalog-order-qty-badge,
+body.theme-cyberpunk .catalog-order-total-units-pill {
+    background: rgba(255, 0, 127, 0.12);
+    border-color: rgba(255, 0, 127, 0.4);
+    color: #ff007f;
+}
+
+@media (max-width: 480px) {
+    .catalog-order-detail-item {
+        padding: 9px 10px;
+    }
+    .catalog-order-detail-item-header {
+        gap: 10px;
+    }
+    .catalog-order-item-img,
+    .catalog-order-item-noimg {
+        width: 42px;
+        height: 42px;
+    }
+    .catalog-order-qty-row {
+        gap: 6px;
+        padding-top: 6px;
+    }
+    .catalog-order-qty-badge {
+        font-size: 0.74rem;
+        padding: 2px 7px;
+    }
+    .catalog-order-item-unit-price {
+        font-size: 0.72rem;
+    }
 }
 
 /* Chat: Destaque de Quantidades Pedidas */
