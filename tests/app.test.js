@@ -7436,7 +7436,8 @@ test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com 
   // 34. Correção dos Ícones Grandes dos Modais no Celular (v1.0.155)
   // 35. Separação de Redes Sociais e Sites Oficiais (v1.0.156)
   // 36. Alinhamento de Nome e Título ao Lado da Foto na Prévia do Compartilhar (v1.0.157)
-  assert.strictEqual(versionJson.version, '1.0.157', 'version.json deve ser 1.0.157');
+  // 37. Padronização e Balanceamento do Tamanho do Botão Salvar em Mensagens Temporárias (v1.0.158)
+  assert.strictEqual(versionJson.version, '1.0.158', 'version.json deve ser 1.0.158');
 });
 
 test('Formulários Comerciais para Conta Empresa: Permissões, templates, card interativo no chat e preenchimento de respostas (v1.0.142)', () => {
@@ -8520,6 +8521,38 @@ test('Alinhamento da Foto e Textos (Nome do Autor e Legenda) Lado a Lado na Pré
 
   assert.strictEqual(env.elements['share-post-author'].innerText, 'Deyvison', 'Nome do autor deve ser Deyvison');
   assert.strictEqual(env.elements['share-post-caption'].innerText, '"Poche 911"', 'Legenda/título deve ser formatado com aspas');
+});
+
+test('Padronização e Balanceamento do Tamanho do Botão Salvar em Mensagens Temporárias (v1.0.158)', () => {
+  const env = createTestEnvironment();
+  const doc = env.sandbox.window.document;
+
+  // 1. Verificação no CSS: Botões Salvar e Cancelar com flex: 1 simétrico e altura 44px
+  assert.ok(
+    cssContent.includes('.ephemeral-save-btn') && cssContent.includes('flex: 1 !important;'),
+    'style.css deve configurar flex: 1 no botão de salvar mensagens temporárias'
+  );
+  assert.ok(
+    cssContent.includes('.ephemeral-cancel-btn') && cssContent.includes('flex: 1 !important;'),
+    'style.css deve configurar flex: 1 no botão de cancelar para equilibrar as larguras'
+  );
+  assert.ok(
+    cssContent.includes('.ephemeral-save-btn') && cssContent.includes('height: 44px !important;'),
+    'style.css deve padronizar a altura do botão salvar em 44px'
+  );
+  assert.ok(
+    cssContent.includes('.ephemeral-cancel-btn') && cssContent.includes('height: 44px !important;'),
+    'style.css deve padronizar a altura do botão cancelar em 44px'
+  );
+
+  // 2. Verificação no DOM
+  const saveBtn = doc.getElementById('save-ephemeral-btn');
+  const cancelBtn = doc.getElementById('cancel-ephemeral-btn');
+  const modal = doc.getElementById('chat-ephemeral-modal');
+
+  assert.ok(saveBtn, '#save-ephemeral-btn deve existir no DOM');
+  assert.ok(cancelBtn, '#cancel-ephemeral-btn deve existir no DOM');
+  assert.ok(modal, '#chat-ephemeral-modal deve existir no DOM');
 });
 
 

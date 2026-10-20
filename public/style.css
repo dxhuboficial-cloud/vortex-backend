@@ -9303,14 +9303,15 @@ body.theme-rgb .chat-tab-pill.active {
 
 .ephemeral-save-btn,
 #save-ephemeral-btn {
-    flex: 1;
+    flex: 1 !important;
     background: linear-gradient(135deg, #00f3ff 0%, #00a8ff 100%) !important;
     color: #000000 !important;
     font-weight: 800 !important;
     font-size: 0.95rem !important;
     border: none !important;
     border-radius: 12px !important;
-    padding: 12px 20px !important;
+    padding: 12px 18px !important;
+    height: 44px !important;
     cursor: pointer !important;
     box-shadow: 0 4px 18px rgba(0, 243, 255, 0.45), 0 0 12px rgba(0, 243, 255, 0.25) !important;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
@@ -9320,6 +9321,8 @@ body.theme-rgb .chat-tab-pill.active {
     text-align: center !important;
     outline: none !important;
     letter-spacing: 0.3px !important;
+    box-sizing: border-box !important;
+    min-width: 0 !important;
 }
 
 .ephemeral-save-btn:hover,
@@ -9337,6 +9340,7 @@ body.theme-rgb .chat-tab-pill.active {
 
 .ephemeral-cancel-btn,
 #cancel-ephemeral-btn {
+    flex: 1 !important;
     background: rgba(255, 255, 255, 0.08) !important;
     border: 1px solid rgba(255, 255, 255, 0.16) !important;
     color: rgba(255, 255, 255, 0.85) !important;
@@ -9344,13 +9348,16 @@ body.theme-rgb .chat-tab-pill.active {
     font-size: 0.92rem !important;
     border-radius: 12px !important;
     padding: 12px 18px !important;
+    height: 44px !important;
     cursor: pointer !important;
     transition: all 0.2s ease !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
+    text-align: center !important;
     outline: none !important;
-    width: auto !important;
+    box-sizing: border-box !important;
+    min-width: 0 !important;
 }
 
 .ephemeral-cancel-btn:hover,
