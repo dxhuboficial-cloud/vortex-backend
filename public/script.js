@@ -133,8 +133,10 @@ let requestsUnsubscribe = null;
 let storiesUnsubscribe = null;
 let notificationsUnsubscribe = null;
 let broadcastUnsubscribe = null;
+let adminNotifUnsubscribe = null;
 let userNotifications = [];
 let broadcastNotifications = [];
+let adminNotifications = [];
 let allNotifications = [];
 let currentNotifFilter = 'all';
 let readNotifIds = new Set();
@@ -1323,8 +1325,16 @@ export function updateNotificationsBadge() {
 
 export function combineAndRenderNotifications() {
     const mergedMap = new Map();
-    [...userNotifications, ...broadcastNotifications].forEach(n => {
+    const isAdmin = isUserAdmin(currentUser, currentProfile) || checkIsAdminUser(currentUser, currentProfile);
+    [...userNotifications, ...broadcastNotifications, ...adminNotifications].forEach(n => {
         if (!deletedNotifIds.has(n.id)) {
+            const isSecurityAiNotif = n.toUid === 'admin' || n.forAdmin || 
+                /Seguran[çc]a IA/i.test(n.title || '') || 
+                /algoritmo de den[úu]ncia/i.test(n.message || '') ||
+                /algoritmo de seguran[çc]a/i.test(n.message || '');
+            if (isSecurityAiNotif && !isAdmin) {
+                return; // Usuário comum NUNCA vê notificações de moderação/segurança da IA!
+            }
             mergedMap.set(n.id, n);
         }
     });
@@ -1340,10 +1350,40 @@ export function setAllNotifications(notifs) {
     renderNotifications();
 }
 
+export function setAdminNotifications(notifs) {
+    adminNotifications = Array.isArray(notifs) ? [...notifs] : [];
+    combineAndRenderNotifications();
+}
+
+export function getAdminNotifications() {
+    return adminNotifications;
+}
+
+export async function cleanupLegacySecurityBroadcasts() {
+    try {
+        const isAdmin = isUserAdmin(currentUser, currentProfile) || checkIsAdminUser(currentUser, currentProfile);
+        if (!isAdmin) return;
+        const q = query(collection(db, 'notifications'), where('toUid', '==', 'all'), limit(30));
+        const snap = await getDocs(q).catch(() => null);
+        if (snap && snap.docs) {
+            for (const d of snap.docs) {
+                const data = d.data();
+                if (/Seguran[çc]a IA/i.test(data.title || '') || /algoritmo de den[úu]ncia/i.test(data.message || '') || /algoritmo de seguran[çc]a/i.test(data.message || '')) {
+                    await updateDoc(doc(db, 'notifications', d.id), {
+                        toUid: 'admin',
+                        forAdmin: true
+                    }).catch(() => {});
+                }
+            }
+        }
+    } catch (e) {}
+}
+
 export function listenToNotifications() {
     if (!currentUser) return;
     if (notificationsUnsubscribe) notificationsUnsubscribe();
     if (broadcastUnsubscribe) broadcastUnsubscribe();
+    if (adminNotifUnsubscribe) adminNotifUnsubscribe();
 
     try {
         // 1. Notificações diretas para o usuário (ex: Selo VIP aprovado)
@@ -1374,6 +1414,16 @@ export function listenToNotifications() {
                     if (change.type === 'added') {
                         const data = change.doc.data();
                         const notifId = change.doc.id;
+                        const isSecurityAiNotif = data.toUid === 'admin' || data.forAdmin || 
+                            /Seguran[çc]a IA/i.test(data.title || '') || 
+                            /algoritmo de den[úu]ncia/i.test(data.message || '') ||
+                            /algoritmo de seguran[çc]a/i.test(data.message || '');
+                        
+                        // Segurança estrita: usuário comum NUNCA é notificado sobre ações de segurança/moderação da IA
+                        if (isSecurityAiNotif && !isUserAdmin(currentUser, currentProfile) && !checkIsAdminUser(currentUser, currentProfile)) {
+                            return;
+                        }
+
                         if (!readNotifIds.has(notifId) && !deletedNotifIds.has(notifId)) {
                             const toastColor = data.type === 'alert' ? 'red' : 'blue';
                             showToast(data.title || 'Aviso da Plataforma', data.message || '', toastColor);
@@ -1385,6 +1435,31 @@ export function listenToNotifications() {
             broadcastNotifications = (snapshot && snapshot.docs) ? snapshot.docs.map(d => ({ id: d.id, ...d.data() })) : [];
             combineAndRenderNotifications();
         }, (error) => console.warn('Erro ao ouvir avisos e alertas gerais:', error));
+
+        // 3. Notificações EXCLUSIVAS para Administradores da Plataforma (toUid == 'admin')
+        const isAdmin = isUserAdmin(currentUser, currentProfile) || checkIsAdminUser(currentUser, currentProfile);
+        if (isAdmin) {
+            const adminQuery = query(collection(db, 'notifications'), where('toUid', '==', 'admin'), limit(25));
+            adminNotifUnsubscribe = onSnapshot(adminQuery, (snapshot) => {
+                if (snapshot && typeof snapshot.docChanges === 'function') {
+                    snapshot.docChanges().forEach(change => {
+                        if (change.type === 'added') {
+                            const data = change.doc.data();
+                            const notifId = change.doc.id;
+                            if (!readNotifIds.has(notifId) && !deletedNotifIds.has(notifId)) {
+                                const toastColor = data.type === 'alert' ? 'red' : 'yellow';
+                                showToast(data.title || 'Alerta de Moderação ADM', data.message || '', toastColor);
+                                playSound(notificationSound);
+                            }
+                        }
+                    });
+                }
+                adminNotifications = (snapshot && snapshot.docs) ? snapshot.docs.map(d => ({ id: d.id, ...d.data() })) : [];
+                combineAndRenderNotifications();
+            }, (error) => console.warn('Erro ao ouvir notificações de administrador:', error));
+
+            cleanupLegacySecurityBroadcasts();
+        }
     } catch (err) {
         console.warn('Falha ao inicializar listeners de notificações:', err);
     }
@@ -1557,8 +1632,16 @@ export function renderNotifications() {
     const listEl = document.getElementById('notifications-list');
     if (!listEl) return;
 
+    const isAdmin = isUserAdmin(currentUser, currentProfile) || checkIsAdminUser(currentUser, currentProfile);
+
     let filtered = allNotifications.filter(n => {
         if (deletedNotifIds.has(n.id)) return false;
+        const isSecurityAiNotif = n.toUid === 'admin' || n.forAdmin || 
+            /Seguran[çc]a IA/i.test(n.title || '') || 
+            /algoritmo de den[úu]ncia/i.test(n.message || '') ||
+            /algoritmo de seguran[çc]a/i.test(n.message || '');
+        if (isSecurityAiNotif && !isAdmin) return false;
+
         if (currentNotifFilter === 'vip') return n.type === 'vip';
         if (currentNotifFilter === 'warning') return !n.type || n.type === 'warning' || n.type === 'group_add' || n.type === 'group_promote';
         if (currentNotifFilter === 'alert') return n.type === 'alert';
@@ -1591,6 +1674,7 @@ export function renderNotifications() {
         const isLike = !isGroupPromote && !isStoryLike && (type === 'like_post' || type === 'like' || /curtiu|reagiu/i.test(titleRaw) || /curtiu a sua publica/i.test(msgRaw));
         const isComment = !isGroupPromote && (type === 'comment_post' || type === 'comment' || /comentou/i.test(titleRaw) || /comentou na sua publica/i.test(msgRaw));
         const isGroupAdd = !isGroupPromote && (type === 'group_add' || /adicionado a um grupo|adicionado ao grupo/i.test(titleRaw) || /adicionado ao grupo/i.test(msgRaw));
+        const isSecurityAdmin = (n.toUid === 'admin' || n.forAdmin || /Seguran[çc]a IA/i.test(titleRaw) || /algoritmo de den[úu]ncia/i.test(msgRaw) || /algoritmo de seguran[çc]a/i.test(msgRaw));
 
         let typeClass = 'warning';
         let badgeText = 'AVISO ⚠️';
@@ -1601,6 +1685,10 @@ export function renderNotifications() {
             typeClass = 'vip';
             badgeText = 'SELO VIP ⭐';
             iconHTML = '<i data-lucide="sparkles"></i>';
+        } else if (isSecurityAdmin) {
+            typeClass = isAlert ? 'alert' : 'warning';
+            badgeText = 'MODERAÇÃO 🛡️';
+            iconHTML = isAlert ? '<i data-lucide="shield-alert"></i>' : '<i data-lucide="shield"></i>';
         } else if (isAlert) {
             typeClass = 'alert';
             badgeText = 'ALERTA 🔴';
@@ -2998,6 +3086,11 @@ function detachListeners() {
     if (storiesUnsubscribe) storiesUnsubscribe();
     if (notificationsUnsubscribe) notificationsUnsubscribe();
     if (broadcastUnsubscribe) broadcastUnsubscribe();
+    if (adminNotifUnsubscribe) {
+        adminNotifUnsubscribe();
+        adminNotifUnsubscribe = null;
+    }
+    adminNotifications = [];
     if (contactStatusUnsubscribe) contactStatusUnsubscribe();
     if (incomingCallUnsubscribe) incomingCallUnsubscribe();
     if (activeCallDocUnsubscribe) activeCallDocUnsubscribe();
@@ -11020,6 +11113,23 @@ async function notifyUser(userUid, title, message, type = 'warning', icon = '') 
     await addDoc(collection(db, 'notifications'), payload);
 }
 
+export async function notifyAdmins(title, message, type = 'warning', icon = '') {
+    try {
+        const payload = {
+            toUid: 'admin',
+            forAdmin: true,
+            title,
+            message,
+            createdAt: Date.now()
+        };
+        if (type) payload.type = type;
+        if (icon) payload.icon = icon;
+        await addDoc(collection(db, 'notifications'), payload);
+    } catch (e) {
+        console.warn('Erro ao notificar administradores:', e);
+    }
+}
+
 /* Notificações de atividade: likes e comentários em posts e stories */
 async function sendActivityNotification(toUid, type, context = {}) {
     try {
@@ -14462,14 +14572,14 @@ export async function runSecurityReportAnalysis(reportId, reportData, target, op
         console.warn('Erro ao atualizar diagnóstico da IA no relatório:', e);
     }
 
-    // Notificar Administradores da Plataforma VORTEX VIP
+    // Notificar EXCLUSIVAMENTE Administradores da Plataforma VORTEX VIP (Nunca 'all')
     try {
         if (analysisResult.action === 'auto_banned') {
-            await notifyUser('all', '🤖 Segurança IA: Usuário Banido por Reincidência', `A conta "${targetName}" foi banida automaticamente pela IA após reincidência de infração grave.`, 'alert');
+            await notifyAdmins('🤖 Segurança IA: Usuário Banido por Reincidência', `A conta "${targetName}" foi banida automaticamente pela IA após reincidência de infração grave.`, 'alert');
         } else if (analysisResult.action === 'auto_restricted') {
-            await notifyUser('all', '🛡️ Segurança IA: Restrição Preventiva Aplicada', `A conta "${targetName}" recebeu restrição automática de 24 horas aplicada pelo algoritmo de denúncia.`, 'warning');
+            await notifyAdmins('🛡️ Segurança IA: Restrição Preventiva Aplicada', `A conta "${targetName}" recebeu restrição automática de 24 horas aplicada pelo algoritmo de denúncia.`, 'warning');
         } else if (analysisResult.action === 'pending_admin_approval') {
-            await notifyUser('all', '🤖 Segurança IA: Denúncia Requer Decisão do ADM', `Nova denúncia contra "${targetName}" (${targetType}) aguarda decisão do Administrador no Painel ADM.`, 'alert');
+            await notifyAdmins('🤖 Segurança IA: Denúncia Requer Decisão do ADM', `Nova denúncia contra "${targetName}" (${targetType}) aguarda decisão do Administrador no Painel ADM.`, 'alert');
         }
     } catch (e) {}
 
@@ -16847,7 +16957,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.170';
+export const CURRENT_APP_VERSION = '1.0.171';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -17309,6 +17419,10 @@ if (typeof window !== 'undefined') {
     window.matchSecurityKeywords = matchSecurityKeywords;
     window.runSecurityReportAnalysis = runSecurityReportAnalysis;
     window.adminExecuteAiAction = adminExecuteAiAction;
+    window.notifyAdmins = notifyAdmins;
+    window.setAdminNotifications = setAdminNotifications;
+    window.getAdminNotifications = getAdminNotifications;
+    window.cleanupLegacySecurityBroadcasts = cleanupLegacySecurityBroadcasts;
     window.requestVipSubscription = requestVipSubscription;
     window.loadAdminVipRequests = loadAdminVipRequests;
     window.listenToAdminVipRequests = listenToAdminVipRequests;

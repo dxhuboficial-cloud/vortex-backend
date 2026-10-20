@@ -10003,10 +10003,10 @@ test('Algoritmo de Segurança de Denúncia Multi-Tipo VORTEX VIP (v1.0.170)', as
   const env = createTestEnvironment();
   const win = env.sandbox.window;
 
-  // 1. Integridade de Versionamento (v1.0.170)
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.170', 'script.js deve ter versão 1.0.170');
-  assert.ok(htmlContent.includes('script.js?v=1.0.170'), 'index.html deve referenciar script.js com a versão 1.0.170');
-  assert.ok(htmlContent.includes('style.css?v=1.0.170'), 'index.html deve referenciar style.css com a versão 1.0.170');
+  // 1. Integridade de Versionamento (v1.0.170+)
+  assert.ok(['1.0.170', '1.0.171'].includes(win.CURRENT_APP_VERSION) || parseInt(win.CURRENT_APP_VERSION.split('.')[2], 10) >= 170, 'script.js deve ter versão 1.0.170+');
+  assert.ok(htmlContent.includes(`script.js?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar script.js com a versão atual');
+  assert.ok(htmlContent.includes(`style.css?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar style.css com a versão atual');
 
   // 2. Estilos CSS do Painel da IA de Segurança
   assert.ok(cssContent.includes('.admin-ai-analysis-card'), 'style.css deve conter .admin-ai-analysis-card');
@@ -10176,6 +10176,105 @@ test('Algoritmo de Segurança de Denúncia Multi-Tipo VORTEX VIP (v1.0.170)', as
   assert.strictEqual(env.firestoreDocs[`users/${pendingReport.targetUid}`].restricted, true, 'ADM deve conseguir aplicar a restrição pela ação da IA');
   assert.strictEqual(pendingReport.resolved, true, 'Denúncia deve ser marcada como resolvida após decisão do ADM');
 });
+
+test('Notificações Exclusivas para Administradores da Plataforma (Segurança IA e Moderação) (v1.0.171)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+
+  // 1. Integridade de Versionamento (v1.0.171)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.171', 'script.js deve ter versão 1.0.171');
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
+  assert.strictEqual(versionJson.version, '1.0.171', 'version.json deve ter versão 1.0.171');
+  assert.ok(htmlContent.includes('script.js?v=1.0.171'), 'index.html deve referenciar script.js?v=1.0.171');
+  assert.ok(htmlContent.includes('style.css?v=1.0.171'), 'index.html deve referenciar style.css?v=1.0.171');
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+  assert.ok(swContent.includes('vortex-vip-v1.0.171'), 'sw.js deve ter cache vortex-vip-v1.0.171');
+
+  // 2. Disparo de Notificação da IA de Segurança usando notifyAdmins
+  assert.ok(typeof win.notifyAdmins === 'function', 'notifyAdmins deve existir e ser exportada');
+
+  await win.notifyAdmins(
+    '🛡️ Segurança IA: Restrição Preventiva Aplicada',
+    'A conta "Deyvison" recebeu restrição automática de 24 horas aplicada pelo algoritmo de denúncia.',
+    'warning'
+  );
+
+  // Deve salvar no Firestore com toUid == 'admin' e forAdmin == true, NUNCA com toUid == 'all'
+  const notifDocs = Object.values(env.firestoreDocs).filter(d => d.title && d.title.includes('Segurança IA: Restrição Preventiva'));
+  assert.ok(notifDocs.length > 0, 'Deve ter salvo o documento de notificação no Firestore');
+  const notifDoc = notifDocs[0];
+  assert.strictEqual(notifDoc.toUid, 'admin', 'Notificação de segurança da IA deve ser enviada para toUid == "admin"');
+  assert.strictEqual(notifDoc.forAdmin, true, 'Notificação deve ter flag forAdmin: true');
+  assert.notStrictEqual(notifDoc.toUid, 'all', 'Notificação NUNCA deve ser enviada com toUid == "all" para todos os usuários');
+
+  // 3. Usuário Comum Logado (ex: Deyvison): NÃO deve ver a notificação de moderação da IA
+  const normalUser = { uid: 'user_deyvison', email: 'deyvison@gmail.com', name: 'Deyvison' };
+  win.setCurrentUser(normalUser);
+  win.setCurrentProfile(normalUser);
+
+  // Simular lista de notificações contendo a notificação de admin e uma notificação normal
+  const securityNotif = {
+    id: 'notif_sec_1',
+    toUid: 'admin',
+    forAdmin: true,
+    title: '🛡️ Segurança IA: Restrição Preventiva Aplicada',
+    message: 'A conta "Deyvison" recebeu restrição automática de 24 horas aplicada pelo algoritmo de denúncia.',
+    type: 'warning',
+    createdAt: Date.now()
+  };
+  const normalNotif = {
+    id: 'notif_user_1',
+    toUid: normalUser.uid,
+    title: '💬 Alguém comentou no seu post',
+    message: 'Usuário comentou no seu post',
+    type: 'warning',
+    createdAt: Date.now()
+  };
+
+  win.setAllNotifications([securityNotif, normalNotif]);
+  const notifListEl = env.elements['notifications-list'];
+
+  // Render para usuário comum
+  win.renderNotifications();
+  assert.ok(!notifListEl.innerHTML.includes('Segurança IA: Restrição Preventiva'), 'Usuário comum NÃO deve ver a notificação de restrição da IA no painel');
+  assert.ok(notifListEl.innerHTML.includes('Alguém comentou no seu post'), 'Usuário comum deve continuar vendo suas notificações normais');
+
+  // 4. Bloqueio de Notificação Legada salva como "all" para Usuário Comum
+  const legacyAllNotif = {
+    id: 'notif_sec_legacy_all',
+    toUid: 'all',
+    title: '🛡️ Segurança IA: Restrição Preventiva Aplicada',
+    message: 'A conta "Deyvison" recebeu restrição automática de 24 horas aplicada pelo algoritmo de denúncia.',
+    type: 'warning',
+    createdAt: Date.now()
+  };
+  win.setAllNotifications([legacyAllNotif]);
+  win.renderNotifications();
+  assert.ok(!notifListEl.innerHTML.includes('Segurança IA: Restrição Preventiva'), 'Usuário comum NÃO deve ver nem mesmo notificações legadas marcadas com "all"');
+
+  // 5. Administrador da Plataforma Logado (ex: dxhub.oficial@gmail.com): DEVE ver a notificação com MODERAÇÃO 🛡️
+  const adminUser = { uid: 'admin_dxhub', email: 'dxhub.oficial@gmail.com', name: 'DX Hub Admin' };
+  win.setCurrentUser(adminUser);
+  win.setCurrentProfile(adminUser);
+
+  win.setAllNotifications([securityNotif]);
+  win.renderNotifications();
+  assert.ok(notifListEl.innerHTML.includes('Segurança IA: Restrição Preventiva Aplicada'), 'Administrador DEVE ver a notificação de segurança da IA');
+  assert.ok(notifListEl.innerHTML.includes('MODERAÇÃO 🛡️'), 'Notificação de segurança para ADM deve exibir badge MODERAÇÃO 🛡️');
+
+  // 6. Teste da limpeza e conversão de notificações legadas (cleanupLegacySecurityBroadcasts)
+  env.firestoreDocs['notifications/legacy_ai_broadcast'] = {
+    id: 'legacy_ai_broadcast',
+    toUid: 'all',
+    title: '🛡️ Segurança IA: Restrição Preventiva Aplicada',
+    message: 'A conta "Deyvison" recebeu restrição automática de 24 horas aplicada pelo algoritmo de denúncia.'
+  };
+
+  await win.cleanupLegacySecurityBroadcasts();
+  assert.strictEqual(env.firestoreDocs['notifications/legacy_ai_broadcast'].toUid, 'admin', 'cleanupLegacySecurityBroadcasts deve converter toUid para "admin"');
+  assert.strictEqual(env.firestoreDocs['notifications/legacy_ai_broadcast'].forAdmin, true, 'cleanupLegacySecurityBroadcasts deve marcar forAdmin: true');
+});
+
 
 
 
