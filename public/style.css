@@ -16259,3 +16259,98 @@ body.theme-cyberpunk .catalog-order-total-units-pill {
     stroke-width: 2.2;
     flex-shrink: 0;
 }
+
+/* ===== CONTA EMPRESA: CATEGORIA DE CONTEÚDO TEMPORÁRIO (24H) ===== */
+.post-business-category-select {
+    width: 100%;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-main, #fff);
+    padding: 8px 12px;
+    font-size: 0.85rem;
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+
+.post-business-category-select:focus {
+    border-color: var(--accent-color, #fff01f);
+}
+
+.post-business-category-select option {
+    background: #1a1a2e;
+    color: #ffffff;
+}
+
+.business-category-hint-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: rgba(255, 170, 0, 0.12);
+    border: 1px solid rgba(255, 170, 0, 0.3);
+    border-radius: 10px;
+    font-size: 0.76rem;
+    color: #ffd166;
+    line-height: 1.35;
+    margin-top: 6px;
+}
+
+.business-category-hint-banner i,
+.business-category-hint-banner svg {
+    width: 16px;
+    height: 16px;
+    color: #ffa500;
+    flex-shrink: 0;
+}
+
+.business-category-hint-banner strong {
+    color: #ffa500;
+}
+
+.feed-category-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    margin: 4px 0 8px 0;
+    background: rgba(255, 240, 31, 0.08);
+    border: 1px solid rgba(255, 240, 31, 0.3);
+    border-radius: 20px;
+    font-size: 0.76rem;
+    font-weight: 700;
+    color: var(--accent-color, #fff01f);
+    width: fit-content;
+}
+
+.feed-category-pill .category-pill-icon {
+    width: 13px;
+    height: 13px;
+    stroke-width: 2.2;
+}
+
+.feed-category-pill .category-name {
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.feed-category-pill .category-expires-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    background: rgba(255, 170, 0, 0.2);
+    color: #ffa500;
+    padding: 2px 6px;
+    border-radius: 10px;
+    margin-left: 2px;
+}
+
+.feed-category-pill .category-expires-badge i,
+.feed-category-pill .category-expires-badge svg {
+    width: 10px;
+    height: 10px;
+}
+

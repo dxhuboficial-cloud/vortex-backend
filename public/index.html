@@ -4,20 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.165">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.165">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.165">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.165">
-    <link rel="stylesheet" href="style.css?v=1.0.165">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.166">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.166">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.166">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.166">
+    <link rel="stylesheet" href="style.css?v=1.0.166">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.165">
+    <link rel="manifest" href="manifest.json?v=1.0.166">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.165">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.165">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.166">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.166">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -2297,6 +2297,32 @@
                     </div>
                     <div class="business-link-fields">
                         <div class="business-link-input-group">
+                            <label for="post-business-category-select">Categoria do Conteúdo (Temporário 24h)</label>
+                            <div class="business-category-select-wrap">
+                                <select id="post-business-category-select" class="post-business-category-select" title="Selecione a categoria do conteúdo">
+                                    <option value="" selected>Sem Categoria (Post Permanente)</option>
+                                    <option value="Editor">Editor</option>
+                                    <option value="Software">Software</option>
+                                    <option value="Engenharia">Engenharia</option>
+                                    <option value="Variedades">Variedades</option>
+                                    <option value="Studio">Studio</option>
+                                    <option value="Design">Design</option>
+                                    <option value="Logo Marca">Logo Marca</option>
+                                    <option value="Serviços">Serviços</option>
+                                    <option value="Loja Online">Loja Online</option>
+                                    <option value="Catálogo">Catálogo</option>
+                                    <option value="Casa">Casa</option>
+                                    <option value="Eletrônicas">Eletrônicas</option>
+                                    <option value="Venda-se">Venda-se</option>
+                                    <option value="Aluga-se">Aluga-se</option>
+                                </select>
+                            </div>
+                            <div id="post-business-category-hint" class="business-category-hint-banner" style="display: none;">
+                                <i data-lucide="clock"></i>
+                                <span><strong>Conteúdo Temporário:</strong> Esta postagem ficará ativa no Feed por até 24 horas e expirará automaticamente.</span>
+                            </div>
+                        </div>
+                        <div class="business-link-input-group">
                             <label for="post-business-btn-text">Texto do Botão</label>
                             <input type="text" id="post-business-btn-text" placeholder="Ex: Saiba Mais, Comprar, Acessar Site..." maxlength="30">
                         </div>
@@ -3494,6 +3520,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.165" defer></script>
+    <script type="module" src="script.js?v=1.0.166" defer></script>
 </body>
 </html>

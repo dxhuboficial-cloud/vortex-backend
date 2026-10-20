@@ -16145,7 +16145,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.165';
+export const CURRENT_APP_VERSION = '1.0.166';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -20242,6 +20242,10 @@ function resetPostComposer() {
     const bizBtnUrl = document.getElementById('post-business-btn-url');
     if (bizBtnText) bizBtnText.value = '';
     if (bizBtnUrl) bizBtnUrl.value = '';
+    const bizCatSelect = document.getElementById('post-business-category-select');
+    if (bizCatSelect) bizCatSelect.value = '';
+    const bizCatHint = document.getElementById('post-business-category-hint');
+    if (bizCatHint) bizCatHint.style.display = 'none';
     if (typeof updateCompanyLinkSectionVisibility === 'function') {
         updateCompanyLinkSectionVisibility();
     updateStatusBusinessLinkVisibility();
@@ -20632,6 +20636,79 @@ export const authorAvatarCache = new Map();
 let cachedFeedPosts = [];
 export let currentFeedSearchQuery = '';
 
+/* ==========================================================================
+   CONTA EMPRESA: CATEGORIAS DE CONTEÚDO TEMPORÁRIO (24H)
+   Categorias disponíveis: Editor, Software, Engenharia, Variedades, Studio,
+   Design, Logo Marca, Serviços, Loja Online, Catálogo, Casa, Eletrônicas,
+   Venda-se, Aluga-se.
+   Todo conteúdo marcado com qualquer dessas categorias é temporário (24h).
+   ========================================================================== */
+export const BUSINESS_CONTENT_CATEGORIES = [
+    'Editor',
+    'Software',
+    'Engenharia',
+    'Variedades',
+    'Studio',
+    'Design',
+    'Logo Marca',
+    'Serviços',
+    'Loja Online',
+    'Catálogo',
+    'Casa',
+    'Eletrônicas',
+    'Venda-se',
+    'Aluga-se'
+];
+
+export function isPostExpired(post) {
+    if (!post) return false;
+    const now = Date.now();
+    if (post.expiresAt && typeof post.expiresAt === 'number') {
+        return now >= post.expiresAt;
+    }
+    if (post.isTemporary && post.createdAt && typeof post.createdAt === 'number') {
+        const dur = (post.temporaryDurationHours || 24) * 60 * 60 * 1000;
+        return now >= (post.createdAt + dur);
+    }
+    if (post.businessCategory && post.createdAt && typeof post.createdAt === 'number') {
+        return now >= (post.createdAt + (24 * 60 * 60 * 1000));
+    }
+    return false;
+}
+
+export function getPostCategoryBadgeHTML(post) {
+    const cat = post?.businessCategory || post?.category;
+    if (!cat) return '';
+    const now = Date.now();
+    const expiresAt = post.expiresAt || ((post.createdAt || now) + (24 * 60 * 60 * 1000));
+    const msLeft = Math.max(0, expiresAt - now);
+    const hoursLeft = Math.ceil(msLeft / (60 * 60 * 1000));
+    const timeText = hoursLeft > 1 ? `${hoursLeft}h` : (hoursLeft === 1 ? '1h' : 'expirando');
+    return `
+        <div class="feed-category-pill" title="Conteúdo temporário (${escapeHTML(cat)}) - Expira em até 24h">
+            <i data-lucide="tag" class="category-pill-icon"></i>
+            <span class="category-name">${escapeHTML(cat)}</span>
+            <span class="category-expires-badge"><i data-lucide="clock"></i> ${timeText}</span>
+        </div>
+    `;
+}
+
+export function initBusinessCategoryControls() {
+    const catSelect = document.getElementById('post-business-category-select');
+    const catHint = document.getElementById('post-business-category-hint');
+    if (catSelect) {
+        catSelect.addEventListener('change', () => {
+            const hasCategory = !!(catSelect.value && BUSINESS_CONTENT_CATEGORIES.includes(catSelect.value));
+            if (catHint) {
+                catHint.style.display = hasCategory ? 'flex' : 'none';
+                if (hasCategory && window.lucide && typeof window.lucide.createIcons === 'function') {
+                    window.lucide.createIcons();
+                }
+            }
+        });
+    }
+}
+
 export function normalizeSearchText(str) {
     if (!str || typeof str !== 'string') return '';
     return str
@@ -20643,13 +20720,14 @@ export function normalizeSearchText(str) {
 
 export function filterFeedPosts(posts = [], query = '') {
     const q = normalizeSearchText(query);
-    const active = posts.filter(p => !isUserAccountDeleted(p.authorUid) && !p.isDeleted && !p.deleted);
+    const active = posts.filter(p => !isUserAccountDeleted(p.authorUid) && !p.isDeleted && !p.deleted && !isPostExpired(p));
     if (!q) return active;
 
     return active.filter(p => {
         const authorName = normalizeSearchText(p.authorName || '');
         const authorUsername = normalizeSearchText(p.authorUsername || '');
         const caption = normalizeSearchText(p.caption || '');
+        const category = normalizeSearchText(p.businessCategory || p.category || '');
         const musicTitle = normalizeSearchText(p.music?.title || '');
         const musicArtist = normalizeSearchText(p.music?.artist || '');
         const actionText = normalizeSearchText(p.actionButton?.text || '');
@@ -20662,6 +20740,7 @@ export function filterFeedPosts(posts = [], query = '') {
         return authorName.includes(q) ||
                authorUsername.includes(q) ||
                caption.includes(q) ||
+               category.includes(q) ||
                musicTitle.includes(q) ||
                musicArtist.includes(q) ||
                actionText.includes(q) ||
@@ -20831,7 +20910,7 @@ function renderPostsFeed(posts = []) {
     const previewFeed = document.getElementById('posts-feed-list');
 
     const sorted = [...posts]
-        .filter(p => !isUserAccountDeleted(p.authorUid) && !p.isDeleted && !p.deleted)
+        .filter(p => !isUserAccountDeleted(p.authorUid) && !p.isDeleted && !p.deleted && !isPostExpired(p))
         .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
     if (countLabel) countLabel.innerText = `${sorted.length} ${sorted.length === 1 ? 'postagem' : 'postagens'}`;
 
@@ -20904,6 +20983,7 @@ function renderPostsFeed(posts = []) {
                                 </button>
                             </div>
                         ` : ''}
+                        ${getPostCategoryBadgeHTML(post)}
                         ${caption ? `<p class="post-caption">${escapeHTML(caption)}</p>` : ''}
                         ${post.actionButton && post.actionButton.url ? `
                             <div class="feed-cta-wrapper">
@@ -21054,6 +21134,7 @@ function renderPostsFeed(posts = []) {
                     </div>
                 ` : ''}
                 <div class="feed-body">
+                    ${getPostCategoryBadgeHTML(post)}
                     ${caption ? `<p class="feed-caption">${escapeHTML(caption)}</p>` : ''}
                     ${post.actionButton && post.actionButton.url ? `
                         <div class="feed-cta-wrapper">
@@ -22254,6 +22335,10 @@ document.getElementById('publish-post-btn')?.addEventListener('click', async () 
             }
 
             const isCompany = isBusinessAccount(currentProfile) || isUserAdmin(currentUser, currentProfile);
+            const selectedCategory = isCompany ? (document.getElementById('post-business-category-select')?.value?.trim() || '') : '';
+            const isTemporaryCategory = !!(selectedCategory && BUSINESS_CONTENT_CATEGORIES.includes(selectedCategory));
+            const now = Date.now();
+            const postExpiresAt = isTemporaryCategory ? (now + 24 * 60 * 60 * 1000) : null;
             const bizBtnText = document.getElementById('post-business-btn-text')?.value?.trim() || '';
             const bizBtnUrl = document.getElementById('post-business-btn-url')?.value?.trim() || '';
 
@@ -22294,8 +22379,13 @@ document.getElementById('publish-post-btn')?.addEventListener('click', async () 
                 isTrimmed: !!(pendingPostMediaInfo && pendingPostMediaInfo.isTrimmed) || !!(file && file.isTrimmed),
                 videoDuration: isVideo ? (pendingPostMediaInfo?.duration || (file && file.duration) || 0) : null,
                 caption: postCaptionInput?.value?.trim() || '',
+                businessCategory: isTemporaryCategory ? selectedCategory : null,
+                category: isTemporaryCategory ? selectedCategory : null,
+                isTemporary: isTemporaryCategory,
+                expiresAt: postExpiresAt,
+                temporaryDurationHours: isTemporaryCategory ? 24 : null,
                 actionButton: actionButtonPayload,
-                createdAt: Date.now(),
+                createdAt: now,
                 likes: [],
                 comments: [],
                 music: pendingPostMusic ? {
@@ -27196,6 +27286,11 @@ if (typeof window !== 'undefined') {
     window.getStoryCtaIcon = getStoryCtaIcon;
     window.updateStatusBusinessLinkVisibility = updateStatusBusinessLinkVisibility;
     window.initStoryCaptionAndLinkControls = initStoryCaptionAndLinkControls;
+    // Conta Empresa: Categoria de Conteúdo Temporário (24h) (v1.0.166)
+    window.BUSINESS_CONTENT_CATEGORIES = BUSINESS_CONTENT_CATEGORIES;
+    window.isPostExpired = isPostExpired;
+    window.getPostCategoryBadgeHTML = getPostCategoryBadgeHTML;
+    window.initBusinessCategoryControls = initBusinessCategoryControls;
 }
 
 if (typeof window !== 'undefined') {
@@ -27210,4 +27305,5 @@ if (typeof window !== 'undefined') {
     setupVigenciaExpirationListeners();
     setupProductDigitalLinkValidation();
     initStoryCaptionAndLinkControls();
+    initBusinessCategoryControls();
 }

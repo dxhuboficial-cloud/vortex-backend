@@ -7456,7 +7456,8 @@ test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com 
   // 42. Expiração com Data, Mês, Ano e Hora para Promoção e Desconto Temporários (v1.0.163)
   // 43. Sistema de Segurança Antispam e Bloqueio de Links Não Permitidos em Produtos e Postagens (v1.0.164)
   // 44. Limite de 90 Caracteres na Legenda do Story e Link com Botão CTA para Conta Empresa (v1.0.165)
-  assert.strictEqual(versionJson.version, '1.0.165', 'version.json deve ser 1.0.165');
+  // 45. Categorias de Conteúdo para Conta Empresa e Posts Temporários de 24h (v1.0.166)
+  assert.strictEqual(versionJson.version, '1.0.166', 'version.json deve ser 1.0.166');
 });
 
 test('Formulários Comerciais para Conta Empresa: Permissões, templates, card interativo no chat e preenchimento de respostas (v1.0.142)', () => {
@@ -9305,10 +9306,10 @@ test('Limite de 90 Caracteres na Legenda do Story e Link com Botão CTA para Con
   const env = createTestEnvironment();
   const win = env.sandbox.window;
 
-  // 1. Integridade de Versionamento (v1.0.165)
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.165', 'script.js deve ter CURRENT_APP_VERSION 1.0.165');
-  assert.ok(htmlContent.includes('script.js?v=1.0.165'), 'index.html deve referenciar script.js com ?v=1.0.165');
-  assert.ok(htmlContent.includes('style.css?v=1.0.165'), 'index.html deve referenciar style.css com ?v=1.0.165');
+  // 1. Integridade de Versionamento (v1.0.165+)
+  assert.ok(['1.0.165', '1.0.166'].includes(win.CURRENT_APP_VERSION) || parseInt(win.CURRENT_APP_VERSION.split('.')[2], 10) >= 165, 'script.js deve ter versão compatível');
+  assert.ok(htmlContent.includes(`script.js?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar script.js com a versão atual');
+  assert.ok(htmlContent.includes(`style.css?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar style.css com a versão atual');
 
   // 2. Elementos DOM no index.html
   const captionInput = win.document.getElementById('status-caption-input');
@@ -9507,6 +9508,147 @@ test('Limite de 90 Caracteres na Legenda do Story e Link com Botão CTA para Con
   assert.strictEqual(storyViewer.classList.contains('story-paused'), false, 'Clicar no botão CTA não deve pausar o Story');
   win.closeStoryViewer();
 });
+
+test('Categorias de Conteúdo para Conta Empresa e Posts Temporários de 24h (v1.0.166)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+
+  // 1. Integridade de Versionamento (v1.0.166)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.166', 'script.js deve ter CURRENT_APP_VERSION 1.0.166');
+  assert.ok(htmlContent.includes('script.js?v=1.0.166'), 'index.html deve referenciar script.js com ?v=1.0.166');
+  assert.ok(htmlContent.includes('style.css?v=1.0.166'), 'index.html deve referenciar style.css com ?v=1.0.166');
+
+  // 2. Elementos DOM no index.html
+  const catSelect = win.document.getElementById('post-business-category-select');
+  assert.ok(catSelect, 'post-business-category-select deve existir no post-business-link-section');
+
+  const catHint = win.document.getElementById('post-business-category-hint');
+  assert.ok(catHint, 'post-business-category-hint deve existir no post-business-link-section');
+
+  // 3. Estilos CSS em style.css
+  assert.ok(cssContent.includes('.post-business-category-select'), 'Deve conter estilo .post-business-category-select');
+  assert.ok(cssContent.includes('.business-category-hint-banner'), 'Deve conter estilo .business-category-hint-banner');
+  assert.ok(cssContent.includes('.feed-category-pill'), 'Deve conter estilo .feed-category-pill');
+
+  // 4. Todas as 14 Categorias Solicitadas pelo Usuário
+  const expectedCategories = [
+    'Editor',
+    'Software',
+    'Engenharia',
+    'Variedades',
+    'Studio',
+    'Design',
+    'Logo Marca',
+    'Serviços',
+    'Loja Online',
+    'Catálogo',
+    'Casa',
+    'Eletrônicas',
+    'Venda-se',
+    'Aluga-se'
+  ];
+
+  // Verificar presença no HTML
+  for (const cat of expectedCategories) {
+    assert.ok(htmlContent.includes(`<option value="${cat}">${cat}</option>`), `Categoria "${cat}" deve existir como option no HTML`);
+  }
+
+  // Verificar presença na constante BUSINESS_CONTENT_CATEGORIES
+  const businessCategories = win.BUSINESS_CONTENT_CATEGORIES || [];
+  assert.strictEqual(businessCategories.length, 14, 'BUSINESS_CONTENT_CATEGORIES deve ter exatamente 14 categorias');
+  for (const cat of expectedCategories) {
+    assert.ok(businessCategories.includes(cat), `Categoria "${cat}" deve existir no array BUSINESS_CONTENT_CATEGORIES`);
+  }
+
+  // 5. Interação do Seletor e Exibição de Alerta de Conteúdo Temporário
+  win.initBusinessCategoryControls();
+
+  // Sem categoria selecionada -> dica oculta
+  catSelect.value = '';
+  catSelect.dispatchEvent(new win.Event('change'));
+  assert.strictEqual(catHint.style.display, 'none', 'Dica de 24h deve ficar oculta quando nenhuma categoria estiver selecionada');
+
+  // Com categoria selecionada (ex: Loja Online) -> dica visível
+  catSelect.value = 'Loja Online';
+  catSelect.dispatchEvent(new win.Event('change'));
+  assert.strictEqual(catHint.style.display, 'flex', 'Dica de 24h DEVE ficar visível quando uma categoria for selecionada');
+
+  // Com outra categoria (ex: Venda-se) -> dica permanece visível
+  catSelect.value = 'Venda-se';
+  catSelect.dispatchEvent(new win.Event('change'));
+  assert.strictEqual(catHint.style.display, 'flex', 'Dica de 24h deve permanecer visível para categoria Venda-se');
+
+  // 6. Função de Verificação de Expiração do Post (isPostExpired)
+  const isPostExpired = win.isPostExpired;
+  assert.strictEqual(typeof isPostExpired, 'function', 'isPostExpired deve ser função');
+
+  const now = Date.now();
+
+  // Post comum permanente (sem categoria) -> NUNCA expira
+  const permanentPost = {
+    id: 'post_perm',
+    createdAt: now - (48 * 3600 * 1000), // 48 horas atrás
+    caption: 'Post permanente normal'
+  };
+  assert.strictEqual(isPostExpired(permanentPost), false, 'Post permanente não deve expirar');
+
+  // Post com categoria recente (criado há 2 horas) -> AINDA NÃO EXPIROU
+  const freshTemporaryPost = {
+    id: 'post_fresh',
+    businessCategory: 'Software',
+    isTemporary: true,
+    createdAt: now - (2 * 3600 * 1000),
+    expiresAt: now + (22 * 3600 * 1000),
+    caption: 'Lançamento novo software VIP'
+  };
+  assert.strictEqual(isPostExpired(freshTemporaryPost), false, 'Post com categoria criado há 2h NÃO deve estar expirado');
+
+  // Post com categoria antigo (criado há 25 horas) -> DEVE ESTAR EXPIRADO
+  const expiredTemporaryPost = {
+    id: 'post_expired',
+    businessCategory: 'Imóvel',
+    category: 'Venda-se',
+    isTemporary: true,
+    createdAt: now - (25 * 3600 * 1000),
+    expiresAt: now - (1 * 3600 * 1000),
+    caption: 'Venda de apartamento'
+  };
+  assert.strictEqual(isPostExpired(expiredTemporaryPost), true, 'Post temporário de 24h criado há mais de 24h DEVE estar expirado');
+
+  // 7. Renderização da Badge de Categoria no Post Card (getPostCategoryBadgeHTML)
+  const getPostCategoryBadgeHTML = win.getPostCategoryBadgeHTML;
+  assert.strictEqual(typeof getPostCategoryBadgeHTML, 'function', 'getPostCategoryBadgeHTML deve ser função');
+
+  // Post sem categoria -> HTML vazio
+  assert.strictEqual(getPostCategoryBadgeHTML(permanentPost), '', 'Post sem categoria não deve renderizar badge');
+
+  // Post com categoria -> renderiza badge com nome da categoria e tempo restante
+  const badgeHTML = getPostCategoryBadgeHTML(freshTemporaryPost);
+  assert.ok(badgeHTML.includes('feed-category-pill'), 'Deve conter a classe feed-category-pill');
+  assert.ok(badgeHTML.includes('Software'), 'Badge deve conter o nome da categoria');
+  assert.ok(badgeHTML.includes('22h') || badgeHTML.includes('24h') || badgeHTML.includes('clock'), 'Badge deve indicar o tempo restante de 24h');
+
+  // 8. Filtragem de Posts Expirados no Feed (filterFeedPosts)
+  const filterFeedPosts = win.filterFeedPosts;
+  assert.strictEqual(typeof filterFeedPosts, 'function', 'filterFeedPosts deve ser função');
+
+  const samplePosts = [permanentPost, freshTemporaryPost, expiredTemporaryPost];
+  const activeFeedPosts = filterFeedPosts(samplePosts, '');
+
+  assert.strictEqual(activeFeedPosts.length, 2, 'Feed ativo deve conter apenas posts permanentes ou temporários válidos (<24h)');
+  assert.ok(activeFeedPosts.some(p => p.id === 'post_perm'), 'Post permanente deve estar no feed');
+  assert.ok(activeFeedPosts.some(p => p.id === 'post_fresh'), 'Post temporário recente deve estar no feed');
+  assert.strictEqual(activeFeedPosts.some(p => p.id === 'post_expired'), false, 'Post temporário expirado (>24h) NÃO pode aparecer no feed');
+
+  // 9. Busca no Feed por Nome da Categoria
+  const searchSoftware = filterFeedPosts(samplePosts, 'software');
+  assert.strictEqual(searchSoftware.length, 1, 'Busca por "software" deve encontrar o post categorizado como Software');
+  assert.strictEqual(searchSoftware[0].id, 'post_fresh');
+
+  const searchInexistente = filterFeedPosts(samplePosts, 'categoria_inexistente');
+  assert.strictEqual(searchInexistente.length, 0, 'Busca por termo inexistente deve retornar vazio');
+});
+
 
 
 
