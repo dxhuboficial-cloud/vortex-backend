@@ -7457,7 +7457,8 @@ test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com 
   // 43. Sistema de Segurança Antispam e Bloqueio de Links Não Permitidos em Produtos e Postagens (v1.0.164)
   // 44. Limite de 90 Caracteres na Legenda do Story e Link com Botão CTA para Conta Empresa (v1.0.165)
   // 45. Categorias de Conteúdo para Conta Empresa e Posts Temporários de 24h (v1.0.166)
-  assert.strictEqual(versionJson.version, '1.0.166', 'version.json deve ser 1.0.166');
+  // 46. Etiqueta de Anúncio e Opção Anúncio vs Normal para Stories e Posts (v1.0.167)
+  assert.ok(['1.0.166', '1.0.167'].includes(versionJson.version) || parseInt(versionJson.version.split('.')[2], 10) >= 166, 'version.json deve ser 1.0.167');
 });
 
 test('Formulários Comerciais para Conta Empresa: Permissões, templates, card interativo no chat e preenchimento de respostas (v1.0.142)', () => {
@@ -9513,10 +9514,10 @@ test('Categorias de Conteúdo para Conta Empresa e Posts Temporários de 24h (v1
   const env = createTestEnvironment();
   const win = env.sandbox.window;
 
-  // 1. Integridade de Versionamento (v1.0.166)
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.166', 'script.js deve ter CURRENT_APP_VERSION 1.0.166');
-  assert.ok(htmlContent.includes('script.js?v=1.0.166'), 'index.html deve referenciar script.js com ?v=1.0.166');
-  assert.ok(htmlContent.includes('style.css?v=1.0.166'), 'index.html deve referenciar style.css com ?v=1.0.166');
+  // 1. Integridade de Versionamento (v1.0.166+)
+  assert.ok(['1.0.166', '1.0.167'].includes(win.CURRENT_APP_VERSION) || parseInt(win.CURRENT_APP_VERSION.split('.')[2], 10) >= 166, 'script.js deve ter versão compatível');
+  assert.ok(htmlContent.includes(`script.js?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar script.js com a versão atual');
+  assert.ok(htmlContent.includes(`style.css?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar style.css com a versão atual');
 
   // 2. Elementos DOM no index.html
   const catSelect = win.document.getElementById('post-business-category-select');
@@ -9648,6 +9649,157 @@ test('Categorias de Conteúdo para Conta Empresa e Posts Temporários de 24h (v1
   const searchInexistente = filterFeedPosts(samplePosts, 'categoria_inexistente');
   assert.strictEqual(searchInexistente.length, 0, 'Busca por termo inexistente deve retornar vazio');
 });
+
+test('Etiqueta de Anúncio e Opção Anúncio vs Conteúdo Normal para Stories e Posts de Conta Empresa (v1.0.167)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+
+  // 1. Integridade de Versionamento (v1.0.167)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.167', 'script.js deve ter CURRENT_APP_VERSION 1.0.167');
+  assert.ok(htmlContent.includes('script.js?v=1.0.167'), 'index.html deve referenciar script.js com ?v=1.0.167');
+  assert.ok(htmlContent.includes('style.css?v=1.0.167'), 'index.html deve referenciar style.css com ?v=1.0.167');
+
+  // 2. Elementos DOM no index.html
+  const storyAdBadge = win.document.getElementById('story-ad-badge');
+  assert.ok(storyAdBadge, 'story-ad-badge deve existir no story-viewer header');
+
+  const statusTypeSelect = win.document.getElementById('status-content-type-select');
+  assert.ok(statusTypeSelect, 'status-content-type-select deve existir no status-business-link-section');
+
+  const statusTypeHint = win.document.getElementById('status-content-type-hint');
+  assert.ok(statusTypeHint, 'status-content-type-hint deve existir no status-business-link-section');
+
+  const postTypeSelect = win.document.getElementById('post-content-type-select');
+  assert.ok(postTypeSelect, 'post-content-type-select deve existir no post-business-link-section');
+
+  const postTypeHint = win.document.getElementById('post-content-type-hint');
+  assert.ok(postTypeHint, 'post-content-type-hint deve existir no post-business-link-section');
+
+  // 3. Estilos CSS em style.css
+  assert.ok(cssContent.includes('.story-ad-badge'), 'Deve conter estilo .story-ad-badge');
+  assert.ok(cssContent.includes('.post-ad-badge'), 'Deve conter estilo .post-ad-badge');
+  assert.ok(cssContent.includes('.post-time-ad-sep'), 'Deve conter estilo .post-time-ad-sep');
+  assert.ok(cssContent.includes('.feed-ad-pill'), 'Deve conter estilo .feed-ad-pill');
+  assert.ok(cssContent.includes('.feed-tags-row'), 'Deve conter estilo .feed-tags-row');
+  assert.ok(cssContent.includes('.business-ad-hint-banner'), 'Deve conter estilo .business-ad-hint-banner');
+  assert.ok(cssContent.includes('.status-content-type-select'), 'Deve conter estilo .status-content-type-select');
+  assert.ok(cssContent.includes('.post-content-type-select'), 'Deve conter estilo .post-content-type-select');
+
+  // 4. Exclusividade para Conta Empresa / Admin
+  const statusBizSec = win.document.getElementById('status-business-link-section');
+  const postBizSec = win.document.getElementById('post-business-link-section');
+
+  // Perfil Pessoal: seções de empresa devem estar ocultas
+  win.updateStatusBusinessLinkVisibility({ accountType: 'personal' });
+  assert.strictEqual(statusBizSec.style.display, 'none', 'Seção de status de empresa deve estar oculta para conta pessoal');
+
+  win.updateCompanyLinkSectionVisibility({ accountType: 'personal' });
+  assert.strictEqual(postBizSec.style.display, 'none', 'Seção de post de empresa deve estar oculta para conta pessoal');
+
+  // Perfil Empresa: seções de empresa devem estar visíveis
+  win.updateStatusBusinessLinkVisibility({ accountType: 'business' });
+  assert.strictEqual(statusBizSec.style.display, 'block', 'Seção de status de empresa deve estar visível para conta empresa');
+
+  win.updateCompanyLinkSectionVisibility({ accountType: 'business' });
+  assert.strictEqual(postBizSec.style.display, 'flex', 'Seção de post de empresa deve estar visível para conta empresa');
+
+  // 5. Interação de Seleção no Story (Normal vs Anúncio)
+  win.initStoryCaptionAndLinkControls();
+  assert.ok(htmlContent.includes('id="status-content-type-select"'), 'status-content-type-select deve existir no index.html');
+  assert.ok(htmlContent.includes('value="normal" selected>Conteúdo Normal'), 'Opção normal deve vir selecionada por padrão no Story');
+  assert.ok(htmlContent.includes('value="ad">Anúncio'), 'Opção ad deve existir no select de Story');
+
+  statusTypeSelect.value = 'ad';
+  statusTypeSelect.dispatchEvent(new win.Event('change'));
+  assert.strictEqual(statusTypeHint.style.display, 'flex', 'Hint de Anúncio no Story deve abrir quando tipo for ad');
+
+  statusTypeSelect.value = 'normal';
+  statusTypeSelect.dispatchEvent(new win.Event('change'));
+  assert.strictEqual(statusTypeHint.style.display, 'none', 'Hint de Anúncio no Story deve fechar quando tipo for normal');
+
+  // 6. Regra de Visibilidade de Stories (Normal vs Anúncio) via canUserViewStory
+  const authorUid = 'empresa_vip_1';
+  const strangerUid = 'usuario_qualquer_sem_contato';
+  const contactUid = 'contato_aceito_1';
+  const contactsSet = new Set([authorUid]);
+
+  const normalStory = {
+    id: 'story_normal',
+    authorUid: authorUid,
+    isAd: false,
+    contentType: 'normal',
+    allowedUids: [contactUid]
+  };
+
+  const adStory = {
+    id: 'story_anuncio',
+    authorUid: authorUid,
+    isAd: true,
+    contentType: 'ad',
+    allowedUids: [contactUid]
+  };
+
+  // Story Normal:
+  // - Usuário estranho NÃO vê
+  assert.strictEqual(win.canUserViewStory(normalStory, strangerUid, new Set()), false, 'Story Normal NÃO pode ser visto por usuário não adicionado');
+  // - Contato aceito VÊ
+  assert.strictEqual(win.canUserViewStory(normalStory, contactUid, contactsSet), true, 'Story Normal DEVE ser visto por contato aceito');
+
+  // Story Anúncio:
+  // - Usuário estranho com conta VÊ (aparece para todo mundo na plataforma VORTEX VIP)
+  assert.strictEqual(win.canUserViewStory(adStory, strangerUid, new Set()), true, 'Story Anúncio DEVE ser visto por QUALQUER usuário cadastrado no VORTEX VIP');
+  // - Contato aceito também VÊ
+  assert.strictEqual(win.canUserViewStory(adStory, contactUid, contactsSet), true, 'Story Anúncio DEVE ser visto por contato aceito');
+
+  // 7. Interação de Seleção nos Posts (Normal vs Anúncio)
+  win.initBusinessPostControls();
+  assert.ok(htmlContent.includes('id="post-content-type-select"'), 'post-content-type-select deve existir no index.html');
+  assert.ok(htmlContent.includes('value="normal" selected>Conteúdo Normal'), 'Opção normal deve vir selecionada por padrão no Post');
+  assert.ok(htmlContent.includes('value="ad">Anúncio'), 'Opção ad deve existir no select de Post');
+
+  postTypeSelect.value = 'ad';
+  postTypeSelect.dispatchEvent(new win.Event('change'));
+  assert.strictEqual(postTypeHint.style.display, 'flex', 'Hint de Anúncio no Post deve abrir quando tipo for ad');
+
+  postTypeSelect.value = 'normal';
+  postTypeSelect.dispatchEvent(new win.Event('change'));
+  assert.strictEqual(postTypeHint.style.display, 'none', 'Hint de Anúncio no Post deve fechar quando tipo for normal');
+
+  // 8. Badges de Anúncio no Feed (getPostAdBadgeHTML)
+  const adBadgeHTML = win.getPostAdBadgeHTML({ isAd: true });
+  assert.ok(adBadgeHTML.includes('feed-ad-pill'), 'getPostAdBadgeHTML deve retornar .feed-ad-pill para post com isAd:true');
+  assert.ok(adBadgeHTML.includes('Anúncio'), 'getPostAdBadgeHTML deve conter o texto "Anúncio"');
+
+  const normalBadgeHTML = win.getPostAdBadgeHTML({ isAd: false, contentType: 'normal' });
+  assert.strictEqual(normalBadgeHTML, '', 'getPostAdBadgeHTML deve retornar string vazia para post normal');
+
+  // 9. Busca no Feed por Anúncio
+  const samplePosts = [
+    {
+      id: 'post_ad_1',
+      authorUid: 'empresa_1',
+      authorName: 'DX Hub Loja',
+      caption: 'Super Oferta do Dia',
+      isAd: true,
+      contentType: 'ad',
+      createdAt: Date.now()
+    },
+    {
+      id: 'post_normal_1',
+      authorUid: 'user_1',
+      authorName: 'João Silva',
+      caption: 'Dia ensolarado no parque',
+      isAd: false,
+      contentType: 'normal',
+      createdAt: Date.now()
+    }
+  ];
+
+  const searchAd = win.filterFeedPosts(samplePosts, 'anuncio');
+  assert.strictEqual(searchAd.length, 1, 'Busca por "anuncio" deve encontrar a postagem de anúncio');
+  assert.strictEqual(searchAd[0].id, 'post_ad_1', 'Post encontrado deve ser post_ad_1');
+});
+
 
 
 

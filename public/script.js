@@ -3131,6 +3131,11 @@ export function canUserViewStory(story, viewerUid, authorContactsSet = null) {
         return false;
     }
 
+    // Story de Anúncio da Conta Empresa: Visível para TODOS os usuários com conta na plataforma
+    if (story.isAd || story.contentType === 'ad') {
+        return true;
+    }
+
     // Verificar se o autor do story é um contato aceito pelo visualizador
     const contacts = authorContactsSet || (typeof userContactsSet !== 'undefined' ? userContactsSet : null);
     if (contacts && contacts.has(story.authorUid)) {
@@ -7523,6 +7528,8 @@ function closeStoryViewer() {
     if (replyInput) replyInput.value = '';
     const previewIndicator = document.getElementById('story-preview-indicator');
     if (previewIndicator) previewIndicator.style.display = 'none';
+    const storyAdBadge = document.getElementById('story-ad-badge');
+    if (storyAdBadge) storyAdBadge.style.display = 'none';
     const previewFooter = document.getElementById('story-preview-footer');
     if (previewFooter) previewFooter.style.display = 'none';
     const ctaContainer = document.getElementById('story-link-cta-container');
@@ -7611,6 +7618,16 @@ async function displayCurrentStory() {
     if (captionEl) {
         captionEl.innerText = story.caption || '';
         captionEl.classList.toggle('active', !!story.caption);
+    }
+
+    // Etiqueta de Anúncio no Story (Conta Empresa)
+    const isAdStory = !!(story.isAd || story.contentType === 'ad');
+    const storyAdBadge = document.getElementById('story-ad-badge');
+    if (storyAdBadge) {
+        storyAdBadge.style.display = isAdStory ? 'inline-flex' : 'none';
+        if (isAdStory && window.lucide && typeof window.lucide.createIcons === 'function') {
+            window.lucide.createIcons();
+        }
     }
 
     // Botão de Link com Ação do Story (Conta Empresa)
@@ -8340,6 +8357,20 @@ export function initStoryCaptionAndLinkControls() {
         };
         captionInput.addEventListener('input', updateCounter);
         captionInput.addEventListener('change', updateCounter);
+    }
+
+    const typeSelect = document.getElementById('status-content-type-select');
+    const typeHint = document.getElementById('status-content-type-hint');
+    if (typeSelect) {
+        typeSelect.addEventListener('change', () => {
+            const isAd = typeSelect.value === 'ad';
+            if (typeHint) {
+                typeHint.style.display = isAd ? 'flex' : 'none';
+                if (isAd && window.lucide && typeof window.lucide.createIcons === 'function') {
+                    window.lucide.createIcons();
+                }
+            }
+        });
     }
 
     const urlInput = document.getElementById('status-link-url-input');
@@ -9255,6 +9286,8 @@ function openStoryPreview() {
     const isVideo = pendingStatusFile.type ? pendingStatusFile.type.startsWith('video') : false;
 
     const isCompany = isBusinessAccount(currentProfile) || isUserAdmin(currentUser, currentProfile);
+    const statusContentType = isCompany ? (document.getElementById('status-content-type-select')?.value || 'normal') : 'normal';
+    const isAdStory = isCompany && statusContentType === 'ad';
     const linkUrlVal = document.getElementById('status-link-url-input')?.value?.trim() || '';
     const linkTextVal = document.getElementById('status-link-cta-select')?.value || 'Saiba mais';
     let storyLinkObj = null;
@@ -9272,6 +9305,8 @@ function openStoryPreview() {
     const previewStory = {
         id: 'preview-' + Date.now(),
         isPreview: true,
+        isAd: isAdStory,
+        contentType: isAdStory ? 'ad' : 'normal',
         type: isVideo ? 'video' : 'image',
         src: pendingStatusFileSrc,
         isTrimmed: !!(pendingStatusMediaInfo && pendingStatusMediaInfo.isTrimmed) || !!pendingStatusFile.isTrimmed,
@@ -9418,6 +9453,8 @@ document.getElementById('publish-status-btn')?.addEventListener('click', async (
             }
 
             const isCompany = isBusinessAccount(currentProfile) || isUserAdmin(currentUser, currentProfile);
+            const statusContentType = isCompany ? (document.getElementById('status-content-type-select')?.value || 'normal') : 'normal';
+            const isAdStory = isCompany && statusContentType === 'ad';
             const statusLinkUrl = document.getElementById('status-link-url-input')?.value?.trim() || '';
             const statusLinkText = document.getElementById('status-link-cta-select')?.value || 'Saiba mais';
 
@@ -9459,6 +9496,8 @@ document.getElementById('publish-status-btn')?.addEventListener('click', async (
                 customDuration: selectedStoryDuration || 15,
                 mediaSizeKB: pendingStatusMediaInfo?.sizeFormatted || formatBytesToKB(pendingStatusFile.size || 102400),
                 caption: finalCaption,
+                isAd: isAdStory,
+                contentType: isAdStory ? 'ad' : 'normal',
                 storyLink: storyLinkPayload,
                 linkUrl: storyLinkPayload ? storyLinkPayload.url : '',
                 linkText: storyLinkPayload ? storyLinkPayload.text : '',
@@ -9489,7 +9528,11 @@ document.getElementById('publish-status-btn')?.addEventListener('click', async (
                 mediaChunkCache.set(`story_audio_${storyDocRef.id}`, localAudioPayload);
             }
 
-            showToast("Status Publicado", "Seu status de 24 horas está visível para seus contatos aceitos!", "green");
+            if (isAdStory) {
+                showToast("Status Publicado", "Seu status de Anúncio está visível para todos os usuários da plataforma!", "green");
+            } else {
+                showToast("Status Publicado", "Seu status de 24 horas está visível para seus contatos aceitos!", "green");
+            }
             document.getElementById('post-status-overlay')?.classList.remove('active');
             removeSelectedStatusMedia();
             pendingStatusMusic = null;
@@ -9497,6 +9540,10 @@ document.getElementById('publish-status-btn')?.addEventListener('click', async (
             if (card) card.style.display = 'none';
             const addBtn = document.getElementById('status-add-music-btn');
             if (addBtn) addBtn.style.display = 'inline-flex';
+            const statusTypeSelect = document.getElementById('status-content-type-select');
+            if (statusTypeSelect) statusTypeSelect.value = 'normal';
+            const statusTypeHint = document.getElementById('status-content-type-hint');
+            if (statusTypeHint) statusTypeHint.style.display = 'none';
             const captionInput = document.getElementById('status-caption-input');
             if (captionInput) captionInput.value = '';
             const captionCounter = document.getElementById('status-caption-counter');
@@ -16145,7 +16192,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.166';
+export const CURRENT_APP_VERSION = '1.0.167';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -20246,6 +20293,10 @@ function resetPostComposer() {
     if (bizCatSelect) bizCatSelect.value = '';
     const bizCatHint = document.getElementById('post-business-category-hint');
     if (bizCatHint) bizCatHint.style.display = 'none';
+    const postTypeSelect = document.getElementById('post-content-type-select');
+    if (postTypeSelect) postTypeSelect.value = 'normal';
+    const postTypeHint = document.getElementById('post-content-type-hint');
+    if (postTypeHint) postTypeHint.style.display = 'none';
     if (typeof updateCompanyLinkSectionVisibility === 'function') {
         updateCompanyLinkSectionVisibility();
     updateStatusBusinessLinkVisibility();
@@ -20693,7 +20744,17 @@ export function getPostCategoryBadgeHTML(post) {
     `;
 }
 
-export function initBusinessCategoryControls() {
+export function getPostAdBadgeHTML(post) {
+    if (!post?.isAd && post?.contentType !== 'ad') return '';
+    return `
+        <div class="feed-ad-pill" title="Publicação Patrocinada / Anúncio">
+            <i data-lucide="megaphone" class="ad-pill-icon"></i>
+            <span class="ad-pill-text">Anúncio</span>
+        </div>
+    `;
+}
+
+export function initBusinessPostControls() {
     const catSelect = document.getElementById('post-business-category-select');
     const catHint = document.getElementById('post-business-category-hint');
     if (catSelect) {
@@ -20707,7 +20768,23 @@ export function initBusinessCategoryControls() {
             }
         });
     }
+
+    const typeSelect = document.getElementById('post-content-type-select');
+    const typeHint = document.getElementById('post-content-type-hint');
+    if (typeSelect) {
+        typeSelect.addEventListener('change', () => {
+            const isAd = typeSelect.value === 'ad';
+            if (typeHint) {
+                typeHint.style.display = isAd ? 'flex' : 'none';
+                if (isAd && window.lucide && typeof window.lucide.createIcons === 'function') {
+                    window.lucide.createIcons();
+                }
+            }
+        });
+    }
 }
+
+export const initBusinessCategoryControls = initBusinessPostControls;
 
 export function normalizeSearchText(str) {
     if (!str || typeof str !== 'string') return '';
@@ -20737,7 +20814,11 @@ export function filterFeedPosts(posts = [], query = '') {
             normalizeSearchText(c.author || '').includes(q)
         );
 
-        return authorName.includes(q) ||
+        const isPostAd = !!(p.isAd || p.contentType === 'ad');
+        const matchesAdQuery = isPostAd && (q === 'anuncio' || 'anuncio'.includes(q) || q === 'ad' || q === 'anuncios');
+
+        return matchesAdQuery ||
+               authorName.includes(q) ||
                authorUsername.includes(q) ||
                caption.includes(q) ||
                category.includes(q) ||
@@ -20944,6 +21025,7 @@ function renderPostsFeed(posts = []) {
                 const createdAt = new Date(post.createdAt || Date.now());
                 const timeLabel = createdAt.toLocaleString([], { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
                 const canDeletePost = isPostOwner(post, currentUser, currentProfile);
+                const isPostAd = !!(post.isAd || post.contentType === 'ad');
 
                 const isThisMusicPlaying = currentFeedMusicAudio && !currentFeedMusicAudio.paused && currentFeedMusicPostId === post.id;
 
@@ -20957,7 +21039,10 @@ function renderPostsFeed(posts = []) {
                                         <span>${escapeHTML(authorName)}</span>
                                         <i data-lucide="badge-check" class="verified-badge post-author-verified-badge${isPostAuthorAdmin ? ' verified-badge-admin' : ''}" data-author-uid="${post.authorUid || ''}" ${isPostAuthorAdmin ? 'data-admin-badge="true" title="💥Admin⚡"' : ''} style="display:${isPostAuthorVip ? 'inline-flex' : 'none'};"></i>
                                     </div>
-                                    <div class="post-time">${timeLabel}</div>
+                                    <div class="post-time">
+                                        ${timeLabel}
+                                        ${isPostAd ? `<span class="post-time-ad-sep">•</span><span class="post-ad-badge"><i data-lucide="megaphone"></i> Anúncio</span>` : ''}
+                                    </div>
                                 </div>
                             </div>
                             ${canDeletePost ? `
@@ -20983,7 +21068,12 @@ function renderPostsFeed(posts = []) {
                                 </button>
                             </div>
                         ` : ''}
-                        ${getPostCategoryBadgeHTML(post)}
+                        ${(isPostAd || (post.businessCategory || post.category)) ? `
+                            <div class="feed-tags-row">
+                                ${getPostAdBadgeHTML(post)}
+                                ${getPostCategoryBadgeHTML(post)}
+                            </div>
+                        ` : ''}
                         ${caption ? `<p class="post-caption">${escapeHTML(caption)}</p>` : ''}
                         ${post.actionButton && post.actionButton.url ? `
                             <div class="feed-cta-wrapper">
@@ -21094,6 +21184,7 @@ function renderPostsFeed(posts = []) {
         const timeLabel = createdAt.toLocaleString([], { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
         const liked = currentUser && Array.isArray(post.likes) && post.likes.includes(currentUser.uid);
         const canDeletePost = isPostOwner(post, currentUser, currentProfile);
+        const isPostAd = !!(post.isAd || post.contentType === 'ad');
         const isCommentsOpen = openPostCommentCards.has(post.id);
         const isThisMusicPlaying = currentFeedMusicAudio && !currentFeedMusicAudio.paused && currentFeedMusicPostId === post.id;
 
@@ -21107,7 +21198,10 @@ function renderPostsFeed(posts = []) {
                                 <span>${escapeHTML(authorName)}</span>
                                 <i data-lucide="badge-check" class="verified-badge post-author-verified-badge${isPostAuthorAdmin ? ' verified-badge-admin' : ''}" data-author-uid="${post.authorUid || ''}" ${isPostAuthorAdmin ? 'data-admin-badge="true" title="💥Admin⚡"' : ''} style="display:${isPostAuthorVip ? 'inline-flex' : 'none'};"></i>
                             </div>
-                            <div class="feed-time">${timeLabel}</div>
+                            <div class="feed-time">
+                                ${timeLabel}
+                                ${isPostAd ? `<span class="post-time-ad-sep">•</span><span class="post-ad-badge"><i data-lucide="megaphone"></i> Anúncio</span>` : ''}
+                            </div>
                         </div>
                     </div>
                     ${canDeletePost ? `
@@ -21134,7 +21228,12 @@ function renderPostsFeed(posts = []) {
                     </div>
                 ` : ''}
                 <div class="feed-body">
-                    ${getPostCategoryBadgeHTML(post)}
+                    ${(isPostAd || (post.businessCategory || post.category)) ? `
+                        <div class="feed-tags-row">
+                            ${getPostAdBadgeHTML(post)}
+                            ${getPostCategoryBadgeHTML(post)}
+                        </div>
+                    ` : ''}
                     ${caption ? `<p class="feed-caption">${escapeHTML(caption)}</p>` : ''}
                     ${post.actionButton && post.actionButton.url ? `
                         <div class="feed-cta-wrapper">
@@ -22335,6 +22434,8 @@ document.getElementById('publish-post-btn')?.addEventListener('click', async () 
             }
 
             const isCompany = isBusinessAccount(currentProfile) || isUserAdmin(currentUser, currentProfile);
+            const postContentType = isCompany ? (document.getElementById('post-content-type-select')?.value || 'normal') : 'normal';
+            const isPostAd = isCompany && postContentType === 'ad';
             const selectedCategory = isCompany ? (document.getElementById('post-business-category-select')?.value?.trim() || '') : '';
             const isTemporaryCategory = !!(selectedCategory && BUSINESS_CONTENT_CATEGORIES.includes(selectedCategory));
             const now = Date.now();
@@ -22379,6 +22480,8 @@ document.getElementById('publish-post-btn')?.addEventListener('click', async () 
                 isTrimmed: !!(pendingPostMediaInfo && pendingPostMediaInfo.isTrimmed) || !!(file && file.isTrimmed),
                 videoDuration: isVideo ? (pendingPostMediaInfo?.duration || (file && file.duration) || 0) : null,
                 caption: postCaptionInput?.value?.trim() || '',
+                isAd: isPostAd,
+                contentType: isPostAd ? 'ad' : 'normal',
                 businessCategory: isTemporaryCategory ? selectedCategory : null,
                 category: isTemporaryCategory ? selectedCategory : null,
                 isTemporary: isTemporaryCategory,
@@ -27291,6 +27394,9 @@ if (typeof window !== 'undefined') {
     window.isPostExpired = isPostExpired;
     window.getPostCategoryBadgeHTML = getPostCategoryBadgeHTML;
     window.initBusinessCategoryControls = initBusinessCategoryControls;
+    // Conta Empresa: Anúncio vs Conteúdo Normal para Stories e Posts (v1.0.167)
+    window.getPostAdBadgeHTML = getPostAdBadgeHTML;
+    window.initBusinessPostControls = initBusinessPostControls;
 }
 
 if (typeof window !== 'undefined') {
@@ -27305,5 +27411,5 @@ if (typeof window !== 'undefined') {
     setupVigenciaExpirationListeners();
     setupProductDigitalLinkValidation();
     initStoryCaptionAndLinkControls();
-    initBusinessCategoryControls();
+    initBusinessPostControls();
 }

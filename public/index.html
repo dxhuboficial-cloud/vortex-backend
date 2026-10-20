@@ -4,20 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.166">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.166">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.166">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.166">
-    <link rel="stylesheet" href="style.css?v=1.0.166">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.167">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.167">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.167">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.167">
+    <link rel="stylesheet" href="style.css?v=1.0.167">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.166">
+    <link rel="manifest" href="manifest.json?v=1.0.167">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.166">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.166">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.167">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.167">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -246,6 +246,7 @@
                         <div class="story-author-tag">
                             <span id="story-username">Nome</span>
                             <i data-lucide="badge-check" id="story-verified-badge" class="verified-badge" style="display: none;"></i>
+                            <span id="story-ad-badge" class="story-ad-badge" style="display: none;"><i data-lucide="megaphone"></i> Anúncio</span>
                         </div>
                         <span id="story-user-status" class="story-user-status"></span>
                     </div>
@@ -1390,9 +1391,22 @@
                             <i data-lucide="briefcase"></i>
                             <span>Conta Empresa</span>
                         </div>
-                        <span class="business-link-hint">Adicionar link com botão ao Story</span>
+                        <span class="business-link-hint">Recursos e Link para Conta Empresa</span>
                     </div>
                     <div class="business-link-fields">
+                        <div class="business-link-input-group">
+                            <label for="status-content-type-select">Tipo de Conteúdo</label>
+                            <div class="business-link-select-wrap">
+                                <select id="status-content-type-select" class="status-content-type-select" title="Escolha se o story é conteúdo normal ou anúncio">
+                                    <option value="normal" selected>Conteúdo Normal (Apenas Contatos)</option>
+                                    <option value="ad">Anúncio (Visível para Todos na Plataforma)</option>
+                                </select>
+                            </div>
+                            <div id="status-content-type-hint" class="business-ad-hint-banner" style="display: none;">
+                                <i data-lucide="megaphone"></i>
+                                <span><strong>Anúncio:</strong> Este Story será exibido para todos os usuários com conta na plataforma VORTEX VIP com a etiqueta de Anúncio.</span>
+                            </div>
+                        </div>
                         <div class="business-link-input-group">
                             <label for="status-link-cta-select">Ação do Botão</label>
                             <div class="business-link-select-wrap">
@@ -2293,9 +2307,22 @@
                             <i data-lucide="briefcase"></i>
                             <span>Conta Empresa</span>
                         </div>
-                        <span class="business-link-hint">Adicionar botão de link à postagem</span>
+                        <span class="business-link-hint">Recursos e Link para Conta Empresa</span>
                     </div>
                     <div class="business-link-fields">
+                        <div class="business-link-input-group">
+                            <label for="post-content-type-select">Tipo de Publicação</label>
+                            <div class="business-category-select-wrap">
+                                <select id="post-content-type-select" class="post-content-type-select" title="Escolha se o post é conteúdo normal ou anúncio">
+                                    <option value="normal" selected>Conteúdo Normal</option>
+                                    <option value="ad">Anúncio</option>
+                                </select>
+                            </div>
+                            <div id="post-content-type-hint" class="business-ad-hint-banner" style="display: none;">
+                                <i data-lucide="megaphone"></i>
+                                <span><strong>Anúncio:</strong> Esta postagem será destacada com a etiqueta oficial de Anúncio no Feed.</span>
+                            </div>
+                        </div>
                         <div class="business-link-input-group">
                             <label for="post-business-category-select">Categoria do Conteúdo (Temporário 24h)</label>
                             <div class="business-category-select-wrap">
@@ -3520,6 +3547,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.166" defer></script>
+    <script type="module" src="script.js?v=1.0.167" defer></script>
 </body>
 </html>
