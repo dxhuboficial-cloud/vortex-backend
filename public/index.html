@@ -4,20 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.163">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.163">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.163">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.163">
-    <link rel="stylesheet" href="style.css?v=1.0.163">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.164">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.164">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.164">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.164">
+    <link rel="stylesheet" href="style.css?v=1.0.164">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.163">
+    <link rel="manifest" href="manifest.json?v=1.0.164">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.163">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.163">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.164">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.164">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -2259,6 +2259,7 @@
                                 <i data-lucide="link"></i>
                                 <input type="url" id="post-business-btn-url" placeholder="https://seusite.com.br ou https://wa.me/..." autocomplete="off">
                             </div>
+                            <small id="post-business-btn-url-feedback" class="business-link-feedback" style="display: none;"></small>
                         </div>
                     </div>
                 </div>
@@ -2976,8 +2977,15 @@
 
                             <div class="catalog-field-group">
                                 <label class="catalog-field-label" for="cat-prod-digital-link"><i data-lucide="link"></i> Link do Produto Digital *</label>
-                                <input id="cat-prod-digital-link" type="text" placeholder="https://exemplo.com/seu-link" autocomplete="off">
-                                <small class="catalog-field-hint" style="color:var(--text-dim);font-size:0.75rem;margin-top:2px;">Insira o link para onde o cliente será direcionado (download, acesso, inscrição ou checkout).</small>
+                                <input id="cat-prod-digital-link" type="text" placeholder="https://mercadolivre.com.br, https://play.google.com/store/apps/..." autocomplete="off">
+                                <small id="cat-prod-digital-link-feedback" class="catalog-field-hint catalog-link-feedback" style="display: none;"></small>
+                                <div id="cat-prod-digital-link-security-note" class="catalog-link-security-note">
+                                    <div class="catalog-link-security-header">
+                                        <i data-lucide="shield-check"></i>
+                                        <span>Segurança Antispam VORTEX</span>
+                                    </div>
+                                    <p>São permitidos links oficiais (Mercado Livre, Shopee, Amazon, AliExpress, Shein, Americanas, Casas Bahia, Pichau, Ibyte, Google Play ou sites com domínio comprado oficial). <strong>Proibido:</strong> apostas/bets, baixar APK e links de vídeos ou fotos.</p>
+                                </div>
                             </div>
 
                             <!-- Seleção que aparece APÓS o link ser preenchido -->
@@ -3439,6 +3447,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.163" defer></script>
+    <script type="module" src="script.js?v=1.0.164" defer></script>
 </body>
 </html>

@@ -3653,6 +3653,428 @@ export function setupVigenciaExpirationListeners() {
     }
 }
 
+// Sistema de Segurança Antispam para Links de Produtos e Postagens (v1.0.164)
+export const OFFICIAL_ALLOWED_STORE_DOMAINS = [
+    // Mercado Livre
+    'mercadolivre.com.br', 'mercadolivre.com', 'produto.mercadolivre.com.br', 'meli.com', 'mercadopago.com.br',
+    // Shopee
+    'shopee.com.br', 'shopee.com',
+    // Amazon
+    'amazon.com.br', 'amazon.com', 'amzn.to', 'a.co',
+    // AliExpress
+    'aliexpress.com', 'aliexpress.com.br', 'pt.aliexpress.com',
+    // Shein
+    'shein.com', 'shein.com.br', 'br.shein.com',
+    // Americanas
+    'americanas.com.br',
+    // Casas Bahia
+    'casasbahia.com.br',
+    // Pichau
+    'pichau.com.br', 'pichauarena.com.br',
+    // Ibyte
+    'ibyte.com.br',
+    // Google Play Store
+    'play.google.com',
+    // Apple App Store & Microsoft Store
+    'apps.apple.com', 'apple.com', 'apps.microsoft.com', 'microsoft.com',
+    // Grandes Varejistas Brasileiros
+    'magazineluiza.com.br', 'mglg.com.br', 'kabum.com.br', 'terabyteshop.com.br',
+    'fastshop.com.br', 'netshoes.com.br', 'submarino.com.br', 'carrefour.com.br',
+    'extra.com.br', 'pontofrio.com.br', 'ponto.com.br',
+    // Plataformas Oficiais de Cursos e Infoprodutos
+    'hotmart.com', 'kiwify.com.br', 'eduzz.com', 'monetizze.com.br', 'braip.com',
+    'udemy.com', 'alura.com.br',
+    // WhatsApp Comercial Oficial
+    'wa.me', 'whatsapp.com', 'api.whatsapp.com'
+];
+
+export const BET_SPECIFIC_HOUSES = [
+    'bet365', 'betano', 'blaze', 'sportingbet', 'betfair', '1xbet', 'pixbet',
+    'kto', 'estrelabet', 'f12bet', 'f12', 'apostaganha', 'novibet', 'playpix',
+    'br4bet', 'betway', 'betsson', 'pinnacle', 'stake', 'vaidebet', 'betmotion',
+    'superbet', 'parimatch', 'chillbet', 'betsul', 'rivalo', 'bodog', 'betnacional',
+    'mrjack', 'segurobet', 'realsbet', 'afun', 'bet7k', 'galera.bet'
+];
+
+export const FORBIDDEN_FILE_EXTENSIONS = [
+    '.apk', '.xapk', '.apks', '.exe', '.msi', '.bat', '.cmd', '.scr',
+    '.vbs', '.ps1', '.zip', '.rar', '.7z', '.tar', '.gz', '.iso', '.bin', '.dmg'
+];
+
+export const FORBIDDEN_APK_DOMAINS = [
+    'apkpure.com', 'apkmirror.com', 'apkmonk.com', 'aptoide.com', 'happymod.com',
+    'apkcombo.com', 'apkdone.com', 'uptodown.com', 'moddroid.com', 'an1.com',
+    'mediafire.com', 'mega.nz', 'mega.io', 'anonfiles.com', '4shared.com',
+    'zippyshare.com', 'uploaded.net', 'rapidgator.net', 'sendspace.com', 'wetransfer.com'
+];
+
+export const FORBIDDEN_VIDEO_DOMAINS = [
+    'youtube.com', 'youtu.be', 'youtube-nocookie.com',
+    'tiktok.com', 'vm.tiktok.com', 'vt.tiktok.com',
+    'vimeo.com',
+    'kwai.com', 'kwaiapp.com', 'kwai-video.com',
+    'dailymotion.com', 'dai.ly',
+    'twitch.tv',
+    'rumble.com',
+    'odysee.com',
+    'bitchute.com'
+];
+
+export const FORBIDDEN_VIDEO_EXTENSIONS = [
+    '.mp4', '.m4v', '.mov', '.avi', '.mkv', '.webm', '.flv', '.wmv',
+    '.3gp', '.ts', '.ogv', '.m3u8', '.mpd'
+];
+
+export const FORBIDDEN_PHOTO_DOMAINS = [
+    'imgur.com', 'prnt.sc', 'prntscr.com', 'postimg.cc', 'ibb.co',
+    'imgbb.com', 'flickr.com', 'pinterest.com', 'photobucket.com', 'tinypic.com'
+];
+
+export const FORBIDDEN_PHOTO_EXTENSIONS = [
+    '.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg', '.tiff', '.ico', '.heic'
+];
+
+export const FORBIDDEN_SHORTENER_DOMAINS = [
+    'bit.ly', 'tinyurl.com', 't.co', 'cutt.ly', 'is.gd', 'linktr.ee',
+    'shorte.st', 'adf.ly', 'bc.vc', 'goo.gl', 'ow.ly', 'buff.ly', 'rebrand.ly',
+    'trib.al', 'bitly.com'
+];
+
+export const SUSPICIOUS_TUNNEL_DOMAINS = [
+    'ngrok.io', 'ngrok-free.app', 'localtunnel.me', '000webhostapp.com'
+];
+
+export const SUSPICIOUS_FREE_TLDS = ['.tk', '.ml', '.ga', '.cf', '.gq'];
+
+export const VALID_PURCHASED_TLDS = [
+    // Brasil (.br)
+    '.com.br', '.net.br', '.org.br', '.store.br', '.loja.br', '.app.br', '.dev.br',
+    '.ind.br', '.tec.br', '.inf.br', '.eco.br', '.srv.br', '.rio', '.art.br',
+    // Globais e Comerciais
+    '.com', '.net', '.org', '.store', '.shop', '.loja', '.online', '.site',
+    '.app', '.io', '.tech', '.co', '.digital', '.pro', '.me', '.global',
+    '.info', '.biz', '.cloud', '.space', '.live', '.agency', '.software',
+    '.solutions', '.club', '.market', '.lat', '.design', '.art', '.life',
+    '.world', '.co.uk', '.com.ar', '.com.uy', '.com.py', '.es', '.pt'
+];
+
+export function isOfficialStoreDomain(hostname) {
+    if (!hostname) return false;
+    const lower = hostname.toLowerCase();
+    return OFFICIAL_ALLOWED_STORE_DOMAINS.some(allowed => lower === allowed || lower.endsWith('.' + allowed));
+}
+
+export function validateProductDigitalLink(rawVal) {
+    if (!rawVal || typeof rawVal !== 'string') {
+        return { isValid: false, isEmpty: true, formatted: '', domain: '', error: 'Informe o link do produto digital.' };
+    }
+    const val = rawVal.trim();
+    if (!val) {
+        return { isValid: false, isEmpty: true, formatted: '', domain: '', error: 'Informe o link do produto digital.' };
+    }
+
+    let urlCandidate = val;
+    if (!urlCandidate.startsWith('http://') && !urlCandidate.startsWith('https://')) {
+        urlCandidate = 'https://' + urlCandidate;
+    }
+
+    const url = safeParseURL(urlCandidate);
+    if (!url || !url.hostname) {
+        return {
+            isValid: false,
+            isEmpty: false,
+            formatted: val,
+            domain: '',
+            error: 'Formato de link inválido. Insira uma URL completa (ex: https://mercadolivre.com.br ou seu site oficial).'
+        };
+    }
+
+    const hostname = url.hostname.toLowerCase();
+    const pathname = (url.pathname || '').toLowerCase();
+    const search = (url.search || '').toLowerCase();
+    const fullPathAndQuery = pathname + search;
+
+    // 1. Validar protocolo HTTPS
+    if (url.protocol !== 'https:' && !urlCandidate.startsWith('https://')) {
+        return {
+            isValid: false,
+            isEmpty: false,
+            formatted: val,
+            domain: hostname,
+            error: 'Apenas links seguros com https:// são aceitos para proteger os compradores.'
+        };
+    }
+
+    // 2. Bloquear IPs diretos e localhost
+    if (
+        /^(\d{1,3}\.){3}\d{1,3}$/.test(hostname) ||
+        hostname === 'localhost' ||
+        hostname.endsWith('.local')
+    ) {
+        return {
+            isValid: false,
+            isEmpty: false,
+            formatted: val,
+            domain: hostname,
+            error: 'Endereços de IP diretos ou locais não são permitidos. Use o domínio oficial do site.'
+        };
+    }
+
+    // 3. Bloquear Encurtadores de Links e Domínios Gratuitos/Suspeitos
+    if (FORBIDDEN_SHORTENER_DOMAINS.some(short => hostname === short || hostname.endsWith('.' + short))) {
+        return {
+            isValid: false,
+            isEmpty: false,
+            formatted: val,
+            domain: hostname,
+            error: 'Links encurtados não são permitidos por segurança para evitar spam. Insira o link direto e oficial.'
+        };
+    }
+    if (SUSPICIOUS_TUNNEL_DOMAINS.some(tun => hostname === tun || hostname.endsWith('.' + tun))) {
+        return {
+            isValid: false,
+            isEmpty: false,
+            formatted: val,
+            domain: hostname,
+            error: 'Domínios de túnel temporário não são permitidos.'
+        };
+    }
+    if (SUSPICIOUS_FREE_TLDS.some(tld => hostname.endsWith(tld))) {
+        return {
+            isValid: false,
+            isEmpty: false,
+            formatted: val,
+            domain: hostname,
+            error: 'Domínios temporários ou gratuitos suspeitos não são permitidos. Use um domínio próprio oficial.'
+        };
+    }
+
+    // 4. Bloquear Downloads de APK e Arquivos Executáveis
+    if (FORBIDDEN_APK_DOMAINS.some(apkHost => hostname === apkHost || hostname.endsWith('.' + apkHost))) {
+        return {
+            isValid: false,
+            isEmpty: false,
+            formatted: val,
+            domain: hostname,
+            error: 'Download direto de APK não é permitido para evitar malware. Para aplicativos, utilize o link oficial da Google Play Store.'
+        };
+    }
+    for (const ext of FORBIDDEN_FILE_EXTENSIONS) {
+        if (pathname.endsWith(ext) || fullPathAndQuery.includes(ext + '?') || fullPathAndQuery.includes(ext + '&')) {
+            return {
+                isValid: false,
+                isEmpty: false,
+                formatted: val,
+                domain: hostname,
+                error: `Download direto de arquivos (${ext}) não é permitido por segurança. Para aplicativos, use a Google Play Store.`
+            };
+        }
+    }
+
+    // 5. Bloquear Links de Vídeos e Fotos
+    if (FORBIDDEN_VIDEO_DOMAINS.some(vHost => hostname === vHost || hostname.endsWith('.' + vHost))) {
+        return {
+            isValid: false,
+            isEmpty: false,
+            formatted: val,
+            domain: hostname,
+            error: 'Links de vídeos não são permitidos para evitar conteúdo indesejado. Apenas lojas ou sites oficiais são aceitos.'
+        };
+    }
+    for (const ext of FORBIDDEN_VIDEO_EXTENSIONS) {
+        if (pathname.endsWith(ext) || fullPathAndQuery.includes(ext + '?') || fullPathAndQuery.includes(ext + '&')) {
+            return {
+                isValid: false,
+                isEmpty: false,
+                formatted: val,
+                domain: hostname,
+                error: 'Links diretos para arquivos de vídeo não são permitidos.'
+            };
+        }
+    }
+    if (
+        (hostname.includes('instagram.com') && (pathname.includes('/reel') || pathname.includes('/p/') || pathname.includes('/stories/'))) ||
+        hostname.includes('fb.watch') ||
+        (hostname.includes('facebook.com') && pathname.includes('/watch'))
+    ) {
+        return {
+            isValid: false,
+            isEmpty: false,
+            formatted: val,
+            domain: hostname,
+            error: 'Links de vídeos ou publicações de redes sociais não são permitidos.'
+        };
+    }
+    if (FORBIDDEN_PHOTO_DOMAINS.some(pHost => hostname === pHost || hostname.endsWith('.' + pHost))) {
+        return {
+            isValid: false,
+            isEmpty: false,
+            formatted: val,
+            domain: hostname,
+            error: 'Links de fotos ou hospedagem de imagens não são permitidos.'
+        };
+    }
+    for (const ext of FORBIDDEN_PHOTO_EXTENSIONS) {
+        if (pathname.endsWith(ext) || fullPathAndQuery.includes(ext + '?') || fullPathAndQuery.includes(ext + '&')) {
+            return {
+                isValid: false,
+                isEmpty: false,
+                formatted: val,
+                domain: hostname,
+                error: 'Links diretos para imagens ou fotos não são permitidos.'
+            };
+        }
+    }
+
+    // 6. Bloquear Casas de Aposta / Bets / Cassinos
+    const isBetHouse = BET_SPECIFIC_HOUSES.some(bh => hostname.includes(bh));
+    const hasBetDomainToken = (
+        hostname.endsWith('.bet') ||
+        hostname.endsWith('.casino') ||
+        hostname.endsWith('.poker') ||
+        /(^|\.)bet\./i.test(hostname) ||
+        /(^|[.-])bet([.-]|$)/i.test(hostname) ||
+        hostname.includes('aposta') ||
+        hostname.includes('cassino') ||
+        hostname.includes('casino') ||
+        hostname.includes('tigrinho') ||
+        fullPathAndQuery.includes('tigrinho') ||
+        fullPathAndQuery.includes('fortune-tiger') ||
+        fullPathAndQuery.includes('aviator') ||
+        fullPathAndQuery.includes('jogodobicho') ||
+        fullPathAndQuery.includes('aposta') ||
+        fullPathAndQuery.includes('cassino') ||
+        fullPathAndQuery.includes('casino')
+    );
+    if (isBetHouse || hasBetDomainToken) {
+        return {
+            isValid: false,
+            isEmpty: false,
+            formatted: val,
+            domain: hostname,
+            error: 'Links de apostas, cassinos ou jogos de azar (bets) são estritamente proibidos por segurança.'
+        };
+    }
+
+    // 7. Verificar se é Marketplace / Plataforma Oficial Autorizada
+    const isOfficial = isOfficialStoreDomain(hostname);
+    if (isOfficial) {
+        return {
+            isValid: true,
+            isEmpty: false,
+            formatted: urlCandidate,
+            domain: hostname,
+            isOfficialMarketplace: true,
+            label: 'Loja / Plataforma Oficial',
+            error: ''
+        };
+    }
+
+    // 8. Verificar se é "Site com domínio comprado e oficial"
+    const isValidStructure = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$/i.test(hostname);
+    const hasValidTLD = VALID_PURCHASED_TLDS.some(tld => hostname.endsWith(tld));
+
+    if (isValidStructure && hasValidTLD) {
+        return {
+            isValid: true,
+            isEmpty: false,
+            formatted: urlCandidate,
+            domain: hostname,
+            isOfficialMarketplace: false,
+            label: 'Site Oficial com Domínio Próprio',
+            error: ''
+        };
+    }
+
+    return {
+        isValid: false,
+        isEmpty: false,
+        formatted: val,
+        domain: hostname,
+        error: 'Domínio não reconhecido como oficial. Use uma loja oficial (Mercado Livre, Shopee, Amazon, AliExpress, Shein, Google Play...) ou site com domínio próprio oficial registrado.'
+    };
+}
+
+export function applyDigitalLinkValidationFeedback(input, feedbackEl, res) {
+    if (!input) return;
+    if (res.isEmpty) {
+        input.classList.remove('catalog-input-error', 'catalog-input-success');
+        if (feedbackEl) {
+            feedbackEl.innerText = '';
+            feedbackEl.style.display = 'none';
+            feedbackEl.className = 'catalog-field-hint catalog-link-feedback';
+        }
+        return;
+    }
+
+    if (res.isValid) {
+        input.classList.remove('catalog-input-error');
+        input.classList.add('catalog-input-success');
+        if (feedbackEl) {
+            feedbackEl.className = 'catalog-field-hint catalog-link-feedback valid';
+            const badgeIcon = res.isOfficialMarketplace ? 'badge-check' : 'shield-check';
+            feedbackEl.innerHTML = `<i data-lucide="${badgeIcon}"></i> <span>${escapeHTML(res.label || 'Link Seguro')}: <strong>${escapeHTML(res.domain)}</strong></span>`;
+            feedbackEl.style.display = 'flex';
+        }
+    } else {
+        input.classList.remove('catalog-input-success');
+        input.classList.add('catalog-input-error');
+        if (feedbackEl) {
+            feedbackEl.className = 'catalog-field-hint catalog-link-feedback invalid';
+            feedbackEl.innerHTML = `<i data-lucide="shield-alert"></i> <span>${escapeHTML(res.error)}</span>`;
+            feedbackEl.style.display = 'flex';
+        }
+    }
+
+    if (typeof window !== 'undefined' && window.lucide) {
+        window.lucide.createIcons();
+    }
+}
+
+export function setupProductDigitalLinkValidation() {
+    const digitalLinkInput = document.getElementById('cat-prod-digital-link');
+    const digitalFeedback = document.getElementById('cat-prod-digital-link-feedback');
+    const ctaGroup = document.getElementById('cat-prod-digital-cta-group');
+
+    if (digitalLinkInput && !digitalLinkInput.dataset.secBound) {
+        digitalLinkInput.dataset.secBound = 'true';
+        const handler = () => {
+            const val = (digitalLinkInput.value || '').trim();
+            if (!val) {
+                applyDigitalLinkValidationFeedback(digitalLinkInput, digitalFeedback, { isEmpty: true });
+                if (ctaGroup) ctaGroup.style.display = 'none';
+                return;
+            }
+            const res = validateProductDigitalLink(val);
+            applyDigitalLinkValidationFeedback(digitalLinkInput, digitalFeedback, res);
+            if (ctaGroup) {
+                ctaGroup.style.display = res.isValid ? 'block' : 'none';
+            }
+        };
+        digitalLinkInput.addEventListener('input', handler);
+        digitalLinkInput.addEventListener('change', handler);
+        digitalLinkInput.addEventListener('blur', handler);
+    }
+
+    const bizUrlInput = document.getElementById('post-business-btn-url');
+    const bizFeedback = document.getElementById('post-business-btn-url-feedback');
+    if (bizUrlInput && !bizUrlInput.dataset.secBound) {
+        bizUrlInput.dataset.secBound = 'true';
+        const handler = () => {
+            const val = (bizUrlInput.value || '').trim();
+            if (!val) {
+                applyDigitalLinkValidationFeedback(bizUrlInput, bizFeedback, { isEmpty: true });
+                return;
+            }
+            const res = validateProductDigitalLink(val);
+            applyDigitalLinkValidationFeedback(bizUrlInput, bizFeedback, res);
+        };
+        bizUrlInput.addEventListener('input', handler);
+        bizUrlInput.addEventListener('change', handler);
+        bizUrlInput.addEventListener('blur', handler);
+    }
+}
+
 export function isBusinessAccount(profile = currentProfile) {
     return !!(profile && (profile.accountType === 'business' || profile.isBusiness === true));
 }
@@ -5300,6 +5722,18 @@ export async function openProductEditor(productId = null) {
 
     setupVigenciaExpirationListeners();
     updateVigenciaExpirationVisibility();
+    setupProductDigitalLinkValidation();
+
+    const digitalFeedback = document.getElementById('cat-prod-digital-link-feedback');
+    const digitalLinkVal = (digitalLinkInp?.value || '').trim();
+    if (digitalFeedback && digitalLinkInp) {
+        if (digitalLinkVal) {
+            const res = validateProductDigitalLink(digitalLinkVal);
+            applyDigitalLinkValidationFeedback(digitalLinkInp, digitalFeedback, res);
+        } else {
+            applyDigitalLinkValidationFeedback(digitalLinkInp, digitalFeedback, { isEmpty: true });
+        }
+    }
 
     renderEditorPhotos();
     renderEditorColors();
@@ -5547,9 +5981,18 @@ export async function saveCatalogProduct() {
             showToast('Link Obrigatório', 'Informe o link de acesso para o produto digital.', 'orange');
             return;
         }
-        if (!/^https?:\/\//i.test(digitalLink)) {
-            digitalLink = 'https://' + digitalLink;
+        const linkCheck = validateProductDigitalLink(digitalLink);
+        if (!linkCheck.isValid) {
+            showToast('Link Bloqueado por Segurança 🛡️', linkCheck.error, 'red');
+            const digitalInp = document.getElementById('cat-prod-digital-link');
+            const digitalFeedback = document.getElementById('cat-prod-digital-link-feedback');
+            if (digitalInp) {
+                digitalInp.focus();
+                applyDigitalLinkValidationFeedback(digitalInp, digitalFeedback, linkCheck);
+            }
+            return;
         }
+        digitalLink = linkCheck.formatted;
     }
 
     let stock = null;
@@ -15502,7 +15945,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.163';
+export const CURRENT_APP_VERSION = '1.0.164';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -21615,13 +22058,25 @@ document.getElementById('publish-post-btn')?.addEventListener('click', async () 
 
             let actionButtonPayload = null;
             if (isCompany && bizBtnUrl) {
-                let formattedUrl = bizBtnUrl;
-                if (!/^https?:\/\//i.test(formattedUrl)) {
-                    formattedUrl = 'https://' + formattedUrl;
+                const linkCheck = validateProductDigitalLink(bizBtnUrl);
+                if (!linkCheck.isValid) {
+                    showToast('Link da Postagem Não Permitido 🛡️', linkCheck.error, 'red');
+                    const urlInp = document.getElementById('post-business-btn-url');
+                    const bizFeedback = document.getElementById('post-business-btn-url-feedback');
+                    if (urlInp) {
+                        urlInp.focus();
+                        applyDigitalLinkValidationFeedback(urlInp, bizFeedback, linkCheck);
+                    }
+                    const submitBtn = document.getElementById('submit-post-btn');
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.innerText = 'Publicar';
+                    }
+                    return;
                 }
                 actionButtonPayload = {
                     text: bizBtnText || 'Saiba Mais',
-                    url: formattedUrl
+                    url: linkCheck.formatted
                 };
             }
 
@@ -26528,6 +26983,12 @@ if (typeof window !== 'undefined') {
     window.applyQuickExpiration = applyQuickExpiration;
     window.updateVigenciaExpirationVisibility = updateVigenciaExpirationVisibility;
     window.setupVigenciaExpirationListeners = setupVigenciaExpirationListeners;
+    // Sistema de Segurança de Links para Produtos e Postagens (v1.0.164)
+    window.OFFICIAL_ALLOWED_STORE_DOMAINS = OFFICIAL_ALLOWED_STORE_DOMAINS;
+    window.isOfficialStoreDomain = isOfficialStoreDomain;
+    window.validateProductDigitalLink = validateProductDigitalLink;
+    window.applyDigitalLinkValidationFeedback = applyDigitalLinkValidationFeedback;
+    window.setupProductDigitalLinkValidation = setupProductDigitalLinkValidation;
 }
 
 if (typeof window !== 'undefined') {
@@ -26540,4 +27001,5 @@ if (typeof window !== 'undefined') {
     setupProfileLinkValidationListeners();
     setupFeedSearchListeners();
     setupVigenciaExpirationListeners();
+    setupProductDigitalLinkValidation();
 }

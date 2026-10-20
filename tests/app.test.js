@@ -7442,7 +7442,8 @@ test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com 
   // 40. Busca de Posts na Tela do Feed Reels (v1.0.161)
   // 41. Organização das Opções de Unidade Pedida e Quantidade Pedida no Detalhe do Pedido (v1.0.162)
   // 42. Expiração com Data, Mês, Ano e Hora para Promoção e Desconto Temporários (v1.0.163)
-  assert.strictEqual(versionJson.version, '1.0.163', 'version.json deve ser 1.0.163');
+  // 43. Sistema de Segurança Antispam e Bloqueio de Links Não Permitidos em Produtos e Postagens (v1.0.164)
+  assert.strictEqual(versionJson.version, '1.0.164', 'version.json deve ser 1.0.164');
 });
 
 test('Formulários Comerciais para Conta Empresa: Permissões, templates, card interativo no chat e preenchimento de respostas (v1.0.142)', () => {
@@ -9107,6 +9108,184 @@ test('Expiração com Data, Mês, Ano e Hora para Promoção e Desconto Temporá
   html = container.innerHTML;
   assert.ok(html.includes('catalog-badge-promo-temp') || html.includes('OFERTA TEMPORÁRIA'), 'Promoção ativa DEVE exibir badge de oferta temporária');
   assert.ok(html.includes('catalog-badge-discount') || html.includes('30% OFF'), 'Desconto ativo DEVE exibir badge');
+});
+
+test('Sistema de Segurança Antispam e Bloqueio de Links Não Permitidos em Produtos e Postagens (v1.0.164)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+
+  // 1. Integridade de Elementos HTML no index.html
+  assert.ok(htmlContent.includes('id="cat-prod-digital-link-feedback"'), 'Deve conter cat-prod-digital-link-feedback no index.html');
+  assert.ok(htmlContent.includes('id="cat-prod-digital-link-security-note"'), 'Deve conter cat-prod-digital-link-security-note no index.html');
+  assert.ok(htmlContent.includes('id="post-business-btn-url-feedback"'), 'Deve conter post-business-btn-url-feedback no index.html');
+
+  // 2. Integridade do CSS em style.css
+  assert.ok(cssContent.includes('.catalog-link-security-note'), 'Deve conter estilos para .catalog-link-security-note');
+  assert.ok(cssContent.includes('.catalog-link-feedback'), 'Deve conter estilos para .catalog-link-feedback');
+  assert.ok(cssContent.includes('.catalog-input-error'), 'Deve conter estilos para .catalog-input-error');
+  assert.ok(cssContent.includes('.catalog-input-success'), 'Deve conter estilos para .catalog-input-success');
+
+  // 3. Função de Validação de Segurança de Links (validateProductDigitalLink)
+  const validateProductDigitalLink = win.validateProductDigitalLink;
+  assert.strictEqual(typeof validateProductDigitalLink, 'function', 'validateProductDigitalLink deve ser uma função');
+
+  // 4. Marketplaces e Lojas Oficiais Citadas pelo Usuário (DEVEM SER APROVADAS)
+  const officialAllowedUrls = [
+    'https://produto.mercadolivre.com.br/MLB-123456-tenis',
+    'https://mercadolivre.com.br/ofertas',
+    'https://shopee.com.br/produto-teste-i.123.456',
+    'https://www.amazon.com.br/dp/B08N5WRWNW',
+    'https://pt.aliexpress.com/item/100500123.html',
+    'https://br.shein.com/goods-p-123.html',
+    'https://www.americanas.com.br/produto/123',
+    'https://www.casasbahia.com.br/produto/123',
+    'https://www.pichau.com.br/computador-gamer-rtx',
+    'https://www.ibyte.com.br/smartphone-galaxy',
+    'https://play.google.com/store/apps/details?id=com.app.vortex',
+    'https://apps.apple.com/br/app/vortex-vip/id123456789'
+  ];
+
+  for (const url of officialAllowedUrls) {
+    const res = validateProductDigitalLink(url);
+    assert.strictEqual(res.isValid, true, `URL oficial ${url} DEVE ser aprovada: ${res.error}`);
+    assert.strictEqual(res.isOfficialMarketplace, true, `URL ${url} deve ser identificada como marketplace/plataforma oficial`);
+  }
+
+  // 5. Sites Oficiais com Domínio Próprio Comprado (DEVEM SER APROVADOS)
+  const officialPurchasedDomains = [
+    'https://minhalojaoficial.com.br/produtos/camisa',
+    'https://cursodev.com/checkout/turma-1',
+    'https://suaempresa.store/catalogo',
+    'https://wa.me/5585999999999',
+    'https://kiwify.com.br/curso-online',
+    'https://hotmart.com/pt-br/marketplace/produtos/curso'
+  ];
+
+  for (const url of officialPurchasedDomains) {
+    const res = validateProductDigitalLink(url);
+    assert.strictEqual(res.isValid, true, `Domínio próprio comprado ${url} DEVE ser aprovado: ${res.error}`);
+  }
+
+  // 6. Casas de Aposta / Bets / Cassinos (DEVEM SER BLOQUEADAS)
+  const betUrls = [
+    'https://betano.com/apostas',
+    'https://blaze.com/r/abc',
+    'https://bet365.com',
+    'https://estrelabet.com',
+    'https://f12bet.com',
+    'https://apostaganha.bet.br',
+    'https://sitealeatorio.com/jogos/tigrinho',
+    'https://sitequalquer.com/fortune-tiger-link'
+  ];
+
+  for (const url of betUrls) {
+    const res = validateProductDigitalLink(url);
+    assert.strictEqual(res.isValid, false, `Link de aposta/bet ${url} DEVE ser bloqueado`);
+    assert.ok(res.error.toLowerCase().includes('aposta') || res.error.toLowerCase().includes('bet'), `Mensagem de erro deve citar apostas ou bets: ${res.error}`);
+  }
+
+  // 7. Baixar APK / Arquivos Executáveis (DEVEM SER BLOQUEADOS)
+  const apkUrls = [
+    'https://meusite.com/download/aplicativo.apk',
+    'https://apkpure.com/whatsapp/download',
+    'https://apkmirror.com/apk/vortex',
+    'https://meusite.com/programa.exe',
+    'https://mediafire.com/file/12345/app.zip'
+  ];
+
+  for (const url of apkUrls) {
+    const res = validateProductDigitalLink(url);
+    assert.strictEqual(res.isValid, false, `Link de APK/download direto ${url} DEVE ser bloqueado`);
+    assert.ok(res.error.toLowerCase().includes('apk') || res.error.toLowerCase().includes('download') || res.error.toLowerCase().includes('arquivo'), `Mensagem de erro deve alertar sobre APK ou arquivos: ${res.error}`);
+  }
+
+  // 8. Links de Vídeo e Foto (DEVEM SER BLOQUEADOS)
+  const mediaUrls = [
+    'https://youtube.com/watch?v=dQw4w9WgXcQ',
+    'https://youtu.be/dQw4w9WgXcQ',
+    'https://tiktok.com/@criador/video/123456',
+    'https://vimeo.com/123456789',
+    'https://kwai.com/@criador/video/123',
+    'https://instagram.com/reel/C8abcde',
+    'https://seusite.com/video-apresentacao.mp4',
+    'https://imgur.com/gallery/12345',
+    'https://seusite.com/banner-promocional.jpg',
+    'https://seusite.com/foto.png'
+  ];
+
+  for (const url of mediaUrls) {
+    const res = validateProductDigitalLink(url);
+    assert.strictEqual(res.isValid, false, `Link de vídeo/foto ${url} DEVE ser bloqueado`);
+    assert.ok(res.error.toLowerCase().includes('vídeo') || res.error.toLowerCase().includes('foto') || res.error.toLowerCase().includes('imagem'), `Mensagem deve alertar sobre vídeos ou fotos: ${res.error}`);
+  }
+
+  // 9. Encurtadores de Links e Domínios Gratuitos Suspeitos (DEVEM SER BLOQUEADOS)
+  const shortenerUrls = [
+    'https://bit.ly/super-promocao',
+    'https://tinyurl.com/link123',
+    'https://free-site.tk',
+    'https://meuapp.ngrok.io'
+  ];
+
+  for (const url of shortenerUrls) {
+    const res = validateProductDigitalLink(url);
+    assert.strictEqual(res.isValid, false, `Link encurtado ou domínio suspeito ${url} DEVE ser bloqueado`);
+  }
+
+  // 10. Feedback Visual no Campo (applyDigitalLinkValidationFeedback)
+  const inputEl = win.document.getElementById('cat-prod-digital-link');
+  const feedbackEl = win.document.getElementById('cat-prod-digital-link-feedback');
+  assert.ok(inputEl, 'Input de link digital deve existir');
+  assert.ok(feedbackEl, 'Elemento de feedback deve existir');
+
+  // Testar feedback de link inválido (bet)
+  const invalidRes = validateProductDigitalLink('https://betano.com');
+  win.applyDigitalLinkValidationFeedback(inputEl, feedbackEl, invalidRes);
+  assert.ok(inputEl.classList.contains('catalog-input-error'), 'Input deve receber classe catalog-input-error para link inválido');
+  assert.strictEqual(feedbackEl.style.display, 'flex', 'Feedback deve ficar visível');
+  assert.ok(feedbackEl.innerHTML.includes('apostas') || feedbackEl.innerHTML.includes('bets'), 'Feedback deve exibir texto explicativo de bloqueio');
+
+  // Testar feedback de link válido (Mercado Livre)
+  const validRes = validateProductDigitalLink('https://mercadolivre.com.br/item/123');
+  win.applyDigitalLinkValidationFeedback(inputEl, feedbackEl, validRes);
+  assert.ok(!inputEl.classList.contains('catalog-input-error'), 'Input não deve ter catalog-input-error quando válido');
+  assert.ok(inputEl.classList.contains('catalog-input-success'), 'Input deve ter catalog-input-success quando válido');
+  assert.ok(feedbackEl.innerHTML.includes('mercadolivre.com.br'), 'Feedback deve exibir o domínio aprovado');
+
+  // 11. Bloqueio no salvamento do produto (saveCatalogProduct)
+  const sellerUid = 'empresa_seller_1';
+  env.firestoreDocs[`users/${sellerUid}`] = {
+    uid: sellerUid,
+    name: 'Vendedor Oficial',
+    accountType: 'business'
+  };
+  await env.triggerAuthStateChange({ uid: sellerUid, email: 'empresa@vortex.app' });
+  win.setCurrentProfile({
+    uid: sellerUid,
+    name: 'Vendedor Oficial',
+    accountType: 'business'
+  });
+
+  // Preencher campos obrigatórios para produto digital
+  win.document.getElementById('cat-prod-name').value = 'App Pro Curso VIP';
+  win.document.getElementById('cat-prod-price').value = '99,00';
+  win.document.getElementById('cat-prod-kind').value = 'digital';
+  win.document.getElementById('cat-prod-unlimited').checked = true;
+  win.document.getElementById('cat-prod-digital-link').value = 'https://blaze.com/r/cassino'; // Link proibido!
+
+  // Tentar salvar deve ser bloqueado
+  await win.saveCatalogProduct();
+  let keys = Object.keys(env.firestoreDocs);
+  let foundSaved = keys.some(k => k.startsWith('users/empresa_seller_1/catalog/') && env.firestoreDocs[k]?.name === 'App Pro Curso VIP');
+  assert.strictEqual(foundSaved, false, 'Produto com link de aposta/bet NÃO pode ser salvo no Firestore');
+
+  // Corrigir para link oficial da Google Play
+  win.document.getElementById('cat-prod-digital-link').value = 'https://play.google.com/store/apps/details?id=com.vortex.vip';
+  await win.saveCatalogProduct();
+  // Verificar que foi salvo
+  keys = Object.keys(env.firestoreDocs);
+  foundSaved = keys.some(k => k.startsWith('users/empresa_seller_1/catalog/') && env.firestoreDocs[k]?.name === 'App Pro Curso VIP');
+  assert.strictEqual(foundSaved, true, 'Produto com link oficial da Google Play DEVE ser salvo com sucesso');
 });
 
 
