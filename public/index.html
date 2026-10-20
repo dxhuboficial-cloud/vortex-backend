@@ -4,20 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.164">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.164">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.164">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.164">
-    <link rel="stylesheet" href="style.css?v=1.0.164">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.165">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.165">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.165">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.165">
+    <link rel="stylesheet" href="style.css?v=1.0.165">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.164">
+    <link rel="manifest" href="manifest.json?v=1.0.165">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.164">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.164">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.165">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.165">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -290,6 +290,14 @@
                         <div class="story-content"></div>
                     </div>
                 </div>
+            </div>
+
+            <!-- Botão de Link com Ação (Conta Empresa) -->
+            <div id="story-link-cta-container" class="story-link-cta-container" style="display: none;">
+                <a id="story-link-cta-btn" href="#" target="_blank" rel="noopener noreferrer" class="story-link-cta-btn" title="Abrir link do Story">
+                    <span id="story-link-cta-text">Saiba mais</span>
+                    <i data-lucide="arrow-right" id="story-link-cta-icon" class="story-link-cta-icon"></i>
+                </a>
             </div>
 
             <div class="story-nav">
@@ -1287,8 +1295,11 @@
             </div>
             <div class="settings-content">
                 <div class="setting-item status-caption-setting-item">
-                    <label for="status-caption-input" class="setting-info"><span>Legenda</span></label>
-                    <input type="text" id="status-caption-input" placeholder="O que está acontecendo?" title="Legenda do Status">
+                    <div class="status-caption-header-row">
+                        <label for="status-caption-input" class="setting-info"><span>Legenda</span></label>
+                        <span id="status-caption-counter" class="caption-counter" title="Limite de 90 caracteres">0/90</span>
+                    </div>
+                    <input type="text" id="status-caption-input" placeholder="O que está acontecendo?" maxlength="90" title="Legenda do Status">
                 </div>
                 <div class="setting-item status-media-setting-item">
                     <label class="setting-info" id="status-media-label-text"><span>Foto ou Vídeo (15s a 1 min)</span></label>
@@ -1371,6 +1382,42 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Opção Exclusiva de Link no Story (Conta Empresa) -->
+                <div class="setting-item status-business-link-setting-item" id="status-business-link-section" style="display: none;">
+                    <div class="business-link-header">
+                        <div class="business-link-badge">
+                            <i data-lucide="briefcase"></i>
+                            <span>Conta Empresa</span>
+                        </div>
+                        <span class="business-link-hint">Adicionar link com botão ao Story</span>
+                    </div>
+                    <div class="business-link-fields">
+                        <div class="business-link-input-group">
+                            <label for="status-link-cta-select">Ação do Botão</label>
+                            <div class="business-link-select-wrap">
+                                <select id="status-link-cta-select" class="status-link-cta-select" title="Escolha a ação do botão">
+                                    <option value="Saiba mais" selected>Saiba mais</option>
+                                    <option value="Abrir">Abrir</option>
+                                    <option value="Comprar">Comprar</option>
+                                    <option value="Entrar">Entrar</option>
+                                    <option value="Agenda">Agenda</option>
+                                    <option value="Inscreva-se">Inscreva-se</option>
+                                    <option value="Seguir">Seguir</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="business-link-input-group">
+                            <label for="status-link-url-input">Link de Destino</label>
+                            <div class="business-link-url-input-wrap">
+                                <i data-lucide="link"></i>
+                                <input type="url" id="status-link-url-input" placeholder="https://seusite.com.br ou https://mercadolivre.com/..." autocomplete="off">
+                            </div>
+                            <small id="status-link-url-feedback" class="link-url-feedback" style="display:none;"></small>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="status-form-actions">
                     <button type="button" id="preview-status-btn" class="secondary-btn preview-status-action-btn" title="Ver como seu story vai ficar antes de publicar">
                         <i data-lucide="eye"></i> <span>Pré-visualizar Story</span>
@@ -3447,6 +3494,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.164" defer></script>
+    <script type="module" src="script.js?v=1.0.165" defer></script>
 </body>
 </html>

@@ -1211,7 +1211,8 @@ header h1 span {
 .story-viewer.story-holding .story-footer,
 .story-viewer.story-holding .story-progress-container,
 .story-viewer.story-holding .story-caption,
-.story-viewer.story-holding .story-music-badge {
+.story-viewer.story-holding .story-music-badge,
+.story-viewer.story-holding .story-link-cta-container {
     opacity: 0;
     pointer-events: none;
 }
@@ -16140,4 +16141,121 @@ body.theme-cyberpunk .catalog-order-total-units-pill {
 .catalog-input-success {
     border-color: #00e676 !important;
     box-shadow: 0 0 0 1px rgba(0, 230, 118, 0.3) !important;
+}
+
+/* ===== STORY: LIMITE DE 90 CARACTERES NA LEGENDA & LINK COM BOTÃO CTA ===== */
+.status-caption-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 6px;
+}
+
+.status-caption-header-row .setting-info {
+    margin-bottom: 0;
+}
+
+.caption-counter {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-dim, #888);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.3px;
+    transition: color 0.2s ease;
+}
+
+.caption-counter.limit-near {
+    color: #faad14;
+}
+
+.caption-counter.limit-reached {
+    color: #ff4d4f;
+    font-weight: 700;
+}
+
+.status-business-link-setting-item {
+    background: rgba(255, 240, 31, 0.04);
+    border: 1px solid rgba(255, 240, 31, 0.25);
+    border-radius: 14px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 6px;
+}
+
+.status-link-cta-select {
+    width: 100%;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-main, #fff);
+    padding: 8px 12px;
+    font-size: 0.85rem;
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+
+.status-link-cta-select:focus {
+    border-color: var(--accent-color, #fff01f);
+}
+
+.status-link-cta-select option {
+    background: #1a1a2e;
+    color: #ffffff;
+}
+
+.story-link-cta-container {
+    position: absolute;
+    bottom: 85px;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 730;
+    pointer-events: auto;
+    padding: 0 16px;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.story-link-cta-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 22px;
+    background: linear-gradient(135deg, #00c6ff, #0072ff);
+    color: #ffffff !important;
+    font-size: 0.92rem;
+    font-weight: 700;
+    text-decoration: none;
+    border-radius: 25px;
+    box-shadow: 0 4px 18px rgba(0, 114, 255, 0.45), 0 2px 6px rgba(0, 0, 0, 0.4);
+    letter-spacing: 0.3px;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    max-width: 90%;
+    z-index: 731;
+}
+
+.story-link-cta-btn:hover,
+.story-link-cta-btn:active {
+    transform: scale(1.05);
+    box-shadow: 0 6px 22px rgba(0, 198, 255, 0.6), 0 3px 8px rgba(0, 0, 0, 0.5);
+    color: #ffffff !important;
+}
+
+.story-link-cta-btn .story-link-cta-icon {
+    width: 17px;
+    height: 17px;
+    stroke-width: 2.2;
+    flex-shrink: 0;
 }

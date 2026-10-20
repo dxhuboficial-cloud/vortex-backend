@@ -2950,6 +2950,9 @@ function updateProfileDOM() {
     if (typeof updateCompanyLinkSectionVisibility === 'function') {
         updateCompanyLinkSectionVisibility(currentProfile);
     }
+    if (typeof updateStatusBusinessLinkVisibility === 'function') {
+        updateStatusBusinessLinkVisibility(currentProfile);
+    }
     if (window.lucide) lucide.createIcons();
     if (subscribeBtn) {
         if (sub.status === 'active') {
@@ -7522,6 +7525,8 @@ function closeStoryViewer() {
     if (previewIndicator) previewIndicator.style.display = 'none';
     const previewFooter = document.getElementById('story-preview-footer');
     if (previewFooter) previewFooter.style.display = 'none';
+    const ctaContainer = document.getElementById('story-link-cta-container');
+    if (ctaContainer) ctaContainer.style.display = 'none';
     isStoryPreviewMode = false;
 }
 
@@ -7606,6 +7611,39 @@ async function displayCurrentStory() {
     if (captionEl) {
         captionEl.innerText = story.caption || '';
         captionEl.classList.toggle('active', !!story.caption);
+    }
+
+    // Botão de Link com Ação do Story (Conta Empresa)
+    const ctaContainer = document.getElementById('story-link-cta-container');
+    const ctaBtn = document.getElementById('story-link-cta-btn');
+    const ctaText = document.getElementById('story-link-cta-text');
+    const ctaIcon = document.getElementById('story-link-cta-icon');
+
+    const storyLink = story.storyLink || (story.linkUrl ? {
+        url: story.linkUrl,
+        text: story.linkText || 'Saiba mais',
+        icon: story.linkIcon || getStoryCtaIcon(story.linkText || 'Saiba mais')
+    } : null);
+
+    if (storyLink && storyLink.url) {
+        if (ctaContainer) ctaContainer.style.display = 'flex';
+        if (ctaBtn) {
+            ctaBtn.href = storyLink.url;
+            ctaBtn.setAttribute('target', '_blank');
+            ctaBtn.setAttribute('rel', 'noopener noreferrer');
+        }
+        if (ctaText) {
+            ctaText.textContent = storyLink.text || 'Saiba mais';
+        }
+        if (ctaIcon) {
+            const iconName = storyLink.icon || getStoryCtaIcon(storyLink.text) || 'arrow-right';
+            ctaIcon.setAttribute('data-lucide', iconName);
+            if (window.lucide && typeof window.lucide.createIcons === 'function') {
+                window.lucide.createIcons();
+            }
+        }
+    } else {
+        if (ctaContainer) ctaContainer.style.display = 'none';
     }
 
     storyStartTime = Date.now();
@@ -7822,7 +7860,7 @@ export function resumeCurrentStory() {
 
 function handleStoryPointerDown(e) {
     if (e && e.button && e.button !== 0) return;
-    if (e && e.target && e.target.closest && e.target.closest('#close-story, #download-story-btn, #report-story-btn, #delete-story-btn, #story-views-pill-btn, .story-emoji-btn, #send-reply-btn, #story-reply-input, #story-music-mute-btn, #story-preview-footer, #story-preview-back-btn, #story-preview-publish-now-btn')) {
+    if (e && e.target && e.target.closest && e.target.closest('#close-story, #download-story-btn, #report-story-btn, #delete-story-btn, #story-views-pill-btn, .story-emoji-btn, #send-reply-btn, #story-reply-input, #story-music-mute-btn, #story-preview-footer, #story-preview-back-btn, #story-preview-publish-now-btn, #story-link-cta-container, #story-link-cta-btn, .story-link-cta-btn')) {
         return;
     }
 
@@ -8247,9 +8285,101 @@ document.querySelectorAll('.story-emoji-btn').forEach(btn => {
     });
 });
 
+/* ==========================================================================
+   STORY: LIMITE DE 90 CARACTERES NA LEGENDA & LINK COM BOTÃO CTA (v1.0.165)
+   Exclusivo para Contas Empresa (ou Administradores)
+   ========================================================================== */
+export const STORY_CTA_OPTIONS = [
+    { value: 'Saiba mais', label: 'Saiba mais', icon: 'arrow-right' },
+    { value: 'Abrir', label: 'Abrir', icon: 'external-link' },
+    { value: 'Comprar', label: 'Comprar', icon: 'shopping-bag' },
+    { value: 'Entrar', label: 'Entrar', icon: 'log-in' },
+    { value: 'Agenda', label: 'Agenda', icon: 'calendar' },
+    { value: 'Inscreva-se', label: 'Inscreva-se', icon: 'user-plus' },
+    { value: 'Seguir', label: 'Seguir', icon: 'user-check' }
+];
+
+export function getStoryCtaIcon(actionText) {
+    const map = {
+        'Saiba mais': 'arrow-right',
+        'Abrir': 'external-link',
+        'Comprar': 'shopping-bag',
+        'Entrar': 'log-in',
+        'Agenda': 'calendar',
+        'Inscreva-se': 'user-plus',
+        'Seguir': 'user-check'
+    };
+    return map[actionText] || 'arrow-right';
+}
+
+export function updateStatusBusinessLinkVisibility(profile = currentProfile) {
+    const sec = document.getElementById('status-business-link-section');
+    if (!sec) return;
+    const isCompany = isBusinessAccount(profile) || isUserAdmin(currentUser, profile);
+    sec.style.display = isCompany ? 'block' : 'none';
+    if (isCompany && window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+    }
+}
+
+export function initStoryCaptionAndLinkControls() {
+    const captionInput = document.getElementById('status-caption-input');
+    const captionCounter = document.getElementById('status-caption-counter');
+    if (captionInput) {
+        captionInput.setAttribute('maxlength', '90');
+        const updateCounter = () => {
+            if (captionInput.value.length > 90) {
+                captionInput.value = captionInput.value.slice(0, 90);
+            }
+            const len = captionInput.value.length;
+            if (captionCounter) {
+                captionCounter.textContent = `${len}/90`;
+                captionCounter.classList.toggle('limit-near', len >= 75 && len < 90);
+                captionCounter.classList.toggle('limit-reached', len >= 90);
+            }
+        };
+        captionInput.addEventListener('input', updateCounter);
+        captionInput.addEventListener('change', updateCounter);
+    }
+
+    const urlInput = document.getElementById('status-link-url-input');
+    const feedbackEl = document.getElementById('status-link-url-feedback');
+    if (urlInput) {
+        const handleUrlValidation = () => {
+            const val = urlInput.value.trim();
+            if (!val) {
+                applyDigitalLinkValidationFeedback(urlInput, feedbackEl, { isEmpty: true });
+                return;
+            }
+            const res = validateProductDigitalLink(val);
+            applyDigitalLinkValidationFeedback(urlInput, feedbackEl, res);
+        };
+        urlInput.addEventListener('input', handleUrlValidation);
+        urlInput.addEventListener('blur', handleUrlValidation);
+    }
+
+    const storyCtaBtn = document.getElementById('story-link-cta-btn');
+    if (storyCtaBtn) {
+        storyCtaBtn.addEventListener('click', (e) => {
+            if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+        });
+        storyCtaBtn.addEventListener('pointerdown', (e) => {
+            if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+        });
+    }
+}
+
 // Abertura do Painel de Postar Status
 function openStatusCreator() {
     playSound(clickSound);
+    updateStatusBusinessLinkVisibility();
+    const captionInput = document.getElementById('status-caption-input');
+    const captionCounter = document.getElementById('status-caption-counter');
+    if (captionInput && captionCounter) {
+        captionCounter.textContent = `${captionInput.value.length}/90`;
+        captionCounter.classList.toggle('limit-near', captionInput.value.length >= 75 && captionInput.value.length < 90);
+        captionCounter.classList.toggle('limit-reached', captionInput.value.length >= 90);
+    }
     document.getElementById('post-status-overlay')?.classList.add('active');
     if (window.lucide && typeof window.lucide.createIcons === 'function') {
         window.lucide.createIcons();
@@ -9121,8 +9251,23 @@ function openStoryPreview() {
         }
     }
 
-    const captionVal = document.getElementById('status-caption-input')?.value?.trim() || '';
+    const captionVal = (document.getElementById('status-caption-input')?.value || '').slice(0, 90).trim();
     const isVideo = pendingStatusFile.type ? pendingStatusFile.type.startsWith('video') : false;
+
+    const isCompany = isBusinessAccount(currentProfile) || isUserAdmin(currentUser, currentProfile);
+    const linkUrlVal = document.getElementById('status-link-url-input')?.value?.trim() || '';
+    const linkTextVal = document.getElementById('status-link-cta-select')?.value || 'Saiba mais';
+    let storyLinkObj = null;
+    if (isCompany && linkUrlVal) {
+        const linkCheck = validateProductDigitalLink(linkUrlVal);
+        if (linkCheck.isValid) {
+            storyLinkObj = {
+                url: linkCheck.formatted,
+                text: linkTextVal,
+                icon: getStoryCtaIcon(linkTextVal)
+            };
+        }
+    }
 
     const previewStory = {
         id: 'preview-' + Date.now(),
@@ -9132,6 +9277,10 @@ function openStoryPreview() {
         isTrimmed: !!(pendingStatusMediaInfo && pendingStatusMediaInfo.isTrimmed) || !!pendingStatusFile.isTrimmed,
         customDuration: selectedStoryDuration || 15,
         caption: captionVal,
+        storyLink: storyLinkObj,
+        linkUrl: storyLinkObj ? storyLinkObj.url : '',
+        linkText: storyLinkObj ? storyLinkObj.text : '',
+        linkIcon: storyLinkObj ? storyLinkObj.icon : '',
         views: {},
         reactions: {},
         replies: [],
@@ -9268,6 +9417,38 @@ document.getElementById('publish-status-btn')?.addEventListener('click', async (
                 }
             }
 
+            const isCompany = isBusinessAccount(currentProfile) || isUserAdmin(currentUser, currentProfile);
+            const statusLinkUrl = document.getElementById('status-link-url-input')?.value?.trim() || '';
+            const statusLinkText = document.getElementById('status-link-cta-select')?.value || 'Saiba mais';
+
+            let storyLinkPayload = null;
+            if (isCompany && statusLinkUrl) {
+                const linkCheck = validateProductDigitalLink(statusLinkUrl);
+                if (!linkCheck.isValid) {
+                    showToast('Link do Story Não Permitido 🛡️', linkCheck.error, 'red');
+                    const urlInp = document.getElementById('status-link-url-input');
+                    const linkFeedback = document.getElementById('status-link-url-feedback');
+                    if (urlInp) {
+                        urlInp.focus();
+                        applyDigitalLinkValidationFeedback(urlInp, linkFeedback, linkCheck);
+                    }
+                    if (publishBtn) {
+                        publishBtn.disabled = false;
+                        publishBtn.innerHTML = '<i data-lucide="send"></i> <span>Publicar Status</span>';
+                        if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+                    }
+                    return;
+                }
+                storyLinkPayload = {
+                    url: linkCheck.formatted,
+                    text: statusLinkText,
+                    icon: getStoryCtaIcon(statusLinkText)
+                };
+            }
+
+            const rawCaption = document.getElementById('status-caption-input')?.value || '';
+            const finalCaption = rawCaption.slice(0, 90).trim();
+
             const storyData = {
                 authorUid: currentUser.uid,
                 authorName: currentProfile.name,
@@ -9277,7 +9458,11 @@ document.getElementById('publish-status-btn')?.addEventListener('click', async (
                 isTrimmed: !!(pendingStatusMediaInfo && pendingStatusMediaInfo.isTrimmed) || !!pendingStatusFile.isTrimmed,
                 customDuration: selectedStoryDuration || 15,
                 mediaSizeKB: pendingStatusMediaInfo?.sizeFormatted || formatBytesToKB(pendingStatusFile.size || 102400),
-                caption: document.getElementById('status-caption-input')?.value || '',
+                caption: finalCaption,
+                storyLink: storyLinkPayload,
+                linkUrl: storyLinkPayload ? storyLinkPayload.url : '',
+                linkText: storyLinkPayload ? storyLinkPayload.text : '',
+                linkIcon: storyLinkPayload ? storyLinkPayload.icon : '',
                 views: {},
                 reactions: {},
                 replies: [],
@@ -9314,6 +9499,20 @@ document.getElementById('publish-status-btn')?.addEventListener('click', async (
             if (addBtn) addBtn.style.display = 'inline-flex';
             const captionInput = document.getElementById('status-caption-input');
             if (captionInput) captionInput.value = '';
+            const captionCounter = document.getElementById('status-caption-counter');
+            if (captionCounter) {
+                captionCounter.textContent = '0/90';
+                captionCounter.classList.remove('limit-near', 'limit-reached');
+            }
+            const statusLinkUrlInput = document.getElementById('status-link-url-input');
+            if (statusLinkUrlInput) statusLinkUrlInput.value = '';
+            const statusLinkCtaSelect = document.getElementById('status-link-cta-select');
+            if (statusLinkCtaSelect) statusLinkCtaSelect.value = 'Saiba mais';
+            const statusLinkFeedback = document.getElementById('status-link-url-feedback');
+            if (statusLinkFeedback) {
+                statusLinkFeedback.textContent = '';
+                statusLinkFeedback.style.display = 'none';
+            }
             if (composerPreviewAudio) {
                 try { composerPreviewAudio.pause(); } catch(e) {}
                 composerPreviewAudio = null;
@@ -13918,6 +14117,7 @@ export function updateAdminUIVisibility() {
     }
 
     updateCompanyLinkSectionVisibility();
+    updateStatusBusinessLinkVisibility();
 }
 
 let adminReports = [];
@@ -15945,7 +16145,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.164';
+export const CURRENT_APP_VERSION = '1.0.165';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -20044,6 +20244,7 @@ function resetPostComposer() {
     if (bizBtnUrl) bizBtnUrl.value = '';
     if (typeof updateCompanyLinkSectionVisibility === 'function') {
         updateCompanyLinkSectionVisibility();
+    updateStatusBusinessLinkVisibility();
     }
     pendingPostFile = null;
     pendingPostMusic = null;
@@ -22244,6 +22445,7 @@ document.getElementById('open-post-from-feed-btn')?.addEventListener('click', ()
     resetPostComposer();
     document.getElementById('screenshot-gallery-overlay')?.classList.add('active');
     updateCompanyLinkSectionVisibility();
+    updateStatusBusinessLinkVisibility();
 });
 
 // Novo Botão: Nova Postagem (abre tela de publicação)
@@ -26989,6 +27191,11 @@ if (typeof window !== 'undefined') {
     window.validateProductDigitalLink = validateProductDigitalLink;
     window.applyDigitalLinkValidationFeedback = applyDigitalLinkValidationFeedback;
     window.setupProductDigitalLinkValidation = setupProductDigitalLinkValidation;
+    // Story: Limite de 90 Caracteres na Legenda & Link com Botão CTA (v1.0.165)
+    window.STORY_CTA_OPTIONS = STORY_CTA_OPTIONS;
+    window.getStoryCtaIcon = getStoryCtaIcon;
+    window.updateStatusBusinessLinkVisibility = updateStatusBusinessLinkVisibility;
+    window.initStoryCaptionAndLinkControls = initStoryCaptionAndLinkControls;
 }
 
 if (typeof window !== 'undefined') {
@@ -27002,4 +27209,5 @@ if (typeof window !== 'undefined') {
     setupFeedSearchListeners();
     setupVigenciaExpirationListeners();
     setupProductDigitalLinkValidation();
+    initStoryCaptionAndLinkControls();
 }

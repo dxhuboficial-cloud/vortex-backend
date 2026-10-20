@@ -79,9 +79,15 @@ function createTestEnvironment() {
       },
       closest(sel) {
         let cur = this;
+        const selectors = String(sel || '').split(',').map(s => s.trim());
         while (cur) {
-          if (sel.startsWith('.') && cur.classList && cur.classList.contains && cur.classList.contains(sel.slice(1))) {
-            return cur;
+          for (const s of selectors) {
+            if (s.startsWith('.') && cur.classList && cur.classList.contains && cur.classList.contains(s.slice(1))) {
+              return cur;
+            }
+            if (s.startsWith('#') && cur.id === s.slice(1)) {
+              return cur;
+            }
           }
           cur = cur.parentElement || null;
         }
@@ -302,9 +308,15 @@ function createTestEnvironment() {
       },
       closest(sel) {
         let cur = this;
+        const selectors = String(sel || '').split(',').map(s => s.trim());
         while (cur) {
-          if (sel.startsWith('.') && cur.classList && cur.classList.contains && cur.classList.contains(sel.slice(1))) {
-            return cur;
+          for (const s of selectors) {
+            if (s.startsWith('.') && cur.classList && cur.classList.contains && cur.classList.contains(s.slice(1))) {
+              return cur;
+            }
+            if (s.startsWith('#') && cur.id === s.slice(1)) {
+              return cur;
+            }
           }
           cur = cur.parentElement || null;
         }
@@ -7443,7 +7455,8 @@ test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com 
   // 41. Organização das Opções de Unidade Pedida e Quantidade Pedida no Detalhe do Pedido (v1.0.162)
   // 42. Expiração com Data, Mês, Ano e Hora para Promoção e Desconto Temporários (v1.0.163)
   // 43. Sistema de Segurança Antispam e Bloqueio de Links Não Permitidos em Produtos e Postagens (v1.0.164)
-  assert.strictEqual(versionJson.version, '1.0.164', 'version.json deve ser 1.0.164');
+  // 44. Limite de 90 Caracteres na Legenda do Story e Link com Botão CTA para Conta Empresa (v1.0.165)
+  assert.strictEqual(versionJson.version, '1.0.165', 'version.json deve ser 1.0.165');
 });
 
 test('Formulários Comerciais para Conta Empresa: Permissões, templates, card interativo no chat e preenchimento de respostas (v1.0.142)', () => {
@@ -9287,6 +9300,214 @@ test('Sistema de Segurança Antispam e Bloqueio de Links Não Permitidos em Prod
   foundSaved = keys.some(k => k.startsWith('users/empresa_seller_1/catalog/') && env.firestoreDocs[k]?.name === 'App Pro Curso VIP');
   assert.strictEqual(foundSaved, true, 'Produto com link oficial da Google Play DEVE ser salvo com sucesso');
 });
+
+test('Limite de 90 Caracteres na Legenda do Story e Link com Botão CTA para Conta Empresa (v1.0.165)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+
+  // 1. Integridade de Versionamento (v1.0.165)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.165', 'script.js deve ter CURRENT_APP_VERSION 1.0.165');
+  assert.ok(htmlContent.includes('script.js?v=1.0.165'), 'index.html deve referenciar script.js com ?v=1.0.165');
+  assert.ok(htmlContent.includes('style.css?v=1.0.165'), 'index.html deve referenciar style.css com ?v=1.0.165');
+
+  // 2. Elementos DOM no index.html
+  const captionInput = win.document.getElementById('status-caption-input');
+  assert.ok(captionInput, 'status-caption-input deve existir no DOM');
+  assert.strictEqual(captionInput.getAttribute('maxlength'), '90', 'status-caption-input deve possuir maxlength=90');
+
+  const captionCounter = win.document.getElementById('status-caption-counter');
+  assert.ok(captionCounter, 'status-caption-counter deve existir no DOM');
+
+  const statusBizSec = win.document.getElementById('status-business-link-section');
+  assert.ok(statusBizSec, 'status-business-link-section deve existir no post-status-overlay');
+
+  const ctaSelect = win.document.getElementById('status-link-cta-select');
+  assert.ok(ctaSelect, 'status-link-cta-select deve existir no post-status-overlay');
+
+  const linkUrlInput = win.document.getElementById('status-link-url-input');
+  assert.ok(linkUrlInput, 'status-link-url-input deve existir no post-status-overlay');
+
+  const linkFeedback = win.document.getElementById('status-link-url-feedback');
+  assert.ok(linkFeedback, 'status-link-url-feedback deve existir no post-status-overlay');
+
+  const storyCtaContainer = win.document.getElementById('story-link-cta-container');
+  assert.ok(storyCtaContainer, 'story-link-cta-container deve existir no story-viewer');
+
+  const storyCtaBtn = win.document.getElementById('story-link-cta-btn');
+  assert.ok(storyCtaBtn, 'story-link-cta-btn deve existir no story-viewer');
+
+  const storyCtaText = win.document.getElementById('story-link-cta-text');
+  assert.ok(storyCtaText, 'story-link-cta-text deve existir no story-viewer');
+
+  const storyCtaIcon = win.document.getElementById('story-link-cta-icon');
+  assert.ok(storyCtaIcon, 'story-link-cta-icon deve existir no story-viewer');
+
+  // 3. Estilos CSS em style.css
+  assert.ok(cssContent.includes('.caption-counter'), 'Deve conter estilo .caption-counter');
+  assert.ok(cssContent.includes('.status-business-link-setting-item'), 'Deve conter estilo .status-business-link-setting-item');
+  assert.ok(cssContent.includes('.status-link-cta-select'), 'Deve conter estilo .status-link-cta-select');
+  assert.ok(cssContent.includes('.story-link-cta-container'), 'Deve conter estilo .story-link-cta-container');
+  assert.ok(cssContent.includes('.story-link-cta-btn'), 'Deve conter estilo .story-link-cta-btn');
+  assert.ok(cssContent.includes('.story-viewer.story-holding .story-link-cta-container'), 'Deve conter ocultação do botão de link ao segurar story');
+
+  // 4. Todas as 7 Opções Solicitadas pelo Usuário no Seletor de Botão
+  const expectedCtaOptions = [
+    'Abrir',
+    'Saiba mais',
+    'Comprar',
+    'Entrar',
+    'Agenda',
+    'Inscreva-se',
+    'Seguir'
+  ];
+
+  for (const expected of expectedCtaOptions) {
+    assert.ok(htmlContent.includes(`<option value="${expected}"`), `Opção de botão "${expected}" deve estar disponível no select do HTML`);
+  }
+  const ctaValues = (win.STORY_CTA_OPTIONS || []).map(o => o.value);
+  for (const expected of expectedCtaOptions) {
+    assert.ok(ctaValues.includes(expected), `Opção de botão "${expected}" deve estar disponível em STORY_CTA_OPTIONS`);
+  }
+
+  // 5. Testar Função de Ícones de CTA (getStoryCtaIcon)
+  const getStoryCtaIcon = win.getStoryCtaIcon;
+  assert.strictEqual(typeof getStoryCtaIcon, 'function', 'getStoryCtaIcon deve ser função');
+  assert.strictEqual(getStoryCtaIcon('Abrir'), 'external-link');
+  assert.strictEqual(getStoryCtaIcon('Saiba mais'), 'arrow-right');
+  assert.strictEqual(getStoryCtaIcon('Comprar'), 'shopping-bag');
+  assert.strictEqual(getStoryCtaIcon('Entrar'), 'log-in');
+  assert.strictEqual(getStoryCtaIcon('Agenda'), 'calendar');
+  assert.strictEqual(getStoryCtaIcon('Inscreva-se'), 'user-plus');
+  assert.strictEqual(getStoryCtaIcon('Seguir'), 'user-check');
+
+  // 6. Contador e Limite de 90 Caracteres na Legenda do Story
+  win.initStoryCaptionAndLinkControls();
+  
+  // Testar 20 caracteres
+  captionInput.value = 'Novidades na loja VIP!';
+  captionInput.dispatchEvent(new win.Event('input'));
+  assert.strictEqual(captionCounter.textContent, '22/90', 'Contador deve exibir 22/90');
+  assert.strictEqual(captionCounter.classList.contains('limit-near'), false, 'Não deve ter limit-near em 22');
+  assert.strictEqual(captionCounter.classList.contains('limit-reached'), false, 'Não deve ter limit-reached em 22');
+
+  // Testar 83 caracteres (alerta amarelo limit-near)
+  captionInput.value = 'Aproveite nossa super promoção exclusiva para clientes VIP com entrega ultra rápida';
+  captionInput.dispatchEvent(new win.Event('input'));
+  assert.strictEqual(captionCounter.textContent, '83/90', 'Contador deve exibir 83/90');
+  assert.strictEqual(captionCounter.classList.contains('limit-near'), true, 'Deve conter limit-near em 83 caracteres');
+  assert.strictEqual(captionCounter.classList.contains('limit-reached'), false);
+
+  // Testar ultrapassando 90 caracteres (truncamento automático e limit-reached)
+  const longCaption = 'A'.repeat(120);
+  captionInput.value = longCaption;
+  captionInput.dispatchEvent(new win.Event('input'));
+  assert.strictEqual(captionInput.value.length, 90, 'Legenda com mais de 90 caracteres deve ser truncada para 90');
+  assert.strictEqual(captionCounter.textContent, '90/90', 'Contador deve exibir 90/90');
+  assert.strictEqual(captionCounter.classList.contains('limit-reached'), true, 'Deve conter limit-reached ao atingir 90');
+
+  // 7. Visibilidade Exclusiva para Conta Empresa (ou Admin)
+  const updateStatusBusinessLinkVisibility = win.updateStatusBusinessLinkVisibility;
+  assert.strictEqual(typeof updateStatusBusinessLinkVisibility, 'function', 'updateStatusBusinessLinkVisibility deve ser função');
+
+  // Conta pessoal comum -> DEVE ESTAR OCULTO
+  updateStatusBusinessLinkVisibility({ accountType: 'personal', email: 'usuario@gmail.com' });
+  assert.strictEqual(statusBizSec.style.display, 'none', 'Conta pessoal NÃO deve visualizar a opção de link nos stories');
+
+  // Conta empresa -> DEVE ESTAR VISÍVEL
+  updateStatusBusinessLinkVisibility({ accountType: 'business', email: 'empresa@gmail.com' });
+  assert.strictEqual(statusBizSec.style.display, 'block', 'Conta empresa DEVE visualizar a opção de link nos stories');
+
+  // Conta com flag isBusiness: true -> DEVE ESTAR VISÍVEL
+  updateStatusBusinessLinkVisibility({ isBusiness: true, email: 'empresa2@gmail.com' });
+  assert.strictEqual(statusBizSec.style.display, 'block', 'Conta com isBusiness: true DEVE visualizar a opção de link nos stories');
+
+  // Conta de administrador -> DEVE ESTAR VISÍVEL
+  updateStatusBusinessLinkVisibility({ accountType: 'personal', email: 'dxhub.oficial@gmail.com' });
+  assert.strictEqual(statusBizSec.style.display, 'block', 'Administrador oficial DEVE visualizar a opção de link nos stories');
+
+  // 8. Validação e Feedback do Link no Story
+  const validateProductDigitalLink = win.validateProductDigitalLink;
+  
+  // Link inválido (bet/cassino) deve ser rejeitado
+  const betRes = validateProductDigitalLink('https://blaze.com/r/cassino');
+  assert.strictEqual(betRes.isValid, false, 'Link de cassino/bet deve ser rejeitado no Story');
+
+  // Link inválido (vídeo do youtube) deve ser rejeitado
+  const videoRes = validateProductDigitalLink('https://youtube.com/watch?v=123');
+  assert.strictEqual(videoRes.isValid, false, 'Link de vídeo deve ser rejeitado no Story');
+
+  // Link oficial (Mercado Livre) deve ser aprovado
+  const mlRes = validateProductDigitalLink('https://mercadolivre.com.br/produto/123');
+  assert.strictEqual(mlRes.isValid, true, 'Link do Mercado Livre deve ser aceito');
+
+  // Link oficial de domínio próprio comprado deve ser aprovado
+  const storeRes = validateProductDigitalLink('https://minhaloja.com.br/camisas');
+  assert.strictEqual(storeRes.isValid, true, 'Link de domínio oficial comprado deve ser aceito');
+
+  // 9. Renderização do Botão de Link no Visualizador de Story (openStoryViewer)
+  const openStoryViewer = win.openStoryViewer;
+  assert.strictEqual(typeof openStoryViewer, 'function', 'openStoryViewer deve ser função');
+
+  const storyWithLink = {
+    id: 'story_test_1',
+    type: 'image',
+    src: 'https://placehold.co/400x600',
+    caption: 'Confira nossos produtos na promoção',
+    storyLink: {
+      url: 'https://mercadolivre.com.br/produto/123',
+      text: 'Comprar',
+      icon: 'shopping-bag'
+    },
+    views: {},
+    reactions: {}
+  };
+
+  const authorProfile = {
+    uid: 'author_empresa_1',
+    authorUid: 'author_empresa_1',
+    authorName: 'Empresa VIP',
+    accountType: 'business'
+  };
+
+  // Abrir story com link
+  openStoryViewer([storyWithLink], authorProfile, { isPreview: true });
+  assert.strictEqual(storyCtaContainer.style.display, 'flex', 'story-link-cta-container DEVE estar visível para story com link');
+  assert.strictEqual(storyCtaBtn.getAttribute('href'), 'https://mercadolivre.com.br/produto/123', 'story-link-cta-btn deve apontar para o link do story');
+  assert.strictEqual(storyCtaBtn.getAttribute('target'), '_blank', 'story-link-cta-btn deve abrir em nova aba (_blank)');
+  assert.strictEqual(storyCtaText.textContent, 'Comprar', 'story-link-cta-text deve exibir o texto selecionado Comprar');
+
+  // Abrir story sem link -> DEVE ESTAR OCULTO
+  const storyWithoutLink = {
+    id: 'story_test_2',
+    type: 'image',
+    src: 'https://placehold.co/400x600',
+    caption: 'Story pessoal sem link',
+    views: {},
+    reactions: {}
+  };
+
+  openStoryViewer([storyWithoutLink], authorProfile, { isPreview: true });
+  assert.strictEqual(storyCtaContainer.style.display, 'none', 'story-link-cta-container DEVE estar oculto para story sem link');
+
+  // 10. Ignorar eventos de pointerdown no botão de CTA para não pausar/pular o story
+  const handleStoryPointerDown = win.handleStoryPointerDown;
+  assert.strictEqual(typeof handleStoryPointerDown, 'function', 'handleStoryPointerDown deve ser função');
+  
+  let pointerDownPaused = false;
+  const mockCtaEvent = {
+    button: 0,
+    target: storyCtaBtn,
+    clientX: 100,
+    clientY: 100
+  };
+  
+  // Ao clicar no botão de CTA, a função retorna sem pausar
+  handleStoryPointerDown(mockCtaEvent);
+  const storyViewer = win.document.getElementById('story-viewer');
+  assert.strictEqual(storyViewer.classList.contains('story-paused'), false, 'Clicar no botão CTA não deve pausar o Story');
+  win.closeStoryViewer();
+});
+
 
 
 
