@@ -7435,7 +7435,8 @@ test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com 
   // 33. Chamadas Recebidas com o App Fechado: Push FCM, Service Worker e Notificação com Atender/Recusar (v1.0.154)
   // 34. Correção dos Ícones Grandes dos Modais no Celular (v1.0.155)
   // 35. Separação de Redes Sociais e Sites Oficiais (v1.0.156)
-  assert.strictEqual(versionJson.version, '1.0.156', 'version.json deve ser 1.0.156');
+  // 36. Alinhamento de Nome e Título ao Lado da Foto na Prévia do Compartilhar (v1.0.157)
+  assert.strictEqual(versionJson.version, '1.0.157', 'version.json deve ser 1.0.157');
 });
 
 test('Formulários Comerciais para Conta Empresa: Permissões, templates, card interativo no chat e preenchimento de respostas (v1.0.142)', () => {
@@ -8474,6 +8475,51 @@ test('Separação de Redes Sociais e Sites Oficiais nos Dados do Contato e no Ed
   win.closeContactProfile();
   assert.strictEqual(env.elements['contact-profile-social-section'].style.display, 'none', 'Redes Sociais deve ser ocultado no fechamento');
   assert.strictEqual(env.elements['contact-profile-websites-section'].style.display, 'none', 'Sites Oficiais deve ser ocultado no fechamento');
+});
+
+test('Alinhamento da Foto e Textos (Nome do Autor e Legenda) Lado a Lado na Prévia de Compartilhamento (v1.0.157)', () => {
+  const env = createTestEnvironment();
+  const doc = env.sandbox.window.document;
+  const win = env.sandbox.window;
+
+  // 1. Verificação do layout flex horizontal no CSS (.share-post-preview)
+  assert.ok(cssContent.includes('.share-post-preview'), 'style.css deve conter .share-post-preview');
+  assert.ok(
+    cssContent.includes('.share-post-preview') && cssContent.includes('display: flex;') && cssContent.includes('align-items: center;'),
+    'style.css deve configurar .share-post-preview como flex horizontal para alinhar foto ao lado dos textos'
+  );
+  assert.ok(
+    cssContent.includes('.share-post-preview') && cssContent.includes('gap: 12px;'),
+    'style.css deve ter espaçamento de gap: 12px entre a foto e os textos'
+  );
+
+  // 2. Verificação das propriedades da foto e meta no CSS
+  assert.ok(cssContent.includes('.share-post-avatar') && cssContent.includes('flex-shrink: 0;'), '.share-post-avatar não deve encolher no flex');
+  assert.ok(cssContent.includes('.share-post-meta') && cssContent.includes('min-width: 0;') && cssContent.includes('flex: 1;'), '.share-post-meta deve ter flex: 1 e min-width: 0');
+
+  // 3. Verificação no DOM
+  const preview = doc.getElementById('share-post-preview');
+  const avatar = doc.getElementById('share-post-avatar');
+  const author = doc.getElementById('share-post-author');
+  const caption = doc.getElementById('share-post-caption');
+
+  assert.ok(preview, '#share-post-preview deve existir no DOM');
+  assert.ok(avatar, '#share-post-avatar deve existir no DOM');
+  assert.ok(htmlContent.includes('class="share-post-meta"'), '.share-post-meta deve existir no HTML');
+  assert.ok(author, '#share-post-author deve existir no DOM');
+  assert.ok(caption, '#share-post-caption deve existir no DOM');
+
+  // 4. Teste de abertura do modal com renderização dos dados ao lado da foto
+  const openPostShareModal = win.openPostShareModal;
+  openPostShareModal({
+    id: 'post_911',
+    authorName: 'Deyvison',
+    caption: 'Poche 911',
+    authorAvatar: 'https://example.com/avatar.jpg'
+  });
+
+  assert.strictEqual(env.elements['share-post-author'].innerText, 'Deyvison', 'Nome do autor deve ser Deyvison');
+  assert.strictEqual(env.elements['share-post-caption'].innerText, '"Poche 911"', 'Legenda/título deve ser formatado com aspas');
 });
 
 
