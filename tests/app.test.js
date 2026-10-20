@@ -7433,7 +7433,8 @@ test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com 
   // 31. Correção e Otimização da Interface do Formulário Comercial para Celular (v1.0.152)
   // 32. Organização e Alinhamento Visual dos Modais no Celular (Pix, Enquete, Respostas e Prévia de Formulário) (v1.0.153)
   // 33. Chamadas Recebidas com o App Fechado: Push FCM, Service Worker e Notificação com Atender/Recusar (v1.0.154)
-  assert.strictEqual(versionJson.version, '1.0.154', 'version.json deve ser 1.0.154');
+  // 34. Correção dos Ícones Grandes dos Modais no Celular (v1.0.155)
+  assert.strictEqual(versionJson.version, '1.0.155', 'version.json deve ser 1.0.155');
 });
 
 test('Formulários Comerciais para Conta Empresa: Permissões, templates, card interativo no chat e preenchimento de respostas (v1.0.142)', () => {
@@ -8373,6 +8374,52 @@ test('Chamadas Recebidas com o App Fechado: servidor FCM, Service Worker com Ate
   await fire(swPlain.listeners.push, { data: { json: () => ({ title: 'Nova mensagem', body: 'Oi' }), text: () => '' } });
   assert.strictEqual(swPlain.shown.length, 1, 'Push comum deve mostrar 1 notificação');
   assert.strictEqual(swPlain.shown[0].title, 'Nova mensagem', 'Push comum deve manter o título');
+});
+
+test('Correção dos Ícones Grandes dos Modais no Celular (Respostas, Formulário, Prévia e Pix) (v1.0.155)', () => {
+  const env = createTestEnvironment();
+  const doc = env.sandbox.window.document;
+
+  // 1. Verificação de isolamento do flex: 1 no seletor .share-modal-title-wrap > div
+  assert.ok(
+    cssContent.includes('.share-modal-title-wrap > div:not(.company-form-title-icon-badge):not(.pix-modal-icon-badge)'),
+    'style.css deve proteger os badges de ícones de herdarem flex: 1 de .share-modal-title-wrap > div'
+  );
+
+  // 2. Verificação de dimensões fixas e flex: 0 0 no .company-form-title-icon-badge
+  assert.ok(cssContent.includes('.company-form-title-icon-badge'), 'style.css deve conter .company-form-title-icon-badge');
+  assert.ok(
+    cssContent.includes('.company-form-title-icon-badge') && cssContent.includes('flex: 0 0 36px;'),
+    'style.css deve definir flex: 0 0 36px para impedir esticamento do ícone de formulário'
+  );
+  assert.ok(
+    cssContent.includes('.company-form-title-icon-badge') && cssContent.includes('flex-grow: 0;'),
+    'style.css deve definir flex-grow: 0 no badge do formulário'
+  );
+
+  // 3. Verificação de responsividade mobile (@media max-width: 480px)
+  assert.ok(
+    cssContent.includes('flex: 0 0 32px;') && cssContent.includes('border-radius: 8px;'),
+    'style.css deve reduzir o badge para 32px no mobile mantendo proporção quadrada'
+  );
+
+  // 4. Verificação de dimensões do Pix Modal Icon Badge
+  assert.ok(cssContent.includes('.pix-modal-icon-badge'), 'style.css deve conter .pix-modal-icon-badge');
+  assert.ok(
+    cssContent.includes('.pix-modal-icon-badge') && cssContent.includes('flex: 0 0 36px;'),
+    'style.css deve definir flex: 0 0 36px para o badge de ícone do Pix'
+  );
+
+  // 5. Verificação da Presença dos Badges nos Modais do DOM
+  const fillModal = doc.getElementById('company-form-fill-modal');
+  const respModal = doc.getElementById('company-form-responses-modal');
+  const creatorModal = doc.getElementById('company-form-creator-modal');
+  const pixModal = doc.getElementById('pix-send-modal');
+
+  assert.ok(fillModal.querySelector('.company-form-title-icon-badge'), 'Modal de preenchimento deve conter .company-form-title-icon-badge');
+  assert.ok(respModal.querySelector('.company-form-title-icon-badge'), 'Modal de respostas deve conter .company-form-title-icon-badge');
+  assert.ok(creatorModal.querySelector('.company-form-title-icon-badge'), 'Modal de criação de formulário deve conter .company-form-title-icon-badge');
+  assert.ok(pixModal.querySelector('.pix-modal-icon-badge'), 'Modal Pix deve conter .pix-modal-icon-badge');
 });
 
 

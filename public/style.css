@@ -6674,7 +6674,7 @@ input:checked + .slider:before { transform: translateX(22px); }
     flex: 1;
 }
 
-.share-modal-title-wrap > div {
+.share-modal-title-wrap > div:not(.company-form-title-icon-badge):not(.pix-modal-icon-badge) {
     min-width: 0;
     flex: 1;
     display: flex;
@@ -11237,6 +11237,13 @@ body.theme-rgb .ephemeral-save-btn {
 .pix-modal-icon-badge {
     width: 36px;
     height: 36px;
+    min-width: 36px;
+    max-width: 36px;
+    min-height: 36px;
+    max-height: 36px;
+    flex: 0 0 36px;
+    flex-grow: 0;
+    flex-shrink: 0;
     border-radius: 10px;
     background: rgba(50, 188, 173, 0.18);
     border: 1px solid rgba(50, 188, 173, 0.4);
@@ -11244,7 +11251,34 @@ body.theme-rgb .ephemeral-save-btn {
     display: flex;
     align-items: center;
     justify-content: center;
+    box-sizing: border-box;
+}
+
+.pix-modal-icon-badge svg {
+    width: 20px;
+    height: 20px;
+    max-width: 20px;
+    max-height: 20px;
     flex-shrink: 0;
+}
+
+@media (max-width: 480px) {
+    .pix-modal-icon-badge {
+        width: 32px;
+        height: 32px;
+        min-width: 32px;
+        max-width: 32px;
+        min-height: 32px;
+        max-height: 32px;
+        flex: 0 0 32px;
+        border-radius: 8px;
+    }
+    .pix-modal-icon-badge svg {
+        width: 18px;
+        height: 18px;
+        max-width: 18px;
+        max-height: 18px;
+    }
 }
 
 .pix-send-body {
@@ -14126,6 +14160,13 @@ body.total-black .ringtone-select {
 .company-form-title-icon-badge {
     width: 36px;
     height: 36px;
+    min-width: 36px;
+    max-width: 36px;
+    min-height: 36px;
+    max-height: 36px;
+    flex: 0 0 36px;
+    flex-grow: 0;
+    flex-shrink: 0;
     border-radius: 10px;
     background: linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(124, 58, 237, 0.3));
     border: 1px solid rgba(99, 102, 241, 0.4);
@@ -14133,6 +14174,15 @@ body.total-black .ringtone-select {
     align-items: center;
     justify-content: center;
     color: #818cf8;
+    box-sizing: border-box;
+}
+
+.company-form-title-icon-badge i,
+.company-form-title-icon-badge svg {
+    width: 20px;
+    height: 20px;
+    max-width: 20px;
+    max-height: 20px;
     flex-shrink: 0;
 }
 
@@ -14149,16 +14199,59 @@ body.total-black .ringtone-select {
     text-overflow: ellipsis;
 }
 
-@media (max-width: 400px) {
+@media (max-width: 480px) {
+    .company-form-modal-top-bar {
+        padding: 10px 12px;
+        gap: 8px;
+    }
+    .company-form-modal-top-bar .share-modal-title-wrap {
+        gap: 8px;
+    }
     .company-form-modal-top-bar h2 {
         font-size: 0.92rem;
     }
     .company-form-title-icon-badge {
         width: 32px;
         height: 32px;
+        min-width: 32px;
+        max-width: 32px;
+        min-height: 32px;
+        max-height: 32px;
+        flex: 0 0 32px;
+        flex-grow: 0;
+        flex-shrink: 0;
+        border-radius: 8px;
+    }
+    .company-form-title-icon-badge i,
+    .company-form-title-icon-badge svg {
+        width: 17px;
+        height: 17px;
+        max-width: 17px;
+        max-height: 17px;
     }
     .company-form-modal-subtitle {
         font-size: 0.65rem;
+    }
+}
+
+@media (max-width: 360px) {
+    .company-form-modal-top-bar h2 {
+        font-size: 0.85rem;
+    }
+    .company-form-title-icon-badge {
+        width: 28px;
+        height: 28px;
+        min-width: 28px;
+        max-width: 28px;
+        min-height: 28px;
+        max-height: 28px;
+        flex: 0 0 28px;
+        border-radius: 7px;
+    }
+    .company-form-title-icon-badge i,
+    .company-form-title-icon-badge svg {
+        width: 15px;
+        height: 15px;
     }
 }
 
