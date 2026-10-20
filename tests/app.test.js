@@ -7439,7 +7439,8 @@ test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com 
   // 37. Padronização e Balanceamento do Tamanho do Botão Salvar em Mensagens Temporárias (v1.0.158)
   // 38. Correção do Alinhamento dos Botões Salvar e Cancelar no Modal de Mensagens Temporárias (v1.0.159)
   // 39. Padronização de Tamanho de Conta Pessoal/Empresa, Validação Estrita de Chave Pix e Limite de 45 Caracteres no Recado/Bio (v1.0.160)
-  assert.strictEqual(versionJson.version, '1.0.160', 'version.json deve ser 1.0.160');
+  // 40. Busca de Posts na Tela do Feed Reels (v1.0.161)
+  assert.strictEqual(versionJson.version, '1.0.161', 'version.json deve ser 1.0.161');
 });
 
 test('Formulários Comerciais para Conta Empresa: Permissões, templates, card interativo no chat e preenchimento de respostas (v1.0.142)', () => {
@@ -8700,6 +8701,181 @@ test('Padronização de Tamanho de Conta Pessoal/Empresa, Validação Estrita de
   pixInp.value = 'chave invalida qualquer';
   formatAndValidateProfilePix(pixInp);
   assert.ok(pixInp.classList.contains('input-invalid'), 'Chave Pix inválida deve aplicar classe .input-invalid');
+});
+
+test('Busca de Posts na Tela do Feed Reels: Barra de pesquisa, normalização sem acentos, filtros multidimensionais, estados vazios e contagem dinâmica (v1.0.161)', () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+  const doc = env.sandbox.document;
+
+  // 1. Estrutura HTML da Barra de Pesquisa no Feed
+  assert.ok(htmlContent.includes('id="feed-search-bar-row"'), 'HTML deve conter #feed-search-bar-row');
+  assert.ok(htmlContent.includes('id="feed-search-input"'), 'HTML deve conter #feed-search-input');
+  assert.ok(htmlContent.includes('id="feed-search-clear-btn"'), 'HTML deve conter #feed-search-clear-btn');
+  assert.ok(htmlContent.includes('placeholder="Pesquisar posts, autores, legendas ou músicas..."'), 'Input deve ter placeholder descritivo');
+  assert.ok(htmlContent.includes('aria-label="Pesquisar posts no feed"'), 'Input deve ter aria-label acessível');
+
+  // 2. Regras CSS da Barra de Pesquisa e Estados
+  assert.ok(cssContent.includes('.feed-search-bar-row'), 'CSS deve estilizar .feed-search-bar-row');
+  assert.ok(cssContent.includes('.feed-search-box'), 'CSS deve estilizar .feed-search-box');
+  assert.ok(cssContent.includes('.feed-search-input'), 'CSS deve estilizar .feed-search-input');
+  assert.ok(cssContent.includes('.feed-search-clear-btn'), 'CSS deve estilizar .feed-search-clear-btn');
+  assert.ok(cssContent.includes('.feed-search-empty'), 'CSS deve estilizar .feed-search-empty');
+  assert.ok(cssContent.includes('.feed-clear-search-link'), 'CSS deve estilizar botão de limpar busca');
+  assert.ok(cssContent.includes('body.theme-hacker .feed-search-box'), 'CSS deve suportar tema Hacker');
+  assert.ok(cssContent.includes('body.theme-cyberpunk .feed-search-box'), 'CSS deve suportar tema Cyberpunk');
+
+  // 3. Normalização de Texto (normalizeSearchText)
+  const normalize = win.normalizeSearchText;
+  assert.strictEqual(typeof normalize, 'function', 'normalizeSearchText deve ser uma função');
+  assert.strictEqual(normalize(''), '', 'String vazia retorna vazio');
+  assert.strictEqual(normalize(null), '', 'Null retorna vazio');
+  assert.strictEqual(normalize(undefined), '', 'Undefined retorna vazio');
+  assert.strictEqual(normalize('  Música Eletrônica  '), 'musica eletronica', 'Remove espaços e acentos e converte para minúsculas');
+  assert.strictEqual(normalize('Pôche 911 Turbo S!'), 'poche 911 turbo s!', 'Normaliza acentuação circunflexa');
+  assert.strictEqual(normalize('São Paulo & Coração'), 'sao paulo & coracao', 'Normaliza til e cedilha');
+
+  // 4. Mock de Posts para Filtragem Multidimensional
+  const post1 = {
+    id: 'post_1',
+    authorName: 'Deyvison Brito',
+    authorUsername: '@deyvisonbrito',
+    authorUid: 'uid_deyvison',
+    caption: 'Novo Porsche 911 Turbo na garagem! 🏎️💨',
+    music: { title: 'Sanfona Eletro Funk', artist: 'DJ EletroFun' },
+    actionButton: { text: 'Ver Detalhes', url: 'https://porsche.com' },
+    comments: [
+      { id: 'c1', text: 'Nave absurda!', author: 'Carlos Silva', authorUid: 'uid_carlos' },
+      { id: 'c2', text: 'Top demais', author: 'Ana', authorUid: 'uid_ana' }
+    ]
+  };
+
+  const post2 = {
+    id: 'post_2',
+    authorName: 'Mariana Souza',
+    authorUsername: '@mari_souza',
+    authorUid: 'uid_mari',
+    caption: 'Pôr do sol maravilhoso na praia de Jericoacoara 🌅🌊',
+    music: { title: 'Ocean Waves Lo-Fi', artist: 'Chill Beat Maker' },
+    actionButton: { text: 'Conhecer Roteiro', url: 'https://viagens.com' },
+    comments: [
+      { id: 'c3', text: 'Lugar mágico', author: 'Roberto', authorUid: 'uid_roberto' }
+    ]
+  };
+
+  const post3 = {
+    id: 'post_3',
+    authorName: 'Tecnologia VIP',
+    authorUsername: '@techvip',
+    authorUid: 'uid_tech',
+    caption: 'Lançamento exclusivo do novo headset wireless com cancelamento de ruído.',
+    music: { title: 'Cyber Sound 2077', artist: 'Synthwave Hero' },
+    actionButton: { text: 'Comprar Agora', url: 'https://techstore.com' },
+    comments: []
+  };
+
+  const deletedPost = {
+    id: 'post_deleted',
+    authorName: 'Spam Bot',
+    authorUsername: '@bot',
+    authorUid: 'uid_bot',
+    caption: 'Compre seguidores Porsche 911',
+    isDeleted: true
+  };
+
+  const allPosts = [post1, post2, post3, deletedPost];
+  const filterPosts = win.filterFeedPosts;
+  assert.strictEqual(typeof filterPosts, 'function', 'filterFeedPosts deve ser uma função');
+
+  // Ignora posts deletados e retorna todos os ativos se busca vazia
+  const allActive = filterPosts(allPosts, '');
+  assert.strictEqual(allActive.length, 3, 'Deve retornar os 3 posts ativos, ignorando o deletado');
+
+  // 4a. Busca por legenda/descrição (com ou sem acento)
+  const searchCaption = filterPosts(allPosts, 'porsche');
+  assert.strictEqual(searchCaption.length, 1, 'Busca por porsche deve retornar 1 post');
+  assert.strictEqual(searchCaption[0].id, 'post_1');
+
+  const searchCaptionAccent = filterPosts(allPosts, 'por do sol');
+  assert.strictEqual(searchCaptionAccent.length, 1, 'Busca sem acento "por do sol" deve achar "Pôr do sol"');
+  assert.strictEqual(searchCaptionAccent[0].id, 'post_2');
+
+  // 4b. Busca por autor (nome ou @username)
+  const searchAuthorName = filterPosts(allPosts, 'deyvison');
+  assert.strictEqual(searchAuthorName.length, 1, 'Busca por "deyvison" encontra post1');
+  assert.strictEqual(searchAuthorName[0].id, 'post_1');
+
+  const searchAuthorUsername = filterPosts(allPosts, 'mari_souza');
+  assert.strictEqual(searchAuthorUsername.length, 1, 'Busca por "mari_souza" encontra post2');
+  assert.strictEqual(searchAuthorUsername[0].id, 'post_2');
+
+  // 4c. Busca por música (título ou artista)
+  const searchMusicTitle = filterPosts(allPosts, 'sanfona');
+  assert.strictEqual(searchMusicTitle.length, 1, 'Busca por "sanfona" encontra post com música Sanfona Eletro Funk');
+  assert.strictEqual(searchMusicTitle[0].id, 'post_1');
+
+  const searchMusicArtist = filterPosts(allPosts, 'Synthwave Hero');
+  assert.strictEqual(searchMusicArtist.length, 1, 'Busca por "Synthwave Hero" encontra post3');
+  assert.strictEqual(searchMusicArtist[0].id, 'post_3');
+
+  // 4d. Busca por botão de ação (CTA)
+  const searchCTA = filterPosts(allPosts, 'comprar agora');
+  assert.strictEqual(searchCTA.length, 1, 'Busca por CTA "comprar agora" encontra post3');
+  assert.strictEqual(searchCTA[0].id, 'post_3');
+
+  // 4e. Busca por comentários
+  const searchCommentText = filterPosts(allPosts, 'nave absurda');
+  assert.strictEqual(searchCommentText.length, 1, 'Busca por texto do comentário "nave absurda" encontra post1');
+  assert.strictEqual(searchCommentText[0].id, 'post_1');
+
+  const searchCommentAuthor = filterPosts(allPosts, 'carlos silva');
+  assert.strictEqual(searchCommentAuthor.length, 1, 'Busca por autor do comentário "carlos silva" encontra post1');
+  assert.strictEqual(searchCommentAuthor[0].id, 'post_1');
+
+  // 4f. Busca sem correspondência
+  const searchNoMatch = filterPosts(allPosts, 'termo_que_nao_existe_xyz_123');
+  assert.strictEqual(searchNoMatch.length, 0, 'Termo inexistente deve retornar array vazio');
+
+  // 5. Integração com renderPostsFeed e Atualização do DOM
+  const renderPostsFeed = win.renderPostsFeed;
+  const feedList = doc.getElementById('feed-list');
+  const countLabel = doc.getElementById('posts-count-label');
+  const searchInput = doc.getElementById('feed-search-input');
+  const clearBtn = doc.getElementById('feed-search-clear-btn');
+
+  assert.ok(feedList, '#feed-list deve existir');
+  assert.ok(countLabel, '#posts-count-label deve existir');
+  assert.ok(searchInput, '#feed-search-input deve existir');
+  assert.ok(clearBtn, '#feed-search-clear-btn deve existir');
+
+  // 5a. Renderização sem busca ativa
+  searchInput.value = '';
+  win.setCachedFeedPosts(allPosts);
+  renderPostsFeed(allPosts);
+  assert.strictEqual(countLabel.innerText, '3 postagens', 'Contador deve exibir 3 postagens');
+  assert.strictEqual(clearBtn.style.display, 'none', 'Botão de limpar deve estar oculto quando busca estiver vazia');
+
+  // 5b. Renderização com busca com correspondência
+  searchInput.value = 'porsche';
+  renderPostsFeed(allPosts);
+  assert.strictEqual(countLabel.innerText, '1 resultado', 'Contador deve exibir 1 resultado');
+  assert.strictEqual(clearBtn.style.display, 'flex', 'Botão de limpar deve estar visível com busca ativa');
+  assert.ok(feedList.innerHTML.includes('post-card-post_1'), 'Card post_1 deve estar renderizado no feed');
+  assert.ok(!feedList.innerHTML.includes('post-card-post_2'), 'Card post_2 não deve estar presente no resultado');
+
+  // 5c. Renderização com busca vazia / sem resultados
+  searchInput.value = 'palavra_inexistente';
+  renderPostsFeed(allPosts);
+  assert.strictEqual(countLabel.innerText, '0 resultados', 'Contador deve exibir 0 resultados');
+  assert.ok(feedList.innerHTML.includes('feed-search-empty'), 'Feed deve renderizar classe .feed-search-empty');
+  assert.ok(feedList.innerHTML.includes('Nenhum post encontrado'), 'Feed deve renderizar mensagem de nenhum post encontrado');
+  assert.ok(feedList.innerHTML.includes('Limpar pesquisa'), 'Feed deve exibir botão de limpar pesquisa');
+
+  // 5d. Limpeza de pesquisa restaura estado completo
+  win.setFeedSearchQuery('');
+  assert.strictEqual(searchInput.value, '', 'Campo de busca deve estar vazio');
+  assert.strictEqual(countLabel.innerText, '3 postagens', 'Contador deve voltar para 3 postagens');
+  assert.ok(feedList.innerHTML.includes('post-card-post_1') && feedList.innerHTML.includes('post-card-post_2'), 'Todos os posts devem ser reexibidos');
 });
 
 

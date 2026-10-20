@@ -15213,7 +15213,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.160';
+export const CURRENT_APP_VERSION = '1.0.161';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -19697,6 +19697,90 @@ window.renderPostsFeed = renderPostsFeed;
 export const authorVipCache = new Map();
 export const authorAvatarCache = new Map();
 let cachedFeedPosts = [];
+export let currentFeedSearchQuery = '';
+
+export function normalizeSearchText(str) {
+    if (!str || typeof str !== 'string') return '';
+    return str
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim();
+}
+
+export function filterFeedPosts(posts = [], query = '') {
+    const q = normalizeSearchText(query);
+    const active = posts.filter(p => !isUserAccountDeleted(p.authorUid) && !p.isDeleted && !p.deleted);
+    if (!q) return active;
+
+    return active.filter(p => {
+        const authorName = normalizeSearchText(p.authorName || '');
+        const authorUsername = normalizeSearchText(p.authorUsername || '');
+        const caption = normalizeSearchText(p.caption || '');
+        const musicTitle = normalizeSearchText(p.music?.title || '');
+        const musicArtist = normalizeSearchText(p.music?.artist || '');
+        const actionText = normalizeSearchText(p.actionButton?.text || '');
+        const comments = Array.isArray(p.comments) ? p.comments : [];
+        const hasMatchingComment = comments.some(c =>
+            normalizeSearchText(c.text || '').includes(q) ||
+            normalizeSearchText(c.author || '').includes(q)
+        );
+
+        return authorName.includes(q) ||
+               authorUsername.includes(q) ||
+               caption.includes(q) ||
+               musicTitle.includes(q) ||
+               musicArtist.includes(q) ||
+               actionText.includes(q) ||
+               hasMatchingComment;
+    });
+}
+
+export function setupFeedSearchListeners() {
+    const searchInput = document.getElementById('feed-search-input');
+    const clearBtn = document.getElementById('feed-search-clear-btn');
+
+    if (searchInput && !searchInput.dataset.bound) {
+        searchInput.dataset.bound = 'true';
+        searchInput.addEventListener('input', () => {
+            currentFeedSearchQuery = searchInput.value;
+            renderPostsFeed(cachedFeedPosts);
+        });
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                searchInput.value = '';
+                currentFeedSearchQuery = '';
+                renderPostsFeed(cachedFeedPosts);
+            }
+        });
+    }
+
+    if (clearBtn && !clearBtn.dataset.bound) {
+        clearBtn.dataset.bound = 'true';
+        clearBtn.addEventListener('click', () => {
+            if (searchInput) searchInput.value = '';
+            currentFeedSearchQuery = '';
+            renderPostsFeed(cachedFeedPosts);
+            searchInput?.focus();
+        });
+    }
+}
+
+window.normalizeSearchText = normalizeSearchText;
+window.filterFeedPosts = filterFeedPosts;
+window.setupFeedSearchListeners = setupFeedSearchListeners;
+window.getCurrentFeedSearchQuery = () => currentFeedSearchQuery;
+window.setFeedSearchQuery = (q) => {
+    currentFeedSearchQuery = q;
+    const input = document.getElementById('feed-search-input');
+    if (input) input.value = q;
+    renderPostsFeed(cachedFeedPosts);
+};
+window.setCachedFeedPosts = (posts) => {
+    cachedFeedPosts = Array.isArray(posts) ? posts : [];
+};
+window.getCachedFeedPosts = () => cachedFeedPosts;
+
 const authorListenersMap = new Map();
 
 export function getLiveAuthorAvatar(authorUid, fallbackAvatar = '') {
@@ -19924,13 +20008,54 @@ function renderPostsFeed(posts = []) {
     }
 
     if (!feedList) return;
+
+    const searchInput = document.getElementById('feed-search-input');
+    const clearBtn = document.getElementById('feed-search-clear-btn');
+    const query = (searchInput ? searchInput.value : currentFeedSearchQuery) || '';
+    currentFeedSearchQuery = query;
+
+    if (clearBtn) {
+        clearBtn.style.display = query.trim() ? 'flex' : 'none';
+    }
+
+    const filtered = filterFeedPosts(sorted, query);
+
+    if (query.trim()) {
+        if (countLabel) {
+            countLabel.innerText = `${filtered.length} ${filtered.length === 1 ? 'resultado' : 'resultados'}`;
+        }
+    } else {
+        if (countLabel) {
+            countLabel.innerText = `${sorted.length} ${sorted.length === 1 ? 'postagem' : 'postagens'}`;
+        }
+    }
+
     if (!sorted.length) {
         feedList.innerHTML = '<div class="post-empty">Nenhuma postagem ainda. Seja o primeiro a publicar.</div>';
         if (window.lucide) lucide.createIcons();
         return;
     }
 
-    feedList.innerHTML = sorted.map((post) => {
+    if (!filtered.length && query.trim()) {
+        feedList.innerHTML = `
+            <div class="post-empty feed-search-empty">
+                <i data-lucide="search-x" class="feed-empty-search-icon"></i>
+                <h4 style="color:#ffffff; font-size:1.05rem; margin:6px 0 2px;">Nenhum post encontrado</h4>
+                <p style="color:var(--text-dim, #888); font-size:0.86rem; margin:0 0 10px;">Nenhuma publicação corresponde a "<strong>${escapeHTML(query.trim())}</strong>".</p>
+                <button type="button" id="feed-search-empty-clear-btn" class="feed-clear-search-link">Limpar pesquisa</button>
+            </div>
+        `;
+        document.getElementById('feed-search-empty-clear-btn')?.addEventListener('click', () => {
+            if (searchInput) searchInput.value = '';
+            currentFeedSearchQuery = '';
+            renderPostsFeed(cachedFeedPosts);
+            searchInput?.focus();
+        });
+        if (window.lucide) lucide.createIcons();
+        return;
+    }
+
+    feedList.innerHTML = filtered.map((post) => {
         const authorName = post.authorName || 'Usuário';
         const isPostAuthorVip = isAuthorVipUser(post.authorUid, post);
         const isPostAuthorAdmin = checkIsAdminUser({ uid: post.authorUid, name: authorName, email: post.authorEmail, username: post.authorUsername });
@@ -21320,6 +21445,12 @@ function closeFeedOverlay() {
         currentFeedMusicAudio = null;
         currentFeedMusicPostId = null;
     }
+    const searchInput = document.getElementById('feed-search-input');
+    if (searchInput && searchInput.value) {
+        searchInput.value = '';
+        currentFeedSearchQuery = '';
+        renderPostsFeed(cachedFeedPosts);
+    }
 }
 
 function closePostComposerOverlay() {
@@ -21344,6 +21475,8 @@ function bindSocialOverlayCloseButtons() {
         playSound(clickSound);
         closePostComposerOverlay();
     });
+
+    setupFeedSearchListeners();
 }
 
 document.getElementById('feed-btn')?.addEventListener('click', () => {
@@ -21358,6 +21491,7 @@ document.getElementById('feed-btn')?.addEventListener('click', () => {
     if (typeof initBinaryMatrixCanvas === 'function') {
         initBinaryMatrixCanvas();
     }
+    setupFeedSearchListeners();
 });
 
 document.getElementById('open-post-from-feed-btn')?.addEventListener('click', () => {
@@ -26083,6 +26217,21 @@ if (typeof window !== 'undefined') {
     // Controle do Botão de Compra da Loja (v1.0.148)
     window.updateStoreBuyButtonUI = updateStoreBuyButtonUI;
     window.toggleStoreBuyButton = toggleStoreBuyButton;
+    // Busca de Posts no Feed Reels (v1.0.161)
+    window.normalizeSearchText = normalizeSearchText;
+    window.filterFeedPosts = filterFeedPosts;
+    window.setupFeedSearchListeners = setupFeedSearchListeners;
+    window.getCurrentFeedSearchQuery = () => currentFeedSearchQuery;
+    window.setFeedSearchQuery = (q) => {
+        currentFeedSearchQuery = q;
+        const input = document.getElementById('feed-search-input');
+        if (input) input.value = q;
+        renderPostsFeed(cachedFeedPosts);
+    };
+    window.setCachedFeedPosts = (posts) => {
+        cachedFeedPosts = Array.isArray(posts) ? posts : [];
+    };
+    window.getCachedFeedPosts = () => cachedFeedPosts;
 }
 
 if (typeof window !== 'undefined') {
@@ -26093,4 +26242,5 @@ if (typeof window !== 'undefined') {
     setupEphemeralMessagesModal();
     initCatalog();
     setupProfileLinkValidationListeners();
+    setupFeedSearchListeners();
 }

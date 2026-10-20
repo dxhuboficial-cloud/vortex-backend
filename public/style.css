@@ -3109,11 +3109,161 @@ input:checked + .slider:before { transform: translateX(22px); }
     overflow: hidden;
 }
 .feed-overlay.active { display: flex !important; }
+
+/* ===== BARRA DE PESQUISA DO FEED REELS ===== */
+.feed-search-bar-row {
+    padding: 10px 14px 8px;
+    background: rgba(5, 5, 5, 0.85);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    display: flex;
+    justify-content: center;
+    position: relative;
+    z-index: 10;
+    flex-shrink: 0;
+}
+
+.feed-search-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    padding: 9px 14px;
+    width: 100%;
+    max-width: 680px;
+    transition: all 0.25s ease;
+    box-sizing: border-box;
+}
+
+.feed-search-box:focus-within {
+    border-color: var(--accent-color, #fff01f);
+    box-shadow: 0 0 14px rgba(255, 240, 31, 0.25);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.feed-search-icon {
+    width: 17px;
+    height: 17px;
+    color: var(--accent-color, #fff01f);
+    flex-shrink: 0;
+}
+
+.feed-search-input {
+    flex: 1;
+    min-width: 0;
+    background: transparent !important;
+    border: none !important;
+    outline: none !important;
+    color: #ffffff !important;
+    font-size: 0.88rem !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+}
+
+.feed-search-input::placeholder {
+    color: var(--text-dim, #888);
+    font-size: 0.84rem;
+}
+
+.feed-search-clear-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-dim, #aaa);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+    padding: 0;
+}
+
+.feed-search-clear-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+}
+
+.feed-search-clear-btn i,
+.feed-search-clear-btn svg {
+    width: 13px;
+    height: 13px;
+}
+
+.feed-search-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 16px;
+    gap: 10px;
+    text-align: center;
+}
+
+.feed-empty-search-icon {
+    width: 48px;
+    height: 48px;
+    color: var(--accent-color, #fff01f);
+    opacity: 0.8;
+}
+
+.feed-clear-search-link {
+    background: rgba(255, 240, 31, 0.15);
+    border: 1px solid var(--accent-color, #fff01f);
+    color: var(--accent-color, #fff01f);
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.84rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 6px;
+    transition: all 0.2s ease;
+}
+
+.feed-clear-search-link:hover {
+    background: var(--accent-color, #fff01f);
+    color: #000000;
+}
+
+/* Temas VIP para a Busca do Feed */
+body.theme-hacker .feed-search-bar-row {
+    background: rgba(3, 12, 5, 0.9) !important;
+    border-bottom: 1px solid rgba(0, 255, 102, 0.25) !important;
+}
+
+body.theme-hacker .feed-search-box {
+    border-color: rgba(0, 255, 102, 0.3) !important;
+    background: rgba(0, 255, 102, 0.04) !important;
+}
+
+body.theme-hacker .feed-search-box:focus-within {
+    border-color: #00ff66 !important;
+    box-shadow: 0 0 14px rgba(0, 255, 102, 0.35) !important;
+}
+
+body.theme-hacker .feed-search-icon {
+    color: #00ff66 !important;
+}
+
+body.theme-cyberpunk .feed-search-box:focus-within {
+    border-color: #ff007f !important;
+    box-shadow: 0 0 14px rgba(255, 0, 127, 0.4) !important;
+}
+
+body.theme-cyberpunk .feed-search-icon {
+    color: #00f0ff !important;
+}
+
 .feed-list {
     flex: 1 1 auto;
     height: 100%;
     min-height: 0;
-    max-height: calc(100% - 64px);
+    max-height: 100%;
     overflow-y: auto;
     overflow-x: hidden;
     padding: 12px 10px 36px 12px;
