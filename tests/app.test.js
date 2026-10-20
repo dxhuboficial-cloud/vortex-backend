@@ -7438,7 +7438,8 @@ test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com 
   // 36. Alinhamento de Nome e Título ao Lado da Foto na Prévia do Compartilhar (v1.0.157)
   // 37. Padronização e Balanceamento do Tamanho do Botão Salvar em Mensagens Temporárias (v1.0.158)
   // 38. Correção do Alinhamento dos Botões Salvar e Cancelar no Modal de Mensagens Temporárias (v1.0.159)
-  assert.strictEqual(versionJson.version, '1.0.159', 'version.json deve ser 1.0.159');
+  // 39. Padronização de Tamanho de Conta Pessoal/Empresa, Validação Estrita de Chave Pix e Limite de 45 Caracteres no Recado/Bio (v1.0.160)
+  assert.strictEqual(versionJson.version, '1.0.160', 'version.json deve ser 1.0.160');
 });
 
 test('Formulários Comerciais para Conta Empresa: Permissões, templates, card interativo no chat e preenchimento de respostas (v1.0.142)', () => {
@@ -8593,6 +8594,114 @@ test('Correção do Alinhamento dos Botões Salvar e Cancelar no Modal de Mensag
     'index.html não deve conter modal-cancel-btn em #cancel-ephemeral-btn'
   );
 });
+
+test('Padronização de Tamanho de Conta Pessoal/Empresa, Validação Estrita de Chave Pix e Limite de 45 Caracteres no Recado/Bio (v1.0.160)', () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+  const doc = win.document;
+
+  // 1. Botões de Tipo de Conta (Conta Pessoal vs Conta Empresa): Tamanho padronizado, height 48px, white-space nowrap
+  assert.ok(
+    cssContent.includes('.account-type-btn') && cssContent.includes('height: 48px;'),
+    'style.css deve padronizar a altura de .account-type-btn com height: 48px;'
+  );
+  assert.ok(
+    cssContent.includes('.account-type-btn') && cssContent.includes('white-space: nowrap;'),
+    'style.css deve aplicar white-space: nowrap em .account-type-btn para impedir quebras'
+  );
+  assert.ok(
+    cssContent.includes('.account-type-option') && cssContent.includes('flex: 1 1 0px;'),
+    'style.css deve aplicar flex: 1 1 0px em .account-type-option para largura idêntica e simétrica'
+  );
+
+  const personalOption = doc.getElementById('account-type-option-personal');
+  const businessOption = doc.getElementById('account-type-option-business');
+  assert.ok(personalOption, '#account-type-option-personal deve existir no DOM');
+  assert.ok(businessOption, '#account-type-option-business deve existir no DOM');
+
+  // 2. Limite de 45 caracteres em Recado / Bio
+  const statusInp = doc.getElementById('profile-status-input');
+  assert.ok(statusInp, '#profile-status-input deve existir no DOM');
+  const statusHtmlMatch = htmlContent.match(/<input[^>]+id=["']profile-status-input["'][^>]*>/i);
+  assert.ok(statusHtmlMatch, '#profile-status-input deve existir no HTML');
+  assert.ok(/maxlength=["']45["']/i.test(statusHtmlMatch[0]), 'profile-status-input deve possuir maxlength="45"');
+  assert.ok(
+    htmlContent.includes('<span>Recado / Bio</span><small>Máx. 45 caracteres</small>'),
+    'Label de Recado / Bio deve indicar Máx. 45 caracteres'
+  );
+
+  // Testar input listener que trunca a 45 caracteres
+  statusInp.value = 'Esta é uma bio bem longa que com certeza ultrapassa os quarenta e cinco caracteres permitidos no VORTEX';
+  if (typeof statusInp.oninput === 'function') {
+    statusInp.oninput();
+  } else if (statusInp._listeners && statusInp._listeners.input) {
+    statusInp._listeners.input.forEach(fn => fn());
+  }
+  assert.ok(statusInp.value.length <= 45, 'Bio deve ser limitada a 45 caracteres no input');
+
+  // 3. Validador de Chave Pix: E-mail, Celular, CPF, CNPJ, Chave Aleatória EVP
+  const validatePixKey = win.validatePixKey;
+  assert.strictEqual(typeof validatePixKey, 'function', 'validatePixKey deve ser uma função exportada');
+
+  // 3a. E-mail
+  const emailRes = validatePixKey('usuario.teste@gmail.com');
+  assert.strictEqual(emailRes.isValid, true, 'E-mail deve ser chave Pix válida');
+  assert.strictEqual(emailRes.type, 'email', 'Tipo deve ser email');
+
+  // 3b. Celular (número simples, com parênteses, com +55)
+  const phoneRes1 = validatePixKey('88996630823');
+  assert.strictEqual(phoneRes1.isValid, true, '88996630823 deve ser celular Pix válido');
+  assert.strictEqual(phoneRes1.type, 'phone', 'Tipo deve ser phone');
+
+  const phoneRes2 = validatePixKey('(88) 99663-0823');
+  assert.strictEqual(phoneRes2.isValid, true, '(88) 99663-0823 deve ser celular Pix válido');
+
+  const phoneRes3 = validatePixKey('+5588996630823');
+  assert.strictEqual(phoneRes3.isValid, true, '+5588996630823 deve ser celular Pix válido');
+
+  // 3c. CPF válido (matematicamente calculado)
+  const cpfRes = validatePixKey('52998224725');
+  assert.strictEqual(cpfRes.isValid, true, 'CPF 52998224725 deve ser chave Pix válida');
+  assert.strictEqual(cpfRes.type, 'cpf', 'Tipo deve ser cpf');
+
+  // 3d. CNPJ válido (matematicamente calculado)
+  const cnpjRes = validatePixKey('04252011000110');
+  assert.strictEqual(cnpjRes.isValid, true, 'CNPJ 04252011000110 deve ser chave Pix válida');
+  assert.strictEqual(cnpjRes.type, 'cnpj', 'Tipo deve ser cnpj');
+
+  // 3e. Chave Aleatória (EVP / UUID v4)
+  const evpRes1 = validatePixKey('123e4567-e89b-12d3-a456-426614174000');
+  assert.strictEqual(evpRes1.isValid, true, 'UUID com hífens deve ser chave Pix aleatória válida');
+  assert.strictEqual(evpRes1.type, 'random', 'Tipo deve ser random');
+
+  const evpRes2 = validatePixKey('123e4567e89b12d3a456426614174000');
+  assert.strictEqual(evpRes2.isValid, true, 'UUID de 32 hex contínuos deve ser aceito');
+
+  // 3f. Chaves Inválidas (não deve permitir digitar qualquer coisa)
+  assert.strictEqual(validatePixKey('qualquer coisa').isValid, false, 'qualquer coisa deve ser rejeitado');
+  assert.strictEqual(validatePixKey('12345').isValid, false, '12345 deve ser rejeitado');
+  assert.strictEqual(validatePixKey('teste').isValid, false, 'teste deve ser rejeitado');
+  assert.strictEqual(validatePixKey('11111111111').isValid, false, 'CPF com dígitos repetidos deve ser rejeitado');
+  assert.strictEqual(validatePixKey('00999999999').isValid, false, 'Celular com DDD inválido 00 deve ser rejeitado');
+
+  // 3g. Chave Vazia (opcional no perfil)
+  assert.strictEqual(validatePixKey('').isEmpty, true, 'Chave vazia deve retornar isEmpty: true');
+  assert.strictEqual(validatePixKey('').isValid, false, 'Chave vazia não é uma chave ativa');
+
+  // 4. Feedback visual em profile-pix-input
+  const formatAndValidateProfilePix = win.formatAndValidateProfilePix;
+  const pixInp = doc.getElementById('profile-pix-input');
+  assert.ok(pixInp, '#profile-pix-input deve existir no DOM');
+
+  pixInp.value = '88996630823';
+  formatAndValidateProfilePix(pixInp);
+  assert.ok(pixInp.classList.contains('input-valid'), 'Chave Pix válida deve aplicar classe .input-valid');
+
+  pixInp.value = 'chave invalida qualquer';
+  formatAndValidateProfilePix(pixInp);
+  assert.ok(pixInp.classList.contains('input-invalid'), 'Chave Pix inválida deve aplicar classe .input-invalid');
+});
+
 
 
 

@@ -15213,7 +15213,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.159';
+export const CURRENT_APP_VERSION = '1.0.160';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -21428,12 +21428,15 @@ document.getElementById('profile-btn')?.addEventListener('click', () => {
     if (nameInp) nameInp.value = currentProfile.name || '';
     if (surnameInp) surnameInp.value = currentProfile.surname || '';
     if (usernameInp) usernameInp.value = (currentProfile.username || '').replace('@', '');
-    if (statusInp) statusInp.value = currentProfile.status || '';
+    if (statusInp) statusInp.value = (currentProfile.status || '').slice(0, 45);
     if (phoneInp) {
         phoneInp.value = currentProfile.phone || '';
         formatAndValidateProfilePhone(phoneInp);
     }
-    if (pixInp) pixInp.value = currentProfile.pixKey || '';
+    if (pixInp) {
+        pixInp.value = currentProfile.pixKey || '';
+        formatAndValidateProfilePix(pixInp);
+    }
     if (youtubeInp) youtubeInp.value = currentProfile.youtube || currentProfile.socialLinks?.youtube || '';
     if (instaInp) instaInp.value = currentProfile.instagram || currentProfile.socialLinks?.instagram || '';
     if (tiktokInp) tiktokInp.value = currentProfile.tiktok || currentProfile.socialLinks?.tiktok || '';
@@ -21668,6 +21671,147 @@ export function applyInputValidationFeedback(input, res) {
         }
     }
 }
+
+export function isValidCPF(cpf) {
+    if (!cpf) return false;
+    const clean = String(cpf).replace(/\D/g, '');
+    if (clean.length !== 11) return false;
+    if (/^(\d)\1{10}$/.test(clean)) return false;
+    let sum = 0;
+    for (let i = 0; i < 9; i++) sum += parseInt(clean.charAt(i), 10) * (10 - i);
+    let rev = 11 - (sum % 11);
+    if (rev === 10 || rev === 11) rev = 0;
+    if (rev !== parseInt(clean.charAt(9), 10)) return false;
+    sum = 0;
+    for (let i = 0; i < 10; i++) sum += parseInt(clean.charAt(i), 10) * (11 - i);
+    rev = 11 - (sum % 11);
+    if (rev === 10 || rev === 11) rev = 0;
+    return rev === parseInt(clean.charAt(10), 10);
+}
+
+export function isValidCNPJ(cnpj) {
+    if (!cnpj) return false;
+    const clean = String(cnpj).replace(/\D/g, '');
+    if (clean.length !== 14) return false;
+    if (/^(\d)\1{13}$/.test(clean)) return false;
+    let size = clean.length - 2;
+    let numbers = clean.substring(0, size);
+    const digits = clean.substring(size);
+    let sum = 0;
+    let pos = size - 7;
+    for (let i = size; i >= 1; i--) {
+        sum += parseInt(numbers.charAt(size - i), 10) * pos--;
+        if (pos < 2) pos = 9;
+    }
+    let result = sum % 11 < 2 ? 0 : 11 - (sum % 11);
+    if (result !== parseInt(digits.charAt(0), 10)) return false;
+    size = size + 1;
+    numbers = clean.substring(0, size);
+    sum = 0;
+    pos = size - 7;
+    for (let i = size; i >= 1; i--) {
+        sum += parseInt(numbers.charAt(size - i), 10) * pos--;
+        if (pos < 2) pos = 9;
+    }
+    result = sum % 11 < 2 ? 0 : 11 - (sum % 11);
+    return result === parseInt(digits.charAt(1), 10);
+}
+
+export function validatePixKey(rawKey) {
+    if (!rawKey || typeof rawKey !== 'string') {
+        return { isValid: false, isEmpty: true, type: null, formatted: '', error: null };
+    }
+    const val = rawKey.trim();
+    if (!val) {
+        return { isValid: false, isEmpty: true, type: null, formatted: '', error: null };
+    }
+
+    // 1. E-mail: padrão com @ e domínio válido
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i;
+    if (emailRegex.test(val)) {
+        return { isValid: true, isEmpty: false, type: 'email', formatted: val.toLowerCase(), error: null };
+    }
+
+    // 2. Chave Aleatória (EVP / UUID v4 gerado no banco do usuário): 8-4-4-4-12 hexadecimais ou 32 hex contínuos
+    const uuidHyphenRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+    const uuidCompactRegex = /^[0-9a-fA-F]{32}$/;
+    if (uuidHyphenRegex.test(val)) {
+        return { isValid: true, isEmpty: false, type: 'random', formatted: val.toLowerCase(), error: null };
+    }
+    if (uuidCompactRegex.test(val)) {
+        const v = val.toLowerCase();
+        const formattedUuid = `${v.slice(0, 8)}-${v.slice(8, 12)}-${v.slice(12, 16)}-${v.slice(16, 20)}-${v.slice(20)}`;
+        return { isValid: true, isEmpty: false, type: 'random', formatted: formattedUuid, error: null };
+    }
+
+    // 3. Dígitos Numéricos (CPF, CNPJ, Celular)
+    const digitsOnly = val.replace(/\D/g, '');
+
+    // 3a. CPF (11 dígitos): validação matemática dos dígitos verificadores
+    if (digitsOnly.length === 11 && isValidCPF(digitsOnly)) {
+        const formattedCpf = digitsOnly.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+        return { isValid: true, isEmpty: false, type: 'cpf', formatted: formattedCpf, error: null };
+    }
+
+    // 3b. CNPJ (14 dígitos): validação matemática dos dígitos verificadores
+    if (digitsOnly.length === 14 && isValidCNPJ(digitsOnly)) {
+        const formattedCnpj = digitsOnly.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+        return { isValid: true, isEmpty: false, type: 'cnpj', formatted: formattedCnpj, error: null };
+    }
+
+    // 3c. Celular / Telefone Brasileiro
+    let phoneDigits = digitsOnly;
+    if (val.startsWith('+55') || (phoneDigits.startsWith('55') && (phoneDigits.length === 12 || phoneDigits.length === 13))) {
+        phoneDigits = phoneDigits.slice(2);
+    }
+    if (phoneDigits.length === 11 || phoneDigits.length === 10) {
+        const ddd = parseInt(phoneDigits.slice(0, 2), 10);
+        if (ddd >= 11 && ddd <= 99) {
+            if (phoneDigits.length === 11 && phoneDigits[2] === '9') {
+                return { isValid: true, isEmpty: false, type: 'phone', formatted: `+55${phoneDigits}`, error: null };
+            }
+            if (phoneDigits.length === 10) {
+                return { isValid: true, isEmpty: false, type: 'phone', formatted: `+55${phoneDigits}`, error: null };
+            }
+        }
+    }
+
+    // Não atende a nenhuma modalidade aceita pelo Banco Central
+    return {
+        isValid: false,
+        isEmpty: false,
+        type: null,
+        formatted: val,
+        error: 'Chave Pix inválida. Digite E-mail, Celular, CPF, CNPJ ou Chave Aleatória criada no seu banco.'
+    };
+}
+
+export function formatAndValidateProfilePix(input) {
+    if (!input) return;
+    const res = validatePixKey(input.value);
+    applyInputValidationFeedback(input, res);
+    return res;
+}
+
+const profilePixInput = document.getElementById('profile-pix-input');
+profilePixInput?.addEventListener('input', () => {
+    formatAndValidateProfilePix(profilePixInput);
+});
+profilePixInput?.addEventListener('blur', () => {
+    formatAndValidateProfilePix(profilePixInput);
+});
+profilePixInput?.addEventListener('paste', () => {
+    setTimeout(() => {
+        formatAndValidateProfilePix(profilePixInput);
+    }, 0);
+});
+
+const profileStatusInput = document.getElementById('profile-status-input');
+profileStatusInput?.addEventListener('input', () => {
+    if (profileStatusInput.value.length > 45) {
+        profileStatusInput.value = profileStatusInput.value.slice(0, 45);
+    }
+});
 
 export function safeParseURL(candidate) {
     if (!candidate || typeof candidate !== 'string') return null;
@@ -22415,7 +22559,13 @@ document.getElementById('save-profile-btn')?.addEventListener('click', async () 
     const name = rawName.slice(0, 15);
     const surname = rawSurname.slice(0, 15);
     const usernameInputValue = profileUsernameInput?.value.trim() || '';
-    const bio = document.getElementById('profile-status-input')?.value.trim() || 'Online';
+    const rawBio = document.getElementById('profile-status-input')?.value.trim() || 'Online';
+    if (rawBio.length > 45) {
+        showToast('Recado / Bio muito longo', 'O Recado / Bio pode ter no máximo 45 caracteres.', 'red');
+        document.getElementById('profile-status-input')?.focus();
+        return;
+    }
+    const bio = rawBio.slice(0, 45);
     const rawPhone = document.getElementById('profile-phone-input')?.value.trim() || '';
     let phone = '';
     if (rawPhone) {
@@ -22427,7 +22577,19 @@ document.getElementById('save-profile-btn')?.addEventListener('click', async () 
         }
         phone = phoneValidation.formatted;
     }
-    const pixKey = document.getElementById('profile-pix-input')?.value.trim() || '';
+    const rawPixKey = document.getElementById('profile-pix-input')?.value.trim() || '';
+    let pixKey = '';
+    if (rawPixKey) {
+        const pixValidation = validatePixKey(rawPixKey);
+        const pixInp = document.getElementById('profile-pix-input');
+        if (pixInp) applyInputValidationFeedback(pixInp, pixValidation);
+        if (!pixValidation.isValid) {
+            showToast('Chave Pix Inválida ⚠️', pixValidation.error || 'Por favor, insira uma chave Pix válida (E-mail, Celular, CPF, CNPJ ou Chave Aleatória).', 'red');
+            pixInp?.focus();
+            return;
+        }
+        pixKey = rawPixKey;
+    }
     const rawYoutube = document.getElementById('profile-youtube-input')?.value.trim() || '';
     const rawInstagram = document.getElementById('profile-instagram-input')?.value.trim() || '';
     const rawTiktok = document.getElementById('profile-tiktok-input')?.value.trim() || '';
@@ -25880,6 +26042,10 @@ if (typeof window !== 'undefined') {
     window.lookupCartCep = lookupCartCep;
     window.validateBrazilianPhone = validateBrazilianPhone;
     window.formatAndValidateProfilePhone = formatAndValidateProfilePhone;
+    window.isValidCPF = isValidCPF;
+    window.isValidCNPJ = isValidCNPJ;
+    window.validatePixKey = validatePixKey;
+    window.formatAndValidateProfilePix = formatAndValidateProfilePix;
     window.validateProfileLink = validateProfileLink;
     window.applyInputValidationFeedback = applyInputValidationFeedback;
     window.formatAndValidateProfileLink = formatAndValidateProfileLink;

@@ -10926,15 +10926,16 @@ body.theme-rgb .ephemeral-save-btn {
 .account-type-toggle-container {
     display: flex;
     gap: 10px;
-    margin-top: 4px;
+    margin-top: 6px;
     width: 100%;
 }
 
 .account-type-option {
-    flex: 1;
+    flex: 1 1 0px;
     cursor: pointer;
     position: relative;
     user-select: none;
+    min-width: 0;
 }
 
 .account-type-option input[type="radio"] {
@@ -10950,23 +10951,37 @@ body.theme-rgb .ephemeral-save-btn {
     align-items: center;
     justify-content: center;
     gap: 8px;
-    padding: 11px 14px;
+    padding: 0 10px;
+    height: 48px;
+    min-height: 48px;
+    max-height: 48px;
     border-radius: 12px;
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.12);
     color: var(--text-dim, #888);
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     font-weight: 600;
     transition: all 0.25s ease;
     box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05);
+    white-space: nowrap;
+    box-sizing: border-box;
+    width: 100%;
+    line-height: 1;
 }
 
 .account-type-btn i,
 .account-type-btn svg {
-    width: 16px;
-    height: 16px;
+    width: 17px;
+    height: 17px;
     stroke-width: 2.2px;
+    flex-shrink: 0;
     transition: transform 0.2s ease;
+}
+
+.account-type-btn span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .account-type-option input[type="radio"]:checked + .account-type-btn {

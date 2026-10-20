@@ -4,20 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.159">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.159">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.159">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.159">
-    <link rel="stylesheet" href="style.css?v=1.0.159">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.160">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.160">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.160">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.160">
+    <link rel="stylesheet" href="style.css?v=1.0.160">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.159">
+    <link rel="manifest" href="manifest.json?v=1.0.160">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.159">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.159">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.160">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.160">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -1117,8 +1117,8 @@
                 </div>
 
                 <div class="setting-item">
-                    <label for="profile-status-input" class="setting-info"><span>Recado / Bio</span></label>
-                    <input type="text" id="profile-status-input" placeholder="Online no VORTEX" title="Bio">
+                    <label for="profile-status-input" class="setting-info"><span>Recado / Bio</span><small>Máx. 45 caracteres</small></label>
+                    <input type="text" id="profile-status-input" placeholder="Online no VORTEX" title="Bio" maxlength="45">
                 </div>
 
                 <div class="setting-item">
@@ -1136,9 +1136,9 @@
                                 <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M17.07 14.66l-3.32-3.32a2.47 2.47 0 0 0-3.5 0L6.93 14.66a2.47 2.47 0 0 0 0 3.5l3.32 3.32a2.47 2.47 0 0 0 3.5 0l3.32-3.32a2.47 2.47 0 0 0 0-3.5zm-5.07 5.07a.35.35 0 0 1-.5 0L8.18 16.4a.35.35 0 0 1 0-.5l3.32-3.32a.35.35 0 0 1 .5 0l3.32 3.32a.35.35 0 0 1 0 .5l-3.32 3.33zM6.93 9.34l3.32 3.32a2.47 2.47 0 0 0 3.5 0l3.32-3.32a2.47 2.47 0 0 0 0-3.5L13.75 2.52a2.47 2.47 0 0 0-3.5 0L6.93 5.84a2.47 2.47 0 0 0 0 3.5zm5.07-5.07a.35.35 0 0 1 .5 0l3.32 3.33a.35.35 0 0 1 0 .5l-3.32 3.32a.35.35 0 0 1-.5 0L8.18 8.1a.35.35 0 0 1 0-.5L11.5 4.27z"/></svg>
                             </span> Chave Pix
                         </span>
-                        <small>Para receber pagamentos e transferências</small>
+                        <small>E-mail, Celular, CPF, CNPJ ou Aleatória</small>
                     </label>
-                    <input type="text" id="profile-pix-input" placeholder="CPF, Celular, E-mail ou Aleatória" title="Chave Pix para pagamentos e transferências">
+                    <input type="text" id="profile-pix-input" placeholder="E-mail, Celular, CPF, CNPJ ou Aleatória" title="Chave Pix para pagamentos e transferências" maxlength="77">
                 </div>
 
                 <div class="setting-item profile-account-type-group">
@@ -3391,6 +3391,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.159" defer></script>
+    <script type="module" src="script.js?v=1.0.160" defer></script>
 </body>
 </html>
