@@ -9911,10 +9911,10 @@ test('Notificação de Promoção a Admin de Grupo: Ícone de capelo, amarelo vi
   const env = createTestEnvironment();
   const win = env.sandbox.window;
 
-  // 1. Integridade de Versionamento (v1.0.169)
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.169', 'script.js deve ter versão 1.0.169');
-  assert.ok(htmlContent.includes('script.js?v=1.0.169'), 'index.html deve referenciar script.js com a versão 1.0.169');
-  assert.ok(htmlContent.includes('style.css?v=1.0.169'), 'index.html deve referenciar style.css com a versão 1.0.169');
+  // 1. Integridade de Versionamento (v1.0.169+)
+  assert.ok(['1.0.169', '1.0.170'].includes(win.CURRENT_APP_VERSION) || parseInt(win.CURRENT_APP_VERSION.split('.')[2], 10) >= 169, 'script.js deve ter versão compatível');
+  assert.ok(htmlContent.includes(`script.js?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar script.js com a versão atual');
+  assert.ok(htmlContent.includes(`style.css?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar style.css com a versão atual');
 
   // 2. Estilos CSS: Amarelo vibrante (#ffe600) e animação de semexe e para a cada 3 segundos
   assert.ok(cssContent.includes('.notification-card.card-group-promote'), 'style.css deve conter .notification-card.card-group-promote');
@@ -9998,6 +9998,185 @@ test('Notificação de Promoção a Admin de Grupo: Ícone de capelo, amarelo vi
   assert.ok(legacyOutput.includes('notif-svg-group-promote'), 'Notificação legada deve exibir o ícone do capelo');
   assert.ok(legacyOutput.includes('ADMIN 🎓'), 'Notificação legada deve exibir badge ADMIN 🎓');
 });
+
+test('Algoritmo de Segurança de Denúncia Multi-Tipo VORTEX VIP (v1.0.170)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+
+  // 1. Integridade de Versionamento (v1.0.170)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.170', 'script.js deve ter versão 1.0.170');
+  assert.ok(htmlContent.includes('script.js?v=1.0.170'), 'index.html deve referenciar script.js com a versão 1.0.170');
+  assert.ok(htmlContent.includes('style.css?v=1.0.170'), 'index.html deve referenciar style.css com a versão 1.0.170');
+
+  // 2. Estilos CSS do Painel da IA de Segurança
+  assert.ok(cssContent.includes('.admin-ai-analysis-card'), 'style.css deve conter .admin-ai-analysis-card');
+  assert.ok(cssContent.includes('.admin-ai-confidence-pill'), 'style.css deve conter .admin-ai-confidence-pill');
+  assert.ok(cssContent.includes('.admin-ai-header'), 'style.css deve conter .admin-ai-header');
+  assert.ok(cssContent.includes('.admin-ai-explanation'), 'style.css deve conter .admin-ai-explanation');
+  assert.ok(cssContent.includes('.admin-ai-keyword-tag'), 'style.css deve conter .admin-ai-keyword-tag');
+
+  // 3. Dicionário de Palavras-Chave e Casos de Detecção
+  const matchSecurityKeywords = win.matchSecurityKeywords;
+  assert.ok(typeof matchSecurityKeywords === 'function', 'matchSecurityKeywords deve ser uma função');
+
+  // Ameaça
+  const matchThreat = matchSecurityKeywords('Cuidado porque vou te matar se não obedecer');
+  assert.strictEqual(matchThreat.hasMatch, true, 'Deve detectar ameaça no texto');
+  assert.strictEqual(matchThreat.category, 'threat', 'Categoria detectada deve ser threat');
+
+  // Golpe / Fraude
+  const matchFraud = matchSecurityKeywords('Manda um pix urgente com o código de verificação');
+  assert.strictEqual(matchFraud.hasMatch, true, 'Deve detectar golpe/fraude no texto');
+  assert.strictEqual(matchFraud.category, 'fraud', 'Categoria detectada deve ser fraud');
+
+  // Texto inofensivo
+  const matchClean = matchSecurityKeywords('Olá tudo bem, vamos nos encontrar amanhã para almoçar?');
+  assert.strictEqual(matchClean.hasMatch, false, 'Texto comum não deve acionar palavras-chave');
+
+  // 4. Regra 2: Algoritmo NÃO age enquanto nada for denunciado
+  const victimUser = { uid: 'victim_user_1', displayName: 'Vítima' };
+  const suspectUser = { uid: 'suspect_user_2', displayName: 'Suspeito', restricted: false, banned: false };
+  env.firestoreDocs[`users/${victimUser.uid}`] = { ...victimUser };
+  env.firestoreDocs[`users/${suspectUser.uid}`] = { ...suspectUser };
+
+  win.setCurrentUser(victimUser);
+  win.setCurrentProfile(victimUser);
+
+  // Sem denúncia, o usuário suspeito permanece intocado
+  assert.strictEqual(env.firestoreDocs[`users/${suspectUser.uid}`].restricted, false, 'Suspeito não deve ser restrito sem denúncia');
+  assert.strictEqual(env.firestoreDocs[`users/${suspectUser.uid}`].banned, false, 'Suspeito não deve ser banido sem denúncia');
+
+  // 5. Regra 1: Denúncia de Usuário SEM Bloqueio Simultâneo -> Não pune automaticamente (Prevenção de Falsa Denúncia)
+  const chatId = [victimUser.uid, suspectUser.uid].sort().join('_');
+  env.firestoreDocs[`chats/${chatId}/messages/msg_threat_1`] = {
+    id: 'msg_threat_1',
+    senderUid: suspectUser.uid,
+    text: 'Eu vou te matar se não me responder',
+    timestamp: Date.now()
+  };
+
+  await win.submitGeneralReport({
+    type: 'user',
+    targetUid: suspectUser.uid,
+    targetName: 'Suspeito'
+  }, 'assedio', 'Ele está me ameaçando', false /* alsoBlock = false */);
+
+  // Usuário NÃO deve ser restrito automaticamente porque não bloqueou (para evitar denúncia falsa)
+  assert.strictEqual(env.firestoreDocs[`users/${suspectUser.uid}`].restricted, false, 'Usuário NÃO deve ser restrito automaticamente sem bloqueio simultâneo');
+
+  // Verifica que a denúncia foi encaminhada para aprovação manual do ADM
+  const reportsList = Object.entries(env.firestoreDocs)
+    .filter(([k]) => k.startsWith('reports/'))
+    .map(([k, v]) => ({ id: k.replace('reports/', ''), ...v }));
+  const unblockedReport = reportsList[reportsList.length - 1];
+  assert.strictEqual(unblockedReport.algorithmAction, 'pending_admin_approval', 'Denúncia sem bloqueio deve ter ação pending_admin_approval');
+  assert.ok(unblockedReport.algorithmExplanation.includes('sem bloqueio simultâneo'), 'Explicação deve esclarecer ausência de bloqueio simultâneo');
+
+  // 6. Regra 1: Denúncia de Usuário COM Bloqueio Simultâneo -> 1ª Infração: Restrição Temporária de 24h
+  await win.submitGeneralReport({
+    type: 'user',
+    targetUid: suspectUser.uid,
+    targetName: 'Suspeito'
+  }, 'assedio', 'Ele disse que vai me matar', true /* alsoBlock = true */);
+
+  assert.strictEqual(env.firestoreDocs[`users/${suspectUser.uid}`].restricted, true, 'Usuário com ameaça comprovada e bloqueio ativo DEVE ser restrito');
+  assert.strictEqual(env.firestoreDocs[`users/${suspectUser.uid}`].restrictedCount, 1, 'Contador de restrições do usuário deve ser 1');
+
+  const latestReports1 = Object.entries(env.firestoreDocs)
+    .filter(([k]) => k.startsWith('reports/'))
+    .map(([k, v]) => ({ id: k.replace('reports/', ''), ...v }));
+  const restrictedReport = latestReports1[latestReports1.length - 1];
+  assert.strictEqual(restrictedReport.algorithmAction, 'auto_restricted', 'Ação da IA deve ser auto_restricted');
+  assert.strictEqual(restrictedReport.algorithmConfidence, 'high', 'Certeza da IA deve ser high');
+  assert.ok(restrictedReport.matchedKeywords.includes('matar'), 'Palavra-chave "matar" deve constar nos termos detectados');
+
+  // 7. Regra 1: Reincidência no Mesmo Usuário -> Banimento Permanente Automático!
+  // Usuário insiste e manda outra ameaça
+  env.firestoreDocs[`chats/${chatId}/messages/msg_threat_2`] = {
+    id: 'msg_threat_2',
+    senderUid: suspectUser.uid,
+    text: 'Vou atrás de você te quebrar',
+    timestamp: Date.now() + 5000
+  };
+
+  await win.submitGeneralReport({
+    type: 'user',
+    targetUid: suspectUser.uid,
+    targetName: 'Suspeito'
+  }, 'assedio', 'Ele continua insistindo e ameaçando', true /* alsoBlock = true */);
+
+  assert.strictEqual(env.firestoreDocs[`users/${suspectUser.uid}`].banned, true, 'Usuário reincidente DEVE ser banido permanentemente');
+  assert.ok(env.firestoreDocs[`users/${suspectUser.uid}`].banReason.includes('Reincidência'), 'Motivo do banimento deve constar reincidência');
+
+  const latestReports2 = Object.entries(env.firestoreDocs)
+    .filter(([k]) => k.startsWith('reports/'))
+    .map(([k, v]) => ({ id: k.replace('reports/', ''), ...v }));
+  const bannedReport = latestReports2[latestReports2.length - 1];
+  assert.strictEqual(bannedReport.algorithmAction, 'auto_banned', 'Ação da IA para reincidente deve ser auto_banned');
+
+  // 8. Denúncia marcada como "Outro Motivo" que contenha tentativa de golpe no texto
+  const fraudsterUser = { uid: 'fraudster_99', displayName: 'Golpista', restricted: false, banned: false };
+  env.firestoreDocs[`users/${fraudsterUser.uid}`] = { ...fraudsterUser };
+
+  await win.submitGeneralReport({
+    type: 'user',
+    targetUid: fraudsterUser.uid,
+    targetName: 'Golpista'
+  }, 'outro' /* Outro motivo */, 'O usuário tentou aplicar um golpe do pix pedindo código de verificação', true);
+
+  assert.strictEqual(env.firestoreDocs[`users/${fraudsterUser.uid}`].restricted, true, 'Denúncia de outro motivo com termos de golpe deve aplicar restrição');
+
+  const latestReports3 = Object.entries(env.firestoreDocs)
+    .filter(([k]) => k.startsWith('reports/'))
+    .map(([k, v]) => ({ id: k.replace('reports/', ''), ...v }));
+  const fraudReport = latestReports3[latestReports3.length - 1];
+  assert.strictEqual(fraudReport.algorithmCategory, 'fraud', 'Categoria deve ser reclassificada como fraud mesmo com motivo "outro"');
+
+  // 9. Especialização por Tipo (Posts, Stories, Grupos e Comentários)
+  // Post com termo crítico
+  const badPost = { id: 'post_threat_123', authorUid: 'author_bad_post', caption: 'Vou matar todo mundo hoje' };
+  env.firestoreDocs[`posts/${badPost.id}`] = { ...badPost };
+  env.firestoreDocs[`users/${badPost.authorUid}`] = { uid: badPost.authorUid, restricted: false, banned: false };
+
+  await win.submitGeneralReport({
+    type: 'post',
+    postId: badPost.id,
+    targetUid: badPost.authorUid,
+    targetName: 'Autor Post'
+  }, 'inapropriado', 'Post com ameaça explícita');
+
+  assert.strictEqual(env.firestoreDocs[`users/${badPost.authorUid}`].restricted, true, 'Autor de post com ameaça deve ser restrito pelo algoritmo');
+
+  // 10. Interação e Decisão do Administrador no Painel ADM
+  // Cenário: Denúncia inconclusiva aguardando ADM
+  const pendingReport = {
+    id: 'report_pending_review_1',
+    targetUid: 'user_suspect_pending',
+    targetName: 'Usuário Inconclusivo',
+    targetType: 'user',
+    reason: 'spam',
+    details: 'Acho que esse usuário está suspeito',
+    algorithmAction: 'pending_admin_approval',
+    algorithmConfidence: 'low',
+    algorithmExplanation: 'Nenhuma palavra-chave crítica confirmada com certeza absoluta.',
+    resolved: false,
+    createdAt: Date.now()
+  };
+  env.firestoreDocs[`users/${pendingReport.targetUid}`] = { uid: pendingReport.targetUid, restricted: false, banned: false };
+  win.setAdminReports([pendingReport]);
+
+  // Abrir análise da denúncia pelo ADM
+  await win.adminAnalyzeReport(pendingReport);
+  const analyzeContent = env.elements['admin-analyze-content'];
+  assert.ok(analyzeContent.innerHTML.includes('admin-ai-analysis-card'), 'Modal de análise deve exibir o card admin-ai-analysis-card');
+  assert.ok(analyzeContent.innerHTML.includes('admin-ai-restrict-btn'), 'Modal de análise deve exibir botão para o ADM aplicar restrição');
+
+  // ADM executa a restrição diretamente pelo parecer
+  await win.adminExecuteAiAction(pendingReport.id, 'restrict');
+  assert.strictEqual(env.firestoreDocs[`users/${pendingReport.targetUid}`].restricted, true, 'ADM deve conseguir aplicar a restrição pela ação da IA');
+  assert.strictEqual(pendingReport.resolved, true, 'Denúncia deve ser marcada como resolvida após decisão do ADM');
+});
+
 
 
 

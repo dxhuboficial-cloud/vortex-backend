@@ -16578,4 +16578,77 @@ body.theme-cyberpunk .catalog-order-total-units-pill {
     color: #fbbf24;
 }
 
+/* ===== ADMIN: Diagnóstico da IA de Segurança de Denúncias (v1.0.170) ===== */
+.admin-ai-analysis-card {
+    background: rgba(0, 243, 255, 0.05);
+    border: 1px solid rgba(0, 243, 255, 0.35);
+    border-radius: 12px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 10px;
+    box-shadow: 0 0 16px rgba(0, 243, 255, 0.08);
+}
+.admin-ai-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: #00f3ff;
+}
+.admin-ai-confidence-pill {
+    font-size: 0.7rem;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.admin-ai-confidence-pill.high {
+    background: rgba(255, 59, 48, 0.2);
+    color: #ff3b30;
+    border: 1px solid rgba(255, 59, 48, 0.55);
+}
+.admin-ai-confidence-pill.medium {
+    background: rgba(255, 204, 0, 0.2);
+    color: #ffcc00;
+    border: 1px solid rgba(255, 204, 0, 0.55);
+}
+.admin-ai-confidence-pill.low {
+    background: rgba(0, 243, 255, 0.15);
+    color: #00f3ff;
+    border: 1px solid rgba(0, 243, 255, 0.45);
+}
+.admin-ai-explanation {
+    font-size: 0.82rem;
+    line-height: 1.45;
+    color: var(--text-main, #e0e0e0);
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 8px;
+    padding: 8px 10px;
+    border-left: 3px solid #00f3ff;
+    word-break: break-word;
+}
+.admin-ai-keyword-tag {
+    font-size: 0.7rem;
+    background: rgba(255, 59, 48, 0.15);
+    color: #ff6b6b;
+    border: 1px solid rgba(255, 59, 48, 0.35);
+    border-radius: 6px;
+    padding: 2px 6px;
+    font-weight: 600;
+}
+.admin-ai-actions-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 6px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+
 

@@ -14058,6 +14058,495 @@ export function closeReportModal() {
     }
 }
 
+/* ==========================================================================
+   ALGORITMO DE SEGURANÇA DE DENÚNCIA MULTI-TIPO VORTEX VIP ⚡ (v1.0.170)
+   ========================================================================== */
+
+export const SECURITY_KEYWORDS = {
+    threat: [
+        'matar', 'vou te matar', 'vai morrer', 'vou te pegar', 'tiro', 'dar um tiro',
+        'te quebrar', 'bater em voce', 'te matar', 'degolar', 'esfaquear', 'assassinar',
+        'te dou um tiro', 'arma na sua cabeca', 'massacre', 'agredir', 'vai pagar com sangue',
+        'vou atras de voce', 'acabar com sua vida', 'te encher de porrada', 'chacina',
+        'acabar com voce', 'vou te quebrar', 'morrer'
+    ],
+    harassment: [
+        'vadia', 'vagabund', 'otari', 'desgracad', 'filho da puta', 'fdp',
+        'puta', 'lixo humano', 'morre lixo', 'verme', 'pedofil', 'estupr',
+        'te odeio seu merda', 'vou te infernizar', 'nao vai ter paz', 'vou vazar suas fotos',
+        'sua vadia', 'arrombado', 'babaca', 'vou expor voce', 'assedio'
+    ],
+    explicit: [
+        'pornografia', 'fotos pelada', 'nudes vazados', 'video de sexo', 'sexo explicito',
+        'mutilacao', 'cadaver', 'gore pesado', 'venda de drogas', 'cocaina', 'arma raspada',
+        'conteudo explicito'
+    ],
+    fraud: [
+        'chave pix', 'manda um pix', 'me transfere urgente', 'codigo de verificacao',
+        'codigo que chegou no seu celular', 'urubu do pix', 'investimento com retorno garantido',
+        'ganhe dinheiro rapido', 'senha do seu cartao', 'dados da sua conta', 'clonar whatsapp',
+        'roubar conta', 'sequestramos seu', 'resgate urgente', 'deposite agora', 'golpe do pix',
+        'manda pix agora'
+    ]
+};
+
+export function normalizeSecurityText(text) {
+    if (!text || typeof text !== 'string') return '';
+    return text
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+export function matchSecurityKeywords(rawText) {
+    const norm = normalizeSecurityText(rawText);
+    if (!norm) return { hasMatch: false, category: null, matches: [], severity: 'none' };
+
+    const detected = [];
+    let primaryCategory = null;
+
+    const categories = ['threat', 'fraud', 'explicit', 'harassment'];
+    for (const cat of categories) {
+        const keywords = SECURITY_KEYWORDS[cat] || [];
+        for (const kw of keywords) {
+            const normKw = normalizeSecurityText(kw);
+            if (!normKw) continue;
+            const regex = new RegExp(`(^|\\s)${normKw.replace(/\\s+/g, '\\s+')}(\\s|$)`, 'i');
+            if (regex.test(norm) || norm.includes(normKw)) {
+                if (!primaryCategory) primaryCategory = cat;
+                if (!detected.includes(kw)) detected.push(kw);
+            }
+        }
+    }
+
+    if (detected.length > 0) {
+        return {
+            hasMatch: true,
+            category: primaryCategory,
+            matches: detected,
+            severity: 'high'
+        };
+    }
+
+    return { hasMatch: false, category: null, matches: [], severity: 'none' };
+}
+
+export async function runSecurityReportAnalysis(reportId, reportData, target, options = {}) {
+    if (!reportId || !reportData) return null;
+    const targetType = reportData.targetType || (target?.isGroup ? 'group' : 'user');
+    const targetUid = reportData.targetUid || target?.uid || target?.targetUid || '';
+    const targetName = reportData.targetName || target?.name || 'Infrator';
+    const reason = reportData.reason || 'outro';
+    const details = reportData.details || '';
+    const alsoBlock = !!options.alsoBlock || (typeof blockedContactsSet !== 'undefined' && blockedContactsSet.has(targetUid));
+
+    let analysisResult = {
+        action: 'pending_admin_approval',
+        confidence: 'low',
+        category: reason,
+        explanation: '',
+        previewSnippets: [],
+        matchedKeywords: [],
+        suggestedAction: 'review'
+    };
+
+    // 1. TIPO: CONVERSA / USUÁRIO
+    if (targetType === 'user') {
+        // Regra Estrita: Só analisa histórico de conversa se for denunciado E bloqueado simultaneamente
+        if (!alsoBlock) {
+            analysisResult = {
+                action: 'pending_admin_approval',
+                confidence: 'low',
+                category: reason,
+                explanation: 'Denúncia de usuário realizada sem bloqueio simultâneo. Para evitar falsas denúncias, o algoritmo não aplicou restrição automática e manteve sob revisão do Administrador.',
+                previewSnippets: details ? [details] : [],
+                matchedKeywords: [],
+                suggestedAction: 'review'
+            };
+        } else {
+            // Buscar mensagens da conversa entre os dois usuários
+            let messageTexts = [];
+            const chatId = currentUser && targetUid ? [currentUser.uid, targetUid].sort().join('_') : null;
+            if (chatId) {
+                try {
+                    const snap = await getDocs(collection(db, 'chats', chatId, 'messages'));
+                    if (snap && snap.docs) {
+                        messageTexts = snap.docs
+                            .map(d => d.data())
+                            .filter(m => m && (m.senderUid === targetUid || !m.senderUid))
+                            .map(m => m.text || '')
+                            .filter(Boolean);
+                    }
+                } catch (e) {
+                    console.warn('Erro ao buscar mensagens para análise de segurança:', e);
+                }
+            }
+
+            const allTextsToInspect = [...messageTexts];
+            if (details) allTextsToInspect.push(details);
+            if (reportData.contentSnippet) allTextsToInspect.push(reportData.contentSnippet);
+
+            let allMatches = [];
+            let detectedCategory = null;
+            let snippetsWithMatch = [];
+
+            for (const text of allTextsToInspect) {
+                const check = matchSecurityKeywords(text);
+                if (check.hasMatch) {
+                    if (!detectedCategory) detectedCategory = check.category;
+                    check.matches.forEach(m => { if (!allMatches.includes(m)) allMatches.push(m); });
+                    if (!snippetsWithMatch.includes(text)) snippetsWithMatch.push(text);
+                }
+            }
+
+            if (allMatches.length > 0) {
+                const categoryNames = {
+                    threat: 'Ameaça e Violência',
+                    harassment: 'Assédio e Ofensa',
+                    explicit: 'Conteúdo Impróprio/Explícito',
+                    fraud: 'Tentativa de Golpe e Fraude'
+                };
+                const catLabel = categoryNames[detectedCategory] || 'Violação das Diretrizes';
+
+                // Checar histórico do infrator no Firestore para avaliar reincidência
+                let isReoffender = false;
+                try {
+                    const userSnap = await getDoc(doc(db, 'users', targetUid));
+                    if (userSnap.exists()) {
+                        const uData = userSnap.data();
+                        if (uData.banned || (uData.restrictedCount && uData.restrictedCount >= 1) || uData.restricted) {
+                            isReoffender = true;
+                        }
+                    }
+                } catch (e) {}
+
+                if (isReoffender) {
+                    // Reincidente -> Banimento Permanente Automático!
+                    analysisResult = {
+                        action: 'auto_banned',
+                        confidence: 'high',
+                        category: detectedCategory,
+                        explanation: `Detectada infração grave confirmada (${catLabel}: "${allMatches.slice(0, 3).join(', ')}") em conversa com bloqueio ativo. O usuário possui histórico de infração anterior (reincidente) e foi banido permanentemente da plataforma VORTEX VIP.`,
+                        previewSnippets: snippetsWithMatch.slice(0, 3),
+                        matchedKeywords: allMatches,
+                        suggestedAction: 'ban'
+                    };
+
+                    try {
+                        await updateDoc(doc(db, 'users', targetUid), {
+                            banned: true,
+                            bannedAt: Date.now(),
+                            banReason: `Banimento permanente automático pelo Algoritmo de Segurança: Reincidência em ${catLabel}.`
+                        });
+                        await notifyUser(targetUid, '🚫 Conta Banida Definitivamente', analysisResult.explanation, 'alert');
+                    } catch (e) { console.error('Erro ao aplicar banimento automático:', e); }
+                } else {
+                    // 1ª Ocorrência -> Restrição Temporária Preventiva (24 Horas)
+                    analysisResult = {
+                        action: 'auto_restricted',
+                        confidence: 'high',
+                        category: detectedCategory,
+                        explanation: `Detectada infração grave confirmada (${catLabel}: "${allMatches.slice(0, 3).join(', ')}") em conversa com bloqueio ativo. O algoritmo aplicou restrição preventiva de 24 horas na conta. Se o usuário continuar insistindo, será banido permanentemente do VORTEX VIP.`,
+                        previewSnippets: snippetsWithMatch.slice(0, 3),
+                        matchedKeywords: allMatches,
+                        suggestedAction: 'restrict'
+                    };
+
+                    try {
+                        const now = Date.now();
+                        const expiresAt = now + 24 * 3600 * 1000;
+                        await updateDoc(doc(db, 'users', targetUid), {
+                            restricted: true,
+                            restrictedAt: now,
+                            restrictionDurationMs: 24 * 3600 * 1000,
+                            restrictionExpiresAt: expiresAt,
+                            restrictionReason: `Restrição automática de 24h por ${catLabel} identificada pelo Algoritmo de Segurança.`,
+                            restrictedCount: 1
+                        });
+                        await notifyUser(targetUid, '⚠️ Conta Restrita por 24 Horas', analysisResult.explanation, 'alert');
+                    } catch (e) { console.error('Erro ao aplicar restrição automática:', e); }
+                }
+            } else {
+                // Conversa analisada sem match conclusivo
+                analysisResult = {
+                    action: 'pending_admin_approval',
+                    confidence: 'low',
+                    category: reason,
+                    explanation: 'Conversa denunciada e bloqueada, mas nenhuma palavra-chave crítica de violência, fraude ou assédio direto foi detectada com certeza absoluta. Encaminhado com trecho da conversa para análise do Administrador.',
+                    previewSnippets: allTextsToInspect.slice(0, 2),
+                    matchedKeywords: [],
+                    suggestedAction: 'review'
+                };
+            }
+        }
+    } else if (targetType === 'post') {
+        // 2. TIPO: POSTS
+        const postLookupId = reportData.postId || target?.postId || targetUid;
+        let postText = '';
+        if (postLookupId) {
+            try {
+                const snap = await getDoc(doc(db, 'posts', postLookupId));
+                if (snap.exists()) {
+                    const p = snap.data();
+                    postText = `${p.caption || ''} ${(p.tags || []).join(' ')} ${p.businessCategory || ''}`;
+                }
+            } catch (e) {}
+        }
+        const textToAnalyze = `${postText} ${details} ${reportData.contentSnippet || ''}`;
+        const check = matchSecurityKeywords(textToAnalyze);
+        if (check.hasMatch) {
+            analysisResult = {
+                action: 'auto_restricted',
+                confidence: 'high',
+                category: check.category,
+                explanation: `Publicação denunciada viola as diretrizes de segurança com termos de ${check.category} ("${check.matches.slice(0, 3).join(', ')}"). A publicação foi sinalizada e a conta recebeu restrição preventiva de 24 horas.`,
+                previewSnippets: [textToAnalyze.substring(0, 140)],
+                matchedKeywords: check.matches,
+                suggestedAction: 'restrict'
+            };
+            if (targetUid) {
+                updateDoc(doc(db, 'users', targetUid), { restricted: true, restrictionExpiresAt: Date.now() + 24*3600*1000, restrictedCount: 1 }).catch(() => {});
+            }
+        } else {
+            analysisResult = {
+                action: 'pending_admin_approval',
+                confidence: 'medium',
+                category: reason,
+                explanation: 'Publicação denunciada requer validação visual do Administrador. Nenhuma violação textual evidente detectada.',
+                previewSnippets: [textToAnalyze.substring(0, 100)],
+                matchedKeywords: [],
+                suggestedAction: 'review'
+            };
+        }
+    } else if (targetType === 'comment') {
+        // 3. TIPO: COMENTÁRIOS
+        const commentText = `${reportData.contentSnippet || ''} ${details}`;
+        const check = matchSecurityKeywords(commentText);
+        if (check.hasMatch) {
+            analysisResult = {
+                action: 'auto_restricted',
+                confidence: 'high',
+                category: check.category,
+                explanation: `Comentário denunciado contém violação direta de segurança ("${check.matches.slice(0, 3).join(', ')}"). O autor do comentário recebeu restrição preventiva de 24 horas.`,
+                previewSnippets: [commentText.substring(0, 140)],
+                matchedKeywords: check.matches,
+                suggestedAction: 'restrict'
+            };
+            if (targetUid) {
+                updateDoc(doc(db, 'users', targetUid), { restricted: true, restrictionExpiresAt: Date.now() + 24*3600*1000, restrictedCount: 1 }).catch(() => {});
+            }
+        } else {
+            analysisResult = {
+                action: 'pending_admin_approval',
+                confidence: 'low',
+                category: reason,
+                explanation: 'Comentário denunciado não apresentou termos graves óbvios. Encaminhado para decisão do Administrador.',
+                previewSnippets: [commentText.substring(0, 100)],
+                matchedKeywords: [],
+                suggestedAction: 'review'
+            };
+        }
+    } else if (targetType === 'story') {
+        // 4. TIPO: STORIES
+        const storyLookupId = reportData.storyId || target?.storyId || targetUid;
+        let storyText = '';
+        if (storyLookupId) {
+            try {
+                const snap = await getDoc(doc(db, 'stories', storyLookupId));
+                if (snap.exists()) {
+                    const s = snap.data();
+                    storyText = `${s.caption || ''} ${s.linkUrl || ''}`;
+                }
+            } catch (e) {}
+        }
+        const textToAnalyze = `${storyText} ${details} ${reportData.contentSnippet || ''}`;
+        const check = matchSecurityKeywords(textToAnalyze);
+        if (check.hasMatch) {
+            analysisResult = {
+                action: 'auto_restricted',
+                confidence: 'high',
+                category: check.category,
+                explanation: `Story denunciado contém conteúdo violador das diretrizes ("${check.matches.slice(0, 3).join(', ')}"). Autor temporariamente restrito por 24 horas.`,
+                previewSnippets: [textToAnalyze.substring(0, 140)],
+                matchedKeywords: check.matches,
+                suggestedAction: 'restrict'
+            };
+            if (targetUid) {
+                updateDoc(doc(db, 'users', targetUid), { restricted: true, restrictionExpiresAt: Date.now() + 24*3600*1000, restrictedCount: 1 }).catch(() => {});
+            }
+        } else {
+            analysisResult = {
+                action: 'pending_admin_approval',
+                confidence: 'medium',
+                category: reason,
+                explanation: 'Story denunciado encaminhado para análise manual do Administrador. Nenhuma violação textual imediata detectada.',
+                previewSnippets: [textToAnalyze.substring(0, 100)],
+                matchedKeywords: [],
+                suggestedAction: 'review'
+            };
+        }
+    } else if (targetType === 'group') {
+        // 5. TIPO: GRUPOS
+        const groupLookupId = targetUid;
+        let groupText = '';
+        if (groupLookupId) {
+            try {
+                const snap = await getDoc(doc(db, 'groups', groupLookupId));
+                if (snap.exists()) {
+                    const g = snap.data();
+                    groupText = `${g.name || ''} ${g.description || ''}`;
+                }
+            } catch (e) {}
+        }
+        const textToAnalyze = `${groupText} ${details} ${reportData.contentSnippet || ''}`;
+        const check = matchSecurityKeywords(textToAnalyze);
+        if (check.hasMatch) {
+            analysisResult = {
+                action: 'auto_restricted',
+                confidence: 'high',
+                category: check.category,
+                explanation: `Grupo denunciado contém termos críticos ("${check.matches.slice(0, 3).join(', ')}") em seu perfil ou descrição. O grupo foi pausado e sinalizado.`,
+                previewSnippets: [textToAnalyze.substring(0, 140)],
+                matchedKeywords: check.matches,
+                suggestedAction: 'pause_group'
+            };
+            if (groupLookupId) {
+                updateDoc(doc(db, 'groups', groupLookupId), { paused: true, flagged: true }).catch(() => {});
+            }
+        } else {
+            analysisResult = {
+                action: 'pending_admin_approval',
+                confidence: 'medium',
+                category: reason,
+                explanation: 'Grupo denunciado encaminhado para revisão do Administrador.',
+                previewSnippets: [textToAnalyze.substring(0, 100)],
+                matchedKeywords: [],
+                suggestedAction: 'review'
+            };
+        }
+    }
+
+    // Salvar o diagnóstico da IA no documento do Firestore
+    try {
+        await updateDoc(doc(db, 'reports', reportId), {
+            algorithmAction: analysisResult.action,
+            algorithmConfidence: analysisResult.confidence,
+            algorithmCategory: analysisResult.category,
+            algorithmExplanation: analysisResult.explanation,
+            previewSnippets: analysisResult.previewSnippets || [],
+            matchedKeywords: analysisResult.matchedKeywords || [],
+            suggestedAction: analysisResult.suggestedAction || 'none',
+            analyzedAt: Date.now()
+        });
+
+        // Sincronizar no array adminReports caso carregado
+        if (typeof adminReports !== 'undefined' && Array.isArray(adminReports)) {
+            const cached = adminReports.find(r => r.id === reportId);
+            if (cached) {
+                Object.assign(cached, {
+                    algorithmAction: analysisResult.action,
+                    algorithmConfidence: analysisResult.confidence,
+                    algorithmCategory: analysisResult.category,
+                    algorithmExplanation: analysisResult.explanation,
+                    previewSnippets: analysisResult.previewSnippets || [],
+                    matchedKeywords: analysisResult.matchedKeywords || [],
+                    suggestedAction: analysisResult.suggestedAction || 'none',
+                    analyzedAt: Date.now()
+                });
+            }
+        }
+    } catch (e) {
+        console.warn('Erro ao atualizar diagnóstico da IA no relatório:', e);
+    }
+
+    // Notificar Administradores da Plataforma VORTEX VIP
+    try {
+        if (analysisResult.action === 'auto_banned') {
+            await notifyUser('all', '🤖 Segurança IA: Usuário Banido por Reincidência', `A conta "${targetName}" foi banida automaticamente pela IA após reincidência de infração grave.`, 'alert');
+        } else if (analysisResult.action === 'auto_restricted') {
+            await notifyUser('all', '🛡️ Segurança IA: Restrição Preventiva Aplicada', `A conta "${targetName}" recebeu restrição automática de 24 horas aplicada pelo algoritmo de denúncia.`, 'warning');
+        } else if (analysisResult.action === 'pending_admin_approval') {
+            await notifyUser('all', '🤖 Segurança IA: Denúncia Requer Decisão do ADM', `Nova denúncia contra "${targetName}" (${targetType}) aguarda decisão do Administrador no Painel ADM.`, 'alert');
+        }
+    } catch (e) {}
+
+    return analysisResult;
+}
+
+export async function adminExecuteAiAction(reportId, action) {
+    if (!reportId) return false;
+    const report = adminReports.find(r => r.id === reportId);
+    if (!report) return false;
+    const targetUid = report.targetUid;
+
+    try {
+        if (action === 'restrict') {
+            if (targetUid) {
+                const now = Date.now();
+                const userSnap = await getDoc(doc(db, 'users', targetUid)).catch(() => null);
+                const prevCount = userSnap && (typeof userSnap.exists === 'function' ? userSnap.exists() : !!userSnap.exists) ? (userSnap.data?.()?.restrictedCount || 0) : 0;
+                await updateDoc(doc(db, 'users', targetUid), {
+                    restricted: true,
+                    restrictedAt: now,
+                    restrictionDurationMs: 24 * 3600 * 1000,
+                    restrictionExpiresAt: now + 24 * 3600 * 1000,
+                    restrictionReason: 'Restrição de 24h confirmada e aplicada pelo Administrador através do parecer da IA.',
+                    restrictedCount: prevCount + 1
+                }).catch(() => {});
+                await notifyUser(targetUid, '⚠️ Conta Restrita por 24 Horas', 'Sua conta recebeu uma restrição de 24 horas confirmada pela moderação da plataforma.', 'alert');
+            }
+            await updateDoc(doc(db, 'reports', reportId), {
+                resolved: true,
+                resolvedAt: Date.now(),
+                adminDecision: 'restricted_by_admin'
+            });
+            report.resolved = true;
+            report.adminDecision = 'restricted_by_admin';
+            showToast("Ação Executada", "Restrição de 24h aplicada com sucesso ao infrator.", "green");
+        } else if (action === 'ban') {
+            if (targetUid) {
+                await updateDoc(doc(db, 'users', targetUid), {
+                    banned: true,
+                    bannedAt: Date.now(),
+                    banReason: 'Banimento permanente confirmado e aplicado pelo Administrador.'
+                }).catch(() => {});
+                await notifyUser(targetUid, '🚫 Conta Banida Permanentemente', 'Sua conta foi banida permanentemente por violação grave das diretrizes.', 'alert');
+            }
+            await updateDoc(doc(db, 'reports', reportId), {
+                resolved: true,
+                resolvedAt: Date.now(),
+                adminDecision: 'banned_by_admin'
+            });
+            report.resolved = true;
+            report.adminDecision = 'banned_by_admin';
+            showToast("Ação Executada", "Usuário banido permanentemente.", "red");
+        } else if (action === 'dismiss') {
+            await updateDoc(doc(db, 'reports', reportId), {
+                resolved: true,
+                resolvedAt: Date.now(),
+                adminDecision: 'dismissed_by_admin'
+            });
+            report.resolved = true;
+            report.adminDecision = 'dismissed_by_admin';
+            showToast("Denúncia Descartada", "Denúncia arquivada como sem infração pelo Administrador.", "blue");
+        }
+        renderAdminReports();
+        const modal = document.getElementById('admin-analyze-modal');
+        if (modal) {
+            modal.style.display = 'none';
+            modal.classList.remove('active');
+        }
+        return true;
+    } catch (e) {
+        console.error('Erro ao executar ação da IA pelo ADM:', e);
+        showToast("Erro", "Não foi possível executar a ação.", "red");
+        return false;
+    }
+}
+
 export async function submitGeneralReport(target = activeReportTarget, reason = 'spam', details = '', alsoBlock = false) {
     if (!currentUser || !target) return false;
     const targetType = target.type || (target.isGroup ? 'group' : 'user');
@@ -14081,7 +14570,8 @@ export async function submitGeneralReport(target = activeReportTarget, reason = 
         if (target.commentId) reportData.commentId = target.commentId;
         if (target.contentSnippet) reportData.contentSnippet = target.contentSnippet.substring(0, 150);
 
-        await addDoc(collection(db, 'reports'), reportData);
+        const reportRef = await addDoc(collection(db, 'reports'), reportData);
+        reportData.id = reportRef.id;
 
         if (targetType === 'group' && targetUid) {
             updateDoc(doc(db, 'groups', targetUid), {
@@ -14091,6 +14581,13 @@ export async function submitGeneralReport(target = activeReportTarget, reason = 
 
         if (alsoBlock && targetType === 'user' && targetUid && !blockedContactsSet.has(targetUid)) {
             await toggleBlockContact({ uid: targetUid, name: targetName });
+        }
+
+        // Executar o Algoritmo de Segurança de Denúncias da VORTEX VIP (v1.0.170)
+        try {
+            await runSecurityReportAnalysis(reportRef.id, reportData, target, { alsoBlock });
+        } catch (aiErr) {
+            console.warn('Erro ao processar análise automática do algoritmo de segurança:', aiErr);
         }
 
         const typeLabels = {
@@ -14561,12 +15058,22 @@ export function renderAdminReports() {
             typeLabel = 'Comentário';
         }
 
+        let aiBadgeHTML = '';
+        if (r.algorithmAction === 'auto_banned') {
+            aiBadgeHTML = `<span class="admin-badge admin-badge-banned" style="margin-left:6px; background:#ff3b30; color:#fff;" title="${escapeHTML(r.algorithmExplanation || '')}">🤖 IA: Banido (Reincidente)</span>`;
+        } else if (r.algorithmAction === 'auto_restricted') {
+            aiBadgeHTML = `<span class="admin-badge admin-badge-role" style="margin-left:6px; background:#ff9500; color:#fff;" title="${escapeHTML(r.algorithmExplanation || '')}">🤖 IA: Restrito (24h)</span>`;
+        } else if (r.algorithmAction === 'pending_admin_approval') {
+            aiBadgeHTML = `<span class="admin-badge admin-badge-vip" style="margin-left:6px; background:#00f3ff; color:#000; font-weight:800;" title="${escapeHTML(r.algorithmExplanation || '')}">🤖 IA: Decisão ADM</span>`;
+        }
+
         return `
             <div class="admin-card ${isResolved ? 'resolved-report' : 'pending-report'}" data-report-id="${r.id}">
                 <div class="admin-card-header">
                     <div class="admin-card-user-info">
                         <span class="admin-card-title">${r.targetName || 'Sem nome'}</span>
                         <span class="admin-badge ${typeBadgeClass}">${typeLabel}</span>
+                        ${aiBadgeHTML}
                     </div>
                     <span class="admin-card-subtitle">${dateStr}</span>
                 </div>
@@ -14574,6 +15081,7 @@ export function renderAdminReports() {
                     <div style="color:#ff6b6b; font-weight:700;">Motivo: ${reasonText}</div>
                     ${r.contentSnippet ? `<div style="color:var(--text-dim); font-size:0.75rem; margin-top:2px; font-style: italic;">Trecho: "${escapeHTML(r.contentSnippet)}"</div>` : ''}
                     ${r.details ? `<div style="color:var(--text-main); margin-top:2px;">"${r.details}"</div>` : ''}
+                    ${r.algorithmExplanation ? `<div style="background:rgba(0,243,255,0.06); border-left:2px solid #00f3ff; border-radius:4px; padding:4px 8px; margin-top:6px; font-size:0.75rem; color:var(--text-main);"><strong>🤖 Parecer da IA:</strong> ${escapeHTML(r.algorithmExplanation)}</div>` : ''}
                     <div style="color:var(--text-dim); font-size:0.72rem; margin-top:4px;">
                         Denunciante: <strong>${r.reporterName || 'Anônimo'}</strong> (${r.reporterUid || 'ID'})
                     </div>
@@ -16139,8 +16647,71 @@ export async function adminAnalyzeReport(report) {
         </div>
     `;
 
+    // Adicionar Card de Diagnóstico do Algoritmo de Segurança (IA)
+    const aiConfidence = report.algorithmConfidence || 'low';
+    const confidenceText = aiConfidence === 'high' ? 'Alta (Detectado) 🔴' : (aiConfidence === 'medium' ? 'Média 🟡' : 'Baixa / Inconclusivo 🔵');
+    const aiAction = report.algorithmAction || 'none';
+    const hasAiAction = !!report.algorithmExplanation;
+
+    if (hasAiAction) {
+        html += `
+            <div class="admin-ai-analysis-card">
+                <div class="admin-ai-header">
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <i data-lucide="shield-alert"></i>
+                        <span>Parecer do Algoritmo de Segurança (IA)</span>
+                    </div>
+                    <span class="admin-ai-confidence-pill ${aiConfidence}">${confidenceText}</span>
+                </div>
+                <div class="admin-ai-explanation">
+                    ${escapeHTML(report.algorithmExplanation)}
+                </div>
+                ${Array.isArray(report.matchedKeywords) && report.matchedKeywords.length > 0 ? `
+                    <div>
+                        <span style="font-size:0.75rem; color:var(--text-dim); font-weight:700;">Termos críticos identificados:</span>
+                        <div style="display:flex; flex-wrap:wrap; gap:4px; margin-top:4px;">
+                            ${report.matchedKeywords.map(k => `<span class="admin-ai-keyword-tag">${escapeHTML(k)}</span>`).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+                ${Array.isArray(report.previewSnippets) && report.previewSnippets.length > 0 ? `
+                    <div>
+                        <span style="font-size:0.75rem; color:var(--text-dim); font-weight:700;">Preview do Conteúdo Avaliado:</span>
+                        <div style="display:flex; flex-direction:column; gap:4px; margin-top:4px;">
+                            ${report.previewSnippets.map(s => `<div class="admin-analyze-content-snippet" style="font-size:0.78rem;">"${escapeHTML(s)}"</div>`).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+                ${aiAction === 'pending_admin_approval' && !report.resolved ? `
+                    <div class="admin-ai-actions-row">
+                        <button type="button" class="admin-btn-action btn-warning admin-ai-restrict-btn" data-report-id="${report.id}">
+                            <i data-lucide="clock"></i> Aplicar Restrição (24h)
+                        </button>
+                        <button type="button" class="admin-btn-action btn-danger admin-ai-ban-btn" data-report-id="${report.id}">
+                            <i data-lucide="user-x"></i> Banir Infrator
+                        </button>
+                        <button type="button" class="admin-btn-action btn-secondary admin-ai-dismiss-btn" data-report-id="${report.id}">
+                            <i data-lucide="check"></i> Descartar
+                        </button>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }
+
     content.innerHTML = html;
     if (window.lucide) lucide.createIcons();
+
+    // Wire up AI Action buttons
+    content.querySelectorAll('.admin-ai-restrict-btn').forEach(btn => {
+        btn.onclick = () => adminExecuteAiAction(btn.dataset.reportId, 'restrict');
+    });
+    content.querySelectorAll('.admin-ai-ban-btn').forEach(btn => {
+        btn.onclick = () => adminExecuteAiAction(btn.dataset.reportId, 'ban');
+    });
+    content.querySelectorAll('.admin-ai-dismiss-btn').forEach(btn => {
+        btn.onclick = () => adminExecuteAiAction(btn.dataset.reportId, 'dismiss');
+    });
 
     const closeBtn = document.getElementById('close-admin-analyze-modal');
     if (closeBtn) {
@@ -16276,7 +16847,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.169';
+export const CURRENT_APP_VERSION = '1.0.170';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -16732,6 +17303,12 @@ if (typeof window !== 'undefined') {
     window.adminResolveReport = adminResolveReport;
     window.setAdminReports = setAdminReports;
     window.getAdminReports = getAdminReports;
+    // Algoritmo de Segurança de Denúncias da VORTEX VIP (v1.0.170)
+    window.SECURITY_KEYWORDS = SECURITY_KEYWORDS;
+    window.normalizeSecurityText = normalizeSecurityText;
+    window.matchSecurityKeywords = matchSecurityKeywords;
+    window.runSecurityReportAnalysis = runSecurityReportAnalysis;
+    window.adminExecuteAiAction = adminExecuteAiAction;
     window.requestVipSubscription = requestVipSubscription;
     window.loadAdminVipRequests = loadAdminVipRequests;
     window.listenToAdminVipRequests = listenToAdminVipRequests;
