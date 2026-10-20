@@ -4,20 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.162">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.162">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.162">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.162">
-    <link rel="stylesheet" href="style.css?v=1.0.162">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.163">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.163">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.163">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.163">
+    <link rel="stylesheet" href="style.css?v=1.0.163">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.162">
+    <link rel="manifest" href="manifest.json?v=1.0.163">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.162">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.162">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.163">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.163">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -2856,6 +2856,20 @@
                         </div>
                     </div>
 
+                    <!-- Expiração da Promoção (Data, Mês, Ano e Hora) -->
+                    <div class="catalog-field-row" id="cat-prod-promo-expires-row" style="display: none;">
+                        <div class="catalog-field-group" style="grid-column: 1 / -1;">
+                            <label class="catalog-field-label" for="cat-prod-promo-expires"><i data-lucide="calendar-clock"></i> Expiração da Promoção (Data e Hora)</label>
+                            <div class="catalog-datetime-wrap">
+                                <input id="cat-prod-promo-expires" type="datetime-local" class="catalog-datetime-field" placeholder="Escolher data e hora">
+                                <button type="button" class="catalog-quick-date-btn" data-target="cat-prod-promo-expires" data-hours="24" title="Expira em 24 horas">+24h</button>
+                                <button type="button" class="catalog-quick-date-btn" data-target="cat-prod-promo-expires" data-days="7" title="Expira em 7 dias">+7d</button>
+                                <button type="button" class="catalog-quick-date-btn" data-target="cat-prod-promo-expires" data-days="30" title="Expira em 30 dias">+30d</button>
+                            </div>
+                            <span class="catalog-field-hint" id="cat-prod-promo-expires-hint" style="display: none;"></span>
+                        </div>
+                    </div>
+
                     <!-- Opção 2: Desconto (Desconto e Vigência) -->
                     <div class="catalog-field-row">
                         <div class="catalog-field-group">
@@ -2869,6 +2883,28 @@
                                 <option value="permanente">🔒 Permanente</option>
                             </select>
                         </div>
+                    </div>
+
+                    <!-- Expiração do Desconto (Data, Mês, Ano e Hora) -->
+                    <div class="catalog-field-row" id="cat-prod-discount-expires-row" style="display: none;">
+                        <div class="catalog-field-group" style="grid-column: 1 / -1;">
+                            <label class="catalog-field-label" for="cat-prod-discount-expires"><i data-lucide="calendar-clock"></i> Expiração do Desconto (Data e Hora)</label>
+                            <div class="catalog-datetime-wrap">
+                                <input id="cat-prod-discount-expires" type="datetime-local" class="catalog-datetime-field" placeholder="Escolher data e hora">
+                                <button type="button" class="catalog-quick-date-btn" data-target="cat-prod-discount-expires" data-hours="24" title="Expira em 24 horas">+24h</button>
+                                <button type="button" class="catalog-quick-date-btn" data-target="cat-prod-discount-expires" data-days="7" title="Expira em 7 dias">+7d</button>
+                                <button type="button" class="catalog-quick-date-btn" data-target="cat-prod-discount-expires" data-days="30" title="Expira em 30 dias">+30d</button>
+                            </div>
+                            <span class="catalog-field-hint" id="cat-prod-discount-expires-hint" style="display: none;"></span>
+                        </div>
+                    </div>
+
+                    <!-- Sincronização: Aplicar o mesmo tempo para ambos (Promoção e Desconto) -->
+                    <div class="catalog-field-row catalog-sync-time-row" id="cat-prod-sync-expires-row" style="display: none;">
+                        <label class="catalog-sync-time-label" for="cat-prod-sync-expires">
+                            <input type="checkbox" id="cat-prod-sync-expires" checked>
+                            <span class="catalog-sync-time-text"><i data-lucide="link-2"></i> Aplicar o mesmo tempo para Promoção e Desconto</span>
+                        </label>
                     </div>
 
                     <div class="catalog-field-row">
@@ -3403,6 +3439,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.162" defer></script>
+    <script type="module" src="script.js?v=1.0.163" defer></script>
 </body>
 </html>

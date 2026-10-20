@@ -7441,7 +7441,8 @@ test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com 
   // 39. Padronização de Tamanho de Conta Pessoal/Empresa, Validação Estrita de Chave Pix e Limite de 45 Caracteres no Recado/Bio (v1.0.160)
   // 40. Busca de Posts na Tela do Feed Reels (v1.0.161)
   // 41. Organização das Opções de Unidade Pedida e Quantidade Pedida no Detalhe do Pedido (v1.0.162)
-  assert.strictEqual(versionJson.version, '1.0.162', 'version.json deve ser 1.0.162');
+  // 42. Expiração com Data, Mês, Ano e Hora para Promoção e Desconto Temporários (v1.0.163)
+  assert.strictEqual(versionJson.version, '1.0.163', 'version.json deve ser 1.0.163');
 });
 
 test('Formulários Comerciais para Conta Empresa: Permissões, templates, card interativo no chat e preenchimento de respostas (v1.0.142)', () => {
@@ -8979,6 +8980,133 @@ test('Organização das Opções de Unidade Pedida e Quantidade Pedida no Detalh
   assert.ok(singleHtml.includes('1 unidade pedida'), 'Total de unidades deve ser no singular "1 unidade pedida"');
   assert.ok(singleHtml.includes('Quantidade pedida:'), 'Item deve conter o badge de Quantidade pedida');
   assert.ok(singleHtml.includes('1 unidade'), 'Item deve exibir 1 unidade no singular');
+});
+
+test('Expiração com Data, Mês, Ano e Hora para Promoção e Desconto Temporários (v1.0.163)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+
+  // 1. Integridade de Elementos HTML no index.html
+  assert.ok(htmlContent.includes('id="cat-prod-promo-expires-row"'), 'Deve conter cat-prod-promo-expires-row no index.html');
+  assert.ok(htmlContent.includes('id="cat-prod-promo-expires"'), 'Deve conter cat-prod-promo-expires input no index.html');
+  assert.ok(htmlContent.includes('id="cat-prod-discount-expires-row"'), 'Deve conter cat-prod-discount-expires-row no index.html');
+  assert.ok(htmlContent.includes('id="cat-prod-discount-expires"'), 'Deve conter cat-prod-discount-expires input no index.html');
+  assert.ok(htmlContent.includes('id="cat-prod-sync-expires-row"'), 'Deve conter cat-prod-sync-expires-row no index.html');
+  assert.ok(htmlContent.includes('id="cat-prod-sync-expires"'), 'Deve conter cat-prod-sync-expires checkbox no index.html');
+  assert.ok(htmlContent.includes('catalog-quick-date-btn'), 'Deve conter botões de atalho rápido (+24h, +7d, +30d)');
+
+  // 2. Integridade do CSS em style.css
+  assert.ok(cssContent.includes('.catalog-datetime-field'), 'Deve conter estilos para .catalog-datetime-field');
+  assert.ok(cssContent.includes('.catalog-quick-date-btn'), 'Deve conter estilos para .catalog-quick-date-btn');
+  assert.ok(cssContent.includes('.catalog-sync-time-row'), 'Deve conter estilos para .catalog-sync-time-row');
+  assert.ok(cssContent.includes('.catalog-field-hint'), 'Deve conter estilos para .catalog-field-hint');
+
+  // 3. Formatação de Data, Mês por Extenso, Ano e Horário (formatExpirationDateTime)
+  const formatExpirationDateTime = win.formatExpirationDateTime;
+  assert.strictEqual(typeof formatExpirationDateTime, 'function', 'formatExpirationDateTime deve ser uma função');
+
+  const formatted = formatExpirationDateTime('2026-10-25T23:59');
+  assert.ok(formatted.includes('25 de outubro de 2026'), 'Deve formatar dia, mês em português e ano');
+  assert.ok(formatted.includes('23:59'), 'Deve formatar horas e minutos');
+  assert.strictEqual(formatExpirationDateTime(''), '', 'Data vazia deve retornar string vazia');
+
+  // 4. Controle Dinâmico de Visibilidade (updateVigenciaExpirationVisibility)
+  const promoTypeSel = win.document.getElementById('cat-prod-promo-type');
+  const discountTypeSel = win.document.getElementById('cat-prod-discount-type');
+  const promoExpRow = win.document.getElementById('cat-prod-promo-expires-row');
+  const discountExpRow = win.document.getElementById('cat-prod-discount-expires-row');
+  const syncRow = win.document.getElementById('cat-prod-sync-expires-row');
+  const syncCheck = win.document.getElementById('cat-prod-sync-expires');
+  const promoExpInp = win.document.getElementById('cat-prod-promo-expires');
+  const discountExpInp = win.document.getElementById('cat-prod-discount-expires');
+
+  // Caso A: Ambos Temporários
+  promoTypeSel.value = 'temporario';
+  discountTypeSel.value = 'temporario';
+  win.updateVigenciaExpirationVisibility();
+  assert.strictEqual(promoExpRow.style.display, 'flex', 'Linha de expiração da promoção deve ser exibida quando temporário');
+  assert.strictEqual(discountExpRow.style.display, 'flex', 'Linha de expiração do desconto deve ser exibida quando temporário');
+  assert.strictEqual(syncRow.style.display, 'flex', 'Opção de sincronizar deve aparecer quando ambos são temporários');
+
+  // Caso B: Promoção Permanente e Desconto Temporário
+  promoTypeSel.value = 'permanente';
+  discountTypeSel.value = 'temporario';
+  win.updateVigenciaExpirationVisibility();
+  assert.strictEqual(promoExpRow.style.display, 'none', 'Linha de promoção deve ser ocultada quando permanente');
+  assert.strictEqual(discountExpRow.style.display, 'flex', 'Linha de desconto deve permanecer visível');
+  assert.strictEqual(syncRow.style.display, 'none', 'Opção de sincronizar deve sumir se um for permanente');
+
+  // Caso C: Ambos Permanentes
+  promoTypeSel.value = 'permanente';
+  discountTypeSel.value = 'permanente';
+  win.updateVigenciaExpirationVisibility();
+  assert.strictEqual(promoExpRow.style.display, 'none');
+  assert.strictEqual(discountExpRow.style.display, 'none');
+  assert.strictEqual(syncRow.style.display, 'none');
+
+  // 5. Sincronização Automática de Tempo entre Promoção e Desconto
+  promoTypeSel.value = 'temporario';
+  discountTypeSel.value = 'temporario';
+  syncCheck.checked = true;
+  promoExpInp.value = '2026-11-01T18:00';
+  discountExpInp.value = '';
+  win.updateVigenciaExpirationVisibility();
+  assert.strictEqual(discountExpInp.value, '2026-11-01T18:00', 'Desconto deve receber a mesma data/hora da promoção quando sincronizado');
+
+  // 6. Botões de Atalho Rápido (+24h, +7d, +30d)
+  win.applyQuickExpiration('cat-prod-promo-expires', 'hours', 24);
+  assert.ok(promoExpInp.value.length >= 16, 'Deve preencher input com timestamp válido');
+  const quickDate = new Date(promoExpInp.value);
+  assert.ok(!isNaN(quickDate.getTime()), 'Data gerada deve ser válida');
+  assert.ok(quickDate.getTime() > Date.now(), 'Data de expiração deve ser no futuro');
+
+  // 7. Verificação de Expiração no Catálogo (promoExpiresAt e discountExpiresAt)
+  const container = win.document.createElement('div');
+  const pastTimestamp = Date.now() - 3600000; // Expirou há 1 hora
+  const futureTimestamp = Date.now() + 86400000; // Expira em 24h
+
+  // Produto com promoção expirada
+  const expiredProd = {
+    id: 'prod_exp_1',
+    name: 'Produto Promo Vencida',
+    price: 100.00,
+    promoPrice: 70.00,
+    promoType: 'temporario',
+    promoExpiresAt: pastTimestamp,
+    discount: '30%',
+    discountType: 'temporario',
+    discountExpiresAt: pastTimestamp,
+    stock: 10,
+    active: true
+  };
+
+  win.renderCatalogGrid(container, [expiredProd], false);
+  let html = container.innerHTML;
+  assert.ok(!html.includes('catalog-badge-promo-temp'), 'Promoção temporária expirada NÃO deve exibir badge de oferta temporária');
+  assert.ok(!html.includes('catalog-badge-discount temp'), 'Desconto temporário expirado NÃO deve exibir badge de desconto');
+  assert.ok(html.includes('R$&nbsp;100,00') || html.includes('100,00'), 'Deve exibir preço normal de 100,00 quando promoção expirou');
+
+  // Produto com promoção ativa
+  const activeProd = {
+    id: 'prod_active_1',
+    name: 'Produto Promo Ativa',
+    price: 100.00,
+    promoPrice: 70.00,
+    promoType: 'temporario',
+    promoExpires: '2026-11-15T20:00',
+    promoExpiresAt: futureTimestamp,
+    discount: '30%',
+    discountType: 'temporario',
+    discountExpires: '2026-11-15T20:00',
+    discountExpiresAt: futureTimestamp,
+    stock: 10,
+    active: true
+  };
+
+  win.renderCatalogGrid(container, [activeProd], false);
+  html = container.innerHTML;
+  assert.ok(html.includes('catalog-badge-promo-temp') || html.includes('OFERTA TEMPORÁRIA'), 'Promoção ativa DEVE exibir badge de oferta temporária');
+  assert.ok(html.includes('catalog-badge-discount') || html.includes('30% OFF'), 'Desconto ativo DEVE exibir badge');
 });
 
 

@@ -3446,6 +3446,213 @@ export function attachCatalogNumericGuards() {
     }
 }
 
+// Expiração e Sincronização de Promoção e Desconto (v1.0.163)
+export function formatExpirationDateTime(isoString) {
+    if (!isoString) return '';
+    try {
+        const d = new Date(isoString);
+        if (isNaN(d.getTime())) return '';
+        const day = String(d.getDate()).padStart(2, '0');
+        const monthNames = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+        const month = monthNames[d.getMonth()];
+        const year = d.getFullYear();
+        const hours = String(d.getHours()).padStart(2, '0');
+        const minutes = String(d.getMinutes()).padStart(2, '0');
+        return `${day} de ${month} de ${year} às ${hours}:${minutes}`;
+    } catch(e) {
+        return '';
+    }
+}
+
+export function updateExpirationHint(inputId, hintId) {
+    const input = document.getElementById(inputId);
+    const hint = document.getElementById(hintId);
+    if (!input || !hint) return;
+
+    const val = input.value;
+    if (!val) {
+        hint.innerText = '';
+        hint.style.display = 'none';
+        return;
+    }
+
+    try {
+        const d = new Date(val);
+        if (isNaN(d.getTime())) {
+            hint.innerText = '';
+            hint.style.display = 'none';
+            return;
+        }
+        const now = Date.now();
+        const diffMs = d.getTime() - now;
+        const formatted = formatExpirationDateTime(val);
+
+        if (diffMs < 0) {
+            hint.innerHTML = `<span style="color:#ff4444;"><i data-lucide="alert-triangle"></i> Atenção: data já expirada (${escapeHTML(formatted)})</span>`;
+        } else {
+            const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+            const diffDays = Math.floor(diffHours / 24);
+            const remainHours = diffHours % 24;
+            let remainStr = '';
+            if (diffDays > 0) {
+                remainStr = `${diffDays}d ${remainHours}h restantes`;
+            } else {
+                remainStr = `${diffHours}h restantes`;
+            }
+            hint.innerHTML = `<span style="color:var(--accent-color, #00e676);"><i data-lucide="check-circle-2"></i> Expira em: <strong>${escapeHTML(formatted)}</strong> (${remainStr})</span>`;
+        }
+        hint.style.display = 'block';
+        if (window.lucide) lucide.createIcons();
+    } catch(e) {
+        hint.innerText = '';
+        hint.style.display = 'none';
+    }
+}
+
+export function applyQuickExpiration(targetInputId, durationType, durationValue) {
+    const input = document.getElementById(targetInputId);
+    if (!input) return;
+    const now = new Date();
+    if (durationType === 'hours') {
+        now.setHours(now.getHours() + durationValue);
+    } else if (durationType === 'days') {
+        now.setDate(now.getDate() + durationValue);
+    }
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const isoVal = `${year}-${month}-${day}T${hours}:${minutes}`;
+    input.value = isoVal;
+
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
+export function updateVigenciaExpirationVisibility() {
+    const promoTypeSel = document.getElementById('cat-prod-promo-type');
+    const discountTypeSel = document.getElementById('cat-prod-discount-type');
+    const promoExpRow = document.getElementById('cat-prod-promo-expires-row');
+    const discountExpRow = document.getElementById('cat-prod-discount-expires-row');
+    const syncRow = document.getElementById('cat-prod-sync-expires-row');
+    const syncCheck = document.getElementById('cat-prod-sync-expires');
+    const promoExpInp = document.getElementById('cat-prod-promo-expires');
+    const discountExpInp = document.getElementById('cat-prod-discount-expires');
+
+    const isPromoTemp = promoTypeSel ? promoTypeSel.value === 'temporario' : false;
+    const isDiscountTemp = discountTypeSel ? discountTypeSel.value === 'temporario' : false;
+
+    if (promoExpRow) {
+        promoExpRow.style.display = isPromoTemp ? 'flex' : 'none';
+    }
+    if (discountExpRow) {
+        discountExpRow.style.display = isDiscountTemp ? 'flex' : 'none';
+    }
+
+    if (syncRow) {
+        syncRow.style.display = (isPromoTemp && isDiscountTemp) ? 'flex' : 'none';
+    }
+
+    if (isPromoTemp && isDiscountTemp && syncCheck && syncCheck.checked) {
+        if (promoExpInp && promoExpInp.value && discountExpInp && !discountExpInp.value) {
+            discountExpInp.value = promoExpInp.value;
+        } else if (discountExpInp && discountExpInp.value && promoExpInp && !promoExpInp.value) {
+            promoExpInp.value = discountExpInp.value;
+        }
+    }
+
+    updateExpirationHint('cat-prod-promo-expires', 'cat-prod-promo-expires-hint');
+    updateExpirationHint('cat-prod-discount-expires', 'cat-prod-discount-expires-hint');
+}
+
+export function setupVigenciaExpirationListeners() {
+    const promoTypeSel = document.getElementById('cat-prod-promo-type');
+    const discountTypeSel = document.getElementById('cat-prod-discount-type');
+    const promoExpInp = document.getElementById('cat-prod-promo-expires');
+    const discountExpInp = document.getElementById('cat-prod-discount-expires');
+    const syncExpiresCheck = document.getElementById('cat-prod-sync-expires');
+
+    if (promoTypeSel && !promoTypeSel.dataset.expBound) {
+        promoTypeSel.dataset.expBound = 'true';
+        promoTypeSel.addEventListener('change', () => {
+            updateVigenciaExpirationVisibility();
+        });
+    }
+
+    if (discountTypeSel && !discountTypeSel.dataset.expBound) {
+        discountTypeSel.dataset.expBound = 'true';
+        discountTypeSel.addEventListener('change', () => {
+            updateVigenciaExpirationVisibility();
+        });
+    }
+
+    if (syncExpiresCheck && !syncExpiresCheck.dataset.expBound) {
+        syncExpiresCheck.dataset.expBound = 'true';
+        syncExpiresCheck.addEventListener('change', () => {
+            if (syncExpiresCheck.checked && promoExpInp && discountExpInp) {
+                if (promoExpInp.value) {
+                    discountExpInp.value = promoExpInp.value;
+                } else if (discountExpInp.value) {
+                    promoExpInp.value = discountExpInp.value;
+                }
+            }
+            updateVigenciaExpirationVisibility();
+        });
+    }
+
+    function handlePromoExpChange() {
+        if (syncExpiresCheck && syncExpiresCheck.checked && discountExpInp && promoExpInp) {
+            discountExpInp.value = promoExpInp.value;
+        }
+        updateExpirationHint('cat-prod-promo-expires', 'cat-prod-promo-expires-hint');
+        if (syncExpiresCheck && syncExpiresCheck.checked) {
+            updateExpirationHint('cat-prod-discount-expires', 'cat-prod-discount-expires-hint');
+        }
+    }
+
+    function handleDiscountExpChange() {
+        if (syncExpiresCheck && syncExpiresCheck.checked && promoExpInp && discountExpInp) {
+            promoExpInp.value = discountExpInp.value;
+        }
+        updateExpirationHint('cat-prod-discount-expires', 'cat-prod-discount-expires-hint');
+        if (syncExpiresCheck && syncExpiresCheck.checked) {
+            updateExpirationHint('cat-prod-promo-expires', 'cat-prod-promo-expires-hint');
+        }
+    }
+
+    if (promoExpInp && !promoExpInp.dataset.expBound) {
+        promoExpInp.dataset.expBound = 'true';
+        promoExpInp.addEventListener('input', handlePromoExpChange);
+        promoExpInp.addEventListener('change', handlePromoExpChange);
+    }
+
+    if (discountExpInp && !discountExpInp.dataset.expBound) {
+        discountExpInp.dataset.expBound = 'true';
+        discountExpInp.addEventListener('input', handleDiscountExpChange);
+        discountExpInp.addEventListener('change', handleDiscountExpChange);
+    }
+
+    if (typeof document !== 'undefined') {
+        document.querySelectorAll('.catalog-quick-date-btn').forEach(btn => {
+            if (!btn.dataset.bound) {
+                btn.dataset.bound = 'true';
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const targetId = btn.dataset.target;
+                    const hours = parseInt(btn.dataset.hours, 10);
+                    const days = parseInt(btn.dataset.days, 10);
+                    if (!isNaN(hours)) {
+                        applyQuickExpiration(targetId, 'hours', hours);
+                    } else if (!isNaN(days)) {
+                        applyQuickExpiration(targetId, 'days', days);
+                    }
+                });
+            }
+        });
+    }
+}
+
 export function isBusinessAccount(profile = currentProfile) {
     return !!(profile && (profile.accountType === 'business' || profile.isBusiness === true));
 }
@@ -3556,7 +3763,11 @@ export function addToCatalogCart(product, sellerUid, sellerData = {}, options = 
         ? Infinity
         : Number(product.stock);
 
-    const effectivePrice = (product.promoPrice !== null && product.promoPrice !== undefined && product.promoPrice !== '' && Number(product.promoPrice) > 0)
+    const promoExpired = (product.promoType === 'temporario' && product.promoExpiresAt && Date.now() > product.promoExpiresAt);
+    const discountExpired = (product.discountType === 'temporario' && product.discountExpiresAt && Date.now() > product.discountExpiresAt);
+    const hasActivePromo = !promoExpired && (product.promoPrice !== null && product.promoPrice !== undefined && product.promoPrice !== '' && Number(product.promoPrice) > 0);
+
+    const effectivePrice = hasActivePromo
         ? Number(product.promoPrice)
         : Number(product.price || 0);
 
@@ -3572,11 +3783,15 @@ export function addToCatalogCart(product, sellerUid, sellerData = {}, options = 
         }
         cart.items[existingIndex].quantity = curQty + 1;
         cart.items[existingIndex].price = Number(product.price);
-        cart.items[existingIndex].promoPrice = product.promoPrice;
+        cart.items[existingIndex].promoPrice = hasActivePromo ? product.promoPrice : null;
         cart.items[existingIndex].effectivePrice = effectivePrice;
-        if (product.discount) cart.items[existingIndex].discount = product.discount;
+        if (product.discount && !discountExpired) cart.items[existingIndex].discount = product.discount;
         if (product.discountType) cart.items[existingIndex].discountType = product.discountType;
         if (product.promoType) cart.items[existingIndex].promoType = product.promoType;
+        if (product.promoExpires) cart.items[existingIndex].promoExpires = product.promoExpires;
+        if (product.promoExpiresAt) cart.items[existingIndex].promoExpiresAt = product.promoExpiresAt;
+        if (product.discountExpires) cart.items[existingIndex].discountExpires = product.discountExpires;
+        if (product.discountExpiresAt) cart.items[existingIndex].discountExpiresAt = product.discountExpiresAt;
         cart.items[existingIndex].kind = product.kind || (product.isDigital ? 'digital' : 'fisico');
         cart.items[existingIndex].isDigital = product.kind === 'digital' || !!product.isDigital;
         cart.items[existingIndex].digitalType = product.digitalType || null;
@@ -3594,7 +3809,7 @@ export function addToCatalogCart(product, sellerUid, sellerData = {}, options = 
             productId: product.id,
             name: product.name,
             price: Number(product.price),
-            promoPrice: product.promoPrice,
+            promoPrice: hasActivePromo ? product.promoPrice : null,
             effectivePrice: effectivePrice,
             quantity: 1,
             cover: product.cover || (product.photos && product.photos[0]) || '',
@@ -3611,9 +3826,13 @@ export function addToCatalogCart(product, sellerUid, sellerData = {}, options = 
             digitalType: product.digitalType || null,
             digitalLink: product.digitalLink || null,
             digitalCta: product.digitalCta || null,
-            discount: product.discount || null,
+            discount: (!discountExpired ? product.discount : null) || null,
             discountType: product.discountType || null,
-            promoType: product.promoType || null
+            promoType: product.promoType || null,
+            promoExpires: product.promoExpires || null,
+            promoExpiresAt: product.promoExpiresAt || null,
+            discountExpires: product.discountExpires || null,
+            discountExpiresAt: product.discountExpiresAt || null
         });
     }
 
@@ -4702,7 +4921,9 @@ export function renderCatalogGrid(container, products, isOwner) {
     }
 
     container.innerHTML = products.map(prod => {
-        const hasPromo = (prod.promoPrice !== null && prod.promoPrice !== undefined && prod.promoPrice !== '' && Number(prod.promoPrice) > 0 && Number(prod.promoPrice) < Number(prod.price));
+        const promoExpired = (prod.promoType === 'temporario' && prod.promoExpiresAt && Date.now() > prod.promoExpiresAt);
+        const discountExpired = (prod.discountType === 'temporario' && prod.discountExpiresAt && Date.now() > prod.discountExpiresAt);
+        const hasPromo = !promoExpired && (prod.promoPrice !== null && prod.promoPrice !== undefined && prod.promoPrice !== '' && Number(prod.promoPrice) > 0 && Number(prod.promoPrice) < Number(prod.price));
         const priceHTML = hasPromo
             ? `<div class="catalog-price-wrap"><span class="catalog-promo-price">${formatBRL(prod.promoPrice)}</span><span class="catalog-old-price">${formatBRL(prod.price)}</span></div>`
             : `<div class="catalog-price-wrap"><span class="catalog-price">${formatBRL(prod.price)}</span></div>`;
@@ -4730,7 +4951,7 @@ export function renderCatalogGrid(container, products, isOwner) {
         }
 
         let discountBadge = '';
-        if (prod.discount) {
+        if (prod.discount && !discountExpired) {
             const isTemp = (prod.discountType === 'temporario');
             discountBadge = `<span class="catalog-badge-discount ${isTemp ? 'temp' : ''}">${escapeHTML(prod.discount)} OFF</span>`;
         }
@@ -4983,6 +5204,19 @@ export async function openProductEditor(productId = null) {
             if (discountInp) discountInp.value = prod.discount || '';
             if (discountTypeSel) discountTypeSel.value = prod.discountType || 'temporario';
 
+            const promoExpiresInp = document.getElementById('cat-prod-promo-expires');
+            const discountExpiresInp = document.getElementById('cat-prod-discount-expires');
+            const syncExpiresCheck = document.getElementById('cat-prod-sync-expires');
+            if (promoExpiresInp) {
+                promoExpiresInp.value = prod.promoExpires || (prod.promoExpiresAt ? new Date(prod.promoExpiresAt).toISOString().slice(0, 16) : '');
+            }
+            if (discountExpiresInp) {
+                discountExpiresInp.value = prod.discountExpires || (prod.discountExpiresAt ? new Date(prod.discountExpiresAt).toISOString().slice(0, 16) : '');
+            }
+            if (syncExpiresCheck) {
+                syncExpiresCheck.checked = (prod.syncExpiration !== false);
+            }
+
             const isDigital = (prod.kind === 'digital' || !!prod.isDigital);
             if (kindSel) kindSel.value = isDigital ? 'digital' : 'fisico';
             if (digitalSection) digitalSection.style.display = isDigital ? 'block' : 'none';
@@ -5030,6 +5264,12 @@ export async function openProductEditor(productId = null) {
         if (promoTypeSel) promoTypeSel.value = 'temporario';
         if (discountInp) discountInp.value = '';
         if (discountTypeSel) discountTypeSel.value = 'temporario';
+        const promoExpiresInp = document.getElementById('cat-prod-promo-expires');
+        const discountExpiresInp = document.getElementById('cat-prod-discount-expires');
+        const syncExpiresCheck = document.getElementById('cat-prod-sync-expires');
+        if (promoExpiresInp) promoExpiresInp.value = '';
+        if (discountExpiresInp) discountExpiresInp.value = '';
+        if (syncExpiresCheck) syncExpiresCheck.checked = true;
         if (kindSel) kindSel.value = 'fisico';
         if (digitalSection) digitalSection.style.display = 'none';
         if (digitalTypeSel) digitalTypeSel.value = 'App';
@@ -5057,6 +5297,9 @@ export async function openProductEditor(productId = null) {
             cb.checked = defaultNewMethods.includes(cb.value);
         });
     }
+
+    setupVigenciaExpirationListeners();
+    updateVigenciaExpirationVisibility();
 
     renderEditorPhotos();
     renderEditorColors();
@@ -5244,8 +5487,25 @@ export async function saveCatalogProduct() {
     const priceRaw = document.getElementById('cat-prod-price')?.value;
     const promoRaw = document.getElementById('cat-prod-promo')?.value;
     const promoType = document.getElementById('cat-prod-promo-type')?.value || 'temporario';
+    const promoExpires = (promoType === 'temporario') ? (document.getElementById('cat-prod-promo-expires')?.value || '') : '';
     const discount = document.getElementById('cat-prod-discount')?.value.trim() || '';
     const discountType = document.getElementById('cat-prod-discount-type')?.value || 'temporario';
+    const discountExpires = (discountType === 'temporario') ? (document.getElementById('cat-prod-discount-expires')?.value || '') : '';
+    const syncExpiration = !!document.getElementById('cat-prod-sync-expires')?.checked;
+    let promoExpiresAt = null;
+    if (promoExpires) {
+        try {
+            const t = new Date(promoExpires).getTime();
+            if (!isNaN(t)) promoExpiresAt = t;
+        } catch (e) {}
+    }
+    let discountExpiresAt = null;
+    if (discountExpires) {
+        try {
+            const t = new Date(discountExpires).getTime();
+            if (!isNaN(t)) discountExpiresAt = t;
+        } catch (e) {}
+    }
     const kind = document.getElementById('cat-prod-kind')?.value || 'fisico';
     const isDigital = (kind === 'digital');
     const digitalType = isDigital ? (document.getElementById('cat-prod-digital-type')?.value || 'App') : '';
@@ -5337,8 +5597,13 @@ export async function saveCatalogProduct() {
             price: price,
             promoPrice: promoPrice,
             promoType: promoType,
+            promoExpires: promoExpires,
+            promoExpiresAt: promoExpiresAt,
             discount: discount,
             discountType: discountType,
+            discountExpires: discountExpires,
+            discountExpiresAt: discountExpiresAt,
+            syncExpiration: syncExpiration,
             kind: kind,
             isDigital: isDigital,
             digitalType: digitalType,
@@ -5542,7 +5807,9 @@ export async function openProductDetail(productId, sellerUid) {
             `
             : `<div class="catalog-detail-noimg"><i data-lucide="package"></i></div>`;
 
-        const hasPromo = (prod.promoPrice !== null && prod.promoPrice !== undefined && prod.promoPrice !== '' && Number(prod.promoPrice) > 0 && Number(prod.promoPrice) < Number(prod.price));
+        const promoExpired = (prod.promoType === 'temporario' && prod.promoExpiresAt && Date.now() > prod.promoExpiresAt);
+        const discountExpired = (prod.discountType === 'temporario' && prod.discountExpiresAt && Date.now() > prod.discountExpiresAt);
+        const hasPromo = !promoExpired && (prod.promoPrice !== null && prod.promoPrice !== undefined && prod.promoPrice !== '' && Number(prod.promoPrice) > 0 && Number(prod.promoPrice) < Number(prod.price));
         const priceHTML = hasPromo
             ? `<div class="catalog-detail-prices"><span class="catalog-promo-price-lg">${formatBRL(prod.promoPrice)}</span><span class="catalog-old-price-lg">${formatBRL(prod.price)}</span></div>`
             : `<div class="catalog-detail-prices"><span class="catalog-price-lg">${formatBRL(prod.price)}</span></div>`;
@@ -5635,12 +5902,24 @@ export async function openProductDetail(productId, sellerUid) {
 
         let promoBadgeHTML = '';
         if (hasPromo) {
-            promoBadgeHTML = `<span class="catalog-detail-spec-badge catalog-promo-badge"><i data-lucide="flame"></i> Promoção: <strong>${prod.promoType === 'permanente' ? 'Permanente' : 'Temporária ⏳'}</strong></span>`;
+            const isTemp = (prod.promoType === 'temporario');
+            let expLabel = '';
+            if (isTemp && prod.promoExpires) {
+                const formatted = formatExpirationDateTime(prod.promoExpires);
+                if (formatted) expLabel = ` <span class="catalog-spec-exp">• Expira em: ${escapeHTML(formatted)}</span>`;
+            }
+            promoBadgeHTML = `<span class="catalog-detail-spec-badge catalog-promo-badge"><i data-lucide="flame"></i> Promoção: <strong>${isTemp ? 'Temporária ⏳' : 'Permanente'}</strong>${expLabel}</span>`;
         }
 
         let discountBadgeHTML = '';
-        if (prod.discount) {
-            discountBadgeHTML = `<span class="catalog-detail-spec-badge catalog-discount-badge"><i data-lucide="tag"></i> Desconto: <strong>${escapeHTML(prod.discount)} (${prod.discountType === 'permanente' ? 'Permanente' : 'Temporário ⏳'})</strong></span>`;
+        if (prod.discount && !discountExpired) {
+            const isTemp = (prod.discountType === 'temporario');
+            let expLabel = '';
+            if (isTemp && prod.discountExpires) {
+                const formatted = formatExpirationDateTime(prod.discountExpires);
+                if (formatted) expLabel = ` <span class="catalog-spec-exp">• Expira em: ${escapeHTML(formatted)}</span>`;
+            }
+            discountBadgeHTML = `<span class="catalog-detail-spec-badge catalog-discount-badge"><i data-lucide="tag"></i> Desconto: <strong>${escapeHTML(prod.discount)} (${isTemp ? 'Temporário ⏳' : 'Permanente'})</strong>${expLabel}</span>`;
         }
 
         let digitalCtaBtnHTML = '';
@@ -15223,7 +15502,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.162';
+export const CURRENT_APP_VERSION = '1.0.163';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -26151,6 +26430,7 @@ if (typeof window !== 'undefined') {
     window.loadSellerProducts = loadSellerProducts;
     window.loadSellerCategories = loadSellerCategories;
     window.loadMyCatalog = loadMyCatalog;
+    window.renderCatalogGrid = renderCatalogGrid;
     window.openProductEditor = openProductEditor;
     window.closeProductEditor = closeProductEditor;
     window.saveCatalogProduct = saveCatalogProduct;
@@ -26242,6 +26522,12 @@ if (typeof window !== 'undefined') {
         cachedFeedPosts = Array.isArray(posts) ? posts : [];
     };
     window.getCachedFeedPosts = () => cachedFeedPosts;
+    // Expiração com Data/Hora para Promoção e Desconto Temporários (v1.0.163)
+    window.formatExpirationDateTime = formatExpirationDateTime;
+    window.updateExpirationHint = updateExpirationHint;
+    window.applyQuickExpiration = applyQuickExpiration;
+    window.updateVigenciaExpirationVisibility = updateVigenciaExpirationVisibility;
+    window.setupVigenciaExpirationListeners = setupVigenciaExpirationListeners;
 }
 
 if (typeof window !== 'undefined') {
@@ -26253,4 +26539,5 @@ if (typeof window !== 'undefined') {
     initCatalog();
     setupProfileLinkValidationListeners();
     setupFeedSearchListeners();
+    setupVigenciaExpirationListeners();
 }
