@@ -9804,10 +9804,10 @@ test('Permissões e Ferramentas para Administradores Promovidos em Grupos (v1.0.
   const env = createTestEnvironment();
   const win = env.sandbox.window;
 
-  // 1. Integridade de Versionamento (v1.0.168)
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.168', 'script.js deve ter versão 1.0.168');
-  assert.ok(htmlContent.includes('script.js?v=1.0.168'), 'index.html deve referenciar script.js com a versão 1.0.168');
-  assert.ok(htmlContent.includes('style.css?v=1.0.168'), 'index.html deve referenciar style.css com a versão 1.0.168');
+  // 1. Integridade de Versionamento (v1.0.168+)
+  assert.ok(['1.0.168', '1.0.169'].includes(win.CURRENT_APP_VERSION) || parseInt(win.CURRENT_APP_VERSION.split('.')[2], 10) >= 168, 'script.js deve ter versão compatível');
+  assert.ok(htmlContent.includes(`script.js?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar script.js com a versão atual');
+  assert.ok(htmlContent.includes(`style.css?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar style.css com a versão atual');
 
   // 2. Validação da Função Auxiliar isUserGroupAdmin
   const isUserGroupAdmin = win.isUserGroupAdmin;
@@ -9906,6 +9906,99 @@ test('Permissões e Ferramentas para Administradores Promovidos em Grupos (v1.0.
   await win.promoteGroupMember('novo_membro_555');
   assert.ok(env.firestoreDocs[`groups/${testGroupId}`].admins.includes('novo_membro_555'), 'Admin promovido DEVE conseguir promover membro comum a administrador');
 });
+
+test('Notificação de Promoção a Admin de Grupo: Ícone de capelo, amarelo vibrante e animação de semexe a cada 3s (v1.0.169)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+
+  // 1. Integridade de Versionamento (v1.0.169)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.169', 'script.js deve ter versão 1.0.169');
+  assert.ok(htmlContent.includes('script.js?v=1.0.169'), 'index.html deve referenciar script.js com a versão 1.0.169');
+  assert.ok(htmlContent.includes('style.css?v=1.0.169'), 'index.html deve referenciar style.css com a versão 1.0.169');
+
+  // 2. Estilos CSS: Amarelo vibrante (#ffe600) e animação de semexe e para a cada 3 segundos
+  assert.ok(cssContent.includes('.notification-card.card-group-promote'), 'style.css deve conter .notification-card.card-group-promote');
+  assert.ok(cssContent.includes('border-left: 3.5px solid #ffe600;'), 'card-group-promote deve ter borda amarela vibrante (#ffe600)');
+  assert.ok(cssContent.includes('.notification-icon-box.group-promote'), 'style.css deve conter .notification-icon-box.group-promote');
+  assert.ok(cssContent.includes('color: #ffe600;'), 'Ícone de group-promote deve ter cor amarelo vibrante (#ffe600)');
+  assert.ok(cssContent.includes('.notification-badge.group-promote'), 'style.css deve conter .notification-badge.group-promote');
+  assert.ok(cssContent.includes('@keyframes notifAdminShake'), 'style.css deve conter @keyframes notifAdminShake');
+  assert.ok(cssContent.includes('animation: notifAdminShake 3s'), 'Ícone deve usar animação de semexe com ciclo de 3s');
+  assert.ok(cssContent.includes('.notif-svg-group-promote'), 'style.css deve estilizar .notif-svg-group-promote');
+
+  // 3. Disparo da Notificação em promoteGroupMember com Ícone de Capelo
+  const testGroup = {
+    id: 'grp_dx_digital_169',
+    groupId: 'grp_dx_digital_169',
+    name: 'DX Hub Digital',
+    creatorUid: 'user_criador_1',
+    members: ['user_criador_1', 'user_promovido_2'],
+    admins: ['user_criador_1']
+  };
+  env.firestoreDocs[`groups/${testGroup.groupId}`] = { ...testGroup };
+
+  win.setCurrentUser({ uid: 'user_criador_1', displayName: 'Criador' });
+  await win.openGroupProfile({ ...testGroup });
+  await win.promoteGroupMember('user_promovido_2');
+
+  // Verificar notificação gravada no Firestore
+  const notifDocs = Object.entries(env.firestoreDocs)
+    .filter(([path, data]) => path.startsWith('notifications/') && data.toUid === 'user_promovido_2')
+    .map(([path, data]) => ({ id: path.replace('notifications/', ''), ...data }));
+
+  assert.ok(notifDocs.length >= 1, 'Notificação para o usuário promovido deve ser gravada no Firestore');
+  const promoNotif = notifDocs[notifDocs.length - 1];
+  assert.ok(promoNotif.title.includes('Você é admin do grupo!'), 'Título da notificação deve avisar que o usuário é admin do grupo');
+  assert.ok(promoNotif.title.includes('🎓'), 'Título deve conter o emoji de capelo 🎓');
+  assert.strictEqual(promoNotif.type, 'group_promote', 'Tipo da notificação deve ser group_promote');
+  assert.strictEqual(promoNotif.icon, 'graduation-cap', 'Ícone da notificação deve ser graduation-cap');
+  assert.ok(promoNotif.message.includes('DX Hub Digital'), 'Mensagem da notificação deve citar o nome do grupo');
+
+  // 4. Renderização Oficial em renderNotifications()
+  // Mock da lista de notificações no sandbox
+  const notifListEl = env.elements['notifications-list'];
+  assert.ok(notifListEl, 'Elemento #notifications-list deve existir no DOM');
+
+  // Injetar a notificação na lista renderizável
+  win.setAllNotifications([
+    {
+      id: 'notif_promo_new',
+      toUid: 'user_promovido_2',
+      title: '🎓 Você é admin do grupo!',
+      message: 'Você foi promovido a administrador do grupo "DX Hub Digital". Agora você tem acesso total ao grupo.',
+      type: 'group_promote',
+      icon: 'graduation-cap',
+      createdAt: Date.now()
+    }
+  ]);
+
+  // Validação do HTML gerado na notificação
+  const htmlOutput = notifListEl.innerHTML;
+  assert.ok(htmlOutput.includes('card-group-promote'), 'Notificação renderizada deve conter a classe card-group-promote');
+  assert.ok(htmlOutput.includes('notification-icon-box group-promote'), 'Caixa de ícone deve ter a classe group-promote');
+  assert.ok(htmlOutput.includes('notif-svg-group-promote'), 'SVG do capelo / chapéu de formatura (.notif-svg-group-promote) deve ser renderizado');
+  assert.ok(htmlOutput.includes('notification-badge group-promote'), 'Badge deve ter a classe group-promote');
+  assert.ok(htmlOutput.includes('ADMIN 🎓'), 'Texto da badge deve ser ADMIN 🎓');
+  assert.ok(htmlOutput.includes('🎓 Você é admin do grupo!'), 'Título renderizado deve ter o ícone de capelo 🎓');
+
+  // 5. Retrocompatibilidade: Notificações antigas ou com título antigo do print (Image 2)
+  win.setAllNotifications([
+    {
+      id: 'notif_legacy_print',
+      toUid: 'user_promovido_2',
+      title: '🛡️ Você é admin do grupo!',
+      message: 'Você foi promovido a administrador do grupo "DX Hub Digital". Agora você tem acesso total ao grupo.',
+      type: 'warning',
+      createdAt: Date.now() - 3600000
+    }
+  ]);
+
+  const legacyOutput = notifListEl.innerHTML;
+  assert.ok(legacyOutput.includes('card-group-promote'), 'Notificação legada com "Você é admin do grupo" deve receber estilo card-group-promote');
+  assert.ok(legacyOutput.includes('notif-svg-group-promote'), 'Notificação legada deve exibir o ícone do capelo');
+  assert.ok(legacyOutput.includes('ADMIN 🎓'), 'Notificação legada deve exibir badge ADMIN 🎓');
+});
+
 
 
 

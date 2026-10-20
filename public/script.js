@@ -1335,6 +1335,11 @@ export function combineAndRenderNotifications() {
     renderNotifications();
 }
 
+export function setAllNotifications(notifs) {
+    allNotifications = Array.isArray(notifs) ? [...notifs] : [];
+    renderNotifications();
+}
+
 export function listenToNotifications() {
     if (!currentUser) return;
     if (notificationsUnsubscribe) notificationsUnsubscribe();
@@ -1555,7 +1560,7 @@ export function renderNotifications() {
     let filtered = allNotifications.filter(n => {
         if (deletedNotifIds.has(n.id)) return false;
         if (currentNotifFilter === 'vip') return n.type === 'vip';
-        if (currentNotifFilter === 'warning') return !n.type || n.type === 'warning' || n.type === 'group_add';
+        if (currentNotifFilter === 'warning') return !n.type || n.type === 'warning' || n.type === 'group_add' || n.type === 'group_promote';
         if (currentNotifFilter === 'alert') return n.type === 'alert';
         return true;
     });
@@ -1579,10 +1584,13 @@ export function renderNotifications() {
 
         const isVip = type === 'vip';
         const isAlert = type === 'alert';
-        const isStoryLike = type === 'like_story' || type === 'story_like' || (/story/i.test(titleRaw) && /curtiu|reagiu/i.test(titleRaw)) || /ao seu story/i.test(msgRaw);
-        const isLike = !isStoryLike && (type === 'like_post' || type === 'like' || /curtiu|reagiu/i.test(titleRaw) || /curtiu a sua publica/i.test(msgRaw));
-        const isComment = type === 'comment_post' || type === 'comment' || /comentou/i.test(titleRaw) || /comentou na sua publica/i.test(msgRaw);
-        const isGroupAdd = type === 'group_add' || /adicionado a um grupo|adicionado ao grupo/i.test(titleRaw) || /adicionado ao grupo/i.test(msgRaw);
+        const isGroupPromote = type === 'group_promote' ||
+            /Você é admin do grupo|admin do grupo/i.test(titleRaw) ||
+            /promovido a administrador/i.test(msgRaw);
+        const isStoryLike = !isGroupPromote && (type === 'like_story' || type === 'story_like' || (/story/i.test(titleRaw) && /curtiu|reagiu/i.test(titleRaw)) || /ao seu story/i.test(msgRaw));
+        const isLike = !isGroupPromote && !isStoryLike && (type === 'like_post' || type === 'like' || /curtiu|reagiu/i.test(titleRaw) || /curtiu a sua publica/i.test(msgRaw));
+        const isComment = !isGroupPromote && (type === 'comment_post' || type === 'comment' || /comentou/i.test(titleRaw) || /comentou na sua publica/i.test(msgRaw));
+        const isGroupAdd = !isGroupPromote && (type === 'group_add' || /adicionado a um grupo|adicionado ao grupo/i.test(titleRaw) || /adicionado ao grupo/i.test(msgRaw));
 
         let typeClass = 'warning';
         let badgeText = 'AVISO ⚠️';
@@ -1597,6 +1605,17 @@ export function renderNotifications() {
             typeClass = 'alert';
             badgeText = 'ALERTA 🔴';
             iconHTML = '<i data-lucide="shield-alert"></i>';
+        } else if (isGroupPromote) {
+            typeClass = 'group-promote';
+            badgeText = 'ADMIN 🎓';
+            displayTitle = displayTitle.replace(/^🛡️\s*/, '').trim();
+            if (!displayTitle.includes('🎓')) displayTitle = `🎓 ${displayTitle}`;
+            iconHTML = `
+                <svg class="notif-custom-svg notif-svg-group-promote" viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true">
+                    <path d="M12 2L1 8.2l11 6.2 9.2-5.18V17h1.8V8.2L12 2z"/>
+                    <path d="M5 12.3v3.2c0 2.8 3.1 5 7 5s7-2.2 7-5v-3.2l-7 3.9-7-3.9z"/>
+                </svg>
+            `;
         } else if (isStoryLike) {
             typeClass = 'story-like';
             badgeText = 'STORY';
@@ -11138,8 +11157,14 @@ async function promoteGroupMember(memberUid) {
         managedGroup.admins = [...new Set([...(managedGroup.admins || []), memberUid])];
         await updateDoc(doc(db, 'groups', managedGroup.groupId), { admins: managedGroup.admins, updatedAt: Date.now() });
         await syncGroupReferences(managedGroup);
-        // Notificar o usuário promovido
-        await notifyUser(memberUid, '🛡️ Você é admin do grupo!', `Você foi promovido a administrador do grupo "${managedGroup.name || 'Grupo VIP'}". Agora você tem acesso total ao grupo.`);
+        // Notificar o usuário promovido com ícone de capelo / graduação e tipo group_promote
+        await notifyUser(
+            memberUid,
+            '🎓 Você é admin do grupo!',
+            `Você foi promovido a administrador do grupo "${managedGroup.name || 'Grupo VIP'}". Agora você tem acesso total ao grupo.`,
+            'group_promote',
+            'graduation-cap'
+        );
         await openGroupProfile(managedGroup);
         showToast('Novo admin', 'O usuário foi promovido como administrador e notificado.', 'green');
     } catch (error) {
@@ -16251,7 +16276,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.168';
+export const CURRENT_APP_VERSION = '1.0.169';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -16719,6 +16744,7 @@ if (typeof window !== 'undefined') {
     window.deleteSingleNotification = deleteSingleNotification;
     window.attachNotificationSwipeHandlers = attachNotificationSwipeHandlers;
     window.renderNotifications = renderNotifications;
+    window.setAllNotifications = setAllNotifications;
     window.updateNotificationsBadge = updateNotificationsBadge;
     window.adminSendBroadcast = adminSendBroadcast;
     window.loadAdminBroadcastHistory = loadAdminBroadcastHistory;
