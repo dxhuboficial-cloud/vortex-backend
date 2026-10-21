@@ -10559,14 +10559,12 @@ test('Padronização do Tamanho dos Botões e Barra Horizontal da Loja (v1.0.175
   const env = createTestEnvironment();
   const win = env.sandbox.window;
 
-  // 1. Integridade de Versionamento (v1.0.175)
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.175', 'script.js deve ter versão 1.0.175');
+  // 1. Integridade de Versionamento (v1.0.175+)
+  const parts = win.CURRENT_APP_VERSION.split('.').map(Number);
+  assert.ok(parts[0] > 1 || (parts[0] === 1 && parts[1] > 0) || (parts[0] === 1 && parts[1] === 0 && parts[2] >= 175), 'script.js deve ter versão >= 1.0.175');
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
-  assert.strictEqual(versionJson.version, '1.0.175', 'version.json deve ter versão 1.0.175');
-  assert.ok(htmlContent.includes('script.js?v=1.0.175'), 'index.html deve referenciar script.js?v=1.0.175');
-  assert.ok(htmlContent.includes('style.css?v=1.0.175'), 'index.html deve referenciar style.css?v=1.0.175');
-  const swContent = fs.readFileSync('public/sw.js', 'utf8');
-  assert.ok(swContent.includes('vortex-vip-v1.0.175'), 'sw.js deve ter cache vortex-vip-v1.0.175');
+  const vParts = versionJson.version.split('.').map(Number);
+  assert.ok(vParts[0] > 1 || (vParts[0] === 1 && vParts[1] > 0) || (vParts[0] === 1 && vParts[1] === 0 && vParts[2] >= 175), 'version.json deve ter versão >= 1.0.175');
 
   // 2. Elementos da Barra de Ferramentas da Loja no DOM
   assert.ok(env.elements['catalog-add-product-btn'], '#catalog-add-product-btn deve existir');
@@ -10583,6 +10581,101 @@ test('Padronização do Tamanho dos Botões e Barra Horizontal da Loja (v1.0.175
   assert.ok(cssContent.includes('height: 42px'), 'Deve padronizar altura dos botões no desktop/tablet');
   assert.ok(cssContent.includes('height: 38px'), 'Deve padronizar altura dos botões no celular');
   assert.ok(cssContent.includes('flex: 0 0 auto'), 'Deve conter flex: 0 0 auto para evitar encolhimento no celular');
+});
+
+test('Correção de Mensagens Favoritas, Função formatDate e Abertura com Múltiplos Favoritos (v1.0.176)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+
+  // 1. Integridade de Versionamento (v1.0.176)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.176', 'script.js deve ter versão 1.0.176');
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
+  assert.strictEqual(versionJson.version, '1.0.176', 'version.json deve ter versão 1.0.176');
+  const htmlContent = fs.readFileSync('public/index.html', 'utf8');
+  assert.ok(htmlContent.includes('script.js?v=1.0.176'), 'index.html deve referenciar script.js?v=1.0.176');
+  assert.ok(htmlContent.includes('style.css?v=1.0.176'), 'index.html deve referenciar style.css?v=1.0.176');
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+  assert.ok(swContent.includes('vortex-vip-v1.0.176'), 'sw.js deve ter cache vortex-vip-v1.0.176');
+
+  // 2. Existência e funcionamento das funções formatDate e formatStarredMessageDate
+  assert.strictEqual(typeof win.formatDate, 'function', 'formatDate deve ser uma função global');
+  assert.strictEqual(typeof win.formatStarredMessageDate, 'function', 'formatStarredMessageDate deve ser uma função global');
+  
+  const nowStr = win.formatDate(Date.now());
+  assert.ok(nowStr.startsWith('Hoje às'), 'formatDate de hoje deve retornar "Hoje às ..."');
+  
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yestStr = win.formatDate(yesterday.getTime());
+  assert.ok(yestStr.startsWith('Ontem às'), 'formatDate de ontem deve retornar "Ontem às ..."');
+
+  // 3. Simulação exata do cenário do usuário (3 itens favoritados: áudio, texto "oi", emojis "💚💛🧡❤️")
+  const currentUser = { uid: 'user_star_tester_123', email: 'tester@vortex.app', displayName: 'Tester' };
+  win.setCurrentUser(currentUser);
+  win.setCurrentProfile(currentUser);
+
+  const audioMsg = {
+    id: 'msg_audio_1',
+    type: 'audio',
+    fileData: 'data:audio/webm;base64,GkXfo59ChoEBQveBAULygQ8USA==',
+    duration: '00:04',
+    senderUid: currentUser.uid,
+    createdAt: Date.now() - 60000
+  };
+
+  const textMsgOi = {
+    id: 'msg_text_oi',
+    type: 'text',
+    text: 'oi',
+    senderUid: currentUser.uid,
+    createdAt: Date.now() - 30000
+  };
+
+  const emojiMsg = {
+    id: 'msg_text_emojis',
+    type: 'text',
+    text: '💚💛🧡❤️',
+    senderUid: currentUser.uid,
+    createdAt: Date.now()
+  };
+
+  // Favorita as 3 mensagens
+  await win.toggleStarMessage(audioMsg);
+  await win.toggleStarMessage(textMsgOi);
+  await win.toggleStarMessage(emojiMsg);
+
+  const starred = win.getStarredMessages();
+  assert.strictEqual(starred.length, 3, 'Deve haver 3 mensagens favoritadas salvas');
+
+  // 4. Abertura do Modal com 3 itens favoritados (Não deve lançar ReferenceError: formatDate is not defined!)
+  assert.doesNotThrow(() => {
+    win.openStarredMessagesModal();
+  }, 'openStarredMessagesModal deve abrir sem erros mesmo com múltiplos favoritos');
+
+  const modal = env.elements['starred-messages-modal'];
+  const content = env.elements['starred-messages-content'];
+  assert.strictEqual(modal.style.display, 'flex', 'Modal deve estar com display: flex');
+  assert.ok(modal.classList.contains('active'), 'Modal deve ter classe active');
+  assert.strictEqual(modal.getAttribute('aria-hidden'), 'false', 'Modal deve ter aria-hidden: false');
+
+  // Verifica conteúdo renderizado
+  assert.ok(content.innerHTML.includes('data-id="msg_text_oi"'), 'Deve renderizar mensagem "oi"');
+  assert.ok(content.innerHTML.includes('data-id="msg_text_emojis"'), 'Deve renderizar mensagem com emojis');
+  assert.ok(content.innerHTML.includes('data-id="msg_audio_1"'), 'Deve renderizar mensagem de áudio');
+  assert.ok(content.innerHTML.includes('[Áudio / Mensagem de Voz]') || content.innerHTML.includes('Mensagem de voz'), 'Deve identificar áudio na lista');
+
+  // Fechamento do modal
+  win.closeStarredMessagesModal();
+  assert.strictEqual(modal.style.display, 'none', 'Modal deve estar com display: none após fechar');
+  assert.strictEqual(modal.getAttribute('aria-hidden'), 'true', 'Modal deve ter aria-hidden: true após fechar');
+
+  // 5. Integridade do CSS para Mensagens Favoritas
+  const cssContent = fs.readFileSync('public/style.css', 'utf8');
+  assert.ok(cssContent.includes('.starred-messages-card'), 'Deve estilizar .starred-messages-card');
+  assert.ok(cssContent.includes('.starred-msg-item'), 'Deve estilizar .starred-msg-item');
+  assert.ok(cssContent.includes('cursor: pointer'), 'Item de mensagem favorita deve ser clicável');
+  assert.ok(cssContent.includes('.highlighted-starred-msg'), 'Deve conter animação de destaque .highlighted-starred-msg');
+  assert.ok(cssContent.includes('@keyframes pulseStarredHighlight'), 'Deve conter keyframes pulseStarredHighlight');
 });
 
 

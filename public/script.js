@@ -13942,6 +13942,38 @@ async function copyMessageText(msg) {
     }
 }
 
+export function formatStarredMessageDate(timestamp) {
+    if (!timestamp) return '';
+    const date = new Date(timestamp);
+    if (isNaN(date.getTime())) return '';
+    const now = new Date();
+
+    const hours24 = date.getHours();
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const ampm = hours24 >= 12 ? 'PM' : 'AM';
+    const hours12 = hours24 % 12 || 12;
+    const formattedHours = String(hours12).padStart(2, '0');
+    const timeStr = `${formattedHours}:${minutes} ${ampm}`;
+
+    const isToday = date.toDateString() === now.toDateString();
+    const yesterday = new Date();
+    yesterday.setDate(now.getDate() - 1);
+    const isYesterday = date.toDateString() === yesterday.toDateString();
+
+    if (isToday) return `Hoje às ${timeStr}`;
+    if (isYesterday) return `Ontem às ${timeStr}`;
+
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    const isSameYear = year === now.getFullYear();
+    return isSameYear ? `${day}/${month} às ${timeStr}` : `${day}/${month}/${year} às ${timeStr}`;
+}
+
+export function formatDate(timestamp) {
+    return formatStarredMessageDate(timestamp);
+}
+
 export function getStarredMessages() {
     if (!currentUser) return [];
     try {
@@ -14000,15 +14032,36 @@ export async function toggleStarMessage(msg) {
     let starredList = getStarredMessages();
     if (nextStarred) {
         if (!starredList.some(item => item.id === msg.id)) {
+            let textRep = msg.text || msg.caption || '';
+            const mType = msg.type || msg.mediaType || (msg.imageUrl ? 'image' : (msg.mediaUrl ? 'media' : ''));
+            const mUrl = msg.mediaUrl || msg.imageUrl || msg.fileData || '';
+
+            if (!textRep) {
+                if (mType === 'audio') {
+                    textRep = msg.duration ? `Mensagem de voz (${msg.duration})` : 'Mensagem de voz';
+                } else if (mType === 'image') {
+                    textRep = 'Foto';
+                } else if (mType === 'video') {
+                    textRep = 'Vídeo';
+                } else if (mType === 'file') {
+                    textRep = msg.fileName || 'Arquivo';
+                } else if (mType === 'pix' || msg.pix) {
+                    textRep = 'Chave Pix';
+                } else if (mType === 'poll' || msg.poll) {
+                    textRep = msg.poll?.question || 'Enquete';
+                }
+            }
+
             starredList.unshift({
                 id: msg.id,
-                chatId: chatId || '',
+                chatId: chatId || msg.chatId || '',
                 senderUid: msg.senderUid || '',
                 senderName: msg.senderName || (msg.senderUid === currentUser.uid ? 'Você' : (activeChatContact?.name || 'Contato')),
-                chatTitle: activeChatContact?.name || 'Chat',
-                text: msg.text || msg.caption || (msg.mediaUrl ? '[Mídia]' : ''),
-                mediaUrl: msg.mediaUrl || msg.imageUrl || '',
-                mediaType: msg.mediaType || (msg.imageUrl ? 'image' : ''),
+                chatTitle: activeChatContact?.name || msg.chatTitle || 'Chat',
+                text: textRep,
+                mediaUrl: mUrl,
+                mediaType: mType,
+                duration: msg.duration || '',
                 createdAt: msg.createdAt || Date.now()
             });
         }
@@ -14061,19 +14114,46 @@ export function openStarredMessagesModal() {
             </div>
         `;
     } else {
-        content.innerHTML = list.map(item => `
-            <div class="starred-msg-item" data-id="${escapeHTML(item.id)}">
-                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                    <span class="starred-msg-sender">${escapeHTML(item.senderName || 'Contato')} ${item.chatTitle ? `<small style="opacity:0.7;">em ${escapeHTML(item.chatTitle)}</small>` : ''}</span>
-                    <button type="button" class="starred-msg-unstar-btn" data-id="${escapeHTML(item.id)}" title="Remover dos favoritos">
-                        <i data-lucide="star" style="width:14px; height:14px; fill:#fff01f; color:#fff01f;"></i>
-                    </button>
+        content.innerHTML = list.map(item => {
+            let displayText = item.text || '';
+            let mediaBadgeHTML = '';
+            const mType = (item.mediaType || '').toLowerCase();
+
+            if (mType === 'audio' || (!displayText && item.mediaUrl && item.mediaUrl.startsWith('data:audio'))) {
+                mediaBadgeHTML = `<div style="font-size:0.8rem; color:#00ff88; margin-bottom:3px; display:flex; align-items:center; gap:5px;"><i data-lucide="mic" style="width:13px;height:13px;"></i> [Áudio / Mensagem de Voz]</div>`;
+                if (!displayText) displayText = item.duration ? `Mensagem de voz (${item.duration})` : 'Mensagem de voz';
+            } else if (mType === 'image' || (!displayText && item.mediaUrl && item.mediaUrl.startsWith('data:image'))) {
+                mediaBadgeHTML = `<div style="font-size:0.8rem; color:#38bdf8; margin-bottom:3px; display:flex; align-items:center; gap:5px;"><i data-lucide="image" style="width:13px;height:13px;"></i> [Foto]</div>`;
+                if (!displayText) displayText = 'Foto';
+            } else if (mType === 'video' || (!displayText && item.mediaUrl && item.mediaUrl.startsWith('data:video'))) {
+                mediaBadgeHTML = `<div style="font-size:0.8rem; color:#f43f5e; margin-bottom:3px; display:flex; align-items:center; gap:5px;"><i data-lucide="video" style="width:13px;height:13px;"></i> [Vídeo]</div>`;
+                if (!displayText) displayText = 'Vídeo';
+            } else if (mType === 'file') {
+                mediaBadgeHTML = `<div style="font-size:0.8rem; color:#fbbf24; margin-bottom:3px; display:flex; align-items:center; gap:5px;"><i data-lucide="file-text" style="width:13px;height:13px;"></i> [Arquivo]</div>`;
+                if (!displayText) displayText = 'Arquivo';
+            } else if (item.mediaUrl) {
+                mediaBadgeHTML = `<div style="font-size:0.8rem; color:var(--text-dim); margin-bottom:3px; display:flex; align-items:center; gap:5px;"><i data-lucide="paperclip" style="width:13px;height:13px;"></i> [Mídia]</div>`;
+                if (!displayText) displayText = '[Mídia]';
+            } else if (!displayText) {
+                displayText = 'Mensagem';
+            }
+
+            const formattedTime = formatStarredMessageDate(item.createdAt || Date.now());
+
+            return `
+                <div class="starred-msg-item" data-id="${escapeHTML(item.id)}" data-chat-id="${escapeHTML(item.chatId || '')}" role="button" tabindex="0" title="Toque para ver a mensagem na conversa">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:2px;">
+                        <span class="starred-msg-sender">${escapeHTML(item.senderName || 'Contato')} ${item.chatTitle ? `<small style="opacity:0.7; font-weight:400; color:var(--text-dim);">em ${escapeHTML(item.chatTitle)}</small>` : ''}</span>
+                        <button type="button" class="starred-msg-unstar-btn" data-id="${escapeHTML(item.id)}" title="Remover dos favoritos" aria-label="Remover dos favoritos">
+                            <i data-lucide="star" style="width:15px; height:15px; fill:#fff01f; color:#fff01f;"></i>
+                        </button>
+                    </div>
+                    ${mediaBadgeHTML}
+                    <div class="starred-msg-text">${escapeHTML(displayText)}</div>
+                    <span class="starred-msg-time">${formattedTime}</span>
                 </div>
-                ${item.mediaUrl ? `<div style="font-size:0.8rem; color:var(--text-dim); margin-bottom:2px;"><i data-lucide="image" style="width:12px;height:12px;vertical-align:middle;"></i> [Arquivo de Mídia]</div>` : ''}
-                <div class="starred-msg-text">${escapeHTML(item.text || '')}</div>
-                <span class="starred-msg-time">${formatDate(item.createdAt || Date.now())}</span>
-            </div>
-        `).join('');
+            `;
+        }).join('');
 
         content.querySelectorAll('.starred-msg-unstar-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -14082,15 +14162,57 @@ export function openStarredMessagesModal() {
                 let current = getStarredMessages();
                 current = current.filter(m => m.id !== msgId);
                 saveStarredMessages(current);
+
+                // Remove indicador de estrela da bolha na conversa caso esteja no DOM
+                const starIconEl = document.querySelector(`.message[data-id="${msgId}"] .msg-starred-indicator`);
+                if (starIconEl) starIconEl.remove();
+
                 openStarredMessagesModal();
                 showToast('Removida ⭐', 'Mensagem removida das favoritas.', 'yellow');
                 playSound(clickSound);
+            });
+        });
+
+        content.querySelectorAll('.starred-msg-item').forEach(card => {
+            card.addEventListener('click', (e) => {
+                if (e.target.closest('.starred-msg-unstar-btn')) return;
+                const msgId = card.dataset.id;
+                const itemChatId = card.dataset.chatId;
+
+                closeStarredMessagesModal();
+
+                const currentChatId = typeof getActiveChatId === 'function' ? getActiveChatId() : '';
+                const msgEl = document.querySelector(`.message[data-id="${msgId}"]`);
+
+                if (msgEl) {
+                    msgEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    msgEl.classList.add('highlighted-starred-msg');
+                    setTimeout(() => {
+                        msgEl.classList.remove('highlighted-starred-msg');
+                    }, 2500);
+                } else if (itemChatId && itemChatId !== currentChatId && typeof openChatByChatIdOrUid === 'function') {
+                    openChatByChatIdOrUid(itemChatId).then(() => {
+                        setTimeout(() => {
+                            const newMsgEl = document.querySelector(`.message[data-id="${msgId}"]`);
+                            if (newMsgEl) {
+                                newMsgEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                newMsgEl.classList.add('highlighted-starred-msg');
+                                setTimeout(() => newMsgEl.classList.remove('highlighted-starred-msg'), 2500);
+                            }
+                        }, 500);
+                    }).catch(() => {
+                        showToast('Mensagem Favorita', 'Mensagem favoritada no chat.', 'blue');
+                    });
+                } else {
+                    showToast('Mensagem Favorita', 'A mensagem está favoritada.', 'blue');
+                }
             });
         });
     }
 
     modal.style.display = 'flex';
     modal.classList.add('active');
+    modal.setAttribute('aria-hidden', 'false');
     if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
 }
 
@@ -14099,6 +14221,7 @@ export function closeStarredMessagesModal() {
     if (modal) {
         modal.style.display = 'none';
         modal.classList.remove('active');
+        modal.setAttribute('aria-hidden', 'true');
     }
 }
 
@@ -14109,6 +14232,12 @@ document.getElementById('view-starred-messages-trigger')?.addEventListener('clic
 
 document.getElementById('close-starred-messages-modal')?.addEventListener('click', () => {
     closeStarredMessagesModal();
+});
+
+document.getElementById('starred-messages-modal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'starred-messages-modal') {
+        closeStarredMessagesModal();
+    }
 });
 
 function startEditMessage(msg) {
@@ -17842,7 +17971,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.175';
+export const CURRENT_APP_VERSION = '1.0.176';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -29137,6 +29266,8 @@ if (typeof window !== 'undefined') {
     window.saveStarredMessages = saveStarredMessages;
     window.openStarredMessagesModal = openStarredMessagesModal;
     window.closeStarredMessagesModal = closeStarredMessagesModal;
+    window.formatStarredMessageDate = formatStarredMessageDate;
+    window.formatDate = formatDate;
     window.CATALOG_COUPONS = CATALOG_COUPONS;
     window.applyCartCoupon = applyCartCoupon;
     window.removeCartCoupon = removeCartCoupon;
