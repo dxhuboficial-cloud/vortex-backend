@@ -7900,10 +7900,12 @@ export function initCatalog() {
     document.getElementById('contact-profile-catalog-btn')?.addEventListener('click', () => {
         playSound(clickSound);
         if (activeContactProfileData) {
+            const sellerUid = activeContactProfileData.uid || activeContactProfileData.id;
+            const sellerData = { ...activeContactProfileData };
             closeContactProfile();
             openCatalogOverlay({
-                sellerUid: activeContactProfileData.uid || activeContactProfileData.id,
-                sellerData: activeContactProfileData
+                sellerUid: sellerUid,
+                sellerData: sellerData
             });
         }
     });
@@ -18015,7 +18017,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.177';
+export const CURRENT_APP_VERSION = '1.0.178';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;

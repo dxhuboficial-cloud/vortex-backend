@@ -10679,15 +10679,12 @@ test('Correção de Clique na Mensagem Favorita e Compatibilidade Assíncrona de
   const env = createTestEnvironment();
   const win = env.sandbox.window;
 
-  // 1. Integridade de Versionamento (v1.0.177)
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.177', 'script.js deve ter versão 1.0.177');
+  // 1. Integridade de Versionamento (v1.0.177+)
+  const parts = win.CURRENT_APP_VERSION.split('.').map(Number);
+  assert.ok(parts[0] > 1 || (parts[0] === 1 && parts[1] > 0) || (parts[0] === 1 && parts[1] === 0 && parts[2] >= 177), 'script.js deve ter versão >= 1.0.177');
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
-  assert.strictEqual(versionJson.version, '1.0.177', 'version.json deve ter versão 1.0.177');
-  const htmlContent = fs.readFileSync('public/index.html', 'utf8');
-  assert.ok(htmlContent.includes('script.js?v=1.0.177'), 'index.html deve referenciar script.js?v=1.0.177');
-  assert.ok(htmlContent.includes('style.css?v=1.0.177'), 'index.html deve referenciar style.css?v=1.0.177');
-  const swContent = fs.readFileSync('public/sw.js', 'utf8');
-  assert.ok(swContent.includes('vortex-vip-v1.0.177'), 'sw.js deve ter cache vortex-vip-v1.0.177');
+  const vParts = versionJson.version.split('.').map(Number);
+  assert.ok(vParts[0] > 1 || (vParts[0] === 1 && vParts[1] > 0) || (vParts[0] === 1 && vParts[1] === 0 && vParts[2] >= 177), 'version.json deve ter versão >= 1.0.177');
 
   // 2. Simulação de clique no card de favorita sem disparar TypeError (reading then)
   const currentUser = { uid: 'user_star_click_tester', email: 'tester@vortex.app' };
@@ -10731,6 +10728,49 @@ test('Correção de Clique na Mensagem Favorita e Compatibilidade Assíncrona de
       await cardEl.click();
     });
   }
+});
+
+test('Correção de Abertura do Catálogo no Perfil de Contato sem Erro de Null UID (v1.0.178)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+
+  // 1. Integridade de Versionamento (v1.0.178)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.178', 'script.js deve ter versão 1.0.178');
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
+  assert.strictEqual(versionJson.version, '1.0.178', 'version.json deve ter versão 1.0.178');
+  const htmlContent = fs.readFileSync('public/index.html', 'utf8');
+  assert.ok(htmlContent.includes('script.js?v=1.0.178'), 'index.html deve referenciar script.js?v=1.0.178');
+  assert.ok(htmlContent.includes('style.css?v=1.0.178'), 'index.html deve referenciar style.css?v=1.0.178');
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+  assert.ok(swContent.includes('vortex-vip-v1.0.178'), 'sw.js deve ter cache vortex-vip-v1.0.178');
+
+  // 2. Define usuário logado
+  const currentUser = { uid: 'user_tester_buyer', email: 'buyer@vortex.app', name: 'Buyer Test' };
+  win.setCurrentUser(currentUser);
+  win.setCurrentProfile(currentUser);
+
+  // 3. Simula abertura do perfil de um contato vendedor com conta empresa
+  const sellerContact = {
+    uid: 'seller_contact_456',
+    name: 'Loja Tech VIP',
+    username: 'lojatech',
+    accountType: 'business'
+  };
+
+  await win.openContactProfile(sellerContact);
+
+  const catalogBtn = env.elements['contact-profile-catalog-btn'];
+  assert.ok(catalogBtn, '#contact-profile-catalog-btn deve existir no DOM');
+  const catalogOverlay = env.elements['catalog-overlay'];
+  assert.ok(catalogOverlay, '#catalog-overlay deve existir no DOM');
+
+  // O clique não deve lançar TypeError: Cannot read properties of null (reading 'uid')
+  assert.doesNotThrow(() => {
+    catalogBtn.click();
+  }, 'Clique em contact-profile-catalog-btn não deve lançar erro');
+
+  assert.strictEqual(catalogOverlay.style.display, 'flex', '#catalog-overlay deve ser aberto com display: flex');
+  assert.ok(catalogOverlay.classList.contains('active'), '#catalog-overlay deve ter classe active');
 });
 
 
