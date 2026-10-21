@@ -4286,6 +4286,12 @@ export function addToCatalogCart(product, sellerUid, sellerData = {}, options = 
     cart.sellerUid = sellerUid;
     cart.sellerName = sellerData.name || sellerData.storeName || 'Vendedor VORTEX';
     cart.sellerPixKey = sellerData.pixKey || '';
+    if (sellerData.storeShipping) {
+        sellerShippingCache.set(sellerUid, sellerData.storeShipping);
+    }
+    if (sellerData.storeCoupons) {
+        sellerCouponsCache.set(sellerUid, sellerData.storeCoupons);
+    }
 
     const selColor = options.selectedColor
         ? (typeof options.selectedColor === 'object' ? (options.selectedColor.name || options.selectedColor.hex) : String(options.selectedColor))
@@ -4451,7 +4457,318 @@ export const CATALOG_COUPONS = {
     'FRETEGRATIS': { type: 'fixed', value: 10, label: 'R$ 10,00 OFF (Frete Grátis)' }
 };
 
+export const sellerCouponsCache = new Map();
+export const sellerShippingCache = new Map();
+
 export let appliedCartCoupon = null;
+
+export async function loadSellerCoupons(sellerUid) {
+    if (!sellerUid) return {};
+    if (currentUser && sellerUid === currentUser.uid && currentProfile?.storeCoupons) {
+        return currentProfile.storeCoupons;
+    }
+    if (sellerCouponsCache.has(sellerUid)) {
+        return sellerCouponsCache.get(sellerUid);
+    }
+    try {
+        const uSnap = await getDoc(doc(db, 'users', sellerUid));
+        if (uSnap.exists()) {
+            const data = uSnap.data();
+            const coupons = data.storeCoupons || {};
+            sellerCouponsCache.set(sellerUid, coupons);
+            return coupons;
+        }
+    } catch (e) {
+        console.warn('[VORTEX] Erro ao carregar cupons do vendedor:', e);
+    }
+    return {};
+}
+
+export async function saveSellerCoupon(rawCode, type = 'percent', rawValue, rawLabel = '') {
+    if (!currentUser) throw new Error('Usuário não autenticado.');
+    const code = (rawCode || '').trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '');
+    if (!code || code.length < 3) {
+        throw new Error('O código do cupom deve conter pelo menos 3 caracteres alfanuméricos.');
+    }
+    const val = Number(rawValue);
+    if (isNaN(val) || val <= 0) {
+        throw new Error('O valor do desconto deve ser um número maior que zero.');
+    }
+    if (type === 'percent' && val > 90) {
+        throw new Error('O desconto percentual não pode ultrapassar 90%.');
+    }
+    const validTypes = ['percent', 'fixed'];
+    const couponType = validTypes.includes(type) ? type : 'percent';
+    const label = (rawLabel || '').trim() || (couponType === 'percent' ? `${val}% OFF` : `R$ ${formatBRL(val)} OFF`);
+
+    const newCoupon = {
+        code,
+        type: couponType,
+        value: val,
+        label,
+        createdAt: Date.now()
+    };
+
+    if (!currentProfile) currentProfile = {};
+    if (!currentProfile.storeCoupons) currentProfile.storeCoupons = {};
+    currentProfile.storeCoupons[code] = newCoupon;
+
+    try {
+        await updateDoc(doc(db, 'users', currentUser.uid), {
+            storeCoupons: currentProfile.storeCoupons
+        });
+    } catch (err) {
+        console.warn('[VORTEX] Erro ao salvar cupom no Firestore:', err);
+    }
+
+    sellerCouponsCache.set(currentUser.uid, currentProfile.storeCoupons);
+    renderSellerCouponsUI();
+    return newCoupon;
+}
+
+export async function deleteSellerCoupon(code) {
+    if (!currentUser || !code) return;
+    const normCode = code.trim().toUpperCase();
+    if (!currentProfile?.storeCoupons || !currentProfile.storeCoupons[normCode]) return;
+
+    delete currentProfile.storeCoupons[normCode];
+    try {
+        await updateDoc(doc(db, 'users', currentUser.uid), {
+            storeCoupons: currentProfile.storeCoupons
+        });
+    } catch (err) {
+        console.warn('[VORTEX] Erro ao deletar cupom no Firestore:', err);
+    }
+
+    sellerCouponsCache.set(currentUser.uid, currentProfile.storeCoupons);
+    renderSellerCouponsUI();
+}
+
+export function renderSellerCouponsUI() {
+    const listEl = document.getElementById('catalog-coupons-list');
+    const countEl = document.getElementById('catalog-coupons-count');
+    const coupons = currentProfile?.storeCoupons || {};
+    const entries = Object.values(coupons);
+
+    if (countEl) countEl.innerText = String(entries.length);
+    if (!listEl) return;
+
+    if (entries.length === 0) {
+        listEl.innerHTML = `
+            <div style="text-align:center; padding:20px 10px; color:var(--text-dim); font-size:0.84rem;">
+                <i data-lucide="tag" style="width:28px; height:28px; opacity:0.4; margin-bottom:6px;"></i>
+                <p style="margin:0;">Nenhum cupom cadastrado ainda.</p>
+                <small style="opacity:0.7;">Cadastre códigos de cupom para dar descontos aos seus clientes!</small>
+            </div>
+        `;
+    } else {
+        listEl.innerHTML = entries.map(c => `
+            <div class="catalog-coupon-item">
+                <div class="catalog-coupon-info">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span class="catalog-coupon-code-badge"><i data-lucide="tag" style="width:14px;height:14px;"></i> ${escapeHTML(c.code)}</span>
+                        <span class="catalog-coupon-discount-tag">${c.type === 'percent' ? `${c.value}% OFF` : `R$ ${formatBRL(c.value)} OFF`}</span>
+                    </div>
+                    ${c.label ? `<span class="catalog-coupon-meta">${escapeHTML(c.label)}</span>` : ''}
+                </div>
+                <button type="button" class="catalog-coupon-delete-btn" data-code="${escapeHTML(c.code)}" title="Excluir cupom">
+                    <i data-lucide="trash-2" style="width:14px;height:14px;"></i> <span>Excluir</span>
+                </button>
+            </div>
+        `).join('');
+
+        listEl.querySelectorAll('.catalog-coupon-delete-btn').forEach(btn => {
+            btn.onclick = () => {
+                const codeToDelete = btn.dataset.code;
+                if (codeToDelete) {
+                    deleteSellerCoupon(codeToDelete);
+                    showToast('Cupom Removido', `O cupom ${codeToDelete} foi excluído.`, 'blue');
+                }
+            };
+        });
+    }
+
+    if (window.lucide) lucide.createIcons();
+}
+
+export function openCouponsModal() {
+    const modal = document.getElementById('catalog-coupons-modal');
+    if (!modal) return;
+    modal.style.display = 'flex';
+    modal.classList.add('active');
+    const codeInp = document.getElementById('catalog-coupon-code-input');
+    const valInp = document.getElementById('catalog-coupon-val-input');
+    const labelInp = document.getElementById('catalog-coupon-label-input');
+    if (codeInp) codeInp.value = '';
+    if (valInp) valInp.value = '';
+    if (labelInp) labelInp.value = '';
+    renderSellerCouponsUI();
+}
+
+export function closeCouponsModal() {
+    const modal = document.getElementById('catalog-coupons-modal');
+    if (!modal) return;
+    modal.style.display = 'none';
+    modal.classList.remove('active');
+}
+
+export async function loadSellerShipping(sellerUid) {
+    if (!sellerUid) return null;
+    if (currentUser && sellerUid === currentUser.uid && currentProfile?.storeShipping) {
+        return currentProfile.storeShipping;
+    }
+    if (sellerShippingCache.has(sellerUid)) {
+        return sellerShippingCache.get(sellerUid);
+    }
+    try {
+        const uSnap = await getDoc(doc(db, 'users', sellerUid));
+        if (uSnap.exists()) {
+            const data = uSnap.data();
+            const shipping = data.storeShipping || null;
+            if (shipping) sellerShippingCache.set(sellerUid, shipping);
+            return shipping;
+        }
+    } catch (e) {
+        console.warn('[VORTEX] Erro ao carregar frete do vendedor:', e);
+    }
+    return null;
+}
+
+export async function saveSellerShipping(config) {
+    if (!currentUser) throw new Error('Usuário não autenticado.');
+    const type = ['free', 'fixed', 'free_above', 'custom'].includes(config?.type) ? config.type : 'fixed';
+    const price = Math.max(0, Number(config?.price) || 0);
+    const minOrder = Math.max(0, Number(config?.minOrder) || 0);
+    const deadline = (config?.deadline || '').trim();
+
+    const shippingData = {
+        type,
+        price,
+        minOrder,
+        deadline,
+        updatedAt: Date.now()
+    };
+
+    if (!currentProfile) currentProfile = {};
+    currentProfile.storeShipping = shippingData;
+
+    try {
+        await updateDoc(doc(db, 'users', currentUser.uid), {
+            storeShipping: shippingData
+        });
+    } catch (err) {
+        console.warn('[VORTEX] Erro ao salvar frete no Firestore:', err);
+    }
+
+    sellerShippingCache.set(currentUser.uid, shippingData);
+    return shippingData;
+}
+
+export function openShippingModal() {
+    const modal = document.getElementById('catalog-shipping-modal');
+    if (!modal) return;
+    modal.style.display = 'flex';
+    modal.classList.add('active');
+
+    const config = currentProfile?.storeShipping || {
+        type: 'fixed',
+        price: 15.00,
+        minOrder: 100.00,
+        deadline: '2 a 5 dias úteis'
+    };
+
+    const typeSelect = document.getElementById('catalog-shipping-type-select');
+    const priceInput = document.getElementById('catalog-shipping-price-input');
+    const minOrderInput = document.getElementById('catalog-shipping-min-order-input');
+    const deadlineInput = document.getElementById('catalog-shipping-deadline-input');
+
+    if (typeSelect) typeSelect.value = config.type || 'fixed';
+    if (priceInput) priceInput.value = config.price !== undefined ? config.price : '15.00';
+    if (minOrderInput) minOrderInput.value = config.minOrder !== undefined ? config.minOrder : '100.00';
+    if (deadlineInput) deadlineInput.value = config.deadline || '';
+
+    updateShippingModalUI();
+}
+
+export function closeShippingModal() {
+    const modal = document.getElementById('catalog-shipping-modal');
+    if (!modal) return;
+    modal.style.display = 'none';
+    modal.classList.remove('active');
+}
+
+export function updateShippingModalUI() {
+    const type = document.getElementById('catalog-shipping-type-select')?.value || 'fixed';
+    const price = Number(document.getElementById('catalog-shipping-price-input')?.value) || 0;
+    const minOrder = Number(document.getElementById('catalog-shipping-min-order-input')?.value) || 0;
+    const deadline = document.getElementById('catalog-shipping-deadline-input')?.value.trim() || '';
+
+    const fixedGroup = document.getElementById('catalog-shipping-fixed-group');
+    const freeAboveGroup = document.getElementById('catalog-shipping-free-above-group');
+    const previewText = document.getElementById('catalog-shipping-preview-text');
+
+    if (type === 'free') {
+        if (fixedGroup) fixedGroup.style.display = 'none';
+        if (freeAboveGroup) freeAboveGroup.style.display = 'none';
+        if (previewText) previewText.innerText = `🎉 Frete Grátis para todos os pedidos${deadline ? ` (${deadline})` : ''}`;
+    } else if (type === 'fixed') {
+        if (fixedGroup) fixedGroup.style.display = 'flex';
+        if (freeAboveGroup) freeAboveGroup.style.display = 'none';
+        if (previewText) previewText.innerText = `🚚 Frete Fixo: R$ ${formatBRL(price)}${deadline ? ` (${deadline})` : ''}`;
+    } else if (type === 'free_above') {
+        if (fixedGroup) fixedGroup.style.display = 'flex';
+        if (freeAboveGroup) freeAboveGroup.style.display = 'flex';
+        if (previewText) previewText.innerText = `🚚 Frete Fixo R$ ${formatBRL(price)} • Grátis acima de R$ ${formatBRL(minOrder)}${deadline ? ` (${deadline})` : ''}`;
+    } else if (type === 'custom') {
+        if (fixedGroup) fixedGroup.style.display = 'none';
+        if (freeAboveGroup) freeAboveGroup.style.display = 'none';
+        if (previewText) previewText.innerText = `💬 Frete a combinar com o vendedor no chat${deadline ? ` (${deadline})` : ''}`;
+    }
+}
+
+export function calculateCartShipping(cart, subtotal) {
+    if (!cart || !cart.sellerUid || !cart.items || cart.items.length === 0) {
+        return { cost: 0, label: 'Grátis', type: 'free' };
+    }
+
+    if (appliedCartCoupon && (appliedCartCoupon.code === 'FRETEGRATIS' || appliedCartCoupon.type === 'free_shipping')) {
+        return { cost: 0, label: 'Grátis (Cupom FRETEGRATIS)', type: 'coupon_free' };
+    }
+
+    let shipping = null;
+    if (currentUser && cart.sellerUid === currentUser.uid && currentProfile?.storeShipping) {
+        shipping = currentProfile.storeShipping;
+    } else if (sellerShippingCache.has(cart.sellerUid)) {
+        shipping = sellerShippingCache.get(cart.sellerUid);
+    }
+
+    if (!shipping) {
+        return { cost: 0, label: 'Grátis', type: 'free' };
+    }
+
+    const type = shipping.type || 'free';
+    const price = Number(shipping.price) || 0;
+    const minOrder = Number(shipping.minOrder) || 0;
+    const deadlineSuffix = shipping.deadline ? ` (${shipping.deadline})` : '';
+
+    if (type === 'free') {
+        return { cost: 0, label: `Grátis${deadlineSuffix}`, type: 'free' };
+    }
+    if (type === 'fixed') {
+        return { cost: price, label: `${formatBRL(price)}${deadlineSuffix}`, type: 'fixed' };
+    }
+    if (type === 'free_above') {
+        if (subtotal >= minOrder && minOrder > 0) {
+            return { cost: 0, label: `Grátis (Pedido acima de ${formatBRL(minOrder)})${deadlineSuffix}`, type: 'free_above' };
+        }
+        return { cost: price, label: `${formatBRL(price)}${deadlineSuffix}`, type: 'fixed' };
+    }
+    if (type === 'custom') {
+        return { cost: 0, label: `A combinar no chat${deadlineSuffix}`, type: 'custom' };
+    }
+
+    return { cost: 0, label: 'Grátis', type: 'free' };
+}
 
 export function applyCartCoupon(rawCode) {
     if (!rawCode || typeof rawCode !== 'string') {
@@ -4460,7 +4777,19 @@ export function applyCartCoupon(rawCode) {
         return { success: false, message: 'Digite o código do cupom.' };
     }
     const code = rawCode.trim().toUpperCase();
-    const coupon = CATALOG_COUPONS[code];
+    const cart = getCatalogCart();
+    let coupon = CATALOG_COUPONS[code];
+
+    if (!coupon && cart.sellerUid) {
+        if (currentUser && cart.sellerUid === currentUser.uid && currentProfile?.storeCoupons?.[code]) {
+            coupon = currentProfile.storeCoupons[code];
+        } else if (sellerCouponsCache.has(cart.sellerUid) && sellerCouponsCache.get(cart.sellerUid)[code]) {
+            coupon = sellerCouponsCache.get(cart.sellerUid)[code];
+        } else if (currentProfile?.storeCoupons?.[code]) {
+            coupon = currentProfile.storeCoupons[code];
+        }
+    }
+
     if (!coupon) {
         appliedCartCoupon = null;
         renderCatalogCartUI();
@@ -4559,12 +4888,16 @@ export function renderCatalogCartUI() {
             discount = Math.min(appliedCartCoupon.value, subtotal);
         }
     }
-    const finalTotal = Math.max(0, subtotal - discount);
+
+    const shippingInfo = calculateCartShipping(cart, subtotal);
+    const finalTotal = Math.max(0, subtotal - discount) + shippingInfo.cost;
 
     if (totalEl) totalEl.innerText = formatBRL(finalTotal);
 
     const discountRow = document.getElementById('catalog-cart-discount-row');
     const discountValEl = document.getElementById('catalog-cart-discount');
+    const shippingRow = document.getElementById('catalog-cart-shipping-row');
+    const shippingValEl = document.getElementById('catalog-cart-shipping');
     const couponFeedback = document.getElementById('catalog-coupon-feedback');
 
     if (discountRow && discountValEl) {
@@ -4574,6 +4907,11 @@ export function renderCatalogCartUI() {
         } else {
             discountRow.style.display = 'none';
         }
+    }
+
+    if (shippingRow && shippingValEl) {
+        shippingRow.style.display = 'flex';
+        shippingValEl.innerText = shippingInfo.label;
     }
 
     if (couponFeedback) {
@@ -4977,7 +5315,8 @@ export async function submitCatalogOrder() {
                     orderDiscount = Math.min(appliedCartCoupon.value, orderTotal);
                 }
             }
-            const finalOrderTotal = Math.max(0, orderTotal - orderDiscount);
+            const orderShippingInfo = calculateCartShipping(cart, orderTotal);
+            const finalOrderTotal = Math.max(0, orderTotal - orderDiscount) + orderShippingInfo.cost;
 
             const orderDocData = {
                 id: orderId,
@@ -4993,6 +5332,9 @@ export async function submitCatalogOrder() {
                 subtotal: orderTotal,
                 discount: orderDiscount,
                 couponCode: appliedCartCoupon ? appliedCartCoupon.code : null,
+                shipping: orderShippingInfo.cost,
+                shippingType: orderShippingInfo.type,
+                shippingLabel: orderShippingInfo.label,
                 total: finalOrderTotal,
                 note: note,
                 customer: customerData,
@@ -5072,7 +5414,8 @@ export async function submitCatalogOrder() {
                 orderDiscount = Math.min(appliedCartCoupon.value, orderTotal);
             }
         }
-        const finalOrderTotal = Math.max(0, orderTotal - orderDiscount);
+        const orderShippingInfo = calculateCartShipping(cart, orderTotal);
+        const finalOrderTotal = Math.max(0, orderTotal - orderDiscount) + orderShippingInfo.cost;
 
         const orderPayload = {
             orderId: orderId,
@@ -5085,6 +5428,9 @@ export async function submitCatalogOrder() {
             subtotal: orderTotal,
             discount: orderDiscount,
             couponCode: appliedCartCoupon ? appliedCartCoupon.code : null,
+            shipping: orderShippingInfo.cost,
+            shippingType: orderShippingInfo.type,
+            shippingLabel: orderShippingInfo.label,
             total: finalOrderTotal,
             customer: customerData,
             paymentMethod: selectedPayment,
@@ -5092,8 +5438,9 @@ export async function submitCatalogOrder() {
         };
 
         const couponInfo = (orderDiscount > 0 && appliedCartCoupon) ? ` • Cupom ${appliedCartCoupon.code} (-${formatBRL(orderDiscount)})` : '';
+        const shippingMsg = orderShippingInfo.cost > 0 ? ` • Frete: ${formatBRL(orderShippingInfo.cost)}` : (orderShippingInfo.type === 'custom' ? ` • Frete: A combinar` : ` • Frete: Grátis`);
         await sendChatMessage('order', {
-            text: `🛒 Pedido ${orderNumber} • ${totalUnits} ${totalUnits === 1 ? 'unidade' : 'unidades'} (${itemsSummaryText})${couponInfo} • Total: ${formatBRL(finalOrderTotal)}${selectedPayment ? ` • Pagamento: ${selectedPayment}` : ''}`,
+            text: `🛒 Pedido ${orderNumber} • ${totalUnits} ${totalUnits === 1 ? 'unidade' : 'unidades'} (${itemsSummaryText})${couponInfo}${shippingMsg} • Total: ${formatBRL(finalOrderTotal)}${selectedPayment ? ` • Pagamento: ${selectedPayment}` : ''}`,
             order: orderPayload
         });
 
@@ -7564,6 +7911,120 @@ export function initCatalog() {
             document.getElementById('catalog-apply-coupon-btn')?.click();
         }
     });
+
+    // Gerenciador de Cupons da Loja (v1.0.173)
+    document.getElementById('catalog-manage-coupons-btn')?.addEventListener('click', () => {
+        playSound(clickSound);
+        openCouponsModal();
+    });
+    document.getElementById('close-catalog-coupons-modal')?.addEventListener('click', () => {
+        playSound(clickSound);
+        closeCouponsModal();
+    });
+    document.getElementById('catalog-coupons-modal')?.addEventListener('click', (e) => {
+        if (e.target && e.target.id === 'catalog-coupons-modal') {
+            closeCouponsModal();
+        }
+    });
+
+    // Alternar tipo de cupom (% ou R$) no cadastro
+    document.getElementById('catalog-coupon-type-select')?.addEventListener('change', (e) => {
+        const valLabel = document.getElementById('catalog-coupon-val-label');
+        const valInput = document.getElementById('catalog-coupon-val-input');
+        if (e.target && e.target.value === 'fixed') {
+            if (valLabel) valLabel.innerText = 'Valor do Desconto (R$):';
+            if (valInput) {
+                valInput.placeholder = 'Ex: 15.00';
+                valInput.removeAttribute('max');
+                valInput.step = '0.50';
+            }
+        } else {
+            if (valLabel) valLabel.innerText = 'Valor (%):';
+            if (valInput) {
+                valInput.placeholder = 'Ex: 20';
+                valInput.max = '90';
+                valInput.step = '1';
+            }
+        }
+    });
+
+    // Botão cadastrar cupom
+    document.getElementById('catalog-coupon-submit-btn')?.addEventListener('click', async () => {
+        const codeInp = document.getElementById('catalog-coupon-code-input');
+        const typeSelect = document.getElementById('catalog-coupon-type-select');
+        const valInp = document.getElementById('catalog-coupon-val-input');
+        const labelInp = document.getElementById('catalog-coupon-label-input');
+
+        const code = codeInp ? codeInp.value.trim().toUpperCase() : '';
+        const type = typeSelect ? typeSelect.value : 'percent';
+        const val = valInp ? Number(valInp.value) : 0;
+        const label = labelInp ? labelInp.value.trim() : '';
+
+        if (!code) {
+            showToast('Código Obrigatório', 'Digite o código do cupom que os clientes irão digitar.', 'orange');
+            codeInp?.focus();
+            return;
+        }
+
+        try {
+            await saveSellerCoupon(code, type, val, label);
+            showToast('Cupom Cadastrado! 🎉', `O cupom ${code} já está ativo na sua loja!`, 'green');
+            if (codeInp) codeInp.value = '';
+            if (valInp) valInp.value = '';
+            if (labelInp) labelInp.value = '';
+        } catch (err) {
+            showToast('Erro ao Salvar Cupom', err.message || 'Verifique os dados informados.', 'red');
+        }
+    });
+
+    document.getElementById('catalog-coupon-code-input')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            document.getElementById('catalog-coupon-submit-btn')?.click();
+        }
+    });
+
+    // Gerenciador de Frete da Loja (v1.0.173)
+    document.getElementById('catalog-manage-shipping-btn')?.addEventListener('click', () => {
+        playSound(clickSound);
+        openShippingModal();
+    });
+    document.getElementById('close-catalog-shipping-modal')?.addEventListener('click', () => {
+        playSound(clickSound);
+        closeShippingModal();
+    });
+    document.getElementById('catalog-shipping-modal')?.addEventListener('click', (e) => {
+        if (e.target && e.target.id === 'catalog-shipping-modal') {
+            closeShippingModal();
+        }
+    });
+
+    // Eventos do formulário de frete
+    document.getElementById('catalog-shipping-type-select')?.addEventListener('change', () => {
+        updateShippingModalUI();
+    });
+    ['catalog-shipping-price-input', 'catalog-shipping-min-order-input', 'catalog-shipping-deadline-input'].forEach(id => {
+        document.getElementById(id)?.addEventListener('input', () => {
+            updateShippingModalUI();
+        });
+    });
+
+    // Salvar configuração de frete
+    document.getElementById('catalog-shipping-save-btn')?.addEventListener('click', async () => {
+        const type = document.getElementById('catalog-shipping-type-select')?.value || 'fixed';
+        const price = Number(document.getElementById('catalog-shipping-price-input')?.value) || 0;
+        const minOrder = Number(document.getElementById('catalog-shipping-min-order-input')?.value) || 0;
+        const deadline = document.getElementById('catalog-shipping-deadline-input')?.value.trim() || '';
+
+        try {
+            await saveSellerShipping({ type, price, minOrder, deadline });
+            showToast('Frete Configurado! 🚚', 'As regras de frete da sua loja foram salvas com sucesso.', 'green');
+            closeShippingModal();
+            renderCatalogCartUI();
+        } catch (err) {
+            showToast('Erro no Frete', err.message || 'Não foi possível salvar o frete.', 'red');
+        }
+    });
 }
 
 
@@ -8658,7 +9119,7 @@ export function initStoryCaptionAndLinkControls() {
     const anonymousBox = document.getElementById('story-anonymous-input-box');
     if (anonymousToggle) {
         anonymousToggle.addEventListener('change', () => {
-            if (anonymousBox) anonymousBox.style.display = anonymousToggle.checked ? 'block' : 'none';
+            if (anonymousBox) anonymousBox.style.display = anonymousToggle.checked ? 'flex' : 'none';
         });
     }
 
@@ -9845,6 +10306,10 @@ document.getElementById('publish-status-btn')?.addEventListener('click', async (
                 statusLinkFeedback.textContent = '';
                 statusLinkFeedback.style.display = 'none';
             }
+            if (anonymousToggle) anonymousToggle.checked = false;
+            const anonymousBox = document.getElementById('story-anonymous-input-box');
+            if (anonymousBox) anonymousBox.style.display = 'none';
+            if (anonymousPromptInput) anonymousPromptInput.value = '';
             if (composerPreviewAudio) {
                 try { composerPreviewAudio.pause(); } catch(e) {}
                 composerPreviewAudio = null;
@@ -17377,7 +17842,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.172';
+export const CURRENT_APP_VERSION = '1.0.173';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -28677,6 +29142,21 @@ if (typeof window !== 'undefined') {
     window.removeCartCoupon = removeCartCoupon;
     window.getAppliedCartCoupon = () => appliedCartCoupon;
     window.cleanStorageCache = cleanStorageCache;
+    // Cadastro de Cupons da Loja e Configuração de Frete (v1.0.173)
+    window.sellerCouponsCache = sellerCouponsCache;
+    window.sellerShippingCache = sellerShippingCache;
+    window.loadSellerCoupons = loadSellerCoupons;
+    window.saveSellerCoupon = saveSellerCoupon;
+    window.deleteSellerCoupon = deleteSellerCoupon;
+    window.renderSellerCouponsUI = renderSellerCouponsUI;
+    window.openCouponsModal = openCouponsModal;
+    window.closeCouponsModal = closeCouponsModal;
+    window.loadSellerShipping = loadSellerShipping;
+    window.saveSellerShipping = saveSellerShipping;
+    window.openShippingModal = openShippingModal;
+    window.closeShippingModal = closeShippingModal;
+    window.updateShippingModalUI = updateShippingModalUI;
+    window.calculateCartShipping = calculateCartShipping;
 }
 
 if (typeof window !== 'undefined') {

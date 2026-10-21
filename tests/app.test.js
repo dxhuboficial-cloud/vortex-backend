@@ -10281,14 +10281,14 @@ test('Segurança Avançada, Anti-Boicote, Dossiê ADM, Cupons, Mensagens Favorit
   const env = createTestEnvironment();
   const win = env.sandbox.window;
 
-  // 1. Integridade de Versionamento (v1.0.172)
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.172', 'script.js deve ter versão 1.0.172');
+  // 1. Integridade de Versionamento
+  assert.ok(['1.0.172', '1.0.173'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão 1.0.172 ou superior');
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
-  assert.strictEqual(versionJson.version, '1.0.172', 'version.json deve ter versão 1.0.172');
-  assert.ok(htmlContent.includes('script.js?v=1.0.172'), 'index.html deve referenciar script.js?v=1.0.172');
-  assert.ok(htmlContent.includes('style.css?v=1.0.172'), 'index.html deve referenciar style.css?v=1.0.172');
+  assert.ok(['1.0.172', '1.0.173'].includes(versionJson.version), 'version.json deve ter versão 1.0.172 ou superior');
+  assert.ok(htmlContent.includes('script.js?v='), 'index.html deve referenciar script.js versionado');
+  assert.ok(htmlContent.includes('style.css?v='), 'index.html deve referenciar style.css versionado');
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
-  assert.ok(swContent.includes('vortex-vip-v1.0.172'), 'sw.js deve ter cache vortex-vip-v1.0.172');
+  assert.ok(swContent.includes('vortex-vip-v1.0.'), 'sw.js deve ter cache versionado');
 
   // 2. Detecção de Evasão de Palavras-Chave (Leetspeak e Espaçamento)
   assert.ok(typeof win.deobfuscateSecurityText === 'function', 'deobfuscateSecurityText deve ser uma função');
@@ -10385,6 +10385,142 @@ test('Segurança Avançada, Anti-Boicote, Dossiê ADM, Cupons, Mensagens Favorit
   assert.ok(env.elements['catalog-apply-coupon-btn'], 'Elemento #catalog-apply-coupon-btn deve existir no DOM');
   assert.ok(env.elements['clean-storage-btn'], 'Elemento #clean-storage-btn deve existir no DOM');
 });
+
+test('Cadastro de Cupons pelo App, Configuração de Frete da Loja e Layout de Perguntas Anônimas (v1.0.173)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+
+  // 1. Integridade de Versionamento (v1.0.173)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.173', 'script.js deve ter versão 1.0.173');
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
+  assert.strictEqual(versionJson.version, '1.0.173', 'version.json deve ter versão 1.0.173');
+  assert.ok(htmlContent.includes('script.js?v=1.0.173'), 'index.html deve referenciar script.js?v=1.0.173');
+  assert.ok(htmlContent.includes('style.css?v=1.0.173'), 'index.html deve referenciar style.css?v=1.0.173');
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+  assert.ok(swContent.includes('vortex-vip-v1.0.173'), 'sw.js deve ter cache vortex-vip-v1.0.173');
+
+  // 2. Elementos DOM do Layout de Perguntas Anônimas (v1.0.173)
+  assert.ok(htmlContent.includes('story-anonymous-card'), 'Deve ter a classe story-anonymous-card no index.html');
+  assert.ok(htmlContent.includes('story-anonymous-input-wrapper'), 'Deve ter o wrapper story-anonymous-input-wrapper');
+  assert.ok(htmlContent.includes('story-anonymous-prompt-label'), 'Deve ter a label do texto da caixinha');
+  assert.ok(env.elements['story-anonymous-section'], '#story-anonymous-section deve existir no DOM');
+  assert.ok(env.elements['story-anonymous-toggle'], '#story-anonymous-toggle deve existir no DOM');
+  assert.ok(env.elements['story-anonymous-input-box'], '#story-anonymous-input-box deve existir no DOM');
+  assert.ok(env.elements['story-anonymous-prompt'], '#story-anonymous-prompt deve existir no DOM');
+
+  // 3. Modais e Botões de Cupons e Frete da Loja no DOM
+  assert.ok(env.elements['catalog-manage-coupons-btn'], '#catalog-manage-coupons-btn deve existir na barra de ferramentas da loja');
+  assert.ok(env.elements['catalog-manage-shipping-btn'], '#catalog-manage-shipping-btn deve existir na barra de ferramentas da loja');
+  assert.ok(env.elements['catalog-coupons-modal'], '#catalog-coupons-modal deve existir');
+  assert.ok(env.elements['catalog-coupon-code-input'], '#catalog-coupon-code-input deve existir');
+  assert.ok(env.elements['catalog-coupon-type-select'], '#catalog-coupon-type-select deve existir');
+  assert.ok(env.elements['catalog-coupon-val-input'], '#catalog-coupon-val-input deve existir');
+  assert.ok(env.elements['catalog-coupon-submit-btn'], '#catalog-coupon-submit-btn deve existir');
+  assert.ok(env.elements['catalog-coupons-list'], '#catalog-coupons-list deve existir');
+  assert.ok(env.elements['catalog-shipping-modal'], '#catalog-shipping-modal deve existir');
+  assert.ok(env.elements['catalog-shipping-type-select'], '#catalog-shipping-type-select deve existir');
+  assert.ok(env.elements['catalog-shipping-price-input'], '#catalog-shipping-price-input deve existir');
+  assert.ok(env.elements['catalog-shipping-min-order-input'], '#catalog-shipping-min-order-input deve existir');
+  assert.ok(env.elements['catalog-shipping-save-btn'], '#catalog-shipping-save-btn deve existir');
+  assert.ok(env.elements['catalog-cart-shipping-row'], '#catalog-cart-shipping-row deve existir no rodapé do carrinho');
+  assert.ok(env.elements['catalog-cart-shipping'], '#catalog-cart-shipping deve existir no carrinho');
+
+  // 4. Cadastro de Cupons pelo Vendedor (digitando código)
+  const sellerUser = { uid: 'seller_173', name: 'Loja Teste VIP' };
+  win.setCurrentUser(sellerUser);
+  win.setCurrentProfile({ ...sellerUser, storeCoupons: {} });
+
+  // Cadastro de cupom percentual PROMO25 (25% OFF)
+  const cupom1 = await win.saveSellerCoupon('promo25', 'percent', 25, '25% de Desconto VIP');
+  assert.strictEqual(cupom1.code, 'PROMO25', 'Código deve ser salvo em maiúsculas');
+  assert.strictEqual(cupom1.value, 25);
+  assert.strictEqual(cupom1.type, 'percent');
+  assert.strictEqual(cupom1.label, '25% de Desconto VIP');
+
+  // Cadastro de cupom de valor fixo VALE15 (R$ 15,00 OFF)
+  const cupom2 = await win.saveSellerCoupon('VALE15', 'fixed', 15, 'R$ 15,00 OFF Especial');
+  assert.strictEqual(cupom2.code, 'VALE15');
+  assert.strictEqual(cupom2.value, 15);
+  assert.strictEqual(cupom2.type, 'fixed');
+
+  // Validação: cupom com menos de 3 letras deve falhar
+  await assert.rejects(async () => {
+    await win.saveSellerCoupon('AB', 'percent', 10);
+  }, /pelo menos 3 caracteres/);
+
+  // Validação: desconto percentual > 90% deve falhar
+  await assert.rejects(async () => {
+    await win.saveSellerCoupon('ABUSO99', 'percent', 99);
+  }, /não pode ultrapassar 90%/);
+
+  // Exclusão de cupom
+  await win.deleteSellerCoupon('VALE15');
+  const couponsPosDelete = await win.loadSellerCoupons('seller_173');
+  assert.strictEqual(couponsPosDelete['VALE15'], undefined, 'VALE15 deve ter sido removido');
+  assert.ok(couponsPosDelete['PROMO25'], 'PROMO25 deve continuar existindo');
+
+  // 5. Aplicação do Cupom Criado pelo Vendedor no Carrinho
+  win.saveCatalogCart({
+    sellerUid: 'seller_173',
+    sellerName: 'Loja Teste VIP',
+    items: [{ productId: 'p1', name: 'Item Teste', price: 100, effectivePrice: 100, quantity: 2 }]
+  });
+
+  const resPromo = win.applyCartCoupon('PROMO25');
+  assert.strictEqual(resPromo.success, true, 'Cupom do vendedor PROMO25 deve ser aplicado com sucesso');
+  assert.strictEqual(resPromo.coupon.code, 'PROMO25');
+  assert.strictEqual(resPromo.coupon.value, 25);
+
+  // 6. Configuração de Frete da Loja e Cálculo no Carrinho
+  // Caso A: Frete Fixo R$ 20,00
+  await win.saveSellerShipping({
+    type: 'fixed',
+    price: 20,
+    minOrder: 100,
+    deadline: '3 dias úteis'
+  });
+  const mockCartA = {
+    sellerUid: 'seller_173',
+    items: [{ productId: 'p1', name: 'Item', price: 50, effectivePrice: 50, quantity: 1 }]
+  };
+  const shipA = win.calculateCartShipping(mockCartA, 50);
+  assert.strictEqual(shipA.cost, 20, 'Frete fixo deve ser R$ 20,00');
+  assert.ok(shipA.label.includes('20,00'), 'Rótulo deve conter R$ 20,00');
+
+  // Caso B: Frete Grátis Acima de R$ 150 (Subtotal R$ 100 -> paga frete)
+  await win.saveSellerShipping({
+    type: 'free_above',
+    price: 15,
+    minOrder: 150,
+    deadline: '2 a 5 dias úteis'
+  });
+  const shipB1 = win.calculateCartShipping(mockCartA, 100);
+  assert.strictEqual(shipB1.cost, 15, 'Abaixo de R$ 150 deve cobrar frete fixo de R$ 15,00');
+
+  // Subtotal R$ 200 >= R$ 150 -> Frete Grátis!
+  const shipB2 = win.calculateCartShipping(mockCartA, 200);
+  assert.strictEqual(shipB2.cost, 0, 'Acima de R$ 150 deve ter frete grátis');
+  assert.ok(shipB2.label.includes('Grátis'), 'Rótulo deve indicar frete grátis');
+
+  // Caso C: Modalidade Frete Grátis para todos os pedidos
+  await win.saveSellerShipping({
+    type: 'free',
+    deadline: 'Entrega rápida'
+  });
+  const shipC = win.calculateCartShipping(mockCartA, 30);
+  assert.strictEqual(shipC.cost, 0);
+  assert.ok(shipC.label.includes('Grátis'));
+
+  // Caso D: Frete a Combinar no Chat
+  await win.saveSellerShipping({
+    type: 'custom',
+    deadline: 'A combinar'
+  });
+  const shipD = win.calculateCartShipping(mockCartA, 50);
+  assert.strictEqual(shipD.cost, 0);
+  assert.ok(shipD.label.includes('A combinar'));
+});
+
 
 
 

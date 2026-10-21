@@ -4,20 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.172">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.172">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.172">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.172">
-    <link rel="stylesheet" href="style.css?v=1.0.172">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.173">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.173">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.173">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.173">
+    <link rel="stylesheet" href="style.css?v=1.0.173">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.172">
+    <link rel="manifest" href="manifest.json?v=1.0.173">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.172">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.172">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.173">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.173">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -1451,16 +1451,21 @@
                 </div>
 
                 <!-- Opção de Perguntas Anônimas (Estilo NGL / Caixa Secreta) -->
-                <div class="setting-item" id="story-anonymous-section" style="padding: 10px 0; border-top: 1px solid rgba(255,255,255,0.08);">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <label for="story-anonymous-toggle" class="setting-info" style="cursor: pointer; margin:0;">
-                            <span style="display:flex; align-items:center; gap:6px;"><i data-lucide="help-circle" style="color: #fff01f; width: 16px; height: 16px;"></i> Perguntas Anônimas 🤫</span>
-                            <small>Permitir receber perguntas e confissões anônimas neste Story</small>
+                <div class="story-anonymous-card" id="story-anonymous-section">
+                    <div class="story-anonymous-header">
+                        <label for="story-anonymous-toggle" class="story-anonymous-label">
+                            <span class="story-anonymous-title"><i data-lucide="help-circle"></i> Perguntas Anônimas 🤫</span>
+                            <small class="story-anonymous-desc">Permitir receber perguntas e confissões anônimas neste Story</small>
                         </label>
                         <input type="checkbox" id="story-anonymous-toggle" class="custom-toggle">
                     </div>
-                    <div id="story-anonymous-input-box" style="display:none; margin-top:10px;">
-                        <input type="text" id="story-anonymous-prompt" class="story-link-input" placeholder="Ex: Mande uma mensagem anônima..." maxlength="60" style="width:100%; box-sizing:border-box;">
+                    <div id="story-anonymous-input-box" class="story-anonymous-input-box" style="display:none;">
+                        <label for="story-anonymous-prompt" class="story-anonymous-prompt-label">Texto da caixinha no Story:</label>
+                        <div class="story-anonymous-input-wrapper">
+                            <i data-lucide="message-circle" class="story-anonymous-input-icon"></i>
+                            <input type="text" id="story-anonymous-prompt" class="story-anonymous-input" placeholder="Ex: Mande uma mensagem anônima..." maxlength="60">
+                        </div>
+                        <small class="story-anonymous-hint">Seus seguidores poderão enviar perguntas secretas que chegam para você no chat de forma 100% anônima.</small>
                     </div>
                 </div>
 
@@ -2917,6 +2922,8 @@
                     <div class="catalog-toolbar">
                         <button type="button" id="catalog-add-product-btn" class="catalog-primary-btn"><i data-lucide="plus"></i><span>Novo produto</span></button>
                         <button type="button" id="catalog-manage-categories-btn" class="catalog-secondary-btn"><i data-lucide="tags"></i><span>Categorias</span></button>
+                        <button type="button" id="catalog-manage-coupons-btn" class="catalog-secondary-btn"><i data-lucide="tag"></i><span>Cupons</span></button>
+                        <button type="button" id="catalog-manage-shipping-btn" class="catalog-secondary-btn"><i data-lucide="truck"></i><span>Frete</span></button>
                     </div>
 
                     <!-- Controle de Ativação do Botão de Compra da Loja -->
@@ -3338,6 +3345,7 @@
                     </div>
                     <div id="catalog-coupon-feedback" style="display:none; font-size:0.78rem; margin-bottom:8px;"></div>
                     <div id="catalog-cart-discount-row" class="catalog-cart-total-row" style="display:none; color:#4ade80; font-size:0.88rem;"><span>Desconto do Cupom</span><strong id="catalog-cart-discount">- R$ 0,00</strong></div>
+                    <div id="catalog-cart-shipping-row" class="catalog-cart-total-row" style="display:none; color:#38bdf8; font-size:0.88rem;"><span>Frete de Entrega</span><strong id="catalog-cart-shipping">R$ 0,00</strong></div>
                     <div class="catalog-cart-total-row"><span>Total</span><strong id="catalog-cart-total">R$ 0,00</strong></div>
                     <div class="catalog-footer-actions">
                         <button type="button" id="catalog-cart-clear-btn" class="catalog-secondary-btn"><i data-lucide="trash-2"></i><span>Limpar</span></button>
@@ -3606,8 +3614,121 @@
             </div>
         </div>
 
+        <!-- Modal de Gerenciamento de Cupons da Loja (v1.0.173) -->
+        <div id="catalog-coupons-modal" class="custom-modal-overlay" style="display:none;" aria-hidden="true">
+            <div class="custom-modal-card catalog-coupons-card">
+                <div class="panel-top-bar" style="padding:12px 16px;">
+                    <h3 class="modal-title" style="font-size:1rem; color:#fff01f;"><i data-lucide="tag"></i> Cupons de Desconto da Loja</h3>
+                    <div class="header-icon-btn" id="close-catalog-coupons-modal" title="Fechar" aria-label="Fechar">
+                        <i data-lucide="x"></i>
+                    </div>
+                </div>
+                <div class="catalog-coupons-content" style="padding: 10px 16px 20px; overflow-y: auto;">
+                    <!-- Formulário de cadastro de cupom digitando o código -->
+                    <div class="catalog-coupon-form-box">
+                        <h4 style="font-size:0.9rem; margin-bottom:10px; color:#e0e0e0; display:flex; align-items:center; gap:6px;">
+                            <i data-lucide="plus-circle" style="color:#fff01f; width:16px; height:16px;"></i> Criar Novo Cupom
+                        </h4>
+                        <div style="display:flex; flex-direction:column; gap:10px;">
+                            <div>
+                                <label for="catalog-coupon-code-input" style="font-size:0.78rem; font-weight:600; color:#aaa; margin-bottom:4px; display:block;">Código do Cupom:</label>
+                                <input type="text" id="catalog-coupon-code-input" class="catalog-field-input" placeholder="Ex: PROMO20, VORTEXVIP, CLIENTE10" style="text-transform:uppercase; font-size:0.92rem; font-weight:700; letter-spacing:0.8px;" maxlength="20" autocomplete="off">
+                            </div>
+                            <div style="display:flex; gap:10px;">
+                                <div style="flex:1;">
+                                    <label for="catalog-coupon-type-select" style="font-size:0.78rem; font-weight:600; color:#aaa; margin-bottom:4px; display:block;">Tipo de Desconto:</label>
+                                    <select id="catalog-coupon-type-select" class="catalog-field-input" style="font-size:0.85rem; height:42px;">
+                                        <option value="percent" selected>Porcentagem (%)</option>
+                                        <option value="fixed">Valor em Reais (R$)</option>
+                                    </select>
+                                </div>
+                                <div style="flex:1;">
+                                    <label for="catalog-coupon-val-input" id="catalog-coupon-val-label" style="font-size:0.78rem; font-weight:600; color:#aaa; margin-bottom:4px; display:block;">Valor (%):</label>
+                                    <input type="number" id="catalog-coupon-val-input" class="catalog-field-input" placeholder="Ex: 20" min="1" max="90" style="font-size:0.92rem; height:42px;">
+                                </div>
+                            </div>
+                            <div>
+                                <label for="catalog-coupon-label-input" style="font-size:0.78rem; font-weight:600; color:#aaa; margin-bottom:4px; display:block;">Rótulo / Descrição (Opcional):</label>
+                                <input type="text" id="catalog-coupon-label-input" class="catalog-field-input" placeholder="Ex: 20% OFF de Boas-vindas" maxlength="40" style="font-size:0.85rem;">
+                            </div>
+                            <button type="button" id="catalog-coupon-submit-btn" class="catalog-primary-btn" style="margin-top:4px; width:100%; justify-content:center;">
+                                <i data-lucide="check"></i> <span>Cadastrar Cupom</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Lista de Cupons Ativos -->
+                    <div style="margin-top:20px;">
+                        <h4 style="font-size:0.85rem; font-weight:700; color:#aaa; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;">
+                            Seus Cupons Ativos (<span id="catalog-coupons-count">0</span>)
+                        </h4>
+                        <div id="catalog-coupons-list" class="catalog-coupons-list">
+                            <!-- Injetado dinamicamente via JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Configuração de Frete da Loja (v1.0.173) -->
+        <div id="catalog-shipping-modal" class="custom-modal-overlay" style="display:none;" aria-hidden="true">
+            <div class="custom-modal-card catalog-shipping-card">
+                <div class="panel-top-bar" style="padding:12px 16px;">
+                    <h3 class="modal-title" style="font-size:1rem; color:#fff01f;"><i data-lucide="truck"></i> Configuração de Frete da Loja</h3>
+                    <div class="header-icon-btn" id="close-catalog-shipping-modal" title="Fechar" aria-label="Fechar">
+                        <i data-lucide="x"></i>
+                    </div>
+                </div>
+                <div class="catalog-shipping-content" style="padding: 14px 16px 20px; overflow-y: auto;">
+                    <div style="display:flex; flex-direction:column; gap:14px;">
+                        <p style="font-size:0.82rem; color:var(--text-dim); line-height:1.4; margin:0;">
+                            Configure a regra de frete padrão que será exibida para seus clientes e calculada automaticamente no carrinho de compras.
+                        </p>
+
+                        <div>
+                            <label for="catalog-shipping-type-select" style="font-size:0.8rem; font-weight:600; color:#aaa; margin-bottom:6px; display:block;">Modalidade de Frete:</label>
+                            <select id="catalog-shipping-type-select" class="catalog-field-input" style="font-size:0.88rem; height:44px;">
+                                <option value="free">🎉 Frete Grátis (Para Todos os Pedidos)</option>
+                                <option value="fixed" selected>🚚 Frete Fixo</option>
+                                <option value="free_above">✨ Frete Fixo com Frete Grátis Acima de um Valor</option>
+                                <option value="custom">💬 A Combinar com o Vendedor no Chat</option>
+                            </select>
+                        </div>
+
+                        <div id="catalog-shipping-fixed-group" style="display:flex; flex-direction:column; gap:10px;">
+                            <div>
+                                <label for="catalog-shipping-price-input" style="font-size:0.8rem; font-weight:600; color:#aaa; margin-bottom:4px; display:block;">Valor do Frete (R$):</label>
+                                <input type="number" id="catalog-shipping-price-input" class="catalog-field-input" placeholder="Ex: 15.00" min="0" step="0.50" style="font-size:0.92rem; height:42px;">
+                            </div>
+                        </div>
+
+                        <div id="catalog-shipping-free-above-group" style="display:none; flex-direction:column; gap:10px;">
+                            <div>
+                                <label for="catalog-shipping-min-order-input" style="font-size:0.8rem; font-weight:600; color:#aaa; margin-bottom:4px; display:block;">Frete Grátis em Compras Acima de (R$):</label>
+                                <input type="number" id="catalog-shipping-min-order-input" class="catalog-field-input" placeholder="Ex: 100.00" min="1" step="5" style="font-size:0.92rem; height:42px;">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label for="catalog-shipping-deadline-input" style="font-size:0.8rem; font-weight:600; color:#aaa; margin-bottom:4px; display:block;">Prazo Estimado de Entrega (Opcional):</label>
+                            <input type="text" id="catalog-shipping-deadline-input" class="catalog-field-input" placeholder="Ex: 2 a 5 dias úteis, No mesmo dia" maxlength="40" style="font-size:0.88rem;">
+                        </div>
+
+                        <div class="catalog-shipping-preview-badge" id="catalog-shipping-preview-badge" style="background:rgba(255,240,31,0.08); border:1px dashed rgba(255,240,31,0.3); padding:10px 12px; border-radius:10px; font-size:0.82rem; color:#e0e0e0; display:flex; align-items:center; gap:8px;">
+                            <i data-lucide="truck" style="color:#fff01f; width:18px; height:18px; flex-shrink:0;"></i>
+                            <span id="catalog-shipping-preview-text">Frete Fixo: R$ 15,00</span>
+                        </div>
+
+                        <button type="button" id="catalog-shipping-save-btn" class="catalog-primary-btn" style="margin-top:6px; width:100%; justify-content:center;">
+                            <i data-lucide="check"></i> <span>Salvar Configuração de Frete</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.172" defer></script>
+    <script type="module" src="script.js?v=1.0.173" defer></script>
 </body>
 </html>
