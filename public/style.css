@@ -16650,5 +16650,203 @@ body.theme-cyberpunk .catalog-order-total-units-pill {
     border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+/* ===== ADMIN: Dossiê e Histórico do Infrator (v1.0.172) ===== */
+.admin-dossier-card {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 12px;
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.admin-dossier-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #00f3ff;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.admin-dossier-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+.admin-dossier-stat {
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 8px;
+    padding: 8px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.admin-dossier-num {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #fff;
+}
+.admin-dossier-label {
+    font-size: 0.68rem;
+    color: var(--text-dim, #888);
+    line-height: 1.2;
+}
+.admin-dossier-alert {
+    background: rgba(255, 59, 48, 0.12);
+    border: 1px solid rgba(255, 59, 48, 0.3);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 0.78rem;
+    color: #ff6b6b;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* ===== STORIES: Pergunta Anônima NGL (v1.0.172) ===== */
+.story-ngl-container {
+    position: absolute;
+    bottom: 90px;
+    left: 16px;
+    right: 16px;
+    z-index: 25;
+    pointer-events: auto;
+}
+.story-ngl-card {
+    background: linear-gradient(135deg, rgba(255, 65, 108, 0.85), rgba(255, 75, 43, 0.85));
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 16px;
+    padding: 14px 16px;
+    box-shadow: 0 8px 24px rgba(255, 65, 108, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    text-align: center;
+    color: #fff;
+}
+.story-ngl-top {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+.story-ngl-icon {
+    width: 20px;
+    height: 20px;
+    color: #fff;
+    flex-shrink: 0;
+}
+.story-ngl-prompt {
+    font-weight: 700;
+    font-size: 0.95rem;
+    line-height: 1.3;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+.story-ngl-badge {
+    align-self: center;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 3px 10px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* ===== CHAT: Mensagens Favoritas ⭐ (v1.0.172) ===== */
+.msg-starred-indicator {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff01f;
+    font-size: 0.72rem;
+    margin-left: 3px;
+    vertical-align: middle;
+}
+.starred-messages-card {
+    max-width: 500px;
+    width: 95%;
+    max-height: 85vh;
+    border-radius: 16px;
+    background: var(--bg-secondary, #1a1a2e);
+    border: 1px solid rgba(255, 240, 31, 0.35);
+    display: flex;
+    flex-direction: column;
+}
+.starred-messages-content {
+    padding: 10px 16px 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.starred-msg-item {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    padding: 10px 12px;
+    border-left: 3px solid #fff01f;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    position: relative;
+}
+.starred-msg-sender {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--accent, #00f3ff);
+}
+.starred-msg-text {
+    font-size: 0.88rem;
+    color: var(--text-main, #e0e0e0);
+    line-height: 1.4;
+    word-break: break-word;
+}
+.starred-msg-time {
+    font-size: 0.7rem;
+    color: var(--text-dim, #888);
+    align-self: flex-end;
+}
+.starred-msg-unstar-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: transparent;
+    border: none;
+    color: #fff01f;
+    cursor: pointer;
+    padding: 4px;
+}
+
+/* ===== LOJA: Cupons de Desconto (v1.0.172) ===== */
+.catalog-coupon-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+.catalog-coupon-feedback {
+    font-size: 0.78rem;
+    margin-bottom: 8px;
+    padding: 4px 8px;
+    border-radius: 6px;
+}
+.catalog-coupon-feedback.success {
+    background: rgba(74, 222, 128, 0.15);
+    color: #4ade80;
+    border: 1px solid rgba(74, 222, 128, 0.3);
+}
+.catalog-coupon-feedback.error {
+    background: rgba(255, 59, 48, 0.15);
+    color: #ff6b6b;
+    border: 1px solid rgba(255, 59, 48, 0.3);
+}
+
 
 

@@ -460,7 +460,9 @@ function createTestEnvironment() {
     getItem: (key) => (key in storageStore ? storageStore[key] : null),
     setItem: (key, val) => { storageStore[key] = String(val); },
     removeItem: (key) => { delete storageStore[key]; },
-    clear: () => { Object.keys(storageStore).forEach(k => delete storageStore[k]); }
+    clear: () => { Object.keys(storageStore).forEach(k => delete storageStore[k]); },
+    key: (i) => Object.keys(storageStore)[i] || null,
+    get length() { return Object.keys(storageStore).length; }
   };
 
   let currentHistoryState = null;
@@ -10181,14 +10183,14 @@ test('Notificações Exclusivas para Administradores da Plataforma (Segurança I
   const env = createTestEnvironment();
   const win = env.sandbox.window;
 
-  // 1. Integridade de Versionamento (v1.0.171)
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.171', 'script.js deve ter versão 1.0.171');
+  // 1. Integridade de Versionamento (v1.0.171+)
+  assert.ok(['1.0.171', '1.0.172'].includes(win.CURRENT_APP_VERSION) || parseInt(win.CURRENT_APP_VERSION.split('.')[2], 10) >= 171, 'script.js deve ter versão 1.0.171+');
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
-  assert.strictEqual(versionJson.version, '1.0.171', 'version.json deve ter versão 1.0.171');
-  assert.ok(htmlContent.includes('script.js?v=1.0.171'), 'index.html deve referenciar script.js?v=1.0.171');
-  assert.ok(htmlContent.includes('style.css?v=1.0.171'), 'index.html deve referenciar style.css?v=1.0.171');
+  assert.ok(['1.0.171', '1.0.172'].includes(versionJson.version) || parseInt(versionJson.version.split('.')[2], 10) >= 171, 'version.json deve ter versão 1.0.171+');
+  assert.ok(htmlContent.includes(`script.js?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar script.js com a versão atual');
+  assert.ok(htmlContent.includes(`style.css?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar style.css com a versão atual');
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
-  assert.ok(swContent.includes('vortex-vip-v1.0.171'), 'sw.js deve ter cache vortex-vip-v1.0.171');
+  assert.ok(swContent.includes(`vortex-vip-v${win.CURRENT_APP_VERSION}`), 'sw.js deve ter cache com a versão atual');
 
   // 2. Disparo de Notificação da IA de Segurança usando notifyAdmins
   assert.ok(typeof win.notifyAdmins === 'function', 'notifyAdmins deve existir e ser exportada');
@@ -10273,6 +10275,115 @@ test('Notificações Exclusivas para Administradores da Plataforma (Segurança I
   await win.cleanupLegacySecurityBroadcasts();
   assert.strictEqual(env.firestoreDocs['notifications/legacy_ai_broadcast'].toUid, 'admin', 'cleanupLegacySecurityBroadcasts deve converter toUid para "admin"');
   assert.strictEqual(env.firestoreDocs['notifications/legacy_ai_broadcast'].forAdmin, true, 'cleanupLegacySecurityBroadcasts deve marcar forAdmin: true');
+});
+
+test('Segurança Avançada, Anti-Boicote, Dossiê ADM, Cupons, Mensagens Favoritas e Stories Anônimos (v1.0.172)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+
+  // 1. Integridade de Versionamento (v1.0.172)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.172', 'script.js deve ter versão 1.0.172');
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
+  assert.strictEqual(versionJson.version, '1.0.172', 'version.json deve ter versão 1.0.172');
+  assert.ok(htmlContent.includes('script.js?v=1.0.172'), 'index.html deve referenciar script.js?v=1.0.172');
+  assert.ok(htmlContent.includes('style.css?v=1.0.172'), 'index.html deve referenciar style.css?v=1.0.172');
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+  assert.ok(swContent.includes('vortex-vip-v1.0.172'), 'sw.js deve ter cache vortex-vip-v1.0.172');
+
+  // 2. Detecção de Evasão de Palavras-Chave (Leetspeak e Espaçamento)
+  assert.ok(typeof win.deobfuscateSecurityText === 'function', 'deobfuscateSecurityText deve ser uma função');
+  const match1 = win.matchSecurityKeywords('eu vou m@t@r voce');
+  assert.strictEqual(match1.hasMatch, true, 'Deve detectar ameaca com leetspeak @');
+  assert.strictEqual(match1.category, 'threat', 'Categoria deve ser threat');
+
+  const match2 = win.matchSecurityKeywords('olha esse p!x f4k3');
+  assert.strictEqual(match2.hasMatch, true, 'Deve detectar golpe com leetspeak ! e 4');
+  assert.strictEqual(match2.category, 'fraud', 'Categoria deve ser fraud');
+
+  const match3 = win.matchSecurityKeywords('vou dar um g o l p e');
+  assert.strictEqual(match3.hasMatch, true, 'Deve detectar golpe com letras separadas por espaco');
+  assert.strictEqual(match3.category, 'fraud', 'Categoria deve ser fraud');
+
+  // 3. Proteção Anti-Boicote (Anti-Brigading)
+  const targetUid = 'user_vitima_boicote';
+  win.setAdminReports([
+    { id: 'rep_1', targetUid: targetUid, createdAt: Date.now() - 60000 },
+    { id: 'rep_2', targetUid: targetUid, createdAt: Date.now() - 120000 }
+  ]);
+
+  const reportId = 'rep_3';
+  const reportData = {
+    targetUid: targetUid,
+    targetType: 'user',
+    reason: 'ofensa',
+    message: 'essa conta e falsa',
+    createdAt: Date.now()
+  };
+
+  const analysis = await win.runSecurityReportAnalysis(reportId, reportData, { name: 'Vitima' }, { reason: 'ofensa' });
+  assert.strictEqual(analysis.isBrigading, true, 'Deve detectar suspeita de ataque coordenado (Anti-Brigading)');
+  assert.strictEqual(analysis.action, 'pending_admin_approval', 'Ação deve ser congelada para aprovação do administrador sem autopunição');
+
+  // 4. Mensagens Favoritas ⭐ (toggleStarMessage, get, save e modais)
+  const testUser = { uid: 'user_star_tester', name: 'Tester Star' };
+  win.setCurrentUser(testUser);
+  win.setCurrentProfile(testUser);
+
+  const testMsg = {
+    id: 'msg_star_123',
+    senderUid: 'user_other',
+    senderName: 'Amigo',
+    text: 'Mensagem super importante para favoritar!',
+    createdAt: Date.now()
+  };
+
+  const isStarredNow = await win.toggleStarMessage(testMsg);
+  assert.strictEqual(isStarredNow, true, 'toggleStarMessage deve favoritar a mensagem');
+  let starredList = win.getStarredMessages();
+  assert.strictEqual(starredList.length, 1, 'Deve ter 1 mensagem favoritada na lista');
+  assert.strictEqual(starredList[0].id, 'msg_star_123', 'A mensagem favoritada deve ter o ID correto');
+
+  const isUnstarred = await win.toggleStarMessage(testMsg);
+  assert.strictEqual(isUnstarred, false, 'toggleStarMessage deve desfavoritar');
+  starredList = win.getStarredMessages();
+  assert.strictEqual(starredList.length, 0, 'Lista deve ficar vazia após desfavoritar');
+
+  // 5. Cupons de Desconto no Catálogo da Loja
+  assert.ok(win.CATALOG_COUPONS['VORTEX10'], 'Cupom VORTEX10 deve existir');
+  assert.ok(win.CATALOG_COUPONS['FRETEGRATIS'], 'Cupom FRETEGRATIS deve existir');
+
+  // Aplicar cupom percentual de 10%
+  const res10 = win.applyCartCoupon('VORTEX10');
+  assert.strictEqual(res10.success, true, 'Aplicação do cupom VORTEX10 deve ter sucesso');
+  assert.strictEqual(res10.coupon.code, 'VORTEX10');
+  assert.strictEqual(res10.coupon.value, 10);
+
+  // Aplicar cupom de valor fixo
+  const resFrete = win.applyCartCoupon('FRETEGRATIS');
+  assert.strictEqual(resFrete.success, true, 'Aplicação do cupom FRETEGRATIS deve ter sucesso');
+  assert.strictEqual(resFrete.coupon.value, 10);
+
+  // Cupom inválido
+  const resInvalido = win.applyCartCoupon('CUPOMFALSO99');
+  assert.strictEqual(resInvalido.success, false, 'Cupom inexistente deve retornar erro');
+
+  win.removeCartCoupon();
+  assert.strictEqual(win.getAppliedCartCoupon(), null, 'removeCartCoupon deve limpar o cupom ativo');
+
+  // 6. Limpeza de Armazenamento e Cache
+  assert.ok(typeof win.cleanStorageCache === 'function', 'cleanStorageCache deve ser uma função');
+  win.localStorage.setItem('vortex_temp_preview_test', '12345');
+  const cleanRes = await win.cleanStorageCache();
+  assert.strictEqual(cleanRes.success, true, 'cleanStorageCache deve retornar sucesso');
+  assert.strictEqual(win.localStorage.getItem('vortex_temp_preview_test'), null, 'Chaves temporárias vortex_temp_* devem ser removidas');
+
+  // 7. Elementos no DOM (HTML Integrity para v1.0.172)
+  assert.ok(env.elements['story-ngl-container'], 'Elemento #story-ngl-container deve existir no DOM');
+  assert.ok(env.elements['story-anonymous-toggle'], 'Elemento #story-anonymous-toggle deve existir no DOM');
+  assert.ok(env.elements['starred-messages-modal'], 'Elemento #starred-messages-modal deve existir no DOM');
+  assert.ok(env.elements['action-star-btn'], 'Elemento #action-star-btn deve existir no DOM');
+  assert.ok(env.elements['catalog-apply-coupon-btn'], 'Elemento #catalog-apply-coupon-btn deve existir no DOM');
+  assert.ok(env.elements['clean-storage-btn'], 'Elemento #clean-storage-btn deve existir no DOM');
 });
 
 

@@ -4228,6 +4228,7 @@ export function saveCatalogCart(cart) {
 }
 
 export function clearCatalogCart() {
+    appliedCartCoupon = null;
     saveCatalogCart({ sellerUid: '', sellerName: '', sellerPixKey: '', items: [], note: '' });
 }
 
@@ -4442,6 +4443,39 @@ export function closeCatalogCartModal() {
     }
 }
 
+export const CATALOG_COUPONS = {
+    'VORTEX10': { type: 'percent', value: 10, label: '10% OFF' },
+    'VIP20': { type: 'percent', value: 20, label: '20% OFF' },
+    'VORTEX50': { type: 'percent', value: 50, label: '50% OFF' },
+    'BEMVINDO': { type: 'percent', value: 15, label: '15% OFF' },
+    'FRETEGRATIS': { type: 'fixed', value: 10, label: 'R$ 10,00 OFF (Frete Grátis)' }
+};
+
+export let appliedCartCoupon = null;
+
+export function applyCartCoupon(rawCode) {
+    if (!rawCode || typeof rawCode !== 'string') {
+        appliedCartCoupon = null;
+        renderCatalogCartUI();
+        return { success: false, message: 'Digite o código do cupom.' };
+    }
+    const code = rawCode.trim().toUpperCase();
+    const coupon = CATALOG_COUPONS[code];
+    if (!coupon) {
+        appliedCartCoupon = null;
+        renderCatalogCartUI();
+        return { success: false, message: `O cupom "${code}" não é válido ou expirou.` };
+    }
+    appliedCartCoupon = { code, ...coupon };
+    renderCatalogCartUI();
+    return { success: true, coupon: appliedCartCoupon, message: `Cupom ${code} aplicado com sucesso! (${coupon.label})` };
+}
+
+export function removeCartCoupon() {
+    appliedCartCoupon = null;
+    renderCatalogCartUI();
+}
+
 export function renderCatalogCartUI() {
     const cart = getCatalogCart();
     const sellerEl = document.getElementById('catalog-cart-seller');
@@ -4512,12 +4546,46 @@ export function renderCatalogCartUI() {
         }
     }
 
-    const total = (cart.items || []).reduce((acc, item) => {
+    const subtotal = (cart.items || []).reduce((acc, item) => {
         const p = Number(item.effectivePrice) || Number(item.price) || 0;
         return acc + (p * (Number(item.quantity) || 0));
     }, 0);
 
-    if (totalEl) totalEl.innerText = formatBRL(total);
+    let discount = 0;
+    if (appliedCartCoupon && subtotal > 0) {
+        if (appliedCartCoupon.type === 'percent') {
+            discount = (subtotal * appliedCartCoupon.value) / 100;
+        } else if (appliedCartCoupon.type === 'fixed') {
+            discount = Math.min(appliedCartCoupon.value, subtotal);
+        }
+    }
+    const finalTotal = Math.max(0, subtotal - discount);
+
+    if (totalEl) totalEl.innerText = formatBRL(finalTotal);
+
+    const discountRow = document.getElementById('catalog-cart-discount-row');
+    const discountValEl = document.getElementById('catalog-cart-discount');
+    const couponFeedback = document.getElementById('catalog-coupon-feedback');
+
+    if (discountRow && discountValEl) {
+        if (discount > 0) {
+            discountRow.style.display = 'flex';
+            discountValEl.innerText = `- ${formatBRL(discount)}`;
+        } else {
+            discountRow.style.display = 'none';
+        }
+    }
+
+    if (couponFeedback) {
+        if (appliedCartCoupon) {
+            couponFeedback.style.display = 'block';
+            couponFeedback.className = 'catalog-coupon-feedback success';
+            couponFeedback.innerHTML = `✓ Cupom <strong>${appliedCartCoupon.code}</strong> ativo: ${appliedCartCoupon.label}`;
+        } else {
+            couponFeedback.style.display = 'none';
+        }
+    }
+
     if (noteEl && cart.note) noteEl.value = cart.note;
 
     // Preencher dados recomendados de entrega e contato (do localStorage ou perfil)
@@ -4900,6 +4968,17 @@ export async function submitCatalogOrder() {
 
             const buyerFullName = (`${currentProfile?.name || ''} ${currentProfile?.surname || ''}`).trim() || currentProfile?.name || currentUser.displayName || 'Comprador VORTEX';
             const totalUnits = finalizedItems.reduce((acc, i) => acc + (Number(i.quantity) || 1), 0);
+
+            let orderDiscount = 0;
+            if (appliedCartCoupon && orderTotal > 0) {
+                if (appliedCartCoupon.type === 'percent') {
+                    orderDiscount = (orderTotal * appliedCartCoupon.value) / 100;
+                } else if (appliedCartCoupon.type === 'fixed') {
+                    orderDiscount = Math.min(appliedCartCoupon.value, orderTotal);
+                }
+            }
+            const finalOrderTotal = Math.max(0, orderTotal - orderDiscount);
+
             const orderDocData = {
                 id: orderId,
                 orderNumber: orderNumber,
@@ -4911,7 +4990,10 @@ export async function submitCatalogOrder() {
                 sellerPixKey: sellerPixKey,
                 items: finalizedItems,
                 totalUnits: totalUnits,
-                total: orderTotal,
+                subtotal: orderTotal,
+                discount: orderDiscount,
+                couponCode: appliedCartCoupon ? appliedCartCoupon.code : null,
+                total: finalOrderTotal,
                 note: note,
                 customer: customerData,
                 paymentMethod: selectedPayment,
@@ -4982,6 +5064,16 @@ export async function submitCatalogOrder() {
         const totalUnits = finalizedItems.reduce((acc, i) => acc + (Number(i.quantity) || 1), 0);
         const itemsSummaryText = finalizedItems.map(i => `${i.quantity}x ${i.name}`).join(', ');
 
+        let orderDiscount = 0;
+        if (appliedCartCoupon && orderTotal > 0) {
+            if (appliedCartCoupon.type === 'percent') {
+                orderDiscount = (orderTotal * appliedCartCoupon.value) / 100;
+            } else if (appliedCartCoupon.type === 'fixed') {
+                orderDiscount = Math.min(appliedCartCoupon.value, orderTotal);
+            }
+        }
+        const finalOrderTotal = Math.max(0, orderTotal - orderDiscount);
+
         const orderPayload = {
             orderId: orderId,
             orderNumber: orderNumber,
@@ -4990,16 +5082,23 @@ export async function submitCatalogOrder() {
             sellerPixKey: sellerPixKey,
             items: finalizedItems,
             totalUnits: totalUnits,
-            total: orderTotal,
+            subtotal: orderTotal,
+            discount: orderDiscount,
+            couponCode: appliedCartCoupon ? appliedCartCoupon.code : null,
+            total: finalOrderTotal,
             customer: customerData,
             paymentMethod: selectedPayment,
             status: 'new'
         };
 
+        const couponInfo = (orderDiscount > 0 && appliedCartCoupon) ? ` • Cupom ${appliedCartCoupon.code} (-${formatBRL(orderDiscount)})` : '';
         await sendChatMessage('order', {
-            text: `🛒 Pedido ${orderNumber} • ${totalUnits} ${totalUnits === 1 ? 'unidade' : 'unidades'} (${itemsSummaryText}) • Total: ${formatBRL(orderTotal)}${selectedPayment ? ` • Pagamento: ${selectedPayment}` : ''}`,
+            text: `🛒 Pedido ${orderNumber} • ${totalUnits} ${totalUnits === 1 ? 'unidade' : 'unidades'} (${itemsSummaryText})${couponInfo} • Total: ${formatBRL(finalOrderTotal)}${selectedPayment ? ` • Pagamento: ${selectedPayment}` : ''}`,
             order: orderPayload
         });
+
+        appliedCartCoupon = null;
+        clearCatalogCart();
 
         playSound(replySendSound);
         showToast('Pedido Enviado! 🚀', `Pedido ${orderNumber} criado e enviado no chat do vendedor!`, 'green');
@@ -7441,6 +7540,30 @@ export function initCatalog() {
             });
         }
     });
+
+    // Cupons de desconto no carrinho (v1.0.172)
+    document.getElementById('catalog-apply-coupon-btn')?.addEventListener('click', () => {
+        const input = document.getElementById('catalog-coupon-input');
+        const res = applyCartCoupon(input ? input.value : '');
+        const fb = document.getElementById('catalog-coupon-feedback');
+        if (fb) {
+            fb.style.display = 'block';
+            fb.className = 'catalog-coupon-feedback ' + (res.success ? 'success' : 'error');
+            fb.innerText = res.message;
+        }
+        if (res.success) {
+            showToast('Cupom Aplicado! 🏷️', res.message, 'green');
+        } else {
+            showToast('Cupom Inválido', res.message, 'yellow');
+        }
+    });
+
+    document.getElementById('catalog-coupon-input')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            document.getElementById('catalog-apply-coupon-btn')?.click();
+        }
+    });
 }
 
 
@@ -7646,6 +7769,8 @@ function closeStoryViewer() {
     if (previewFooter) previewFooter.style.display = 'none';
     const ctaContainer = document.getElementById('story-link-cta-container');
     if (ctaContainer) ctaContainer.style.display = 'none';
+    const nglContainer = document.getElementById('story-ngl-container');
+    if (nglContainer) nglContainer.style.display = 'none';
     isStoryPreviewMode = false;
 }
 
@@ -7773,6 +7898,17 @@ async function displayCurrentStory() {
         }
     } else {
         if (ctaContainer) ctaContainer.style.display = 'none';
+    }
+
+    // Card de Pergunta Anônima (Estilo NGL / Caixa Secreta)
+    const nglContainer = document.getElementById('story-ngl-container');
+    const nglPrompt = document.getElementById('story-ngl-prompt');
+    if (story.hasAnonymousQuestion) {
+        if (nglContainer) nglContainer.style.display = 'flex';
+        if (nglPrompt) nglPrompt.textContent = story.anonymousQuestionPrompt || 'Mande uma mensagem anônima...';
+        if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+    } else {
+        if (nglContainer) nglContainer.style.display = 'none';
     }
 
     storyStartTime = Date.now();
@@ -7989,7 +8125,7 @@ export function resumeCurrentStory() {
 
 function handleStoryPointerDown(e) {
     if (e && e.button && e.button !== 0) return;
-    if (e && e.target && e.target.closest && e.target.closest('#close-story, #download-story-btn, #report-story-btn, #delete-story-btn, #story-views-pill-btn, .story-emoji-btn, #send-reply-btn, #story-reply-input, #story-music-mute-btn, #story-preview-footer, #story-preview-back-btn, #story-preview-publish-now-btn, #story-link-cta-container, #story-link-cta-btn, .story-link-cta-btn')) {
+    if (e && e.target && e.target.closest && e.target.closest('#close-story, #download-story-btn, #report-story-btn, #delete-story-btn, #story-views-pill-btn, .story-emoji-btn, #send-reply-btn, #story-reply-input, #story-music-mute-btn, #story-preview-footer, #story-preview-back-btn, #story-preview-publish-now-btn, #story-link-cta-container, #story-link-cta-btn, .story-link-cta-btn, #story-ngl-container, .story-ngl-card')) {
         return;
     }
 
@@ -8328,14 +8464,16 @@ async function sendStoryReply(text) {
     const story = activeStoryList[currentStoryIndex];
     if (!story) return;
 
-    const cleanText = text.trim().slice(0, 20);
+    const cleanText = text.trim().slice(0, 50);
     const storyRef = doc(db, 'stories', story.id);
 
+    const isAnon = Boolean(story.hasAnonymousQuestion);
     const replyItem = {
         id: 'rep_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
-        senderUid: currentUser.uid,
-        senderName: currentProfile.name || 'Contato',
-        senderAvatar: currentProfile.avatar || '',
+        senderUid: isAnon ? 'anonymous' : currentUser.uid,
+        senderName: isAnon ? 'Anônimo 🤫' : (currentProfile.name || 'Contato'),
+        senderAvatar: isAnon ? '' : (currentProfile.avatar || ''),
+        isAnonymous: isAnon,
         text: cleanText,
         createdAt: Date.now()
     };
@@ -8350,7 +8488,11 @@ async function sendStoryReply(text) {
         await setDoc(storyRef, { replies: currentReplies }, { merge: true });
 
         playSound(replySendSound);
-        showToast("Comentário Enviado", "Mensagem adicionada ao status!", "green");
+        if (isAnon) {
+            showToast("Mensagem Anônima Enviada! 🤫", "Sua identidade está 100% protegida.", "green");
+        } else {
+            showToast("Comentário Enviado", "Mensagem adicionada ao status!", "green");
+        }
         const input = document.getElementById('story-reply-input');
         if (input) input.value = '';
     } catch (err) {
@@ -8507,6 +8649,30 @@ export function initStoryCaptionAndLinkControls() {
             if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
         });
         storyCtaBtn.addEventListener('pointerdown', (e) => {
+            if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+        });
+    }
+
+    // Perguntas Anônimas nos Stories (Estilo NGL / Caixa Secreta) (v1.0.172)
+    const anonymousToggle = document.getElementById('story-anonymous-toggle');
+    const anonymousBox = document.getElementById('story-anonymous-input-box');
+    if (anonymousToggle) {
+        anonymousToggle.addEventListener('change', () => {
+            if (anonymousBox) anonymousBox.style.display = anonymousToggle.checked ? 'block' : 'none';
+        });
+    }
+
+    const nglContainer = document.getElementById('story-ngl-container');
+    if (nglContainer) {
+        nglContainer.addEventListener('click', (e) => {
+            if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+            const replyInput = document.getElementById('story-reply-input');
+            if (replyInput) {
+                replyInput.focus();
+                replyInput.placeholder = 'Digite sua mensagem anônima... 🤫';
+            }
+        });
+        nglContainer.addEventListener('pointerdown', (e) => {
             if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
         });
     }
@@ -9598,6 +9764,11 @@ document.getElementById('publish-status-btn')?.addEventListener('click', async (
             const rawCaption = document.getElementById('status-caption-input')?.value || '';
             const finalCaption = rawCaption.slice(0, 90).trim();
 
+            const anonymousToggle = document.getElementById('story-anonymous-toggle');
+            const hasAnonymous = Boolean(anonymousToggle && anonymousToggle.checked);
+            const anonymousPromptInput = document.getElementById('story-anonymous-prompt');
+            const anonymousPrompt = hasAnonymous ? (anonymousPromptInput?.value?.trim() || 'Mande uma mensagem anônima...') : '';
+
             const storyData = {
                 authorUid: currentUser.uid,
                 authorName: currentProfile.name,
@@ -9608,6 +9779,8 @@ document.getElementById('publish-status-btn')?.addEventListener('click', async (
                 customDuration: selectedStoryDuration || 15,
                 mediaSizeKB: pendingStatusMediaInfo?.sizeFormatted || formatBytesToKB(pendingStatusFile.size || 102400),
                 caption: finalCaption,
+                hasAnonymousQuestion: hasAnonymous,
+                anonymousQuestionPrompt: anonymousPrompt,
                 isAd: isAdStory,
                 contentType: isAdStory ? 'ad' : 'normal',
                 storyLink: storyLinkPayload,
@@ -12737,7 +12910,8 @@ function loadRealtimeMessages() {
                     ${ephemeralClockHTML}
                     ${msg.isEdited && !msg.deletedForEveryone ? `<span class="msg-edited-tag" title="Mensagem editada"><i data-lucide="pencil"></i>Editada</span>` : ''}
                     <span class="msg-time">${timeStr}</span>
-                    ${isMe && !msg.deletedForEveryone ? `<i data-lucide="check-check" class="seen-icon ${hasBeenSeen ? 'seen-confirmed' : 'seen-pending'}" title="${hasBeenSeen ? 'Visualizada' : 'Não visualizada'}"></i>` : ''}
+                    ${(msg.isStarred || (msg.starredBy && currentUser && msg.starredBy[currentUser.uid])) ? '<i data-lucide="star" class="msg-starred-indicator" title="Favoritada ⭐"></i>' : ''}
+                    ${isMe && !msg.deletedForEveryone ? `<i data-lucide="${hasBeenSeen ? 'check-check' : 'check'}" class="seen-icon ${hasBeenSeen ? 'seen-confirmed' : 'seen-pending'}" title="${hasBeenSeen ? 'Visualizada' : 'Enviada'}"></i>` : ''}
                 </div>
                 ${reactionsHTML}
             `;
@@ -13231,6 +13405,12 @@ document.querySelectorAll('.reaction-emoji').forEach(span => {
     });
 });
 
+document.getElementById('action-star-btn')?.addEventListener('click', () => {
+    const msg = activeSelectedMsg;
+    hideFloatingReactions();
+    if (msg) toggleStarMessage(msg);
+});
+
 document.getElementById('action-copy-btn')?.addEventListener('click', () => {
     const msg = activeSelectedMsg;
     hideFloatingReactions();
@@ -13296,6 +13476,175 @@ async function copyMessageText(msg) {
         showToast('Erro', 'Não foi possível copiar a mensagem.', 'red');
     }
 }
+
+export function getStarredMessages() {
+    if (!currentUser) return [];
+    try {
+        let targetStorage = null;
+        if (typeof localStorage !== 'undefined') targetStorage = localStorage;
+        else if (typeof window !== 'undefined' && window.localStorage) targetStorage = window.localStorage;
+        if (!targetStorage) return [];
+        const key = `vortex_starred_msgs_${currentUser.uid}`;
+        const raw = targetStorage.getItem(key);
+        return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+export function saveStarredMessages(list) {
+    if (!currentUser) return;
+    try {
+        let targetStorage = null;
+        if (typeof localStorage !== 'undefined') targetStorage = localStorage;
+        else if (typeof window !== 'undefined' && window.localStorage) targetStorage = window.localStorage;
+        if (!targetStorage) return;
+        const key = `vortex_starred_msgs_${currentUser.uid}`;
+        targetStorage.setItem(key, JSON.stringify(list));
+    } catch (e) {}
+}
+
+export async function toggleStarMessage(msg) {
+    if (!currentUser || !msg || !msg.id) return false;
+    const chatId = getActiveChatId();
+    const isCurrentlyStarred = Boolean(
+        msg.isStarred || 
+        (msg.starredBy && msg.starredBy[currentUser.uid])
+    );
+    const nextStarred = !isCurrentlyStarred;
+
+    // Atualiza objeto em memória
+    if (!msg.starredBy) msg.starredBy = {};
+    msg.starredBy[currentUser.uid] = nextStarred;
+    msg.isStarred = nextStarred;
+
+    // Atualiza Firestore se tiver chatId
+    if (chatId) {
+        try {
+            const msgRef = doc(db, 'chats', chatId, 'messages', msg.id);
+            await updateDoc(msgRef, {
+                [`starredBy.${currentUser.uid}`]: nextStarred,
+                isStarred: nextStarred
+            });
+        } catch (err) {
+            console.warn('[VORTEX] Erro ao atualizar status de estrela no Firestore:', err);
+        }
+    }
+
+    // Atualiza lista persistida no localStorage
+    let starredList = getStarredMessages();
+    if (nextStarred) {
+        if (!starredList.some(item => item.id === msg.id)) {
+            starredList.unshift({
+                id: msg.id,
+                chatId: chatId || '',
+                senderUid: msg.senderUid || '',
+                senderName: msg.senderName || (msg.senderUid === currentUser.uid ? 'Você' : (activeChatContact?.name || 'Contato')),
+                chatTitle: activeChatContact?.name || 'Chat',
+                text: msg.text || msg.caption || (msg.mediaUrl ? '[Mídia]' : ''),
+                mediaUrl: msg.mediaUrl || msg.imageUrl || '',
+                mediaType: msg.mediaType || (msg.imageUrl ? 'image' : ''),
+                createdAt: msg.createdAt || Date.now()
+            });
+        }
+    } else {
+        starredList = starredList.filter(item => item.id !== msg.id);
+    }
+    saveStarredMessages(starredList);
+
+    // Feedback visual
+    if (nextStarred) {
+        showToast('Favoritada ⭐', 'Mensagem adicionada às favoritas.', 'green');
+    } else {
+        showToast('Removida ⭐', 'Mensagem removida das favoritas.', 'yellow');
+    }
+    playSound(clickSound);
+
+    // Re-renderiza indicador de estrela na bolha de mensagem se estiver no DOM
+    const starIconEl = document.querySelector(`.message[data-id="${msg.id}"] .msg-starred-indicator`);
+    if (nextStarred) {
+        if (!starIconEl) {
+            const timeWrap = document.querySelector(`.message[data-id="${msg.id}"] .message-time`);
+            if (timeWrap) {
+                const icon = document.createElement('i');
+                icon.setAttribute('data-lucide', 'star');
+                icon.className = 'msg-starred-indicator';
+                icon.title = 'Favoritada ⭐';
+                timeWrap.insertBefore(icon, timeWrap.firstChild);
+                if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+            }
+        }
+    } else {
+        if (starIconEl) starIconEl.remove();
+    }
+
+    return nextStarred;
+}
+
+export function openStarredMessagesModal() {
+    const modal = document.getElementById('starred-messages-modal');
+    const content = document.getElementById('starred-messages-content');
+    if (!modal || !content) return;
+
+    const list = getStarredMessages();
+    if (!list || list.length === 0) {
+        content.innerHTML = `
+            <div style="text-align:center; padding: 40px 10px; color: var(--text-dim);">
+                <i data-lucide="star-off" style="width:40px; height:40px; opacity:0.4; margin-bottom:12px;"></i>
+                <p style="font-size:0.95rem; font-weight:600; color:var(--text-main);">Nenhuma mensagem favorita</p>
+                <small>Toque e segure em qualquer mensagem no chat e selecione a estrela ⭐ para salvá-la aqui.</small>
+            </div>
+        `;
+    } else {
+        content.innerHTML = list.map(item => `
+            <div class="starred-msg-item" data-id="${escapeHTML(item.id)}">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                    <span class="starred-msg-sender">${escapeHTML(item.senderName || 'Contato')} ${item.chatTitle ? `<small style="opacity:0.7;">em ${escapeHTML(item.chatTitle)}</small>` : ''}</span>
+                    <button type="button" class="starred-msg-unstar-btn" data-id="${escapeHTML(item.id)}" title="Remover dos favoritos">
+                        <i data-lucide="star" style="width:14px; height:14px; fill:#fff01f; color:#fff01f;"></i>
+                    </button>
+                </div>
+                ${item.mediaUrl ? `<div style="font-size:0.8rem; color:var(--text-dim); margin-bottom:2px;"><i data-lucide="image" style="width:12px;height:12px;vertical-align:middle;"></i> [Arquivo de Mídia]</div>` : ''}
+                <div class="starred-msg-text">${escapeHTML(item.text || '')}</div>
+                <span class="starred-msg-time">${formatDate(item.createdAt || Date.now())}</span>
+            </div>
+        `).join('');
+
+        content.querySelectorAll('.starred-msg-unstar-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const msgId = btn.dataset.id;
+                let current = getStarredMessages();
+                current = current.filter(m => m.id !== msgId);
+                saveStarredMessages(current);
+                openStarredMessagesModal();
+                showToast('Removida ⭐', 'Mensagem removida das favoritas.', 'yellow');
+                playSound(clickSound);
+            });
+        });
+    }
+
+    modal.style.display = 'flex';
+    modal.classList.add('active');
+    if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+}
+
+export function closeStarredMessagesModal() {
+    const modal = document.getElementById('starred-messages-modal');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.classList.remove('active');
+    }
+}
+
+document.getElementById('view-starred-messages-trigger')?.addEventListener('click', () => {
+    document.getElementById('chat-dropdown-menu')?.classList.remove('active');
+    openStarredMessagesModal();
+});
+
+document.getElementById('close-starred-messages-modal')?.addEventListener('click', () => {
+    closeStarredMessagesModal();
+});
 
 function startEditMessage(msg) {
     if (!currentUser || !msg) return;
@@ -14196,9 +14545,33 @@ export const SECURITY_KEYWORDS = {
         'codigo que chegou no seu celular', 'urubu do pix', 'investimento com retorno garantido',
         'ganhe dinheiro rapido', 'senha do seu cartao', 'dados da sua conta', 'clonar whatsapp',
         'roubar conta', 'sequestramos seu', 'resgate urgente', 'deposite agora', 'golpe do pix',
-        'manda pix agora'
+        'manda pix agora', 'pix fake', 'golpe'
     ]
 };
+
+export function deobfuscateSecurityText(text = '') {
+    if (!text || typeof text !== 'string') return '';
+    let s = text.toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+
+    // 1. Substituição de Leetspeak (caracteres numéricos ou símbolos que simulam letras)
+    s = s.replace(/[@4]/g, 'a')
+         .replace(/[3]/g, 'e')
+         .replace(/[1!|]/g, 'i')
+         .replace(/[0]/g, 'o')
+         .replace(/[$5]/g, 's')
+         .replace(/[7]/g, 't')
+         .replace(/[8]/g, 'b');
+
+    // 2. Remoção de pontos e traços intercalados entre letras (ex: m.a.t.a.r ou m-a-t-a-r)
+    s = s.replace(/([a-z0-9])[\.\-_]+([a-z0-9])/gi, '$1 $2');
+
+    // 3. Junção de letras isoladas separadas por espaços (ex: m a t a r -> matar, g o l p e -> golpe)
+    const joined = s.replace(/(?<=\b[a-z0-9])\s+(?=[a-z0-9]\b)/gi, '');
+
+    return s + ' ' + joined;
+}
 
 export function normalizeSecurityText(text) {
     if (!text || typeof text !== 'string') return '';
@@ -14213,7 +14586,8 @@ export function normalizeSecurityText(text) {
 
 export function matchSecurityKeywords(rawText) {
     const norm = normalizeSecurityText(rawText);
-    if (!norm) return { hasMatch: false, category: null, matches: [], severity: 'none' };
+    const deobf = normalizeSecurityText(deobfuscateSecurityText(rawText));
+    if (!norm && !deobf) return { hasMatch: false, category: null, matches: [], severity: 'none' };
 
     const detected = [];
     let primaryCategory = null;
@@ -14225,7 +14599,7 @@ export function matchSecurityKeywords(rawText) {
             const normKw = normalizeSecurityText(kw);
             if (!normKw) continue;
             const regex = new RegExp(`(^|\\s)${normKw.replace(/\\s+/g, '\\s+')}(\\s|$)`, 'i');
-            if (regex.test(norm) || norm.includes(normKw)) {
+            if (regex.test(norm) || norm.includes(normKw) || regex.test(deobf) || deobf.includes(normKw)) {
                 if (!primaryCategory) primaryCategory = cat;
                 if (!detected.includes(kw)) detected.push(kw);
             }
@@ -14263,8 +14637,27 @@ export async function runSecurityReportAnalysis(reportId, reportData, target, op
         suggestedAction: 'review'
     };
 
-    // 1. TIPO: CONVERSA / USUÁRIO
-    if (targetType === 'user') {
+    // Checagem Anti-Boicote / Anti-Brigading (3+ denúncias nos últimos 10 min contra o mesmo alvo)
+    let isBrigading = false;
+    if (typeof adminReports !== 'undefined' && Array.isArray(adminReports) && targetUid) {
+        const recentReports = adminReports.filter(r => r.targetUid === targetUid && r.id !== reportId && (Date.now() - (r.createdAt || 0)) <= 10 * 60 * 1000);
+        if (recentReports.length >= 2) {
+            isBrigading = true;
+        }
+    }
+
+    if (isBrigading) {
+        analysisResult = {
+            action: 'pending_admin_approval',
+            confidence: 'medium',
+            isBrigading: true,
+            category: reason,
+            explanation: `⚠️ Suspeita de Ataque Coordenado / Boicote: O usuário recebeu 3 ou mais denúncias em menos de 10 minutos. Punição automática congelada para análise dos Administradores.`,
+            previewSnippets: details ? [details] : [],
+            matchedKeywords: [],
+            suggestedAction: 'review'
+        };
+    } else if (targetType === 'user') {
         // Regra Estrita: Só analisa histórico de conversa se for denunciado E bloqueado simultaneamente
         if (!alsoBlock) {
             analysisResult = {
@@ -14333,7 +14726,7 @@ export async function runSecurityReportAnalysis(reportId, reportData, target, op
                     }
                 } catch (e) {}
 
-                if (isReoffender) {
+                    if (isReoffender) {
                     // Reincidente -> Banimento Permanente Automático!
                     analysisResult = {
                         action: 'auto_banned',
@@ -14420,6 +14813,9 @@ export async function runSecurityReportAnalysis(reportId, reportData, target, op
             if (targetUid) {
                 updateDoc(doc(db, 'users', targetUid), { restricted: true, restrictionExpiresAt: Date.now() + 24*3600*1000, restrictedCount: 1 }).catch(() => {});
             }
+            if (postLookupId) {
+                updateDoc(doc(db, 'posts', postLookupId), { hiddenByAi: true, hiddenReason: analysisResult.explanation }).catch(() => {});
+            }
         } else {
             analysisResult = {
                 action: 'pending_admin_approval',
@@ -14447,6 +14843,9 @@ export async function runSecurityReportAnalysis(reportId, reportData, target, op
             };
             if (targetUid) {
                 updateDoc(doc(db, 'users', targetUid), { restricted: true, restrictionExpiresAt: Date.now() + 24*3600*1000, restrictedCount: 1 }).catch(() => {});
+            }
+            if (postLookupId) {
+                updateDoc(doc(db, 'posts', postLookupId), { hiddenByAi: true, hiddenReason: analysisResult.explanation }).catch(() => {});
             }
         } else {
             analysisResult = {
@@ -14486,6 +14885,9 @@ export async function runSecurityReportAnalysis(reportId, reportData, target, op
             };
             if (targetUid) {
                 updateDoc(doc(db, 'users', targetUid), { restricted: true, restrictionExpiresAt: Date.now() + 24*3600*1000, restrictedCount: 1 }).catch(() => {});
+            }
+            if (postLookupId) {
+                updateDoc(doc(db, 'posts', postLookupId), { hiddenByAi: true, hiddenReason: analysisResult.explanation }).catch(() => {});
             }
         } else {
             analysisResult = {
@@ -16691,6 +17093,24 @@ export async function adminAnalyzeReport(report) {
                         ${isBanned ? `<div class="admin-analyze-user-banned-info">🚫 Conta banida permanentemente</div>` : ''}
                         ${isRestricted ? `<div class="admin-analyze-user-banned-info">⏳ Em restrição temporária (${getRemainingRestrictionTimeFormatted(userData)})</div>` : ''}
                         ${!isBanned && !isRestricted ? `<div style="font-size:0.78rem; color:#34c759; font-weight:600; padding: 4px 0;">✅ Conta ativa sem restrições</div>` : ''}
+                        <div class="admin-dossier-card">
+                            <div class="admin-dossier-title"><i data-lucide="file-text"></i> Dossiê do Infrator</div>
+                            <div class="admin-dossier-grid">
+                                <div class="admin-dossier-stat">
+                                    <span class="admin-dossier-num">${(typeof adminReports !== 'undefined' && Array.isArray(adminReports)) ? adminReports.filter(r => r.targetUid === report.targetUid).length : 1}</span>
+                                    <span class="admin-dossier-label">Denúncias no Total</span>
+                                </div>
+                                <div class="admin-dossier-stat">
+                                    <span class="admin-dossier-num">${userData.restrictedCount || (userData.restricted ? 1 : 0)}</span>
+                                    <span class="admin-dossier-label">Restrições Tomadas</span>
+                                </div>
+                                <div class="admin-dossier-stat">
+                                    <span class="admin-dossier-num">${isBanned ? 'Sim 🚫' : 'Não'}</span>
+                                    <span class="admin-dossier-label">Banimento Anterior</span>
+                                </div>
+                            </div>
+                            ${userData.createdAt && (Date.now() - userData.createdAt) < 24 * 3600 * 1000 ? `<div class="admin-dossier-alert"><i data-lucide="alert-triangle"></i> Conta criada há menos de 24 horas (Alta suspeita de conta fake).</div>` : ''}
+                        </div>
                         <div style="font-size:0.72rem; color:var(--text-dim); margin-top:4px;">UID: ${report.targetUid}</div>
                     </div>
                 `;
@@ -16957,7 +17377,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.171';
+export const CURRENT_APP_VERSION = '1.0.172';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -17486,6 +17906,55 @@ document.getElementById('close-pwa-ios-btn')?.addEventListener('click', closePwa
 document.getElementById('pwa-ios-modal')?.addEventListener('click', (e) => {
     if (e.target.id === 'pwa-ios-modal') closePwaIosModal();
 });
+
+// Limpeza de Armazenamento e Cache Local (v1.0.172)
+export async function cleanStorageCache() {
+    let cachesPurged = 0;
+    try {
+        if (typeof window !== 'undefined' && 'caches' in window && window.caches) {
+            const keys = await window.caches.keys();
+            for (const key of keys) {
+                if (key.includes('media') || key.includes('runtime') || key.includes('temp') || key.includes('vortex-cache')) {
+                    await window.caches.delete(key);
+                    cachesPurged++;
+                }
+            }
+        }
+    } catch (e) {}
+
+    let keysRemoved = 0;
+    try {
+        let targetStorage = null;
+        if (typeof localStorage !== 'undefined') targetStorage = localStorage;
+        else if (typeof window !== 'undefined' && window.localStorage) targetStorage = window.localStorage;
+
+        if (targetStorage) {
+            const allKeys = [];
+            if (typeof targetStorage.length === 'number' && typeof targetStorage.key === 'function') {
+                for (let i = 0; i < targetStorage.length; i++) {
+                    const k = targetStorage.key(i);
+                    if (k) allKeys.push(k);
+                }
+            } else {
+                allKeys.push(...Object.keys(targetStorage));
+            }
+
+            allKeys.forEach(k => {
+                if (k && (k.startsWith('vortex_temp_') || k.startsWith('vortex_draft_') || k.startsWith('vortex_media_cache_') || k.startsWith('vortex_cache_preview_'))) {
+                    targetStorage.removeItem(k);
+                    keysRemoved++;
+                }
+            });
+        }
+    } catch (e) {}
+
+    const desc = document.getElementById('storage-cleaner-desc');
+    if (desc) desc.innerText = 'Armazenamento limpo! Espaço e cache liberados com sucesso.';
+    showToast('Cache Limpo com Sucesso! 🧹', 'Mídias e arquivos temporários locais foram liberados.', 'green');
+    playSound(clickSound);
+    return { success: true, cachesPurged, keysRemoved };
+}
+document.getElementById('clean-storage-btn')?.addEventListener('click', cleanStorageCache);
 
 // Listener de toque e clique no Selo de Administrador VORTEX VIP (exibe balão amarelo 💥Admin⚡)
 document.addEventListener('click', (e) => {
@@ -21769,8 +22238,9 @@ function renderPostsFeed(posts = []) {
     const countLabel = document.getElementById('posts-count-label');
     const previewFeed = document.getElementById('posts-feed-list');
 
+    const isAdmin = isUserAdmin(currentUser, currentProfile) || checkIsAdminUser(currentUser, currentProfile);
     const sorted = [...posts]
-        .filter(p => !isUserAccountDeleted(p.authorUid) && !p.isDeleted && !p.deleted && !isPostExpired(p))
+        .filter(p => !isUserAccountDeleted(p.authorUid) && !p.isDeleted && !p.deleted && !isPostExpired(p) && (!p.hiddenByAi || isAdmin))
         .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
     if (countLabel) countLabel.innerText = `${sorted.length} ${sorted.length === 1 ? 'postagem' : 'postagens'}`;
 
@@ -28193,6 +28663,20 @@ if (typeof window !== 'undefined') {
     window.addGroupMember = addGroupMember;
     window.removeGroupMember = removeGroupMember;
     window.promoteGroupMember = promoteGroupMember;
+    // Novas Funções e Segurança Avançada (v1.0.172)
+    window.deobfuscateSecurityText = deobfuscateSecurityText;
+    window.matchSecurityKeywords = matchSecurityKeywords;
+    window.runSecurityReportAnalysis = runSecurityReportAnalysis;
+    window.toggleStarMessage = toggleStarMessage;
+    window.getStarredMessages = getStarredMessages;
+    window.saveStarredMessages = saveStarredMessages;
+    window.openStarredMessagesModal = openStarredMessagesModal;
+    window.closeStarredMessagesModal = closeStarredMessagesModal;
+    window.CATALOG_COUPONS = CATALOG_COUPONS;
+    window.applyCartCoupon = applyCartCoupon;
+    window.removeCartCoupon = removeCartCoupon;
+    window.getAppliedCartCoupon = () => appliedCartCoupon;
+    window.cleanStorageCache = cleanStorageCache;
 }
 
 if (typeof window !== 'undefined') {

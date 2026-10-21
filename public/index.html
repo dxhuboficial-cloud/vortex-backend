@@ -4,20 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.171">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.171">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.171">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.171">
-    <link rel="stylesheet" href="style.css?v=1.0.171">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.172">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.172">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.172">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.172">
+    <link rel="stylesheet" href="style.css?v=1.0.172">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.171">
+    <link rel="manifest" href="manifest.json?v=1.0.172">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.171">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.171">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.172">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.172">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -293,6 +293,17 @@
                 </div>
             </div>
 
+            <!-- Card de Pergunta Anônima (Estilo NGL / Caixa Secreta) -->
+            <div id="story-ngl-container" class="story-ngl-container" style="display: none;">
+                <div class="story-ngl-card">
+                    <div class="story-ngl-top">
+                        <i data-lucide="help-circle" class="story-ngl-icon"></i>
+                        <span id="story-ngl-prompt" class="story-ngl-prompt">Mande uma mensagem anônima...</span>
+                    </div>
+                    <div class="story-ngl-badge"><i data-lucide="lock" style="width:11px; height:11px;"></i> 100% Anônimo</div>
+                </div>
+            </div>
+
             <!-- Botão de Link com Ação (Conta Empresa) -->
             <div id="story-link-cta-container" class="story-link-cta-container" style="display: none;">
                 <a id="story-link-cta-btn" href="#" target="_blank" rel="noopener noreferrer" class="story-link-cta-btn" title="Abrir link do Story">
@@ -446,6 +457,10 @@
                     <div class="dropdown-item" id="enable-multiselect-trigger">
                         <i data-lucide="check-square"></i>
                         <span>Selecionar Mensagens</span>
+                    </div>
+                    <div class="dropdown-item" id="view-starred-messages-trigger">
+                        <i data-lucide="star" style="color: #fff01f;"></i>
+                        <span>Mensagens Favoritas</span>
                     </div>
                     <div class="dropdown-item" id="chat-wallpaper-trigger">
                         <i data-lucide="image"></i>
@@ -619,6 +634,9 @@
             </div>
             <div class="msg-action-divider"></div>
             <div class="msg-action-icons">
+                <div class="msg-action-item" id="action-star-btn" title="Favoritar Mensagem" aria-label="Favoritar">
+                    <i data-lucide="star"></i>
+                </div>
                 <div class="msg-action-item" id="action-copy-btn" title="Copiar Mensagem" aria-label="Copiar" style="display: none;">
                     <i data-lucide="copy"></i>
                 </div>
@@ -1432,6 +1450,20 @@
                     </div>
                 </div>
 
+                <!-- Opção de Perguntas Anônimas (Estilo NGL / Caixa Secreta) -->
+                <div class="setting-item" id="story-anonymous-section" style="padding: 10px 0; border-top: 1px solid rgba(255,255,255,0.08);">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <label for="story-anonymous-toggle" class="setting-info" style="cursor: pointer; margin:0;">
+                            <span style="display:flex; align-items:center; gap:6px;"><i data-lucide="help-circle" style="color: #fff01f; width: 16px; height: 16px;"></i> Perguntas Anônimas 🤫</span>
+                            <small>Permitir receber perguntas e confissões anônimas neste Story</small>
+                        </label>
+                        <input type="checkbox" id="story-anonymous-toggle" class="custom-toggle">
+                    </div>
+                    <div id="story-anonymous-input-box" style="display:none; margin-top:10px;">
+                        <input type="text" id="story-anonymous-prompt" class="story-link-input" placeholder="Ex: Mande uma mensagem anônima..." maxlength="60" style="width:100%; box-sizing:border-box;">
+                    </div>
+                </div>
+
                 <div class="status-form-actions">
                     <button type="button" id="preview-status-btn" class="secondary-btn preview-status-action-btn" title="Ver como seu story vai ficar antes de publicar">
                         <i data-lucide="eye"></i> <span>Pré-visualizar Story</span>
@@ -1701,6 +1733,14 @@
                         <small id="install-setting-desc">Instalar o VORTEX VIP no navegador ou na tela inicial</small>
                     </div>
                     <button id="install-pwa-btn" type="button" class="danger-btn install-pwa-action-btn">Instalar</button>
+                </div>
+
+                <div class="setting-item" id="storage-cleaner-setting-item">
+                    <div class="setting-info">
+                        <span><i data-lucide="hard-drive"></i> Armazenamento e Cache</span>
+                        <small id="storage-cleaner-desc">Liberar espaço limpando mídias temporárias e cache local</small>
+                    </div>
+                    <button id="clean-storage-btn" type="button" class="secondary-btn" style="padding:6px 14px; font-size:0.8rem; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); border-radius:8px; color:var(--text-main,#fff); cursor:pointer;">Limpar</button>
                 </div>
 
                 <div class="setting-item">
@@ -3292,6 +3332,12 @@
                     </div>
                 </div>
                 <div class="catalog-sheet-footer catalog-cart-footer">
+                    <div class="catalog-coupon-row" style="display:flex; gap:8px; margin-bottom:10px;">
+                        <input type="text" id="catalog-coupon-input" class="catalog-field-input" placeholder="Cupom de desconto (ex: VORTEX10)" style="flex:1; text-transform:uppercase; font-size:0.85rem;" autocomplete="off">
+                        <button type="button" id="catalog-apply-coupon-btn" class="catalog-secondary-btn" style="padding:6px 14px; font-size:0.82rem; white-space:nowrap;"><i data-lucide="tag"></i> Aplicar</button>
+                    </div>
+                    <div id="catalog-coupon-feedback" style="display:none; font-size:0.78rem; margin-bottom:8px;"></div>
+                    <div id="catalog-cart-discount-row" class="catalog-cart-total-row" style="display:none; color:#4ade80; font-size:0.88rem;"><span>Desconto do Cupom</span><strong id="catalog-cart-discount">- R$ 0,00</strong></div>
                     <div class="catalog-cart-total-row"><span>Total</span><strong id="catalog-cart-total">R$ 0,00</strong></div>
                     <div class="catalog-footer-actions">
                         <button type="button" id="catalog-cart-clear-btn" class="catalog-secondary-btn"><i data-lucide="trash-2"></i><span>Limpar</span></button>
@@ -3545,8 +3591,23 @@
             </div>
         </div>
 
+        <!-- Modal de Mensagens Favoritas ⭐ -->
+        <div id="starred-messages-modal" class="custom-modal-overlay" style="display:none;" aria-hidden="true">
+            <div class="custom-modal-card starred-messages-card">
+                <div class="panel-top-bar" style="padding:12px 16px;">
+                    <h3 class="modal-title" style="font-size:1rem; color:#fff01f;"><i data-lucide="star"></i> Mensagens Favoritas</h3>
+                    <div class="header-icon-btn" id="close-starred-messages-modal" title="Fechar" aria-label="Fechar">
+                        <i data-lucide="x"></i>
+                    </div>
+                </div>
+                <div id="starred-messages-content" class="starred-messages-content">
+                    <!-- Conteúdo injetado via JS -->
+                </div>
+            </div>
+        </div>
+
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.171" defer></script>
+    <script type="module" src="script.js?v=1.0.172" defer></script>
 </body>
 </html>
