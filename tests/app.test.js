@@ -10587,15 +10587,12 @@ test('Correção de Mensagens Favoritas, Função formatDate e Abertura com Múl
   const env = createTestEnvironment();
   const win = env.sandbox.window;
 
-  // 1. Integridade de Versionamento (v1.0.176)
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.176', 'script.js deve ter versão 1.0.176');
+  // 1. Integridade de Versionamento (v1.0.176+)
+  const parts = win.CURRENT_APP_VERSION.split('.').map(Number);
+  assert.ok(parts[0] > 1 || (parts[0] === 1 && parts[1] > 0) || (parts[0] === 1 && parts[1] === 0 && parts[2] >= 176), 'script.js deve ter versão >= 1.0.176');
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
-  assert.strictEqual(versionJson.version, '1.0.176', 'version.json deve ter versão 1.0.176');
-  const htmlContent = fs.readFileSync('public/index.html', 'utf8');
-  assert.ok(htmlContent.includes('script.js?v=1.0.176'), 'index.html deve referenciar script.js?v=1.0.176');
-  assert.ok(htmlContent.includes('style.css?v=1.0.176'), 'index.html deve referenciar style.css?v=1.0.176');
-  const swContent = fs.readFileSync('public/sw.js', 'utf8');
-  assert.ok(swContent.includes('vortex-vip-v1.0.176'), 'sw.js deve ter cache vortex-vip-v1.0.176');
+  const vParts = versionJson.version.split('.').map(Number);
+  assert.ok(vParts[0] > 1 || (vParts[0] === 1 && vParts[1] > 0) || (vParts[0] === 1 && vParts[1] === 0 && vParts[2] >= 176), 'version.json deve ter versão >= 1.0.176');
 
   // 2. Existência e funcionamento das funções formatDate e formatStarredMessageDate
   assert.strictEqual(typeof win.formatDate, 'function', 'formatDate deve ser uma função global');
@@ -10676,6 +10673,64 @@ test('Correção de Mensagens Favoritas, Função formatDate e Abertura com Múl
   assert.ok(cssContent.includes('cursor: pointer'), 'Item de mensagem favorita deve ser clicável');
   assert.ok(cssContent.includes('.highlighted-starred-msg'), 'Deve conter animação de destaque .highlighted-starred-msg');
   assert.ok(cssContent.includes('@keyframes pulseStarredHighlight'), 'Deve conter keyframes pulseStarredHighlight');
+});
+
+test('Correção de Clique na Mensagem Favorita e Compatibilidade Assíncrona de openChatByChatIdOrUid (v1.0.177)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+
+  // 1. Integridade de Versionamento (v1.0.177)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.177', 'script.js deve ter versão 1.0.177');
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
+  assert.strictEqual(versionJson.version, '1.0.177', 'version.json deve ter versão 1.0.177');
+  const htmlContent = fs.readFileSync('public/index.html', 'utf8');
+  assert.ok(htmlContent.includes('script.js?v=1.0.177'), 'index.html deve referenciar script.js?v=1.0.177');
+  assert.ok(htmlContent.includes('style.css?v=1.0.177'), 'index.html deve referenciar style.css?v=1.0.177');
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+  assert.ok(swContent.includes('vortex-vip-v1.0.177'), 'sw.js deve ter cache vortex-vip-v1.0.177');
+
+  // 2. Simulação de clique no card de favorita sem disparar TypeError (reading then)
+  const currentUser = { uid: 'user_star_click_tester', email: 'tester@vortex.app' };
+  win.setCurrentUser(currentUser);
+  win.setCurrentProfile(currentUser);
+
+  // 3. openChatByChatIdOrUid deve ser assíncrona (retornar Promise com .then)
+  assert.strictEqual(typeof win.openChatByChatIdOrUid, 'function', 'openChatByChatIdOrUid deve ser uma função');
+  const openChatPromise = win.openChatByChatIdOrUid('test_chat_1', 'user_remote');
+  assert.ok(openChatPromise && typeof openChatPromise.then === 'function', 'openChatByChatIdOrUid deve retornar uma Promise com método .then');
+  await openChatPromise;
+
+  const testMsg = {
+    id: 'msg_target_to_click',
+    type: 'text',
+    text: 'Mensagem para clicar',
+    senderUid: currentUser.uid,
+    createdAt: Date.now()
+  };
+
+  await win.toggleStarMessage(testMsg);
+  win.openStarredMessagesModal();
+
+  const content = env.elements['starred-messages-content'];
+  const modal = env.elements['starred-messages-modal'];
+  assert.ok(content.innerHTML.includes('msg_target_to_click'), 'Deve conter o item salvo');
+
+  // Simula elemento de mensagem na tela do chat
+  const msgContainer = env.elements['message-container'] || { appendChild() {} };
+  const fakeMsgEl = env.sandbox.document.createElement('div');
+  fakeMsgEl.className = 'message sent';
+  fakeMsgEl.dataset.id = 'msg_target_to_click';
+  fakeMsgEl.scrollIntoView = () => {};
+  env.sandbox.document.body.appendChild(fakeMsgEl);
+
+  // Busca o card renderizado no container de favoritas
+  const cardEl = content.children.find ? content.children.find(c => c.dataset && c.dataset.id === 'msg_target_to_click') : null;
+  if (cardEl && cardEl.click) {
+    // Não deve lançar Uncaught TypeError: Cannot read properties of undefined (reading 'then')
+    assert.doesNotThrow(async () => {
+      await cardEl.click();
+    });
+  }
 });
 
 

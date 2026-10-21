@@ -1043,20 +1043,40 @@ export function dismissInAppPushBanner() {
     }, 350);
 }
 
-export function openChatByChatIdOrUid(chatId, senderUid) {
-    if (!senderUid && !chatId) return;
-    const targetUid = senderUid || chatId;
+export async function openChatByChatIdOrUid(chatId, senderUid) {
+    if (!senderUid && !chatId) return false;
+    if (!currentUser) return false;
+    let targetUid = senderUid;
+
+    // Se targetUid não foi passado ou for o próprio usuário logado, tenta extrair o outro UID do chatId
+    if ((!targetUid || (currentUser && targetUid === currentUser.uid)) && chatId) {
+        if (chatId.startsWith('group_')) {
+            targetUid = chatId.replace('group_', '');
+        } else if (chatId.includes('_')) {
+            const parts = chatId.split('_');
+            if (currentUser) {
+                targetUid = parts.find(u => u !== currentUser.uid) || targetUid;
+            }
+        }
+    }
+
+    if (!targetUid) targetUid = chatId;
+
     const contactCard = document.querySelector(`.chat-card[data-uid="${targetUid}"]`);
     if (contactCard) {
         contactCard.click();
+        return true;
     } else {
         const contact = { uid: targetUid, name: 'Contato VIP' };
         if (typeof openDirectChat === 'function') {
-            openDirectChat(contact);
+            await openDirectChat(contact);
+            return true;
         } else if (typeof openChat === 'function') {
-            openChat(contact);
+            await openChat(contact);
+            return true;
         }
     }
+    return false;
 }
 
 const mediaSizeLimits = {
@@ -14174,7 +14194,7 @@ export function openStarredMessagesModal() {
         });
 
         content.querySelectorAll('.starred-msg-item').forEach(card => {
-            card.addEventListener('click', (e) => {
+            card.addEventListener('click', async (e) => {
                 if (e.target.closest('.starred-msg-unstar-btn')) return;
                 const msgId = card.dataset.id;
                 const itemChatId = card.dataset.chatId;
@@ -14182,7 +14202,17 @@ export function openStarredMessagesModal() {
                 closeStarredMessagesModal();
 
                 const currentChatId = typeof getActiveChatId === 'function' ? getActiveChatId() : '';
-                const msgEl = document.querySelector(`.message[data-id="${msgId}"]`);
+
+                // Busca a mensagem na conversa ativa atual
+                let msgEl = null;
+                try {
+                    if (window.CSS && typeof window.CSS.escape === 'function') {
+                        msgEl = document.querySelector(`.message[data-id="${CSS.escape(msgId)}"]`);
+                    }
+                } catch (_) {}
+                if (!msgEl) {
+                    msgEl = document.querySelector(`.message[data-id="${msgId}"]`);
+                }
 
                 if (msgEl) {
                     msgEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -14190,21 +14220,35 @@ export function openStarredMessagesModal() {
                     setTimeout(() => {
                         msgEl.classList.remove('highlighted-starred-msg');
                     }, 2500);
-                } else if (itemChatId && itemChatId !== currentChatId && typeof openChatByChatIdOrUid === 'function') {
-                    openChatByChatIdOrUid(itemChatId).then(() => {
+                    return;
+                }
+
+                // Se a mensagem não está na tela atual e tem um chatId válido diferente
+                if (itemChatId && itemChatId !== currentChatId && typeof openChatByChatIdOrUid === 'function') {
+                    try {
+                        await openChatByChatIdOrUid(itemChatId);
                         setTimeout(() => {
-                            const newMsgEl = document.querySelector(`.message[data-id="${msgId}"]`);
+                            let newMsgEl = null;
+                            try {
+                                if (window.CSS && typeof window.CSS.escape === 'function') {
+                                    newMsgEl = document.querySelector(`.message[data-id="${CSS.escape(msgId)}"]`);
+                                }
+                            } catch (_) {}
+                            if (!newMsgEl) {
+                                newMsgEl = document.querySelector(`.message[data-id="${msgId}"]`);
+                            }
                             if (newMsgEl) {
                                 newMsgEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
                                 newMsgEl.classList.add('highlighted-starred-msg');
                                 setTimeout(() => newMsgEl.classList.remove('highlighted-starred-msg'), 2500);
                             }
-                        }, 500);
-                    }).catch(() => {
-                        showToast('Mensagem Favorita', 'Mensagem favoritada no chat.', 'blue');
-                    });
+                        }, 600);
+                    } catch (err) {
+                        console.warn('[VORTEX] Erro ao abrir chat da favorita:', err);
+                        showToast('Mensagem Favorita', 'A mensagem está salva nas suas favoritas ⭐', 'blue');
+                    }
                 } else {
-                    showToast('Mensagem Favorita', 'A mensagem está favoritada.', 'blue');
+                    showToast('Mensagem Favorita', 'A mensagem está salva nas suas favoritas ⭐', 'blue');
                 }
             });
         });
@@ -17971,7 +18015,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.176';
+export const CURRENT_APP_VERSION = '1.0.177';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
