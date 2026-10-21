@@ -3927,31 +3927,48 @@ body.theme-cyberpunk .feed-search-icon {
     padding: 6px 12px 0 12px;
     gap: 6px;
     overflow-x: auto;
+    overflow-y: hidden;
     flex-shrink: 0;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+.admin-tabs-bar::-webkit-scrollbar {
+    display: none;
 }
 
 .admin-tab-btn {
-    flex: 1;
-    min-width: 90px;
-    display: flex;
+    flex: 0 0 auto;
+    min-width: fit-content;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    padding: 10px 8px;
+    gap: 8px;
+    padding: 10px 14px;
     background: transparent;
     border: none;
     border-bottom: 2.5px solid transparent;
     color: var(--text-dim);
-    font-size: 0.82rem;
+    font-size: 0.85rem;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
     white-space: nowrap;
 }
 
-.admin-tab-btn i {
-    width: 16px;
-    height: 16px;
+.admin-tab-btn i,
+.admin-tab-btn svg,
+.admin-tab-btn .lucide,
+.admin-tab-icon {
+    width: 18px !important;
+    height: 18px !important;
+    min-width: 18px !important;
+    min-height: 18px !important;
+    max-width: 18px !important;
+    max-height: 18px !important;
+    flex-shrink: 0 !important;
+    display: inline-block !important;
+    vertical-align: middle !important;
+    stroke-width: 2.2px;
 }
 
 .admin-tab-btn:hover {
@@ -3970,10 +3987,16 @@ body.theme-cyberpunk .feed-search-icon {
     color: #fff;
     font-size: 0.68rem;
     font-weight: 800;
-    padding: 1px 6px;
+    padding: 2px 6px;
     border-radius: 10px;
-    min-width: 14px;
+    min-width: 16px;
+    height: 16px;
+    line-height: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     text-align: center;
+    flex-shrink: 0 !important;
 }
 
 .admin-views-container {
@@ -4006,12 +4029,14 @@ body.theme-cyberpunk .feed-search-icon {
     align-items: center;
 }
 
-.admin-search-wrapper i {
+.admin-search-wrapper i,
+.admin-search-wrapper svg {
     position: absolute;
     left: 12px;
     width: 16px;
     height: 16px;
     color: var(--text-dim);
+    flex-shrink: 0;
 }
 
 .admin-search-wrapper input {
