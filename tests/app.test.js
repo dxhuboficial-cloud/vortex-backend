@@ -10391,9 +10391,9 @@ test('Cadastro de Cupons pelo App, Configuração de Frete da Loja e Layout de P
   const win = env.sandbox.window;
 
   // 1. Integridade de Versionamento
-  assert.ok(['1.0.173', '1.0.174'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão 1.0.173 ou superior');
+  assert.ok(win.CURRENT_APP_VERSION >= '1.0.173', 'script.js deve ter versão 1.0.173 ou superior');
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
-  assert.ok(['1.0.173', '1.0.174'].includes(versionJson.version), 'version.json deve ter versão 1.0.173 ou superior');
+  assert.ok(versionJson.version >= '1.0.173', 'version.json deve ter versão 1.0.173 ou superior');
   assert.ok(htmlContent.includes('script.js?v='), 'index.html deve referenciar script.js versionado');
   assert.ok(htmlContent.includes('style.css?v='), 'index.html deve referenciar style.css versionado');
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
@@ -10525,14 +10525,14 @@ test('Correção do Ícone de Solicitações VIP e Abas do Painel ADM (v1.0.174)
   const env = createTestEnvironment();
   const win = env.sandbox.window;
 
-  // 1. Integridade de Versionamento (v1.0.174)
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.174', 'script.js deve ter versão 1.0.174');
+  // 1. Integridade de Versionamento
+  assert.ok(win.CURRENT_APP_VERSION >= '1.0.174', 'script.js deve ter versão 1.0.174 ou superior');
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
-  assert.strictEqual(versionJson.version, '1.0.174', 'version.json deve ter versão 1.0.174');
-  assert.ok(htmlContent.includes('script.js?v=1.0.174'), 'index.html deve referenciar script.js?v=1.0.174');
-  assert.ok(htmlContent.includes('style.css?v=1.0.174'), 'index.html deve referenciar style.css?v=1.0.174');
+  assert.ok(versionJson.version >= '1.0.174', 'version.json deve ter versão 1.0.174 ou superior');
+  assert.ok(htmlContent.includes('script.js?v='), 'index.html deve referenciar script.js versionado');
+  assert.ok(htmlContent.includes('style.css?v='), 'index.html deve referenciar style.css versionado');
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
-  assert.ok(swContent.includes('vortex-vip-v1.0.174'), 'sw.js deve ter cache vortex-vip-v1.0.174');
+  assert.ok(swContent.includes('vortex-vip-v1.0.'), 'sw.js deve ter cache versionado');
 
   // 2. Elementos das Abas do Painel ADM no DOM
   assert.ok(env.elements['admin-tab-vip-requests-btn'], '#admin-tab-vip-requests-btn deve existir');
@@ -10554,6 +10554,37 @@ test('Correção do Ícone de Solicitações VIP e Abas do Painel ADM (v1.0.174)
   // 4. Classes nos Botões do index.html
   assert.ok(htmlContent.includes('data-lucide="badge-check" class="admin-tab-icon"'), 'Ícone de Solicitações VIP deve ter classe admin-tab-icon');
 });
+
+test('Padronização do Tamanho dos Botões e Barra Horizontal da Loja (v1.0.175)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+
+  // 1. Integridade de Versionamento (v1.0.175)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.175', 'script.js deve ter versão 1.0.175');
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
+  assert.strictEqual(versionJson.version, '1.0.175', 'version.json deve ter versão 1.0.175');
+  assert.ok(htmlContent.includes('script.js?v=1.0.175'), 'index.html deve referenciar script.js?v=1.0.175');
+  assert.ok(htmlContent.includes('style.css?v=1.0.175'), 'index.html deve referenciar style.css?v=1.0.175');
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+  assert.ok(swContent.includes('vortex-vip-v1.0.175'), 'sw.js deve ter cache vortex-vip-v1.0.175');
+
+  // 2. Elementos da Barra de Ferramentas da Loja no DOM
+  assert.ok(env.elements['catalog-add-product-btn'], '#catalog-add-product-btn deve existir');
+  assert.ok(env.elements['catalog-manage-categories-btn'], '#catalog-manage-categories-btn deve existir');
+  assert.ok(env.elements['catalog-manage-coupons-btn'], '#catalog-manage-coupons-btn deve existir');
+  assert.ok(env.elements['catalog-manage-shipping-btn'], '#catalog-manage-shipping-btn deve existir');
+
+  // 3. Integridade do CSS da Barra Horizontal e Tamanho dos Botões
+  const cssContent = fs.readFileSync('public/style.css', 'utf8');
+  assert.ok(cssContent.includes('.catalog-toolbar'), 'Deve conter estilos para .catalog-toolbar');
+  assert.ok(cssContent.includes('.catalog-toolbar::-webkit-scrollbar'), 'Deve conter barra horizontal com webkit-scrollbar');
+  assert.ok(cssContent.includes('scrollbar-width: thin'), 'Deve conter scrollbar-width fina para scroll horizontal');
+  assert.ok(cssContent.includes('white-space: nowrap !important'), 'Deve proibir quebra de linha de texto nos botões da barra');
+  assert.ok(cssContent.includes('height: 42px'), 'Deve padronizar altura dos botões no desktop/tablet');
+  assert.ok(cssContent.includes('height: 38px'), 'Deve padronizar altura dos botões no celular');
+  assert.ok(cssContent.includes('flex: 0 0 auto'), 'Deve conter flex: 0 0 auto para evitar encolhimento no celular');
+});
+
 
 
 
