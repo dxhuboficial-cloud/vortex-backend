@@ -10775,24 +10775,25 @@ test('Correção de Abertura do Catálogo no Perfil de Contato sem Erro de Null 
   assert.ok(catalogOverlay.classList.contains('active'), '#catalog-overlay deve ter classe active');
 });
 
-test('Histórico de Ligações Dentro das Conversas e Responsividade Mobile (v1.0.180)', async () => {
+test('Histórico de Ligações Dentro das Conversas, Responsividade Mobile e Isolamento Estrito por Perfil de Contato (v1.0.181)', async () => {
   const env = createTestEnvironment();
   const win = env.sandbox.window;
 
-  // 1. Integridade de Versionamento (v1.0.180)
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.180', 'script.js deve ter versão 1.0.180');
+  // 1. Integridade de Versionamento (v1.0.181)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.181', 'script.js deve ter versão 1.0.181');
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
-  assert.strictEqual(versionJson.version, '1.0.180', 'version.json deve ter versão 1.0.180');
+  assert.strictEqual(versionJson.version, '1.0.181', 'version.json deve ter versão 1.0.181');
   const htmlContent = fs.readFileSync('public/index.html', 'utf8');
-  assert.ok(htmlContent.includes('script.js?v=1.0.180'), 'index.html deve referenciar script.js?v=1.0.180');
-  assert.ok(htmlContent.includes('style.css?v=1.0.180'), 'index.html deve referenciar style.css?v=1.0.180');
+  assert.ok(htmlContent.includes('script.js?v=1.0.181'), 'index.html deve referenciar script.js?v=1.0.181');
+  assert.ok(htmlContent.includes('style.css?v=1.0.181'), 'index.html deve referenciar style.css?v=1.0.181');
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
-  assert.ok(swContent.includes('vortex-vip-v1.0.180'), 'sw.js deve ter cache vortex-vip-v1.0.180');
+  assert.ok(swContent.includes('vortex-vip-v1.0.181'), 'sw.js deve ter cache vortex-vip-v1.0.181');
 
   // 2. Elementos no DOM
   assert.ok(env.elements['view-call-history-trigger'], '#view-call-history-trigger deve existir no menu dropdown');
   assert.ok(env.elements['contact-profile-call-history-btn'], '#contact-profile-call-history-btn deve existir no perfil');
   assert.ok(env.elements['call-history-modal'], '#call-history-modal deve existir');
+  assert.ok(env.elements['call-history-contact-name'], '#call-history-contact-name deve existir no modal');
   assert.ok(env.elements['close-call-history-modal'], '#close-call-history-modal deve existir');
   assert.ok(env.elements['call-history-content'], '#call-history-content deve existir');
   assert.ok(env.elements['call-stat-total'], '#call-stat-total deve existir');
@@ -10941,11 +10942,81 @@ test('Histórico de Ligações Dentro das Conversas e Responsividade Mobile (v1.
     callStatus: 'missed',
     createdAt: new Date('2026-10-21T21:07:00').getTime()
   }];
-  await win.renderCallHistoryList(testCalls, 'all');
+  await win.renderCallHistoryList(testCalls, 'all', userOther);
   const renderedHTML = content.innerHTML;
   assert.ok(renderedHTML.includes('Chamada de vídeo não atendida'), 'Deve conter título formatado');
   assert.ok(renderedHTML.includes('Não atendida'), 'Deve conter status Não atendida');
   assert.ok(renderedHTML.includes('21/10 às 21:07'), 'Deve conter data formatada sem quebra');
+
+  // 9. ISOLAMENTO ESTRITO POR PERFIL DE CONTATO (Nunca misturar chamadas de outro contato!)
+  const contactAlice = { uid: 'user_alice_call', name: 'Alice Silva' };
+  const contactBob = { uid: 'user_bob_call', name: 'Bob Santos' };
+
+  // Registra 2 chamadas com a Alice
+  const chatAliceId = [userMe.uid, contactAlice.uid].sort().join('_');
+  env.firestoreDocs[`chats/${chatAliceId}/messages/call_alice_1`] = {
+    id: 'call_alice_1',
+    type: 'call',
+    callType: 'video',
+    callStatus: 'completed',
+    durationSeconds: 120,
+    durationFormatted: '2m 00s',
+    callerUid: userMe.uid,
+    calleeUid: contactAlice.uid,
+    senderUid: userMe.uid,
+    createdAt: Date.now() - 50000
+  };
+  env.firestoreDocs[`chats/${chatAliceId}/messages/call_alice_2`] = {
+    id: 'call_alice_2',
+    type: 'call',
+    callType: 'audio',
+    callStatus: 'missed',
+    durationSeconds: 0,
+    callerUid: contactAlice.uid,
+    calleeUid: userMe.uid,
+    senderUid: contactAlice.uid,
+    createdAt: Date.now() - 20000
+  };
+
+  // Nenhuma chamada com o Bob registrada
+  const chatBobId = [userMe.uid, contactBob.uid].sort().join('_');
+
+  // 9A. Abre o perfil do Bob e clica em Histórico de Ligações do perfil
+  // Mesmo que o activeChatContact atual fosse Alice, o perfil do Bob DEVE abrir o histórico do Bob!
+  win.setActiveChatContact(contactAlice); // Simulando Alice ativa no chat de fundo
+  await win.openContactProfile(contactBob);
+
+  const contactProfileHistoryBtn = env.elements['contact-profile-call-history-btn'];
+  assert.ok(contactProfileHistoryBtn, 'Botão de histórico de chamada do perfil deve existir');
+
+  contactProfileHistoryBtn.click();
+  // Aguarda processamento
+  await new Promise(r => setTimeout(r, 50));
+
+  // O histórico do Bob deve estar isolado:
+  const bobTotalStat = env.elements['call-stat-total'];
+  assert.strictEqual(bobTotalStat.innerText, '0', 'Bob não tem chamadas, total deve ser 0');
+  const bobContent = env.elements['call-history-content'].innerHTML;
+  assert.ok(bobContent.includes('Você ainda não realizou ou recebeu chamadas com Bob Santos.'), 'Deve exibir estado vazio personalizado para o Bob');
+  assert.strictEqual(bobContent.includes('call_alice_1'), false, 'NÃO deve conter chamadas da Alice no perfil do Bob');
+  assert.strictEqual(bobContent.includes('call_alice_2'), false, 'NÃO deve conter chamadas da Alice no perfil do Bob');
+
+  const contactSubtitle = env.elements['call-history-contact-name'];
+  assert.ok(contactSubtitle.innerText.includes('Bob Santos'), 'Subtítulo deve indicar que o histórico é com o Bob');
+
+  // 9B. Agora abre o perfil da Alice e clica no botão de histórico do perfil dela
+  win.closeCallHistoryModal();
+  await win.openContactProfile(contactAlice);
+  contactProfileHistoryBtn.click();
+  await new Promise(r => setTimeout(r, 50));
+
+  const aliceTotalStat = env.elements['call-stat-total'];
+  assert.strictEqual(aliceTotalStat.innerText, '2', 'Alice deve ter 2 chamadas registradas');
+  const aliceContent = env.elements['call-history-content'].innerHTML;
+  assert.ok(aliceContent.includes('Chamada de vídeo efetuada'), 'Deve conter chamada efetuada da Alice');
+  assert.ok(aliceContent.includes('Chamada de voz perdida'), 'Deve conter chamada perdida da Alice');
+  assert.strictEqual(aliceContent.includes('Bob Santos'), false, 'Não deve misturar Bob no histórico da Alice');
+  assert.ok(contactSubtitle.innerText.includes('Alice Silva'), 'Subtítulo deve indicar que o histórico é com a Alice');
 });
 
 

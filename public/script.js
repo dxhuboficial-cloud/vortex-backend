@@ -11516,6 +11516,13 @@ export async function openContactProfile(contact) {
         };
     }
 
+    const callHistoryBtn = document.getElementById('contact-profile-call-history-btn');
+    if (callHistoryBtn) {
+        callHistoryBtn.onclick = () => {
+            openCallHistoryModal('all', contact);
+        };
+    }
+
     if (blockBtn) {
         blockBtn.onclick = () => {
             openBlockContactConfirmation(contact);
@@ -18033,7 +18040,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.180';
+export const CURRENT_APP_VERSION = '1.0.181';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -21418,7 +21425,7 @@ handleFileUpload(document.getElementById('chat-file-audio'), 'audio');
 handleFileUpload(document.getElementById('chat-file-doc'), 'file');
 
 /* ==========================================================================
-   HISTÓRICO DE LIGAÇÕES DENTRO DAS CONVERSAS & CHAMADAS WEBRTC P2P (v1.0.180)
+   HISTÓRICO DE LIGAÇÕES DENTRO DAS CONVERSAS & CHAMADAS WEBRTC P2P (v1.0.181)
    ========================================================================== */
 
 export function formatCallDuration(seconds) {
@@ -21577,11 +21584,39 @@ export async function recordCallInChat(context, explicitStatus = null, explicitS
 }
 
 export let currentCallHistoryFilter = 'all';
+export let currentCallHistoryContact = null;
 
-export async function openCallHistoryModal(filter = 'all') {
+export async function openCallHistoryModal(filter = 'all', targetContact = null) {
     const modal = document.getElementById('call-history-modal');
     if (!modal) return;
+
+    // 1. Resolver o contato alvo para isolar estritamente o histórico
+    let contact = targetContact;
+    if (!contact) {
+        const profilePanel = document.getElementById('contact-profile-panel');
+        const isProfileActive = profilePanel && profilePanel.classList.contains('active');
+        if (isProfileActive && (activeContactProfileData || activeContactProfileUid)) {
+            contact = activeContactProfileData || (typeof contactUserDataMap !== 'undefined' && contactUserDataMap.get(activeContactProfileUid)) || { uid: activeContactProfileUid };
+        } else {
+            contact = activeChatContact;
+        }
+    }
+    currentCallHistoryContact = contact || null;
     currentCallHistoryFilter = filter;
+
+    // 2. Atualizar subtítulo com nome do contato no topo do modal
+    const contactNameEl = document.getElementById('call-history-contact-name');
+    if (contactNameEl) {
+        const cName = contact?.name || contact?.displayName || '';
+        if (cName) {
+            contactNameEl.innerText = `Com ${cName}`;
+            contactNameEl.style.display = 'block';
+        } else {
+            contactNameEl.style.display = 'none';
+            contactNameEl.innerText = '';
+        }
+    }
+
     modal.style.display = 'flex';
     modal.classList.add('active');
     modal.setAttribute('aria-hidden', 'false');
@@ -21591,7 +21626,7 @@ export async function openCallHistoryModal(filter = 'all') {
         tab.classList.toggle('active', tab.dataset.filter === filter);
     });
 
-    await renderCallHistoryList(filter);
+    await renderCallHistoryList(filter, null, contact);
 }
 
 export function closeCallHistoryModal() {
@@ -21603,7 +21638,7 @@ export function closeCallHistoryModal() {
     playSound(clickSound);
 }
 
-export async function renderCallHistoryList(filter = 'all', customCalls = null) {
+export async function renderCallHistoryList(filter = 'all', customCalls = null, targetContact = null) {
     const content = document.getElementById('call-history-content');
     if (!content) return;
 
@@ -21612,39 +21647,104 @@ export async function renderCallHistoryList(filter = 'all', customCalls = null) 
         filter = 'all';
     }
 
-    const chatId = getActiveChatId();
+    // Resolver contato alvo (prioridade: targetContact > currentCallHistoryContact > perfil aberto > activeChatContact)
+    let contact = targetContact || currentCallHistoryContact;
+    if (!contact) {
+        const profilePanel = document.getElementById('contact-profile-panel');
+        const isProfileActive = profilePanel && profilePanel.classList.contains('active');
+        if (isProfileActive && (activeContactProfileData || activeContactProfileUid)) {
+            contact = activeContactProfileData || (typeof contactUserDataMap !== 'undefined' && contactUserDataMap.get(activeContactProfileUid)) || { uid: activeContactProfileUid };
+        } else {
+            contact = activeChatContact;
+        }
+    }
+    const contactUid = contact?.uid || contact?.id || null;
+
     let callMessages = Array.isArray(customCalls) ? [...customCalls] : [];
 
-    // 1. Mensagens em memória da conversa atual
-    if (callMessages.length === 0 && typeof currentChatMessagesMap !== 'undefined' && currentChatMessagesMap && currentChatMessagesMap.size > 0) {
+    // 1. Mensagens em memória da conversa atual SOMENTE se for estritamente o mesmo contato
+    const isActiveChatSameContact = activeChatContact && contactUid && (
+        activeChatContact.uid === contactUid || activeChatContact.id === contactUid
+    );
+
+    if (callMessages.length === 0 && isActiveChatSameContact && typeof currentChatMessagesMap !== 'undefined' && currentChatMessagesMap && currentChatMessagesMap.size > 0) {
         currentChatMessagesMap.forEach(msg => {
             if (msg.type === 'call') {
-                callMessages.push(msg);
+                const belongsToContact = (
+                    msg.callerUid === contactUid ||
+                    msg.calleeUid === contactUid ||
+                    msg.senderUid === contactUid
+                );
+                if (belongsToContact) {
+                    callMessages.push(msg);
+                }
             }
         });
     }
 
-    // 2. Se vazio e houver chatId, busca do Firestore
-    if (callMessages.length === 0 && chatId && typeof getDocs === 'function' && typeof collection === 'function') {
-        try {
-            const q = query(
-                collection(db, 'chats', chatId, 'messages'),
-                where('type', '==', 'call'),
-                orderBy('createdAt', 'desc'),
-                limit(50)
-            );
-            const snap = await getDocs(q);
-            snap.forEach(docSnap => {
-                callMessages.push({ ...docSnap.data(), id: docSnap.id });
-            });
-        } catch (e) {
-            console.warn('Erro ao buscar ligações do Firestore:', e);
+    // 2. Se vazio ou se não for o chat ativo, busca do Firestore pelo chatId específico deste contato
+    if (callMessages.length === 0 && currentUser && contactUid && typeof db !== 'undefined') {
+        const targetChatId = contact?.isGroup ? `group_${contactUid}` : [currentUser.uid, contactUid].sort().join('_');
+        if (typeof getDocs === 'function' && typeof collection === 'function') {
+            try {
+                const q = query(
+                    collection(db, 'chats', targetChatId, 'messages'),
+                    where('type', '==', 'call'),
+                    orderBy('createdAt', 'desc'),
+                    limit(50)
+                );
+                const snap = await getDocs(q);
+                snap.forEach(docSnap => {
+                    const data = docSnap.data();
+                    const belongs = (
+                        data.callerUid === contactUid ||
+                        data.calleeUid === contactUid ||
+                        data.senderUid === contactUid
+                    );
+                    if (belongs) {
+                        callMessages.push({ ...data, id: docSnap.id });
+                    }
+                });
+            } catch (e) {
+                console.warn('Erro na busca composta de chamadas no Firestore, tentando sem order:', e);
+                try {
+                    const qFallback = query(
+                        collection(db, 'chats', targetChatId, 'messages'),
+                        where('type', '==', 'call'),
+                        limit(50)
+                    );
+                    const snap = await getDocs(qFallback);
+                    snap.forEach(docSnap => {
+                        const data = docSnap.data();
+                        const belongs = (
+                            data.callerUid === contactUid ||
+                            data.calleeUid === contactUid ||
+                            data.senderUid === contactUid
+                        );
+                        if (belongs) {
+                            callMessages.push({ ...data, id: docSnap.id });
+                        }
+                    });
+                } catch (e2) {
+                    console.warn('Erro ao buscar ligações no fallback:', e2);
+                }
+            }
         }
     }
 
-    // Ordenar por data decrescente
+    // 3. Filtro rigoroso de isolamento por UID de contato: NUNCA misturar chamadas de outro contato
+    if (contactUid) {
+        callMessages = callMessages.filter(c => (
+            c.callerUid === contactUid ||
+            c.calleeUid === contactUid ||
+            c.senderUid === contactUid
+        ));
+    }
+
+    // 4. Ordenar por data decrescente
     callMessages.sort((a, b) => (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0));
 
+    // 5. Calcular métricas isoladas para este contato
     const totalCount = callMessages.length;
     const completedCalls = callMessages.filter(c => c.callStatus === 'completed');
     const missedCalls = callMessages.filter(c => c.callStatus === 'missed' || c.callStatus === 'rejected');
@@ -21663,6 +21763,7 @@ export async function renderCallHistoryList(filter = 'all', customCalls = null) 
         durationEl.innerText = totalMins > 0 ? `${totalMins}m` : (totalSeconds > 0 ? `${totalSeconds}s` : '0m');
     }
 
+    // 6. Filtrar pela aba selecionada
     let filtered = callMessages;
     if (filter === 'completed') {
         filtered = completedCalls;
@@ -21670,12 +21771,14 @@ export async function renderCallHistoryList(filter = 'all', customCalls = null) 
         filtered = missedCalls;
     }
 
+    // 7. Estado Vazio com nome do contato
+    const contactDisplayName = contact?.name || contact?.displayName || 'este contato';
     if (filtered.length === 0) {
         content.innerHTML = `
             <div class="call-history-empty">
                 <i data-lucide="phone-off"></i>
                 <p>Nenhuma ligação encontrada</p>
-                <small>${filter === 'all' ? 'Você ainda não realizou ou recebeu chamadas nesta conversa.' : 'Nenhuma ligação corresponde a este filtro.'}</small>
+                <small>${filter === 'all' ? `Você ainda não realizou ou recebeu chamadas com ${escapeHTML(contactDisplayName)}.` : 'Nenhuma ligação corresponde a este filtro.'}</small>
             </div>
         `;
         if (window.lucide) lucide.createIcons();
@@ -21752,7 +21855,7 @@ export async function renderCallHistoryList(filter = 'all', customCalls = null) 
                         </div>
                     </div>
                 </div>
-                <button type="button" class="call-history-call-btn" data-call-type="${callType}" title="Ligar para ${activeChatContact ? escapeHTML(activeChatContact.name || 'Contato') : 'Contato'}">
+                <button type="button" class="call-history-call-btn" data-call-type="${callType}" title="Ligar para ${escapeHTML(contactDisplayName)}">
                     <i data-lucide="${isVideo ? 'video' : 'phone'}"></i>
                 </button>
             </div>
@@ -22141,11 +22244,12 @@ document.getElementById('decline-call-btn')?.addEventListener('click', declineIn
 
 document.getElementById('view-call-history-trigger')?.addEventListener('click', () => {
     document.getElementById('chat-dropdown-menu')?.classList.remove('active');
-    openCallHistoryModal('all');
+    openCallHistoryModal('all', activeChatContact);
 });
 
 document.getElementById('contact-profile-call-history-btn')?.addEventListener('click', () => {
-    openCallHistoryModal('all');
+    const contact = activeContactProfileData || (activeContactProfileUid ? (typeof contactUserDataMap !== 'undefined' && contactUserDataMap.get(activeContactProfileUid) ? contactUserDataMap.get(activeContactProfileUid) : { uid: activeContactProfileUid }) : null);
+    openCallHistoryModal('all', contact);
 });
 
 document.getElementById('close-call-history-modal')?.addEventListener('click', () => {
@@ -22163,7 +22267,7 @@ document.querySelectorAll('.call-history-tab').forEach(tab => {
         document.querySelectorAll('.call-history-tab').forEach(t => t.classList.remove('active'));
         tab.classList.add('active');
         const filter = tab.dataset.filter || 'all';
-        renderCallHistoryList(filter);
+        renderCallHistoryList(filter, null, currentCallHistoryContact);
     });
 });
 
@@ -22173,6 +22277,9 @@ document.getElementById('call-history-content')?.addEventListener('click', (e) =
         e.stopPropagation();
         playSound(clickSound);
         const targetType = btn.dataset.callType || 'video';
+        if (currentCallHistoryContact) {
+            activeChatContact = currentCallHistoryContact;
+        }
         closeCallHistoryModal();
         startCall(targetType !== 'audio');
     }
@@ -29791,7 +29898,7 @@ if (typeof window !== 'undefined') {
     window.closeShippingModal = closeShippingModal;
     window.updateShippingModalUI = updateShippingModalUI;
     window.calculateCartShipping = calculateCartShipping;
-    // Histórico de Ligações Dentro das Conversas (v1.0.180)
+    // Histórico de Ligações Dentro das Conversas e Perfil Isolado (v1.0.181)
     window.formatCallDuration = formatCallDuration;
     window.formatCallDurationDigital = formatCallDurationDigital;
     window.buildCallCardHTML = buildCallCardHTML;
@@ -29799,6 +29906,8 @@ if (typeof window !== 'undefined') {
     window.openCallHistoryModal = openCallHistoryModal;
     window.closeCallHistoryModal = closeCallHistoryModal;
     window.renderCallHistoryList = renderCallHistoryList;
+    window.getCurrentCallHistoryContact = () => currentCallHistoryContact;
+    window.setCurrentCallHistoryContact = (c) => { currentCallHistoryContact = c; };
 }
 
 if (typeof window !== 'undefined') {

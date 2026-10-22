@@ -4,20 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.180">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.180">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.180">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.180">
-    <link rel="stylesheet" href="style.css?v=1.0.180">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.181">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.181">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.181">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.181">
+    <link rel="stylesheet" href="style.css?v=1.0.181">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.180">
+    <link rel="manifest" href="manifest.json?v=1.0.181">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.180">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.180">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.181">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.181">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -3735,11 +3735,14 @@
             </div>
         </div>
 
-        <!-- Modal de Histórico de Ligações da Conversa (v1.0.180) -->
+        <!-- Modal de Histórico de Ligações da Conversa (v1.0.181) -->
         <div id="call-history-modal" class="custom-modal-overlay" style="display:none;" aria-hidden="true">
             <div class="custom-modal-card call-history-card">
                 <div class="panel-top-bar" style="padding:12px 16px;">
-                    <h3 class="modal-title" style="font-size:1rem; color:#00d26a;"><i data-lucide="phone-call"></i> Histórico de Ligações</h3>
+                    <div class="modal-title-wrap" style="display:flex; flex-direction:column; min-width:0;">
+                        <h3 class="modal-title" style="font-size:1rem; color:#00d26a;"><i data-lucide="phone-call"></i> Histórico de Ligações</h3>
+                        <span id="call-history-contact-name" class="call-history-contact-name" style="display:none; font-size:0.75rem; color:var(--text-dim, #888); font-weight:600; margin-left:28px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></span>
+                    </div>
                     <div class="header-icon-btn" id="close-call-history-modal" title="Fechar" aria-label="Fechar">
                         <i data-lucide="x"></i>
                     </div>
@@ -3775,6 +3778,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.180" defer></script>
+    <script type="module" src="script.js?v=1.0.181" defer></script>
 </body>
 </html>
