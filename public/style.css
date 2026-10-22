@@ -2875,6 +2875,10 @@ input.input-invalid:focus {
 .video-call-overlay.active { display: flex !important; }
 .remote-video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; background: #070a0d; }
 .local-video-pip { position: absolute; top: max(45px, calc(20px + env(safe-area-inset-top, 20px))); right: 18px; width: 105px; height: 155px; border-radius: 16px; overflow: hidden; border: 2px solid var(--accent-color); box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8), 0 0 15px rgba(255, 240, 31, 0.3); z-index: 10; background: #111; }
+.local-video-pip.camera-off { border-color: #ff3b30; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8), 0 0 15px rgba(255, 59, 48, 0.35); }
+.local-video-off-placeholder { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #12141a; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 8px; box-sizing: border-box; text-align: center; z-index: 2; }
+.local-video-off-placeholder i, .local-video-off-placeholder svg { width: 26px; height: 26px; color: #ff453a; }
+.local-video-off-placeholder span { font-size: 0.65rem; font-weight: 700; color: #bbb; line-height: 1.2; }
 .local-video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
 .call-header { display: flex; flex-direction: column; align-items: center; gap: 8px; color: var(--text-dim); font-size: 0.75rem; z-index: 2; }
 .call-lock-icon { width: 12px; vertical-align: middle; }
@@ -2888,6 +2892,8 @@ input.input-invalid:focus {
 .call-footer { display: flex; justify-content: space-around; align-items: center; background: rgba(18, 18, 18, 0.85); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); padding: 16px 12px; border-radius: 35px; border: 1px solid rgba(255, 255, 255, 0.08); z-index: 15; }
 .call-action-btn { width: 52px; height: 52px; border-radius: 50%; background: rgba(255, 255, 255, 0.12); display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; color: white; border: none; }
 .call-action-btn.end-call { background: #ff3b30; }
+.call-action-btn.btn-active-off, #toggle-camera-btn.btn-active-off { background: #ff3b30 !important; color: #fff !important; box-shadow: 0 0 16px rgba(255, 59, 48, 0.45); }
+#toggle-camera-btn { transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease; }
 .call-action-btn.accept-call { background: #34c759; box-shadow: 0 0 20px #34c759; }
 
 .incoming-call-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(5, 5, 5, 0.96); -webkit-backdrop-filter: blur(30px); backdrop-filter: blur(30px); z-index: 2500; display: none; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; }

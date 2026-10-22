@@ -4,20 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.181">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.181">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.181">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.181">
-    <link rel="stylesheet" href="style.css?v=1.0.181">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.182">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.182">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.182">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.182">
+    <link rel="stylesheet" href="style.css?v=1.0.182">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.181">
+    <link rel="manifest" href="manifest.json?v=1.0.182">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.181">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.181">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.182">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.182">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -992,6 +992,10 @@
             
             <div class="local-video-pip" id="local-video-wrapper">
                 <video id="local-webcam-feed" autoplay playsinline muted class="local-video"></video>
+                <div id="local-video-off-placeholder" class="local-video-off-placeholder" style="display:none;">
+                    <i data-lucide="video-off"></i>
+                    <span>Câmera desligada</span>
+                </div>
             </div>
 
             <div class="call-header">
@@ -1006,9 +1010,10 @@
             </div>
 
             <div class="call-footer">
-                <div class="call-action-btn" id="mute-mic-btn" title="Silenciar Microfone"><i data-lucide="mic"></i></div>
-                <div class="call-action-btn" id="switch-camera-btn" title="Alternar Câmera"><i data-lucide="refresh-cw"></i></div>
-                <div class="call-action-btn end-call" id="end-call-btn" title="Desligar Chamada"><i data-lucide="phone-off"></i></div>
+                <div class="call-action-btn" id="mute-mic-btn" title="Silenciar Microfone" aria-label="Silenciar Microfone"><i data-lucide="mic"></i></div>
+                <div class="call-action-btn" id="toggle-camera-btn" title="Desligar Câmera" aria-label="Desligar Câmera"><i data-lucide="video"></i></div>
+                <div class="call-action-btn" id="switch-camera-btn" title="Alternar Câmera" aria-label="Alternar Câmera"><i data-lucide="refresh-cw"></i></div>
+                <div class="call-action-btn end-call" id="end-call-btn" title="Desligar Chamada" aria-label="Desligar Chamada"><i data-lucide="phone-off"></i></div>
             </div>
         </div>
 
@@ -3778,6 +3783,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.181" defer></script>
+    <script type="module" src="script.js?v=1.0.182" defer></script>
 </body>
 </html>

@@ -224,6 +224,7 @@ let activeCallRecordContext = null;
 let callTimerInterval = null;
 let callSeconds = 0;
 let isCallMuted = false;
+let isCameraOff = false;
 let currentFacingMode = 'user';
 let vibrationInterval = null;
 let hasUserInteracted = false;
@@ -18040,7 +18041,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.181';
+export const CURRENT_APP_VERSION = '1.0.182';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -21425,7 +21426,7 @@ handleFileUpload(document.getElementById('chat-file-audio'), 'audio');
 handleFileUpload(document.getElementById('chat-file-doc'), 'file');
 
 /* ==========================================================================
-   HISTÓRICO DE LIGAÇÕES DENTRO DAS CONVERSAS & CHAMADAS WEBRTC P2P (v1.0.181)
+   HISTÓRICO DE LIGAÇÕES DENTRO DAS CONVERSAS & CHAMADAS WEBRTC P2P (v1.0.182)
    ========================================================================== */
 
 export function formatCallDuration(seconds) {
@@ -21907,6 +21908,10 @@ async function startCall(isVideo = true) {
     ringtoneSound.play().catch(() => {});
 
     try {
+        isCallMuted = false;
+        isCameraOff = false;
+        updateCameraToggleButtonUI(false);
+
         const callMedia = await requestCallMedia();
         localStream = callMedia.stream;
         if (!callMedia.hasVideo) {
@@ -22106,6 +22111,10 @@ async function acceptIncomingCall() {
     if (overlay) overlay.classList.add('active');
 
     try {
+        isCallMuted = false;
+        isCameraOff = false;
+        updateCameraToggleButtonUI(false);
+
         const callMedia = await requestCallMedia();
         localStream = callMedia.stream;
         if (!callMedia.hasVideo && statusEl) statusEl.innerText = 'Atendendo somente com áudio';
@@ -22235,6 +22244,18 @@ async function endCall() {
     if (overlay) overlay.classList.remove('active');
     dismissIncomingCallUI();
     playSound(clickSound);
+
+    isCallMuted = false;
+    isCameraOff = false;
+    updateCameraToggleButtonUI(false);
+    const micBtn = document.getElementById('mute-mic-btn');
+    if (micBtn) {
+        micBtn.style.background = 'rgba(255, 255, 255, 0.12)';
+        micBtn.title = 'Silenciar Microfone';
+        micBtn.setAttribute('aria-label', 'Silenciar Microfone');
+        micBtn.innerHTML = '<i data-lucide="mic"></i>';
+    }
+    if (window.lucide) lucide.createIcons();
 }
 
 document.getElementById('chat-audio-call-btn')?.addEventListener('click', () => startCall(true));
@@ -22285,6 +22306,60 @@ document.getElementById('call-history-content')?.addEventListener('click', (e) =
     }
 });
 
+export function toggleCamera(forceState = null) {
+    if (localStream) {
+        const videoTracks = localStream.getVideoTracks();
+        if (videoTracks && videoTracks.length > 0) {
+            const videoTrack = videoTracks[0];
+            if (typeof forceState === 'boolean') {
+                isCameraOff = forceState;
+            } else {
+                isCameraOff = !isCameraOff;
+            }
+            videoTrack.enabled = !isCameraOff;
+            updateCameraToggleButtonUI(isCameraOff);
+            return isCameraOff;
+        }
+    }
+    if (typeof forceState === 'boolean') {
+        isCameraOff = forceState;
+    } else {
+        isCameraOff = !isCameraOff;
+    }
+    updateCameraToggleButtonUI(isCameraOff);
+    return isCameraOff;
+}
+
+export function updateCameraToggleButtonUI(cameraOff = isCameraOff) {
+    const btn = document.getElementById('toggle-camera-btn');
+    const wrapper = document.getElementById('local-video-wrapper');
+    const localVideo = document.getElementById('local-webcam-feed');
+    const placeholder = document.getElementById('local-video-off-placeholder');
+
+    if (btn) {
+        btn.classList.toggle('btn-active-off', !!cameraOff);
+        btn.classList.toggle('camera-off', !!cameraOff);
+        btn.style.background = cameraOff ? '#ff3b30' : 'rgba(255, 255, 255, 0.12)';
+        btn.title = cameraOff ? 'Ligar Câmera' : 'Desligar Câmera';
+        btn.setAttribute('aria-label', cameraOff ? 'Ligar Câmera' : 'Desligar Câmera');
+        btn.innerHTML = `<i data-lucide="${cameraOff ? 'video-off' : 'video'}"></i>`;
+    }
+
+    if (wrapper) {
+        wrapper.classList.toggle('camera-off', !!cameraOff);
+    }
+    if (localVideo) {
+        localVideo.style.display = cameraOff ? 'none' : 'block';
+    }
+    if (placeholder) {
+        placeholder.style.display = cameraOff ? 'flex' : 'none';
+    }
+
+    if (window.lucide) {
+        lucide.createIcons();
+    }
+}
+
 document.getElementById('mute-mic-btn')?.addEventListener('click', function() {
     if (localStream) {
         const audioTrack = localStream.getAudioTracks()[0];
@@ -22292,8 +22367,17 @@ document.getElementById('mute-mic-btn')?.addEventListener('click', function() {
             audioTrack.enabled = !audioTrack.enabled;
             isCallMuted = !audioTrack.enabled;
             this.style.background = isCallMuted ? '#ff3b30' : 'rgba(255, 255, 255, 0.12)';
+            this.title = isCallMuted ? 'Ativar Microfone' : 'Silenciar Microfone';
+            this.setAttribute('aria-label', isCallMuted ? 'Ativar Microfone' : 'Silenciar Microfone');
+            this.innerHTML = `<i data-lucide="${isCallMuted ? 'mic-off' : 'mic'}"></i>`;
+            if (window.lucide) lucide.createIcons();
         }
     }
+});
+
+document.getElementById('toggle-camera-btn')?.addEventListener('click', function() {
+    playSound(clickSound);
+    toggleCamera();
 });
 
 document.getElementById('switch-camera-btn')?.addEventListener('click', async () => {
@@ -22305,7 +22389,10 @@ document.getElementById('switch-camera-btn')?.addEventListener('click', async ()
         try {
             const newStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: currentFacingMode } });
             const newVideoTrack = newStream.getVideoTracks()[0];
-            
+            if (isCameraOff) {
+                newVideoTrack.enabled = false;
+            }
+
             localStream.removeTrack(oldVideoTrack);
             localStream.addTrack(newVideoTrack);
 
@@ -29898,7 +29985,7 @@ if (typeof window !== 'undefined') {
     window.closeShippingModal = closeShippingModal;
     window.updateShippingModalUI = updateShippingModalUI;
     window.calculateCartShipping = calculateCartShipping;
-    // Histórico de Ligações Dentro das Conversas e Perfil Isolado (v1.0.181)
+    // Histórico de Ligações Dentro das Conversas, Perfil Isolado e Controle de Câmera (v1.0.182)
     window.formatCallDuration = formatCallDuration;
     window.formatCallDurationDigital = formatCallDurationDigital;
     window.buildCallCardHTML = buildCallCardHTML;
@@ -29908,6 +29995,10 @@ if (typeof window !== 'undefined') {
     window.renderCallHistoryList = renderCallHistoryList;
     window.getCurrentCallHistoryContact = () => currentCallHistoryContact;
     window.setCurrentCallHistoryContact = (c) => { currentCallHistoryContact = c; };
+    window.toggleCamera = toggleCamera;
+    window.updateCameraToggleButtonUI = updateCameraToggleButtonUI;
+    window.getIsCameraOff = () => isCameraOff;
+    window.setIsCameraOff = (val) => { isCameraOff = !!val; };
 }
 
 if (typeof window !== 'undefined') {

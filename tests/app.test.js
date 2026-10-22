@@ -10775,19 +10775,19 @@ test('Correção de Abertura do Catálogo no Perfil de Contato sem Erro de Null 
   assert.ok(catalogOverlay.classList.contains('active'), '#catalog-overlay deve ter classe active');
 });
 
-test('Histórico de Ligações Dentro das Conversas, Responsividade Mobile e Isolamento Estrito por Perfil de Contato (v1.0.181)', async () => {
+test('Histórico de Ligações, Isolamento por Perfil e Botão de Desligar Câmera na Chamada (v1.0.182)', async () => {
   const env = createTestEnvironment();
   const win = env.sandbox.window;
 
-  // 1. Integridade de Versionamento (v1.0.181)
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.181', 'script.js deve ter versão 1.0.181');
+  // 1. Integridade de Versionamento (v1.0.182)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.182', 'script.js deve ter versão 1.0.182');
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
-  assert.strictEqual(versionJson.version, '1.0.181', 'version.json deve ter versão 1.0.181');
+  assert.strictEqual(versionJson.version, '1.0.182', 'version.json deve ter versão 1.0.182');
   const htmlContent = fs.readFileSync('public/index.html', 'utf8');
-  assert.ok(htmlContent.includes('script.js?v=1.0.181'), 'index.html deve referenciar script.js?v=1.0.181');
-  assert.ok(htmlContent.includes('style.css?v=1.0.181'), 'index.html deve referenciar style.css?v=1.0.181');
+  assert.ok(htmlContent.includes('script.js?v=1.0.182'), 'index.html deve referenciar script.js?v=1.0.182');
+  assert.ok(htmlContent.includes('style.css?v=1.0.182'), 'index.html deve referenciar style.css?v=1.0.182');
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
-  assert.ok(swContent.includes('vortex-vip-v1.0.181'), 'sw.js deve ter cache vortex-vip-v1.0.181');
+  assert.ok(swContent.includes('vortex-vip-v1.0.182'), 'sw.js deve ter cache vortex-vip-v1.0.182');
 
   // 2. Elementos no DOM
   assert.ok(env.elements['view-call-history-trigger'], '#view-call-history-trigger deve existir no menu dropdown');
@@ -11017,6 +11017,45 @@ test('Histórico de Ligações Dentro das Conversas, Responsividade Mobile e Iso
   assert.ok(aliceContent.includes('Chamada de voz perdida'), 'Deve conter chamada perdida da Alice');
   assert.strictEqual(aliceContent.includes('Bob Santos'), false, 'Não deve misturar Bob no histórico da Alice');
   assert.ok(contactSubtitle.innerText.includes('Alice Silva'), 'Subtítulo deve indicar que o histórico é com a Alice');
+
+  // 10. BOTÃO PARA DESLIGAR A CÂMERA NA CHAMADA DE VÍDEO (v1.0.182)
+  const toggleCameraBtn = env.elements['toggle-camera-btn'];
+  assert.ok(toggleCameraBtn, '#toggle-camera-btn deve existir no rodapé da chamada');
+  const videoWrapper = env.elements['local-video-wrapper'];
+  assert.ok(videoWrapper, '#local-video-wrapper deve existir');
+  const videoPlaceholder = env.elements['local-video-off-placeholder'];
+  assert.ok(videoPlaceholder, '#local-video-off-placeholder deve existir');
+
+  assert.strictEqual(typeof win.toggleCamera, 'function', 'toggleCamera deve ser uma função');
+  assert.strictEqual(typeof win.updateCameraToggleButtonUI, 'function', 'updateCameraToggleButtonUI deve ser uma função');
+
+  // Estado inicial: câmera ligada
+  win.setIsCameraOff(false);
+  win.updateCameraToggleButtonUI(false);
+  assert.strictEqual(win.getIsCameraOff(), false, 'Câmera deve iniciar ligada');
+  assert.strictEqual(videoPlaceholder.style.display, 'none', 'Placeholder deve estar oculto com câmera ligada');
+  assert.strictEqual(toggleCameraBtn.title, 'Desligar Câmera', 'Título do botão deve ser Desligar Câmera');
+
+  // Simula clique no botão para desligar a câmera
+  toggleCameraBtn.click();
+  assert.strictEqual(win.getIsCameraOff(), true, 'Após o clique, isCameraOff deve ser true');
+  assert.strictEqual(videoPlaceholder.style.display, 'flex', 'Placeholder deve estar visível');
+  assert.strictEqual(toggleCameraBtn.title, 'Ligar Câmera', 'Título do botão deve mudar para Ligar Câmera');
+  assert.ok(toggleCameraBtn.style.background.includes('ff3b30') || toggleCameraBtn.style.background.includes('255, 59, 48'), 'Botão deve ter destaque vermelho quando desligado');
+  assert.ok(toggleCameraBtn.classList.contains('btn-active-off'), 'Botão deve ter classe btn-active-off');
+  assert.ok(videoWrapper.classList.contains('camera-off'), 'Wrapper de vídeo deve ter classe camera-off');
+
+  // Simula segundo clique para religar a câmera
+  toggleCameraBtn.click();
+  assert.strictEqual(win.getIsCameraOff(), false, 'Após segundo clique, isCameraOff deve voltar para false');
+  assert.strictEqual(videoPlaceholder.style.display, 'none', 'Placeholder deve voltar a ficar oculto');
+  assert.strictEqual(toggleCameraBtn.title, 'Desligar Câmera', 'Título do botão deve voltar para Desligar Câmera');
+  assert.strictEqual(toggleCameraBtn.classList.contains('btn-active-off'), false, 'Não deve ter classe btn-active-off');
+
+  // Integridade de CSS para o botão e placeholder
+  assert.ok(css.includes('#toggle-camera-btn'), 'style.css deve conter regras para #toggle-camera-btn');
+  assert.ok(css.includes('.local-video-off-placeholder'), 'style.css deve conter regras para .local-video-off-placeholder');
+  assert.ok(css.includes('.btn-active-off'), 'style.css deve conter regras para .btn-active-off');
 });
 
 
