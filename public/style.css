@@ -17972,6 +17972,21 @@ body.theme-cyberpunk .catalog-order-total-units-pill {
     display: none !important;
 }
 
+/* Botão de Trocar para Vídeo no Modo Áudio (v1.0.185) */
+.video-call-overlay.audio-call-mode #toggle-camera-btn {
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    cursor: pointer;
+}
+
+.video-call-overlay.audio-call-mode #toggle-camera-btn:hover {
+    transform: scale(1.08);
+    box-shadow: 0 0 16px rgba(255, 59, 48, 0.45);
+}
+
+.video-call-overlay.audio-call-mode #toggle-camera-btn:active {
+    transform: scale(0.96);
+}
+
 
 
 

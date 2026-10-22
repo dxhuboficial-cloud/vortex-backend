@@ -579,6 +579,8 @@ function createTestEnvironment() {
       btoa: typeof btoa !== 'undefined' ? btoa : globalThis.btoa,
       RTCPeerConnection: function() {
         this.addTrack = () => {};
+        this.getSenders = () => [{ kind: 'video', replaceTrack: () => Promise.resolve(), track: { kind: 'video' } }];
+        this.addTransceiver = () => ({ sender: { replaceTrack: () => Promise.resolve() } });
         this.createOffer = () => Promise.resolve({ sdp: 'mock_sdp', type: 'offer' });
         this.createAnswer = () => Promise.resolve({ sdp: 'mock_sdp_answer', type: 'answer' });
         this.setLocalDescription = () => Promise.resolve();
@@ -586,7 +588,13 @@ function createTestEnvironment() {
         this.addIceCandidate = () => Promise.resolve();
         this.close = () => {};
       },
-      MediaStream: function() { this.getTracks = () => [{ stop: () => {}, enabled: true }]; this.addTrack = () => {}; },
+      MediaStream: function() {
+        this.getTracks = () => [{ stop: () => {}, enabled: true, kind: 'video' }];
+        this.getVideoTracks = () => [{ stop: () => {}, enabled: true, kind: 'video' }];
+        this.getAudioTracks = () => [{ stop: () => {}, enabled: true, kind: 'audio' }];
+        this.addTrack = () => {};
+        this.removeTrack = () => {};
+      },
       MediaRecorder: function(stream) {
         this.stream = stream;
         this.state = 'inactive';
@@ -634,6 +642,8 @@ function createTestEnvironment() {
     },
     RTCPeerConnection: function() {
       this.addTrack = () => {};
+      this.getSenders = () => [{ kind: 'video', replaceTrack: () => Promise.resolve(), track: { kind: 'video' } }];
+      this.addTransceiver = () => ({ sender: { replaceTrack: () => Promise.resolve() } });
       this.createOffer = () => Promise.resolve({ sdp: 'mock_sdp', type: 'offer' });
       this.createAnswer = () => Promise.resolve({ sdp: 'mock_sdp_answer', type: 'answer' });
       this.setLocalDescription = () => Promise.resolve();
@@ -641,7 +651,13 @@ function createTestEnvironment() {
       this.addIceCandidate = () => Promise.resolve();
       this.close = () => {};
     },
-    MediaStream: function() { this.getTracks = () => [{ stop: () => {}, enabled: true }]; this.addTrack = () => {}; },
+    MediaStream: function() {
+      this.getTracks = () => [{ stop: () => {}, enabled: true, kind: 'video' }];
+      this.getVideoTracks = () => [{ stop: () => {}, enabled: true, kind: 'video' }];
+      this.getAudioTracks = () => [{ stop: () => {}, enabled: true, kind: 'audio' }];
+      this.addTrack = () => {};
+      this.removeTrack = () => {};
+    },
     RTCSessionDescription: function(init) { this.sdp = init?.sdp || 'sdp'; this.type = init?.type || 'offer'; },
     RTCIceCandidate: function(init) { this.candidate = init?.candidate || 'cand'; },
     navigator: {
@@ -11357,14 +11373,14 @@ test('Seleção de Tipo de Chamada (Vídeo ou Áudio) ao Clicar no Ícone de Câ
   const css = fs.readFileSync('public/style.css', 'utf8');
   const html = fs.readFileSync('public/index.html', 'utf8');
 
-  // 1. Integridade de Versionamento (v1.0.184)
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.184', 'script.js deve ter versão 1.0.184');
+  // 1. Integridade de Versionamento (v1.0.184 / v1.0.185)
+  assert.ok(['1.0.184', '1.0.185'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão >= 1.0.184');
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
-  assert.strictEqual(versionJson.version, '1.0.184', 'version.json deve ter versão 1.0.184');
-  assert.ok(html.includes('script.js?v=1.0.184'), 'index.html deve referenciar script.js?v=1.0.184');
-  assert.ok(html.includes('style.css?v=1.0.184'), 'index.html deve referenciar style.css?v=1.0.184');
+  assert.ok(['1.0.184', '1.0.185'].includes(versionJson.version), 'version.json deve ter versão >= 1.0.184');
+  assert.ok(html.includes('script.js?v=1.0.18'), 'index.html deve referenciar script.js versionado');
+  assert.ok(html.includes('style.css?v=1.0.18'), 'index.html deve referenciar style.css versionado');
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
-  assert.ok(swContent.includes('vortex-vip-v1.0.184'), 'sw.js deve ter cache vortex-vip-v1.0.184');
+  assert.ok(swContent.includes('vortex-vip-v1.0.18'), 'sw.js deve ter cache vortex-vip-v1.0.18x');
 
   // 2. Elementos DOM no index.html
   assert.ok(env.elements['chat-audio-call-btn'], '#chat-audio-call-btn (ícone de câmera) deve existir no cabeçalho');
@@ -11454,6 +11470,84 @@ test('Seleção de Tipo de Chamada (Vídeo ou Áudio) ao Clicar no Ícone de Câ
   assert.ok(!modal.classList.contains('active'), 'Modal não deve abrir se contato estiver bloqueado');
   win.getBlockedContactsSet().delete(contact.uid);
 });
+
+test('Trocar para Chamada de Vídeo durante Chamada de Áudio via Botão de Câmera (v1.0.185)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+  const css = fs.readFileSync('public/style.css', 'utf8');
+  const html = fs.readFileSync('public/index.html', 'utf8');
+
+  // 1. Integridade de Versionamento (v1.0.185)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.185', 'script.js deve ter versão 1.0.185');
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
+  assert.strictEqual(versionJson.version, '1.0.185', 'version.json deve ter versão 1.0.185');
+  assert.ok(html.includes('script.js?v=1.0.185'), 'index.html deve referenciar script.js?v=1.0.185');
+  assert.ok(html.includes('style.css?v=1.0.185'), 'index.html deve referenciar style.css?v=1.0.185');
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+  assert.ok(swContent.includes('vortex-vip-v1.0.185'), 'sw.js deve ter cache vortex-vip-v1.0.185');
+
+  // 2. Integridade de CSS e Funções
+  assert.ok(css.includes('.video-call-overlay.audio-call-mode #toggle-camera-btn'), 'style.css deve conter regras para #toggle-camera-btn em audio-call-mode');
+  assert.strictEqual(typeof win.switchToVideoCall, 'function', 'switchToVideoCall deve estar definida e exportada');
+
+  // 3. Setup de Usuário e Contato
+  const currentUid = 'user_audio_to_video_me';
+  const currentUser = { uid: currentUid, displayName: 'Tester AV', email: 'av@vortex.vip' };
+  win.setCurrentUser(currentUser);
+  win.setCurrentProfile(currentUser);
+
+  const contact = { uid: 'contact_dx_hub', name: 'DX HUB DIGITAL', status: 'Criptografia VIP', avatar: '' };
+  win.setActiveChatContact(contact);
+
+  const overlay = env.elements['video-call-overlay'];
+  const toggleCamBtn = env.elements['toggle-camera-btn'];
+  const localPip = env.elements['local-video-wrapper'];
+  const switchCamBtn = env.elements['switch-camera-btn'];
+  const userInfoBox = env.elements['call-user-info-box'];
+  const statusEl = env.elements['call-status'];
+
+  // 4. Iniciar Chamada no Modo de Áudio (como na imagem do usuário)
+  await win.startCall(false);
+  assert.ok(overlay.classList.contains('active'), 'Overlay de chamada deve estar ativo');
+  assert.ok(overlay.classList.contains('audio-call-mode'), 'Deve estar em modo de áudio');
+  assert.strictEqual(localPip.style.display, 'none', 'PIP de vídeo local deve estar oculto no modo áudio');
+  assert.strictEqual(switchCamBtn.style.display, 'none', 'Botão de alternar câmera deve estar oculto no modo áudio');
+  assert.strictEqual(statusEl.innerText, 'Chamando (Áudio)...', 'Status deve ser Chamando (Áudio)...');
+
+  // 5. Verificar estado do botão de câmera no modo áudio (botão circulado pelo usuário)
+  assert.strictEqual(toggleCamBtn.title, 'Trocar para Chamada de Vídeo', 'Título do botão deve indicar Trocar para Chamada de Vídeo');
+  assert.strictEqual(toggleCamBtn.getAttribute('aria-label'), 'Trocar para Chamada de Vídeo', 'Aria-label deve ser Trocar para Chamada de Vídeo');
+  assert.ok(toggleCamBtn.style.background.includes('ff3b30') || toggleCamBtn.style.background.includes('255, 59, 48'), 'Botão deve ter destaque vermelho conforme foto do usuário');
+
+  // 6. Clicar no botão para TROCAR PARA CHAMADA DE VÍDEO
+  await toggleCamBtn.click();
+
+  // 7. Verificar se transicionou perfeitamente para Chamada de Vídeo
+  assert.ok(!overlay.classList.contains('audio-call-mode'), 'Overlay não deve mais estar em audio-call-mode');
+  assert.ok(!userInfoBox.classList.contains('audio-only-call'), 'userInfoBox não deve ter audio-only-call');
+  assert.strictEqual(localPip.style.display, '', 'PIP de vídeo local deve estar visível');
+  assert.strictEqual(switchCamBtn.style.display, 'flex', 'Botão de virar câmera deve estar visível');
+  assert.strictEqual(statusEl.innerText, 'Chamando (Vídeo)...', 'Status deve mudar para Chamando (Vídeo)...');
+  assert.strictEqual(toggleCamBtn.title, 'Desligar Câmera', 'Título do botão deve voltar para Desligar Câmera');
+
+  // 8. Verificar atualização do documento de chamada no Firestore
+  const calls = Object.values(env.firestoreDocs).filter(d => d.callerUid === currentUid && d.calleeUid === contact.uid);
+  assert.ok(calls.length > 0, 'Documento de chamada deve existir no Firestore');
+  const activeCallDoc = calls[calls.length - 1];
+  assert.strictEqual(activeCallDoc.type, 'video', 'Documento no Firestore deve ter type: video');
+  assert.strictEqual(activeCallDoc.hasVideo, true, 'Documento no Firestore deve ter hasVideo: true');
+
+  // 9. Clicar no botão agora em modo vídeo para desligar câmera (comportamento de toggle)
+  await toggleCamBtn.click();
+  assert.strictEqual(win.getIsCameraOff(), true, 'Câmera deve estar desligada');
+  assert.strictEqual(toggleCamBtn.title, 'Ligar Câmera', 'Título deve ser Ligar Câmera');
+
+  // 10. Desligar chamada
+  const endCallBtn = env.elements['end-call-btn'];
+  await endCallBtn.click();
+  assert.ok(!overlay.classList.contains('active'), 'Overlay deve fechar após desligar');
+});
+
 
 
 

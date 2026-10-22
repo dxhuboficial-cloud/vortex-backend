@@ -18249,7 +18249,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.184';
+export const CURRENT_APP_VERSION = '1.0.185';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -22151,11 +22151,19 @@ export async function startCall(isVideo = true) {
         if (remoteFeed) remoteFeed.srcObject = remoteStream;
 
         localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+        if (!isVideo && typeof peerConnection.addTransceiver === 'function') {
+            try {
+                peerConnection.addTransceiver('video', { direction: 'recvonly' });
+            } catch (_) {}
+        }
 
         peerConnection.ontrack = (event) => {
             event.streams[0].getTracks().forEach(track => remoteStream.addTrack(track));
-            if (isVideo && callMedia.hasVideo && userInfoBox) {
+            const hasVideo = (event.track && event.track.kind === 'video') || (remoteStream.getVideoTracks && remoteStream.getVideoTracks().length > 0);
+            if (hasVideo && userInfoBox) {
                 userInfoBox.classList.add('video-active');
+                if (overlay) overlay.classList.remove('audio-call-mode');
+                userInfoBox.classList.remove('audio-only-call');
             }
         };
 
@@ -22239,6 +22247,19 @@ export async function startCall(isVideo = true) {
                     endCall();
                 } else if (data.status === 'ended') {
                     endCall();
+                }
+
+                if (data.type === 'video' || data.isVideoCall) {
+                    if (overlay && overlay.classList.contains('audio-call-mode')) {
+                        overlay.classList.remove('audio-call-mode');
+                        if (userInfoBox) {
+                            userInfoBox.classList.remove('audio-only-call');
+                            userInfoBox.classList.add('video-active');
+                        }
+                        if (statusEl && statusEl.innerText.includes('Áudio')) {
+                            statusEl.innerText = 'Conectado • Chamada de Vídeo VIP';
+                        }
+                    }
                 }
             }
         });
@@ -22392,11 +22413,19 @@ async function acceptIncomingCall() {
         if (remoteFeed) remoteFeed.srcObject = remoteStream;
 
         localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+        if (!isVideo && typeof peerConnection.addTransceiver === 'function') {
+            try {
+                peerConnection.addTransceiver('video', { direction: 'recvonly' });
+            } catch (_) {}
+        }
 
         peerConnection.ontrack = (event) => {
             event.streams[0].getTracks().forEach(track => remoteStream.addTrack(track));
-            if (isVideo && callMedia.hasVideo && userInfoBox) {
+            const hasVideo = (event.track && event.track.kind === 'video') || (remoteStream.getVideoTracks && remoteStream.getVideoTracks().length > 0);
+            if (hasVideo && userInfoBox) {
                 userInfoBox.classList.add('video-active');
+                if (overlay) overlay.classList.remove('audio-call-mode');
+                userInfoBox.classList.remove('audio-only-call');
             }
         };
 
@@ -22453,7 +22482,28 @@ async function acceptIncomingCall() {
 
         if (activeCallDocUnsubscribe) activeCallDocUnsubscribe();
         activeCallDocUnsubscribe = onSnapshot(callDocRef, (snap) => {
-            if (snap && (typeof snap.exists === 'function' ? snap.exists() : !!snap.exists) && typeof snap.data === 'function' && snap.data().status === 'ended') endCall();
+            if (snap && (typeof snap.exists === 'function' ? snap.exists() : !!snap.exists) && typeof snap.data === 'function') {
+                const data = snap.data();
+                if (data.status === 'ended') {
+                    endCall();
+                    return;
+                }
+                if (data.type === 'video' || data.isVideoCall) {
+                    const overlay = document.getElementById('video-call-overlay');
+                    const userInfoBox = document.getElementById('call-user-info-box');
+                    const statusEl = document.getElementById('call-status');
+                    if (overlay && overlay.classList.contains('audio-call-mode')) {
+                        overlay.classList.remove('audio-call-mode');
+                        if (userInfoBox) {
+                            userInfoBox.classList.remove('audio-only-call');
+                            userInfoBox.classList.add('video-active');
+                        }
+                        if (statusEl && statusEl.innerText.includes('Áudio')) {
+                            statusEl.innerText = 'Conectado • Chamada de Vídeo VIP';
+                        }
+                    }
+                }
+            }
         });
 
     } catch (e) {
@@ -22712,14 +22762,22 @@ export function updateCameraToggleButtonUI(cameraOff = isCameraOff) {
     const wrapper = document.getElementById('local-video-wrapper');
     const localVideo = document.getElementById('local-webcam-feed');
     const placeholder = document.getElementById('local-video-off-placeholder');
+    const overlay = document.getElementById('video-call-overlay');
+    const isAudioMode = overlay && overlay.classList.contains('audio-call-mode');
 
     if (btn) {
         btn.classList.toggle('btn-active-off', !!cameraOff);
         btn.classList.toggle('camera-off', !!cameraOff);
         btn.style.background = cameraOff ? '#ff3b30' : 'rgba(255, 255, 255, 0.12)';
-        btn.title = cameraOff ? 'Ligar Câmera' : 'Desligar Câmera';
-        btn.setAttribute('aria-label', cameraOff ? 'Ligar Câmera' : 'Desligar Câmera');
-        btn.innerHTML = `<i data-lucide="${cameraOff ? 'video-off' : 'video'}"></i>`;
+        if (isAudioMode) {
+            btn.title = 'Trocar para Chamada de Vídeo';
+            btn.setAttribute('aria-label', 'Trocar para Chamada de Vídeo');
+            btn.innerHTML = `<i data-lucide="${cameraOff ? 'video-off' : 'video'}"></i>`;
+        } else {
+            btn.title = cameraOff ? 'Ligar Câmera' : 'Desligar Câmera';
+            btn.setAttribute('aria-label', cameraOff ? 'Ligar Câmera' : 'Desligar Câmera');
+            btn.innerHTML = `<i data-lucide="${cameraOff ? 'video-off' : 'video'}"></i>`;
+        }
     }
 
     if (wrapper) {
@@ -22734,6 +22792,114 @@ export function updateCameraToggleButtonUI(cameraOff = isCameraOff) {
 
     if (window.lucide) {
         lucide.createIcons();
+    }
+}
+
+export async function switchToVideoCall() {
+    const overlay = document.getElementById('video-call-overlay');
+    const userInfoBox = document.getElementById('call-user-info-box');
+    const localPip = document.getElementById('local-video-wrapper');
+    const switchCamBtn = document.getElementById('switch-camera-btn');
+    const statusEl = document.getElementById('call-status');
+
+    try {
+        let videoStream = null;
+        if (navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') {
+            try {
+                videoStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: currentFacingMode }
+                });
+            } catch (e1) {
+                videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+            }
+        }
+
+        if (!videoStream) {
+            showToast("Câmera", "Não foi possível acessar a câmera do dispositivo.", "red");
+            return false;
+        }
+
+        const newVideoTrack = videoStream.getVideoTracks ? videoStream.getVideoTracks()[0] : null;
+        if (!newVideoTrack) {
+            showToast("Câmera", "Nenhum sinal de câmera detectado.", "red");
+            return false;
+        }
+
+        if (localStream) {
+            if (typeof localStream.getVideoTracks === 'function') {
+                localStream.getVideoTracks().forEach(t => {
+                    if (typeof t.stop === 'function') t.stop();
+                    if (typeof localStream.removeTrack === 'function') localStream.removeTrack(t);
+                });
+            }
+            if (typeof localStream.addTrack === 'function') {
+                localStream.addTrack(newVideoTrack);
+            }
+        } else {
+            localStream = videoStream;
+        }
+
+        const localFeed = document.getElementById('local-webcam-feed');
+        if (localFeed) {
+            localFeed.srcObject = localStream;
+        }
+
+        if (peerConnection) {
+            const senders = typeof peerConnection.getSenders === 'function' ? peerConnection.getSenders() : [];
+            const videoSender = senders.find(s => (s.track && s.track.kind === 'video') || s.kind === 'video');
+            if (videoSender && typeof videoSender.replaceTrack === 'function') {
+                await videoSender.replaceTrack(newVideoTrack).catch(() => {});
+            } else if (typeof peerConnection.addTrack === 'function') {
+                try {
+                    peerConnection.addTrack(newVideoTrack, localStream);
+                } catch (_) {}
+            }
+        }
+
+        if (overlay) {
+            overlay.classList.remove('audio-call-mode');
+        }
+        if (userInfoBox) {
+            userInfoBox.classList.remove('audio-only-call');
+            userInfoBox.classList.add('video-active');
+        }
+        if (localPip) {
+            localPip.style.display = '';
+        }
+        if (switchCamBtn) {
+            switchCamBtn.style.display = 'flex';
+        }
+
+        isCameraOff = false;
+        updateCameraToggleButtonUI(false);
+
+        if (statusEl) {
+            if (statusEl.innerText.includes('Chamando')) {
+                statusEl.innerText = 'Chamando (Vídeo)...';
+            } else {
+                statusEl.innerText = 'Conectado • Criptografia Quântica VIP';
+            }
+        }
+
+        if (currentCallId) {
+            await updateDoc(doc(db, 'calls', currentCallId), {
+                type: 'video',
+                hasVideo: true,
+                switchedToVideoAt: Date.now()
+            }).catch(() => {});
+        }
+
+        if (activeCallRecordContext) {
+            activeCallRecordContext.callType = 'video';
+        }
+
+        showToast("Chamada de Vídeo", "Câmera ativada! Chamada alterada para vídeo.", "green");
+        return true;
+
+    } catch (err) {
+        console.error("Erro ao alternar para chamada de vídeo:", err);
+        showToast("Câmera Indisponível", "Não foi possível ativar a câmera.", "red");
+        return false;
     }
 }
 
@@ -22752,9 +22918,16 @@ document.getElementById('mute-mic-btn')?.addEventListener('click', function() {
     }
 });
 
-document.getElementById('toggle-camera-btn')?.addEventListener('click', function() {
+document.getElementById('toggle-camera-btn')?.addEventListener('click', async function() {
     playSound(clickSound);
-    toggleCamera();
+    const overlay = document.getElementById('video-call-overlay');
+    const isAudioMode = overlay && overlay.classList.contains('audio-call-mode');
+
+    if (isAudioMode) {
+        await switchToVideoCall();
+    } else {
+        toggleCamera();
+    }
 });
 
 document.getElementById('switch-camera-btn')?.addEventListener('click', async () => {
@@ -30385,10 +30558,11 @@ if (typeof window !== 'undefined') {
     window.exitSelectionMode = exitSelectionMode;
     window.getSelectedMessageIds = () => selectedMessageIds;
     window.getCurrentChatMessagesMap = () => currentChatMessagesMap;
-    // Escolha de Chamada (Vídeo ou Áudio) - v1.0.184
+    // Escolha de Chamada (Vídeo ou Áudio) e Troca para Vídeo - v1.0.185
     window.openCallTypeModal = openCallTypeModal;
     window.closeCallTypeModal = closeCallTypeModal;
     window.startCall = startCall;
+    window.switchToVideoCall = switchToVideoCall;
 }
 
 if (typeof window !== 'undefined') {
