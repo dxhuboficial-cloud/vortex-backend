@@ -11646,14 +11646,14 @@ test('Reações com Emojis Exclusivas no Duplo Clique e Remoção da Barra de A�
   const css = fs.readFileSync('public/style.css', 'utf8');
   const html = fs.readFileSync('public/index.html', 'utf8');
 
-  // 1. Integridade de Versionamento (v1.0.188)
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.188', 'script.js deve ter versão 1.0.188');
+  // 1. Integridade de Versionamento (v1.0.188+)
+  assert.ok(parseInt(win.CURRENT_APP_VERSION.split('.')[2], 10) >= 188, 'script.js deve ter versão >= 1.0.188');
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
-  assert.strictEqual(versionJson.version, '1.0.188', 'version.json deve ter versão 1.0.188');
-  assert.ok(html.includes('script.js?v=1.0.188'), 'index.html deve referenciar script.js?v=1.0.188');
-  assert.ok(html.includes('style.css?v=1.0.188'), 'index.html deve referenciar style.css?v=1.0.188');
+  assert.ok(parseInt(versionJson.version.split('.')[2], 10) >= 188, 'version.json deve ter versão >= 1.0.188');
+  assert.ok(html.includes(`script.js?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar script.js');
+  assert.ok(html.includes(`style.css?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar style.css');
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
-  assert.ok(swContent.includes('vortex-vip-v1.0.188'), 'sw.js deve conter cache vortex-vip-v1.0.188');
+  assert.ok(swContent.includes(`vortex-vip-v${win.CURRENT_APP_VERSION}`), 'sw.js deve conter cache');
 
   // 2. Integridade dos Elementos no DOM e CSS
   const emojiBar = env.elements['floating-emoji-bar'];
@@ -11711,6 +11711,62 @@ test('Reações com Emojis Exclusivas no Duplo Clique e Remoção da Barra de A�
   // 7. Ocultar Ações
   win.hideFloatingReactions();
   assert.ok(!actionBar.classList.contains('active'), '#floating-reaction-bar deve fechar');
+});
+
+test('Organização e Estilização Visual dos Modais de Cupons e Frete da Loja (v1.0.189)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+  const css = fs.readFileSync('public/style.css', 'utf8');
+  const html = fs.readFileSync('public/index.html', 'utf8');
+
+  // 1. Integridade de Versionamento (v1.0.189)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.189', 'script.js deve ter versão 1.0.189');
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
+  assert.strictEqual(versionJson.version, '1.0.189', 'version.json deve ter versão 1.0.189');
+  assert.ok(html.includes('script.js?v=1.0.189'), 'index.html deve referenciar script.js?v=1.0.189');
+  assert.ok(html.includes('style.css?v=1.0.189'), 'index.html deve referenciar style.css?v=1.0.189');
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+  assert.ok(swContent.includes('vortex-vip-v1.0.189'), 'sw.js deve conter cache vortex-vip-v1.0.189');
+
+  // 2. Integridade dos Estilos CSS (.catalog-field-input, cabeçalhos em linha única, layout responsivo)
+  assert.ok(css.includes('.catalog-field-input'), 'style.css deve definir .catalog-field-input para inputs escuros');
+  assert.ok(css.includes('select.catalog-field-input'), 'style.css deve estilizar select com seta personalizada');
+  assert.ok(css.includes('.catalog-coupons-card .modal-title'), 'style.css deve formatar título dos cupons em linha única');
+  assert.ok(css.includes('.catalog-shipping-card .modal-title'), 'style.css deve formatar título do frete em linha única');
+  assert.ok(css.includes('.catalog-coupon-header-row'), 'style.css deve conter .catalog-coupon-header-row para quebra responsiva');
+  assert.ok(css.includes('overflow-x: hidden !important;'), 'style.css deve impedir transbordamento horizontal');
+
+  // 3. Teste de Renderização dos Cupons sem Duplicidade de Moeda (v1.0.189)
+  const seller = { uid: 'seller_organize_189', name: 'Vendedor Organizado' };
+  win.setCurrentUser(seller);
+  win.setCurrentProfile({
+    ...seller,
+    storeCoupons: {
+      'VORTEXVIP': { code: 'VORTEXVIP', type: 'fixed', value: 8, label: 'Promoção de Cupom' }
+    }
+  });
+
+  win.renderSellerCouponsUI();
+  const couponsList = env.elements['catalog-coupons-list'];
+  assert.ok(couponsList, '#catalog-coupons-list deve existir');
+  assert.ok(!couponsList.innerHTML.includes('R$ R$'), 'Cupom de desconto NÃO deve duplicar o símbolo de moeda (R$ R$)');
+  assert.ok(couponsList.innerHTML.includes('R$ 8,00 OFF') || couponsList.innerHTML.includes('8,00 OFF'), 'Cupom deve exibir o valor correto formatado');
+  assert.ok(couponsList.innerHTML.includes('catalog-coupon-header-row'), 'Itens de cupom devem usar container responsivo');
+
+  // 4. Teste de Atualização da Prévia do Frete sem Duplicidade de Emojis ou Moeda
+  const priceInput = env.elements['catalog-shipping-price-input'];
+  if (priceInput) priceInput.value = '20';
+  const deadlineInput = env.elements['catalog-shipping-deadline-input'];
+  if (deadlineInput) deadlineInput.value = '6 a 16 dias úteis';
+  const typeSelect = env.elements['catalog-shipping-type-select'];
+  if (typeSelect) typeSelect.value = 'fixed';
+
+  win.updateShippingModalUI();
+  const previewText = env.elements['catalog-shipping-preview-text'];
+  assert.ok(previewText, '#catalog-shipping-preview-text deve existir');
+  assert.ok(!previewText.innerText.includes('🚚 🚚'), 'Prévia de frete NÃO deve duplicar o ícone de caminhão (🚚 🚚)');
+  assert.ok(!previewText.innerText.includes('R$ R$'), 'Prévia de frete NÃO deve duplicar o símbolo de moeda (R$ R$)');
+  assert.ok(previewText.innerText.includes('Frete Fixo:') && previewText.innerText.includes('20,00') && previewText.innerText.includes('6 a 16 dias úteis'), 'Prévia de frete deve estar limpa e correta');
 });
 
 

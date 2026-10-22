@@ -4596,9 +4596,9 @@ export function renderSellerCouponsUI() {
         listEl.innerHTML = entries.map(c => `
             <div class="catalog-coupon-item">
                 <div class="catalog-coupon-info">
-                    <div style="display:flex; align-items:center; gap:8px;">
+                    <div class="catalog-coupon-header-row">
                         <span class="catalog-coupon-code-badge"><i data-lucide="tag" style="width:14px;height:14px;"></i> ${escapeHTML(c.code)}</span>
-                        <span class="catalog-coupon-discount-tag">${c.type === 'percent' ? `${c.value}% OFF` : `R$ ${formatBRL(c.value)} OFF`}</span>
+                        <span class="catalog-coupon-discount-tag">${c.type === 'percent' ? `${c.value}% OFF` : `${formatBRL(c.value)} OFF`}</span>
                     </div>
                     ${c.label ? `<span class="catalog-coupon-meta">${escapeHTML(c.label)}</span>` : ''}
                 </div>
@@ -4741,19 +4741,19 @@ export function updateShippingModalUI() {
     if (type === 'free') {
         if (fixedGroup) fixedGroup.style.display = 'none';
         if (freeAboveGroup) freeAboveGroup.style.display = 'none';
-        if (previewText) previewText.innerText = `🎉 Frete Grátis para todos os pedidos${deadline ? ` (${deadline})` : ''}`;
+        if (previewText) previewText.innerText = `Frete Grátis para todos os pedidos${deadline ? ` (${deadline})` : ''}`;
     } else if (type === 'fixed') {
         if (fixedGroup) fixedGroup.style.display = 'flex';
         if (freeAboveGroup) freeAboveGroup.style.display = 'none';
-        if (previewText) previewText.innerText = `🚚 Frete Fixo: R$ ${formatBRL(price)}${deadline ? ` (${deadline})` : ''}`;
+        if (previewText) previewText.innerText = `Frete Fixo: ${formatBRL(price)}${deadline ? ` (${deadline})` : ''}`;
     } else if (type === 'free_above') {
         if (fixedGroup) fixedGroup.style.display = 'flex';
         if (freeAboveGroup) freeAboveGroup.style.display = 'flex';
-        if (previewText) previewText.innerText = `🚚 Frete Fixo R$ ${formatBRL(price)} • Grátis acima de R$ ${formatBRL(minOrder)}${deadline ? ` (${deadline})` : ''}`;
+        if (previewText) previewText.innerText = `Frete Fixo: ${formatBRL(price)} • Grátis acima de ${formatBRL(minOrder)}${deadline ? ` (${deadline})` : ''}`;
     } else if (type === 'custom') {
         if (fixedGroup) fixedGroup.style.display = 'none';
         if (freeAboveGroup) freeAboveGroup.style.display = 'none';
-        if (previewText) previewText.innerText = `💬 Frete a combinar com o vendedor no chat${deadline ? ` (${deadline})` : ''}`;
+        if (previewText) previewText.innerText = `Frete a combinar com o vendedor no chat${deadline ? ` (${deadline})` : ''}`;
     }
 }
 
@@ -18344,7 +18344,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.188';
+export const CURRENT_APP_VERSION = '1.0.189';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;

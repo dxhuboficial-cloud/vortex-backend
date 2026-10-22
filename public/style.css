@@ -17272,90 +17272,225 @@ body.theme-cyberpunk .catalog-order-total-units-pill {
     line-height: 1.35;
 }
 
-/* ===== LOJA: Gerenciamento de Cupons e Frete (v1.0.173) ===== */
+/* ===== LOJA: Gerenciamento de Cupons e Frete (v1.0.189) ===== */
 .catalog-coupons-card,
 .catalog-shipping-card {
-    max-width: 500px;
-    width: 95%;
-    max-height: 90vh;
-    overflow-y: auto;
-    border-radius: 16px;
-    background: var(--bg-secondary, #1a1a2e);
-    border: 1px solid rgba(255, 240, 31, 0.3);
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+    max-width: 480px !important;
+    width: 95% !important;
+    max-height: 90vh !important;
+    padding: 0 !important;
+    border-radius: 16px !important;
+    background: var(--bg-secondary, #1a1a2e) !important;
+    border: 1px solid rgba(255, 240, 31, 0.3) !important;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
 }
+
+.catalog-coupons-card .panel-top-bar,
+.catalog-shipping-card .panel-top-bar {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 10px !important;
+    padding: 14px 18px !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+    flex-shrink: 0 !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+}
+
+.catalog-coupons-card .modal-title,
+.catalog-shipping-card .modal-title {
+    font-size: clamp(0.92rem, 3.8vw, 1.05rem) !important;
+    color: #fff01f !important;
+    margin: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    flex: 1 !important;
+    min-width: 0 !important;
+    letter-spacing: normal !important;
+}
+
+.catalog-coupons-card .modal-title i,
+.catalog-coupons-card .modal-title svg,
+.catalog-shipping-card .modal-title i,
+.catalog-shipping-card .modal-title svg {
+    flex-shrink: 0 !important;
+    width: 20px !important;
+    height: 20px !important;
+    color: #fff01f !important;
+}
+
+.catalog-coupons-card #close-catalog-coupons-modal,
+.catalog-shipping-card #close-catalog-shipping-modal {
+    flex-shrink: 0 !important;
+}
+
+.catalog-coupons-content,
+.catalog-shipping-content {
+    padding: 16px 18px 24px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 14px !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
+}
+
+/* Campos de entrada e seleção da Loja */
+.catalog-field-input {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    border-radius: 10px !important;
+    color: #fff !important;
+    padding: 10px 14px !important;
+    font-size: 0.9rem !important;
+    outline: none !important;
+    transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s !important;
+    font-family: inherit !important;
+    display: block !important;
+}
+
+.catalog-field-input:focus {
+    border-color: #fff01f !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 0 0 0 2px rgba(255, 240, 31, 0.2) !important;
+}
+
+.catalog-field-input::placeholder {
+    color: rgba(255, 255, 255, 0.35) !important;
+}
+
+select.catalog-field-input {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23fff01f%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 14px center !important;
+    background-size: 16px !important;
+    padding-right: 40px !important;
+    cursor: pointer !important;
+}
+
+select.catalog-field-input option {
+    background-color: #1a1a2e !important;
+    color: #fff !important;
+    padding: 12px 14px !important;
+}
+
 .catalog-coupon-form-box {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 12px;
-    padding: 14px;
+    background: rgba(255, 255, 255, 0.03) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 12px !important;
+    padding: 14px 16px !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
 }
+
 .catalog-coupons-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    min-height: 50px;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    min-height: 50px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
 }
+
 .catalog-coupon-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 14px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 10px;
-    gap: 10px;
-    transition: background 0.15s ease;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 12px 14px !important;
+    background: rgba(255, 255, 255, 0.04) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 12px !important;
+    gap: 12px !important;
+    transition: background 0.15s ease !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
 }
+
 .catalog-coupon-item:hover {
-    background: rgba(255, 255, 255, 0.07);
+    background: rgba(255, 255, 255, 0.07) !important;
 }
+
 .catalog-coupon-info {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    flex: 1;
-    min-width: 0;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+    flex: 1 !important;
+    min-width: 0 !important;
 }
+
+.catalog-coupon-header-row {
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    gap: 6px 10px !important;
+}
+
 .catalog-coupon-code-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    font-weight: 800;
-    font-size: 0.88rem;
-    color: #fff01f;
-    letter-spacing: 0.5px;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    font-weight: 800 !important;
+    font-size: 0.92rem !important;
+    color: #fff01f !important;
+    letter-spacing: 0.5px !important;
+    white-space: nowrap !important;
 }
+
 .catalog-coupon-meta {
-    font-size: 0.76rem;
-    color: var(--text-dim, #888);
+    font-size: 0.78rem !important;
+    color: var(--text-dim, #888) !important;
+    word-break: break-word !important;
 }
+
 .catalog-coupon-discount-tag {
-    background: rgba(74, 222, 128, 0.15);
-    color: #4ade80;
-    border: 1px solid rgba(74, 222, 128, 0.3);
-    padding: 3px 8px;
-    border-radius: 6px;
-    font-size: 0.78rem;
-    font-weight: 700;
-    white-space: nowrap;
+    background: rgba(74, 222, 128, 0.15) !important;
+    color: #4ade80 !important;
+    border: 1px solid rgba(74, 222, 128, 0.3) !important;
+    padding: 3px 8px !important;
+    border-radius: 6px !important;
+    font-size: 0.78rem !important;
+    font-weight: 700 !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
 }
+
 .catalog-coupon-delete-btn {
-    background: rgba(255, 59, 48, 0.12);
-    border: 1px solid rgba(255, 59, 48, 0.25);
-    color: #ff6b6b;
-    border-radius: 8px;
-    padding: 6px 10px;
-    cursor: pointer;
-    font-size: 0.8rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    transition: all 0.15s ease;
+    background: rgba(255, 59, 48, 0.12) !important;
+    border: 1px solid rgba(255, 59, 48, 0.25) !important;
+    color: #ff6b6b !important;
+    border-radius: 8px !important;
+    padding: 6px 12px !important;
+    cursor: pointer !important;
+    font-size: 0.78rem !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+    transition: all 0.15s ease !important;
 }
+
 .catalog-coupon-delete-btn:hover {
-    background: rgba(255, 59, 48, 0.25);
-    color: #fff;
+    background: rgba(255, 59, 48, 0.25) !important;
+    color: #fff !important;
 }
 
 /* ==========================================================================
