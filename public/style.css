@@ -17187,6 +17187,394 @@ body.theme-cyberpunk .catalog-order-total-units-pill {
     color: #fff;
 }
 
+/* ==========================================================================
+   HISTÓRICO DE LIGAÇÕES DENTRO DAS CONVERSAS (v1.0.179)
+   ========================================================================== */
+
+/* --- Card de Chamada dentro do Chat --- */
+.chat-call-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    min-width: 210px;
+    max-width: 100%;
+    background: rgba(18, 18, 28, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+    backdrop-filter: blur(8px);
+    transition: all 0.2s ease;
+    margin-bottom: 4px;
+}
+
+.chat-call-main {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.chat-call-icon-wrap {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.08);
+    transition: transform 0.2s ease;
+}
+
+.chat-call-icon-wrap i,
+.chat-call-icon-wrap svg {
+    width: 20px;
+    height: 20px;
+}
+
+.chat-call-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+}
+
+.chat-call-title {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--text-main, #fff);
+    line-height: 1.25;
+    word-break: break-word;
+}
+
+.chat-call-subtitle {
+    font-size: 0.78rem;
+    color: var(--text-dim, #aaa);
+    line-height: 1.2;
+}
+
+/* Variação: Chamada Atendida (Completed) */
+.chat-call-card.call-status-completed {
+    border-color: rgba(0, 210, 106, 0.35);
+    background: linear-gradient(145deg, rgba(0, 210, 106, 0.08), rgba(18, 18, 28, 0.9));
+}
+.chat-call-card.call-status-completed .chat-call-icon-wrap {
+    background: rgba(0, 210, 106, 0.18);
+    color: #00d26a;
+}
+.chat-call-card.call-status-completed .chat-call-title {
+    color: #f1fdf5;
+}
+
+/* Variação: Chamada Perdida (Missed) */
+.chat-call-card.call-status-missed {
+    border-color: rgba(255, 59, 48, 0.4);
+    background: linear-gradient(145deg, rgba(255, 59, 48, 0.12), rgba(28, 18, 18, 0.9));
+}
+.chat-call-card.call-status-missed .chat-call-icon-wrap {
+    background: rgba(255, 59, 48, 0.2);
+    color: #ff453a;
+    animation: pulseMissedCall 2.5s infinite;
+}
+.chat-call-card.call-status-missed .chat-call-title {
+    color: #ff6961;
+}
+
+/* Variação: Chamada Recusada / Cancelada */
+.chat-call-card.call-status-rejected,
+.chat-call-card.call-status-canceled {
+    border-color: rgba(255, 149, 0, 0.35);
+    background: linear-gradient(145deg, rgba(255, 149, 0, 0.08), rgba(24, 20, 16, 0.9));
+}
+.chat-call-card.call-status-rejected .chat-call-icon-wrap,
+.chat-call-card.call-status-canceled .chat-call-icon-wrap {
+    background: rgba(255, 149, 0, 0.18);
+    color: #ff9f0a;
+}
+
+@keyframes pulseMissedCall {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 0 rgba(255, 59, 48, 0); }
+    50% { transform: scale(1.05); box-shadow: 0 0 10px rgba(255, 59, 48, 0.4); }
+}
+
+.chat-call-action-wrap {
+    display: flex;
+    justify-content: flex-end;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    padding-top: 8px;
+    margin-top: 2px;
+}
+
+.chat-call-return-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    background: rgba(0, 210, 106, 0.15);
+    border: 1px solid rgba(0, 210, 106, 0.4);
+    color: #00d26a;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.chat-call-return-btn:hover {
+    background: #00d26a;
+    color: #000;
+    box-shadow: 0 0 12px rgba(0, 210, 106, 0.5);
+    transform: translateY(-1px);
+}
+
+.chat-call-return-btn i,
+.chat-call-return-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* --- Modal de Histórico de Chamadas --- */
+.call-history-card {
+    max-width: 500px;
+    width: 95%;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    border-radius: 18px;
+    background: var(--bg-secondary, #15161e);
+    border: 1px solid rgba(0, 210, 106, 0.3);
+    box-shadow: 0 10px 35px rgba(0, 0, 0, 0.6), 0 0 20px rgba(0, 210, 106, 0.15);
+    overflow: hidden;
+}
+
+.call-history-stats-bar {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.call-stat-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 4px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 10px;
+}
+
+.call-stat-number {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: var(--text-main, #fff);
+    line-height: 1.1;
+}
+
+.call-stat-label {
+    font-size: 0.68rem;
+    color: var(--text-dim, #888);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 3px;
+}
+
+.call-history-tabs {
+    display: flex;
+    gap: 8px;
+    padding: 10px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    background: rgba(0, 0, 0, 0.15);
+}
+
+.call-history-tab {
+    flex: 1;
+    padding: 8px 0;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    color: var(--text-dim, #aaa);
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+}
+
+.call-history-tab:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.call-history-tab.active {
+    background: rgba(0, 210, 106, 0.16);
+    border-color: rgba(0, 210, 106, 0.5);
+    color: #00d26a;
+    box-shadow: 0 0 10px rgba(0, 210, 106, 0.2);
+}
+
+.call-history-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 50vh;
+}
+
+.call-history-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    transition: all 0.15s ease;
+}
+
+.call-history-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.call-history-item-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    flex: 1;
+}
+
+.call-history-item-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.call-history-item-icon i,
+.call-history-item-icon svg {
+    width: 18px;
+    height: 18px;
+}
+
+.call-history-item-icon.icon-completed {
+    background: rgba(0, 210, 106, 0.15);
+    color: #00d26a;
+}
+.call-history-item-icon.icon-missed {
+    background: rgba(255, 59, 48, 0.15);
+    color: #ff453a;
+}
+.call-history-item-icon.icon-rejected {
+    background: rgba(255, 149, 0, 0.15);
+    color: #ff9f0a;
+}
+
+.call-history-item-details {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.call-history-item-title {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--text-main, #fff);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.call-history-item-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.75rem;
+    color: var(--text-dim, #888);
+}
+
+.call-history-item-duration {
+    font-weight: 600;
+}
+
+.call-history-item-duration.status-completed {
+    color: #00d26a;
+}
+.call-history-item-duration.status-missed {
+    color: #ff6b6b;
+}
+
+.call-history-call-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(0, 210, 106, 0.15);
+    border: 1px solid rgba(0, 210, 106, 0.35);
+    color: #00d26a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+}
+
+.call-history-call-btn:hover {
+    background: #00d26a;
+    color: #000;
+    transform: scale(1.08);
+}
+
+.call-history-call-btn i,
+.call-history-call-btn svg {
+    width: 17px;
+    height: 17px;
+}
+
+.call-history-empty {
+    text-align: center;
+    padding: 35px 15px;
+    color: var(--text-dim, #888);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.call-history-empty i,
+.call-history-empty svg {
+    width: 44px;
+    height: 44px;
+    opacity: 0.35;
+    color: #00d26a;
+}
+
+.call-history-empty p {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-main, #ddd);
+}
+
+.call-history-empty small {
+    font-size: 0.8rem;
+    line-height: 1.4;
+    max-width: 300px;
+}
+
+
 
 
 

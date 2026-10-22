@@ -220,6 +220,7 @@ let peerConnection = null;
 let localStream = null;
 let remoteStream = null;
 let currentCallId = null;
+let activeCallRecordContext = null;
 let callTimerInterval = null;
 let callSeconds = 0;
 let isCallMuted = false;
@@ -13333,11 +13334,13 @@ function loadRealtimeMessages() {
                     mediaHTML = buildOrderCardHTML(msg);
                 } else if (msg.type === 'form' || msg.form) {
                     mediaHTML = buildCompanyFormCardHTML(msg);
+                } else if (msg.type === 'call' || msg.call) {
+                    mediaHTML = buildCallCardHTML(msg, isMe);
                 }
             }
 
             let textHTML = '';
-            if (msg.text && !msg.deletedForEveryone && msg.type !== 'poll' && msg.type !== 'pix' && msg.type !== 'order' && msg.type !== 'form') {
+            if (msg.text && !msg.deletedForEveryone && msg.type !== 'poll' && msg.type !== 'pix' && msg.type !== 'order' && msg.type !== 'form' && msg.type !== 'call') {
                 const isSenderVip = isMe
                     ? checkIsVipUser(currentProfile)
                     : !!(msg.isVip || msg.isVerified || (msg.senderEmail && VORTEX_ADMIN_EMAILS.includes(msg.senderEmail.toLowerCase())) || (msg.senderUsername === 'dxhuboficial') || checkIsVipUser(msg));
@@ -13692,6 +13695,19 @@ function loadRealtimeMessages() {
                         openCompanyFormFillModal(msg.id, msg.form, chatId, true /* previewMode */);
                     });
                 });
+            }
+
+            // Chamada de Voz / Vídeo: botão para retornar chamada
+            if (msg.type === 'call' || msg.call) {
+                const callReturnBtn = msgDiv.querySelector('.chat-call-return-btn');
+                if (callReturnBtn) {
+                    callReturnBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        playSound(clickSound);
+                        const targetType = callReturnBtn.dataset.callType || msg.callType || 'video';
+                        startCall(targetType !== 'audio');
+                    });
+                }
             }
 
             if (speedBtn) {
@@ -18017,7 +18033,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.178';
+export const CURRENT_APP_VERSION = '1.0.179';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -21402,8 +21418,335 @@ handleFileUpload(document.getElementById('chat-file-audio'), 'audio');
 handleFileUpload(document.getElementById('chat-file-doc'), 'file');
 
 /* ==========================================================================
-   CHAMADAS WEBRTC P2P
+   HISTÓRICO DE LIGAÇÕES DENTRO DAS CONVERSAS & CHAMADAS WEBRTC P2P (v1.0.179)
    ========================================================================== */
+
+export function formatCallDuration(seconds) {
+    const s = Math.max(0, parseInt(seconds, 10) || 0);
+    const mins = Math.floor(s / 60);
+    const secs = s % 60;
+    if (mins === 0) {
+        return `${secs} seg`;
+    }
+    return `${mins}m ${String(secs).padStart(2, '0')}s`;
+}
+
+export function formatCallDurationDigital(seconds) {
+    const s = Math.max(0, parseInt(seconds, 10) || 0);
+    const mins = String(Math.floor(s / 60)).padStart(2, '0');
+    const secs = String(s % 60).padStart(2, '0');
+    return `${mins}:${secs}`;
+}
+
+export function buildCallCardHTML(msg, isMe = null) {
+    if (!msg) return '';
+    if (isMe === null) {
+        isMe = currentUser ? (msg.senderUid === currentUser.uid || msg.callerUid === currentUser.uid) : false;
+    }
+
+    const callType = msg.callType || 'video';
+    const isVideo = callType !== 'audio';
+    const status = msg.callStatus || 'completed';
+    const seconds = Number(msg.durationSeconds) || 0;
+    const durFormatted = msg.durationFormatted || formatCallDuration(seconds);
+
+    let statusClass = 'call-status-completed';
+    let iconName = isVideo ? 'video' : 'phone';
+    let title = '';
+    let subtitle = '';
+
+    if (status === 'completed') {
+        statusClass = 'call-status-completed';
+        if (isMe) {
+            iconName = isVideo ? 'video' : 'phone-outgoing';
+            title = isVideo ? 'Chamada de vídeo efetuada' : 'Chamada de voz efetuada';
+            subtitle = `Duração: ${durFormatted}`;
+        } else {
+            iconName = isVideo ? 'video' : 'phone-incoming';
+            title = isVideo ? 'Chamada de vídeo recebida' : 'Chamada de voz recebida';
+            subtitle = `Duração: ${durFormatted}`;
+        }
+    } else if (status === 'missed') {
+        statusClass = 'call-status-missed';
+        iconName = isVideo ? 'video-off' : 'phone-missed';
+        if (isMe) {
+            title = isVideo ? 'Chamada de vídeo não atendida' : 'Chamada de voz não atendida';
+            subtitle = 'Sem resposta';
+        } else {
+            title = isVideo ? 'Chamada de vídeo perdida' : 'Chamada de voz perdida';
+            subtitle = 'Toque para retornar';
+        }
+    } else if (status === 'rejected') {
+        statusClass = 'call-status-rejected';
+        iconName = isVideo ? 'video-off' : 'phone-off';
+        if (isMe) {
+            title = isVideo ? 'Chamada de vídeo recusada' : 'Chamada de voz recusada';
+            subtitle = 'Recusada pelo contato';
+        } else {
+            title = isVideo ? 'Chamada de vídeo recusada' : 'Chamada de voz recusada';
+            subtitle = 'Você recusou esta chamada';
+        }
+    } else {
+        statusClass = 'call-status-canceled';
+        iconName = isVideo ? 'video-off' : 'phone-missed';
+        title = isVideo ? 'Chamada cancelada' : 'Chamada cancelada';
+        subtitle = 'Cancelada antes de atender';
+    }
+
+    return `
+        <div class="chat-call-card ${statusClass}" data-msg-id="${msg.id || ''}" data-call-type="${callType}" data-call-status="${status}">
+            <div class="chat-call-main">
+                <div class="chat-call-icon-wrap" title="${escapeHTML(title)}">
+                    <i data-lucide="${iconName}"></i>
+                </div>
+                <div class="chat-call-info">
+                    <span class="chat-call-title">${escapeHTML(title)}</span>
+                    <span class="chat-call-subtitle">${escapeHTML(subtitle)}</span>
+                </div>
+            </div>
+            <div class="chat-call-action-wrap">
+                <button type="button" class="chat-call-return-btn" data-call-type="${callType}" title="Ligar de volta">
+                    <i data-lucide="${isVideo ? 'video' : 'phone'}"></i>
+                    <span>Retornar</span>
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+export async function recordCallInChat(context, explicitStatus = null, explicitSeconds = null) {
+    if (!context || !context.chatId) return;
+    const finalSeconds = explicitSeconds !== null ? explicitSeconds : (callSeconds || context.durationSeconds || 0);
+    let finalStatus = explicitStatus;
+    if (!finalStatus) {
+        if (context.isConnected || finalSeconds > 0) {
+            finalStatus = 'completed';
+        } else {
+            finalStatus = 'missed';
+        }
+    }
+
+    const durFormatted = formatCallDuration(finalSeconds);
+    const isVideo = context.callType !== 'audio';
+    const typeLabel = isVideo ? 'Chamada de vídeo' : 'Chamada de voz';
+    let textSummary = '';
+    if (finalStatus === 'completed') {
+        textSummary = `📞 ${typeLabel} (${durFormatted})`;
+    } else if (finalStatus === 'rejected') {
+        textSummary = `📞 ${typeLabel} recusada`;
+    } else {
+        textSummary = `📞 ${typeLabel} perdida`;
+    }
+
+    const callMsgId = context.callId ? `call_${context.callId}` : `call_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const msgData = {
+        id: callMsgId,
+        type: 'call',
+        callType: context.callType || 'video',
+        callStatus: finalStatus,
+        durationSeconds: finalSeconds,
+        durationFormatted: durFormatted,
+        callerUid: context.callerUid,
+        calleeUid: context.calleeUid,
+        callerName: context.callerName || 'Usuário',
+        calleeName: context.calleeName || 'Contato',
+        senderUid: context.callerUid,
+        senderName: context.callerName || 'Usuário',
+        text: textSummary,
+        createdAt: context.createdAt || Date.now()
+    };
+
+    try {
+        if (typeof doc === 'function' && typeof setDoc === 'function') {
+            const msgRef = doc(db, 'chats', context.chatId, 'messages', callMsgId);
+            await setDoc(msgRef, msgData, { merge: true });
+
+            // Atualiza resumo da conversa
+            const chatDocRef = doc(db, 'chats', context.chatId);
+            await setDoc(chatDocRef, {
+                lastMessage: textSummary,
+                lastMessageText: textSummary,
+                lastMessageType: 'call',
+                lastMessageTime: Date.now(),
+                updatedAt: Date.now()
+            }, { merge: true }).catch(() => {});
+        }
+    } catch (e) {
+        console.warn('Erro ao registrar histórico de ligação no chat:', e);
+    }
+}
+
+export let currentCallHistoryFilter = 'all';
+
+export async function openCallHistoryModal(filter = 'all') {
+    const modal = document.getElementById('call-history-modal');
+    if (!modal) return;
+    currentCallHistoryFilter = filter;
+    modal.style.display = 'flex';
+    modal.classList.add('active');
+    modal.setAttribute('aria-hidden', 'false');
+    playSound(clickSound);
+
+    document.querySelectorAll('.call-history-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.filter === filter);
+    });
+
+    await renderCallHistoryList(filter);
+}
+
+export function closeCallHistoryModal() {
+    const modal = document.getElementById('call-history-modal');
+    if (!modal) return;
+    modal.style.display = 'none';
+    modal.classList.remove('active');
+    modal.setAttribute('aria-hidden', 'true');
+    playSound(clickSound);
+}
+
+export async function renderCallHistoryList(filter = 'all') {
+    const content = document.getElementById('call-history-content');
+    if (!content) return;
+
+    const chatId = getActiveChatId();
+    let callMessages = [];
+
+    // 1. Mensagens em memória da conversa atual
+    if (typeof currentChatMessagesMap !== 'undefined' && currentChatMessagesMap && currentChatMessagesMap.size > 0) {
+        currentChatMessagesMap.forEach(msg => {
+            if (msg.type === 'call') {
+                callMessages.push(msg);
+            }
+        });
+    }
+
+    // 2. Se vazio e houver chatId, busca do Firestore
+    if (callMessages.length === 0 && chatId && typeof getDocs === 'function' && typeof collection === 'function') {
+        try {
+            const q = query(
+                collection(db, 'chats', chatId, 'messages'),
+                where('type', '==', 'call'),
+                orderBy('createdAt', 'desc'),
+                limit(50)
+            );
+            const snap = await getDocs(q);
+            snap.forEach(docSnap => {
+                callMessages.push({ ...docSnap.data(), id: docSnap.id });
+            });
+        } catch (e) {
+            console.warn('Erro ao buscar ligações do Firestore:', e);
+        }
+    }
+
+    // Ordenar por data decrescente
+    callMessages.sort((a, b) => (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0));
+
+    const totalCount = callMessages.length;
+    const completedCalls = callMessages.filter(c => c.callStatus === 'completed');
+    const missedCalls = callMessages.filter(c => c.callStatus === 'missed' || c.callStatus === 'rejected');
+    const totalSeconds = completedCalls.reduce((acc, c) => acc + (Number(c.durationSeconds) || 0), 0);
+
+    const totalEl = document.getElementById('call-stat-total');
+    const completedEl = document.getElementById('call-stat-completed');
+    const missedEl = document.getElementById('call-stat-missed');
+    const durationEl = document.getElementById('call-stat-duration');
+
+    if (totalEl) totalEl.innerText = String(totalCount);
+    if (completedEl) completedEl.innerText = String(completedCalls.length);
+    if (missedEl) missedEl.innerText = String(missedCalls.length);
+    if (durationEl) {
+        const totalMins = Math.round(totalSeconds / 60);
+        durationEl.innerText = totalMins > 0 ? `${totalMins}m` : (totalSeconds > 0 ? `${totalSeconds}s` : '0m');
+    }
+
+    let filtered = callMessages;
+    if (filter === 'completed') {
+        filtered = completedCalls;
+    } else if (filter === 'missed') {
+        filtered = missedCalls;
+    }
+
+    if (filtered.length === 0) {
+        content.innerHTML = `
+            <div class="call-history-empty">
+                <i data-lucide="phone-off"></i>
+                <p>Nenhuma ligação encontrada</p>
+                <small>${filter === 'all' ? 'Você ainda não realizou ou recebeu chamadas nesta conversa.' : 'Nenhuma ligação corresponde a este filtro.'}</small>
+            </div>
+        `;
+        if (window.lucide) lucide.createIcons();
+        return;
+    }
+
+    content.innerHTML = filtered.map(call => {
+        const isMe = currentUser ? (call.senderUid === currentUser.uid || call.callerUid === currentUser.uid) : false;
+        const callType = call.callType || 'video';
+        const isVideo = callType !== 'audio';
+        const status = call.callStatus || 'completed';
+        const seconds = Number(call.durationSeconds) || 0;
+        const durFormatted = call.durationFormatted || formatCallDuration(seconds);
+
+        let iconClass = 'icon-completed';
+        let iconName = isVideo ? 'video' : 'phone-outgoing';
+        let title = '';
+        let statusLabel = '';
+
+        if (status === 'completed') {
+            iconClass = 'icon-completed';
+            if (isMe) {
+                iconName = isVideo ? 'video' : 'phone-outgoing';
+                title = isVideo ? 'Chamada de vídeo efetuada' : 'Chamada de voz efetuada';
+                statusLabel = `Atendida • ${durFormatted}`;
+            } else {
+                iconName = isVideo ? 'video' : 'phone-incoming';
+                title = isVideo ? 'Chamada de vídeo recebida' : 'Chamada de voz recebida';
+                statusLabel = `Atendida • ${durFormatted}`;
+            }
+        } else if (status === 'missed') {
+            iconClass = 'icon-missed';
+            iconName = isVideo ? 'video-off' : 'phone-missed';
+            if (isMe) {
+                title = isVideo ? 'Chamada de vídeo não atendida' : 'Chamada de voz não atendida';
+                statusLabel = 'Não atendida';
+            } else {
+                title = isVideo ? 'Chamada de vídeo perdida' : 'Chamada de voz perdida';
+                statusLabel = 'Perdida';
+            }
+        } else {
+            iconClass = 'icon-rejected';
+            iconName = isVideo ? 'video-off' : 'phone-off';
+            title = isVideo ? 'Chamada de vídeo recusada' : 'Chamada de voz recusada';
+            statusLabel = 'Recusada';
+        }
+
+        const dateStr = call.createdAt ? new Date(call.createdAt).toLocaleString('pt-BR', {
+            day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
+        }) : '';
+
+        return `
+            <div class="call-history-item" data-call-id="${call.id || ''}">
+                <div class="call-history-item-left">
+                    <div class="call-history-item-icon ${iconClass}">
+                        <i data-lucide="${iconName}"></i>
+                    </div>
+                    <div class="call-history-item-details">
+                        <span class="call-history-item-title">${escapeHTML(title)}</span>
+                        <div class="call-history-item-meta">
+                            <span>${dateStr}</span>
+                            <span>•</span>
+                            <span class="call-history-item-duration status-${status}">${statusLabel}</span>
+                        </div>
+                    </div>
+                </div>
+                <button type="button" class="call-history-call-btn" data-call-type="${callType}" title="Ligar para ${activeChatContact ? escapeHTML(activeChatContact.name || 'Contato') : 'Contato'}">
+                    <i data-lucide="${isVideo ? 'video' : 'phone'}"></i>
+                </button>
+            </div>
+        `;
+    }).join('');
+
+    if (window.lucide) lucide.createIcons();
+}
+
 async function startCall(isVideo = true) {
     if (!activeChatContact || !currentUser) return;
     if (isUserBanned(currentProfile)) {
@@ -21468,6 +21811,20 @@ async function startCall(isVideo = true) {
             if (userInfoBox) userInfoBox.classList.add('video-active');
         };
 
+        const targetChatId = getActiveChatId() || [currentUser.uid, activeChatContact.uid].sort().join('_');
+        activeCallRecordContext = {
+            callId: null,
+            chatId: targetChatId,
+            callerUid: currentUser.uid,
+            callerName: currentProfile?.name || currentUser?.displayName || 'Você',
+            calleeUid: activeChatContact.uid,
+            calleeName: activeChatContact.name || 'Contato',
+            callType: isVideo ? 'video' : 'audio',
+            createdAt: Date.now(),
+            isConnected: false,
+            durationSeconds: 0
+        };
+
         const callDocRef = await addDoc(collection(db, 'calls'), {
             callerUid: currentUser.uid,
             callerName: currentProfile.name,
@@ -21475,11 +21832,13 @@ async function startCall(isVideo = true) {
             callerAvatar: currentProfile.avatar,
             calleeUid: activeChatContact.uid,
             calleeName: activeChatContact.name,
+            chatId: targetChatId,
             status: 'ringing',
-            type: 'video',
+            type: isVideo ? 'video' : 'audio',
             createdAt: Date.now()
         });
         currentCallId = callDocRef.id;
+        if (activeCallRecordContext) activeCallRecordContext.callId = currentCallId;
 
         const callerCandidatesCol = collection(db, 'calls', currentCallId, 'callerCandidates');
         peerConnection.onicecandidate = (event) => {
@@ -21504,6 +21863,7 @@ async function startCall(isVideo = true) {
                     const answerDescription = new RTCSessionDescription(data.answer);
                     await peerConnection.setRemoteDescription(answerDescription);
 
+                    if (activeCallRecordContext) activeCallRecordContext.isConnected = true;
                     ringtoneSound.pause();
                     ringtoneSound.currentTime = 0;
                     if (statusEl) statusEl.innerText = 'Conectado • Criptografia Quântica VIP';
@@ -21520,6 +21880,10 @@ async function startCall(isVideo = true) {
                     }
                 } else if (data.status === 'rejected') {
                     showToast("Chamada", "A chamada foi recusada.", "red");
+                    if (activeCallRecordContext) {
+                        recordCallInChat(activeCallRecordContext, 'rejected', 0);
+                        activeCallRecordContext = null;
+                    }
                     endCall();
                 } else if (data.status === 'ended') {
                     endCall();
@@ -21560,6 +21924,20 @@ function listenToIncomingCalls() {
                 return;
             }
             currentCallId = callDoc.id;
+
+            const targetChatId = callData.chatId || [callData.callerUid, currentUser.uid].sort().join('_');
+            activeCallRecordContext = {
+                callId: callDoc.id,
+                chatId: targetChatId,
+                callerUid: callData.callerUid,
+                callerName: callData.callerName || 'Contato',
+                calleeUid: currentUser.uid,
+                calleeName: currentProfile?.name || currentUser?.displayName || 'Você',
+                callType: callData.type || 'video',
+                createdAt: callData.createdAt || Date.now(),
+                isConnected: false,
+                durationSeconds: 0
+            };
 
             const nameEl = document.getElementById('incoming-caller-name');
             const userEl = document.getElementById('incoming-caller-username');
@@ -21652,6 +22030,8 @@ async function acceptIncomingCall() {
             answeredAt: Date.now()
         });
 
+        if (activeCallRecordContext) activeCallRecordContext.isConnected = true;
+
         const callerCandidatesCol = collection(db, 'calls', currentCallId, 'callerCandidates');
         if (callerCandidatesUnsubscribe) callerCandidatesUnsubscribe();
         callerCandidatesUnsubscribe = onSnapshot(callerCandidatesCol, (snapshot) => {
@@ -21690,6 +22070,10 @@ async function acceptIncomingCall() {
 async function declineIncomingCall() {
     if (!currentCallId) return;
     dismissIncomingCallUI();
+    if (activeCallRecordContext) {
+        recordCallInChat(activeCallRecordContext, 'rejected', 0);
+        activeCallRecordContext = null;
+    }
     await updateDoc(doc(db, 'calls', currentCallId), { status: 'rejected', endedAt: Date.now() }).catch(() => {});
     currentCallId = null;
 }
@@ -21699,12 +22083,20 @@ async function endCall() {
     ringtoneSound.currentTime = 0;
     stopPhoneVibration();
     clearInterval(callTimerInterval);
+    const finalSeconds = callSeconds;
     callTimerInterval = null;
 
+    if (activeCallRecordContext) {
+        const finalStatus = (activeCallRecordContext.isConnected || finalSeconds > 0) ? 'completed' : 'missed';
+        recordCallInChat(activeCallRecordContext, finalStatus, finalSeconds);
+        activeCallRecordContext = null;
+    }
+
     if (currentCallId) {
-        await updateDoc(doc(db, 'calls', currentCallId), { status: 'ended', endedAt: Date.now() }).catch(() => {});
+        await updateDoc(doc(db, 'calls', currentCallId), { status: 'ended', endedAt: Date.now(), duration: finalSeconds }).catch(() => {});
         currentCallId = null;
     }
+    callSeconds = 0;
 
     if (peerConnection) {
         peerConnection.close();
@@ -21731,6 +22123,45 @@ document.getElementById('chat-audio-call-btn')?.addEventListener('click', () => 
 document.getElementById('end-call-btn')?.addEventListener('click', endCall);
 document.getElementById('accept-call-btn')?.addEventListener('click', acceptIncomingCall);
 document.getElementById('decline-call-btn')?.addEventListener('click', declineIncomingCall);
+
+document.getElementById('view-call-history-trigger')?.addEventListener('click', () => {
+    document.getElementById('chat-dropdown-menu')?.classList.remove('active');
+    openCallHistoryModal('all');
+});
+
+document.getElementById('contact-profile-call-history-btn')?.addEventListener('click', () => {
+    openCallHistoryModal('all');
+});
+
+document.getElementById('close-call-history-modal')?.addEventListener('click', () => {
+    closeCallHistoryModal();
+});
+
+document.getElementById('call-history-modal')?.addEventListener('click', (e) => {
+    if (e.target && e.target.id === 'call-history-modal') {
+        closeCallHistoryModal();
+    }
+});
+
+document.querySelectorAll('.call-history-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        document.querySelectorAll('.call-history-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        const filter = tab.dataset.filter || 'all';
+        renderCallHistoryList(filter);
+    });
+});
+
+document.getElementById('call-history-content')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('.call-history-call-btn');
+    if (btn) {
+        e.stopPropagation();
+        playSound(clickSound);
+        const targetType = btn.dataset.callType || 'video';
+        closeCallHistoryModal();
+        startCall(targetType !== 'audio');
+    }
+});
 
 document.getElementById('mute-mic-btn')?.addEventListener('click', function() {
     if (localStream) {
@@ -28708,6 +29139,17 @@ export function closeTopmostActiveLayer() {
     }
 
     // 8. Visualizadores e Modais Rápidos
+    const callHistoryModal = document.getElementById('call-history-modal');
+    if (callHistoryModal && (callHistoryModal.style.display === 'flex' || (callHistoryModal.classList && callHistoryModal.classList.contains('active')))) {
+        if (typeof closeCallHistoryModal === 'function') {
+            closeCallHistoryModal();
+        } else {
+            callHistoryModal.style.display = 'none';
+            if (callHistoryModal.classList) callHistoryModal.classList.remove('active');
+        }
+        return true;
+    }
+
     const viewOnceOverlay = document.getElementById('view-once-overlay');
     if (viewOnceOverlay && (viewOnceOverlay.style.display === 'flex' || (viewOnceOverlay.classList && viewOnceOverlay.classList.contains('active')))) {
         if (typeof closeViewOnceModal === 'function') {
@@ -29334,6 +29776,14 @@ if (typeof window !== 'undefined') {
     window.closeShippingModal = closeShippingModal;
     window.updateShippingModalUI = updateShippingModalUI;
     window.calculateCartShipping = calculateCartShipping;
+    // Histórico de Ligações Dentro das Conversas (v1.0.179)
+    window.formatCallDuration = formatCallDuration;
+    window.formatCallDurationDigital = formatCallDurationDigital;
+    window.buildCallCardHTML = buildCallCardHTML;
+    window.recordCallInChat = recordCallInChat;
+    window.openCallHistoryModal = openCallHistoryModal;
+    window.closeCallHistoryModal = closeCallHistoryModal;
+    window.renderCallHistoryList = renderCallHistoryList;
 }
 
 if (typeof window !== 'undefined') {

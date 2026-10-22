@@ -10734,15 +10734,17 @@ test('Correção de Abertura do Catálogo no Perfil de Contato sem Erro de Null 
   const env = createTestEnvironment();
   const win = env.sandbox.window;
 
-  // 1. Integridade de Versionamento (v1.0.178)
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.178', 'script.js deve ter versão 1.0.178');
+  // 1. Integridade de Versionamento (v1.0.178+)
+  const parts = win.CURRENT_APP_VERSION.split('.').map(Number);
+  assert.ok(parts[0] > 1 || (parts[0] === 1 && parts[1] > 0) || (parts[0] === 1 && parts[1] === 0 && parts[2] >= 178), 'script.js deve ter versão >= 1.0.178');
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
-  assert.strictEqual(versionJson.version, '1.0.178', 'version.json deve ter versão 1.0.178');
+  const vParts = versionJson.version.split('.').map(Number);
+  assert.ok(vParts[0] > 1 || (vParts[0] === 1 && vParts[1] > 0) || (vParts[0] === 1 && vParts[1] === 0 && vParts[2] >= 178), 'version.json deve ter versão >= 1.0.178');
   const htmlContent = fs.readFileSync('public/index.html', 'utf8');
-  assert.ok(htmlContent.includes('script.js?v=1.0.178'), 'index.html deve referenciar script.js?v=1.0.178');
-  assert.ok(htmlContent.includes('style.css?v=1.0.178'), 'index.html deve referenciar style.css?v=1.0.178');
+  assert.ok(htmlContent.includes('script.js?v=1.0.'), 'index.html deve referenciar script.js versionado');
+  assert.ok(htmlContent.includes('style.css?v=1.0.'), 'index.html deve referenciar style.css versionado');
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
-  assert.ok(swContent.includes('vortex-vip-v1.0.178'), 'sw.js deve ter cache vortex-vip-v1.0.178');
+  assert.ok(swContent.includes('vortex-vip-v1.0.'), 'sw.js deve ter cache vortex-vip versionado');
 
   // 2. Define usuário logado
   const currentUser = { uid: 'user_tester_buyer', email: 'buyer@vortex.app', name: 'Buyer Test' };
@@ -10771,6 +10773,161 @@ test('Correção de Abertura do Catálogo no Perfil de Contato sem Erro de Null 
 
   assert.strictEqual(catalogOverlay.style.display, 'flex', '#catalog-overlay deve ser aberto com display: flex');
   assert.ok(catalogOverlay.classList.contains('active'), '#catalog-overlay deve ter classe active');
+});
+
+test('Histórico de Ligações Dentro das Conversas (v1.0.179)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+
+  // 1. Integridade de Versionamento (v1.0.179)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.179', 'script.js deve ter versão 1.0.179');
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
+  assert.strictEqual(versionJson.version, '1.0.179', 'version.json deve ter versão 1.0.179');
+  const htmlContent = fs.readFileSync('public/index.html', 'utf8');
+  assert.ok(htmlContent.includes('script.js?v=1.0.179'), 'index.html deve referenciar script.js?v=1.0.179');
+  assert.ok(htmlContent.includes('style.css?v=1.0.179'), 'index.html deve referenciar style.css?v=1.0.179');
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+  assert.ok(swContent.includes('vortex-vip-v1.0.179'), 'sw.js deve ter cache vortex-vip-v1.0.179');
+
+  // 2. Elementos no DOM
+  assert.ok(env.elements['view-call-history-trigger'], '#view-call-history-trigger deve existir no menu dropdown');
+  assert.ok(env.elements['contact-profile-call-history-btn'], '#contact-profile-call-history-btn deve existir no perfil');
+  assert.ok(env.elements['call-history-modal'], '#call-history-modal deve existir');
+  assert.ok(env.elements['close-call-history-modal'], '#close-call-history-modal deve existir');
+  assert.ok(env.elements['call-history-content'], '#call-history-content deve existir');
+  assert.ok(env.elements['call-stat-total'], '#call-stat-total deve existir');
+  assert.ok(env.elements['call-stat-completed'], '#call-stat-completed deve existir');
+  assert.ok(env.elements['call-stat-missed'], '#call-stat-missed deve existir');
+  assert.ok(env.elements['call-stat-duration'], '#call-stat-duration deve existir');
+  assert.ok(env.elements['call-tab-all'], '#call-tab-all deve existir');
+  assert.ok(env.elements['call-tab-completed'], '#call-tab-completed deve existir');
+  assert.ok(env.elements['call-tab-missed'], '#call-tab-missed deve existir');
+
+  // 3. Validação das Funções de Formatação de Duração
+  assert.strictEqual(typeof win.formatCallDuration, 'function', 'formatCallDuration deve ser uma função');
+  assert.strictEqual(win.formatCallDuration(0), '0 seg');
+  assert.strictEqual(win.formatCallDuration(45), '45 seg');
+  assert.strictEqual(win.formatCallDuration(125), '2m 05s');
+  assert.strictEqual(win.formatCallDuration(3600), '60m 00s');
+
+  assert.strictEqual(typeof win.formatCallDurationDigital, 'function', 'formatCallDurationDigital deve ser uma função');
+  assert.strictEqual(win.formatCallDurationDigital(65), '01:05');
+  assert.strictEqual(win.formatCallDurationDigital(0), '00:00');
+
+  // 4. Renderização do Card de Chamada no Chat (buildCallCardHTML)
+  assert.strictEqual(typeof win.buildCallCardHTML, 'function', 'buildCallCardHTML deve ser uma função');
+
+  // 4A. Chamada de vídeo efetuada e atendida
+  const completedVideoMsg = {
+    id: 'call_test_1',
+    type: 'call',
+    callType: 'video',
+    callStatus: 'completed',
+    durationSeconds: 154,
+    callerUid: 'user_me',
+    calleeUid: 'user_other'
+  };
+  const htmlCompletedMe = win.buildCallCardHTML(completedVideoMsg, true);
+  assert.ok(htmlCompletedMe.includes('chat-call-card'), 'Deve gerar classe chat-call-card');
+  assert.ok(htmlCompletedMe.includes('call-status-completed'), 'Deve ter classe call-status-completed');
+  assert.ok(htmlCompletedMe.includes('Chamada de vídeo efetuada'), 'Deve indicar chamada efetuada');
+  assert.ok(htmlCompletedMe.includes('Duração: 2m 34s'), 'Deve exibir duração calculada');
+  assert.ok(htmlCompletedMe.includes('chat-call-return-btn'), 'Deve conter botão de retorno');
+
+  // 4B. Chamada de vídeo recebida
+  const htmlCompletedOther = win.buildCallCardHTML(completedVideoMsg, false);
+  assert.ok(htmlCompletedOther.includes('Chamada de vídeo recebida'), 'Deve indicar chamada recebida');
+
+  // 4C. Chamada de vídeo perdida
+  const missedVideoMsg = {
+    id: 'call_test_2',
+    type: 'call',
+    callType: 'video',
+    callStatus: 'missed',
+    durationSeconds: 0,
+    callerUid: 'user_other',
+    calleeUid: 'user_me'
+  };
+  const htmlMissedMe = win.buildCallCardHTML(missedVideoMsg, false);
+  assert.ok(htmlMissedMe.includes('call-status-missed'), 'Deve ter classe call-status-missed');
+  assert.ok(htmlMissedMe.includes('Chamada de vídeo perdida'), 'Deve alertar sobre chamada perdida');
+  assert.ok(htmlMissedMe.includes('Toque para retornar'), 'Deve indicar retorno');
+
+  // 4D. Chamada de voz
+  const audioCallMsg = {
+    id: 'call_test_3',
+    type: 'call',
+    callType: 'audio',
+    callStatus: 'completed',
+    durationSeconds: 30,
+    callerUid: 'user_me',
+    calleeUid: 'user_other'
+  };
+  const htmlAudioCall = win.buildCallCardHTML(audioCallMsg, true);
+  assert.ok(htmlAudioCall.includes('Chamada de voz efetuada'), 'Deve identificar chamada de voz');
+
+  // 5. Registro de Ligação no Chat (recordCallInChat)
+  assert.strictEqual(typeof win.recordCallInChat, 'function', 'recordCallInChat deve ser uma função');
+  const userMe = { uid: 'user_call_tester_me', name: 'Tester Me' };
+  const userOther = { uid: 'user_call_tester_other', name: 'Tester Other' };
+  win.setCurrentUser(userMe);
+  win.setCurrentProfile(userMe);
+
+  const testChatId = 'user_call_tester_me_user_call_tester_other';
+  const callContext = {
+    callId: 'call_doc_abc123',
+    chatId: testChatId,
+    callerUid: userMe.uid,
+    callerName: userMe.name,
+    calleeUid: userOther.uid,
+    calleeName: userOther.name,
+    callType: 'video',
+    isConnected: true,
+    durationSeconds: 180,
+    createdAt: Date.now()
+  };
+
+  await win.recordCallInChat(callContext, 'completed', 180);
+
+  // Verifica que gravou em chats/{chatId}/messages/call_call_doc_abc123
+  const expectedMsgKey = `chats/${testChatId}/messages/call_call_doc_abc123`;
+  const savedMsg = env.firestoreDocs[expectedMsgKey];
+  assert.ok(savedMsg, 'Deve gravar documento de mensagem em chats/{chatId}/messages');
+  assert.strictEqual(savedMsg.type, 'call', 'Mensagem gravada deve ser do tipo call');
+  assert.strictEqual(savedMsg.callStatus, 'completed', 'callStatus deve ser completed');
+  assert.strictEqual(savedMsg.durationSeconds, 180, 'durationSeconds deve ser 180');
+  assert.strictEqual(savedMsg.durationFormatted, '3m 00s', 'durationFormatted deve ser 3m 00s');
+
+  // 6. Modal de Histórico de Chamadas
+  const modal = env.elements['call-history-modal'];
+  const content = env.elements['call-history-content'];
+
+  // Simula contato ativo para o chat atual
+  win.setActiveChatContact(userOther);
+
+  await win.openCallHistoryModal('all');
+  assert.strictEqual(modal.style.display, 'flex', 'Modal deve estar com display: flex');
+  assert.ok(modal.classList.contains('active'), 'Modal deve ter classe active');
+  assert.strictEqual(modal.getAttribute('aria-hidden'), 'false', 'Modal deve ter aria-hidden: false');
+
+  // Verifica estatísticas atualizadas
+  const totalStat = env.elements['call-stat-total'];
+  const completedStat = env.elements['call-stat-completed'];
+  assert.ok(Number(totalStat.innerText) >= 1, 'Total de chamadas deve ser >= 1');
+  assert.ok(Number(completedStat.innerText) >= 1, 'Chamadas atendidas deve ser >= 1');
+
+  // Fechamento do modal
+  win.closeCallHistoryModal();
+  assert.strictEqual(modal.style.display, 'none', 'Modal deve estar fechado');
+  assert.strictEqual(modal.getAttribute('aria-hidden'), 'true', 'aria-hidden deve ser true');
+
+  // 7. Integridade do CSS
+  const css = fs.readFileSync('public/style.css', 'utf8');
+  assert.ok(css.includes('.chat-call-card'), 'style.css deve conter .chat-call-card');
+  assert.ok(css.includes('.call-status-completed'), 'style.css deve conter .call-status-completed');
+  assert.ok(css.includes('.call-status-missed'), 'style.css deve conter .call-status-missed');
+  assert.ok(css.includes('.call-history-card'), 'style.css deve conter .call-history-card');
+  assert.ok(css.includes('.chat-call-return-btn'), 'style.css deve conter .chat-call-return-btn');
 });
 
 

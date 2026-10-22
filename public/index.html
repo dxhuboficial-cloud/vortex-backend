@@ -4,20 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.178">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.178">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.178">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.178">
-    <link rel="stylesheet" href="style.css?v=1.0.178">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.179">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.179">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.179">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.179">
+    <link rel="stylesheet" href="style.css?v=1.0.179">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.178">
+    <link rel="manifest" href="manifest.json?v=1.0.179">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.178">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.178">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.179">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.179">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -461,6 +461,10 @@
                     <div class="dropdown-item" id="view-starred-messages-trigger">
                         <i data-lucide="star" style="color: #fff01f;"></i>
                         <span>Mensagens Favoritas</span>
+                    </div>
+                    <div class="dropdown-item" id="view-call-history-trigger">
+                        <i data-lucide="phone-call" style="color: #00d26a;"></i>
+                        <span>Histórico de Chamadas</span>
                     </div>
                     <div class="dropdown-item" id="chat-wallpaper-trigger">
                         <i data-lucide="image"></i>
@@ -1691,6 +1695,10 @@
                     <button id="contact-profile-call-btn" class="contact-action-btn" type="button" title="Iniciar chamada de vídeo">
                         <i data-lucide="video"></i>
                         <span>Chamada VIP</span>
+                    </button>
+                    <button id="contact-profile-call-history-btn" class="contact-action-btn" type="button" title="Ver histórico de ligações">
+                        <i data-lucide="phone-call"></i>
+                        <span>Histórico</span>
                     </button>
                 </div>
 
@@ -3727,8 +3735,46 @@
             </div>
         </div>
 
+        <!-- Modal de Histórico de Ligações da Conversa (v1.0.179) -->
+        <div id="call-history-modal" class="custom-modal-overlay" style="display:none;" aria-hidden="true">
+            <div class="custom-modal-card call-history-card">
+                <div class="panel-top-bar" style="padding:12px 16px;">
+                    <h3 class="modal-title" style="font-size:1rem; color:#00d26a;"><i data-lucide="phone-call"></i> Histórico de Ligações</h3>
+                    <div class="header-icon-btn" id="close-call-history-modal" title="Fechar" aria-label="Fechar">
+                        <i data-lucide="x"></i>
+                    </div>
+                </div>
+                <div class="call-history-stats-bar" id="call-history-stats-bar">
+                    <div class="call-stat-box">
+                        <span class="call-stat-number" id="call-stat-total">0</span>
+                        <span class="call-stat-label">Total</span>
+                    </div>
+                    <div class="call-stat-box">
+                        <span class="call-stat-number" id="call-stat-completed" style="color: #00d26a;">0</span>
+                        <span class="call-stat-label">Atendidas</span>
+                    </div>
+                    <div class="call-stat-box">
+                        <span class="call-stat-number" id="call-stat-missed" style="color: #ff3b30;">0</span>
+                        <span class="call-stat-label">Perdidas</span>
+                    </div>
+                    <div class="call-stat-box">
+                        <span class="call-stat-number" id="call-stat-duration" style="color: #34b7f1;">0m</span>
+                        <span class="call-stat-label">Duração</span>
+                    </div>
+                </div>
+                <div class="call-history-tabs">
+                    <button type="button" class="call-history-tab active" data-filter="all" id="call-tab-all">Todas</button>
+                    <button type="button" class="call-history-tab" data-filter="completed" id="call-tab-completed">Atendidas</button>
+                    <button type="button" class="call-history-tab" data-filter="missed" id="call-tab-missed">Perdidas</button>
+                </div>
+                <div id="call-history-content" class="call-history-content">
+                    <!-- Chamadas injetadas via JS -->
+                </div>
+            </div>
+        </div>
+
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.178" defer></script>
+    <script type="module" src="script.js?v=1.0.179" defer></script>
 </body>
 </html>
