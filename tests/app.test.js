@@ -11373,10 +11373,10 @@ test('Seleção de Tipo de Chamada (Vídeo ou Áudio) ao Clicar no Ícone de Câ
   const css = fs.readFileSync('public/style.css', 'utf8');
   const html = fs.readFileSync('public/index.html', 'utf8');
 
-  // 1. Integridade de Versionamento (v1.0.184 / v1.0.185)
-  assert.ok(['1.0.184', '1.0.185'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão >= 1.0.184');
+  // 1. Integridade de Versionamento (v1.0.184+)
+  assert.ok(parseInt(win.CURRENT_APP_VERSION.split('.')[2], 10) >= 184, 'script.js deve ter versão >= 1.0.184');
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
-  assert.ok(['1.0.184', '1.0.185'].includes(versionJson.version), 'version.json deve ter versão >= 1.0.184');
+  assert.ok(parseInt(versionJson.version.split('.')[2], 10) >= 184, 'version.json deve ter versão >= 1.0.184');
   assert.ok(html.includes('script.js?v=1.0.18'), 'index.html deve referenciar script.js versionado');
   assert.ok(html.includes('style.css?v=1.0.18'), 'index.html deve referenciar style.css versionado');
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
@@ -11477,14 +11477,14 @@ test('Trocar para Chamada de Vídeo durante Chamada de Áudio via Botão de Câm
   const css = fs.readFileSync('public/style.css', 'utf8');
   const html = fs.readFileSync('public/index.html', 'utf8');
 
-  // 1. Integridade de Versionamento (v1.0.185)
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.185', 'script.js deve ter versão 1.0.185');
+  // 1. Integridade de Versionamento (v1.0.185+)
+  assert.ok(parseInt(win.CURRENT_APP_VERSION.split('.')[2], 10) >= 185, 'script.js deve ter versão >= 1.0.185');
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
-  assert.strictEqual(versionJson.version, '1.0.185', 'version.json deve ter versão 1.0.185');
-  assert.ok(html.includes('script.js?v=1.0.185'), 'index.html deve referenciar script.js?v=1.0.185');
-  assert.ok(html.includes('style.css?v=1.0.185'), 'index.html deve referenciar style.css?v=1.0.185');
+  assert.ok(parseInt(versionJson.version.split('.')[2], 10) >= 185, 'version.json deve ter versão >= 1.0.185');
+  assert.ok(html.includes('script.js?v=1.0.18'), 'index.html deve referenciar script.js versionado');
+  assert.ok(html.includes('style.css?v=1.0.18'), 'index.html deve referenciar style.css versionado');
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
-  assert.ok(swContent.includes('vortex-vip-v1.0.185'), 'sw.js deve ter cache vortex-vip-v1.0.185');
+  assert.ok(swContent.includes('vortex-vip-v1.0.18'), 'sw.js deve ter cache vortex-vip-v1.0.18x');
 
   // 2. Integridade de CSS e Funções
   assert.ok(css.includes('.video-call-overlay.audio-call-mode #toggle-camera-btn'), 'style.css deve conter regras para #toggle-camera-btn em audio-call-mode');
@@ -11546,6 +11546,66 @@ test('Trocar para Chamada de Vídeo durante Chamada de Áudio via Botão de Câm
   const endCallBtn = env.elements['end-call-btn'];
   await endCallBtn.click();
   assert.ok(!overlay.classList.contains('active'), 'Overlay deve fechar após desligar');
+});
+
+test('Ícone de Rotação em Volta da Câmera para Troca de Chamada de Vídeo (v1.0.186)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+  const css = fs.readFileSync('public/style.css', 'utf8');
+  const html = fs.readFileSync('public/index.html', 'utf8');
+
+  // 1. Integridade de Versionamento (v1.0.186)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.186', 'script.js deve ter versão 1.0.186');
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
+  assert.strictEqual(versionJson.version, '1.0.186', 'version.json deve ter versão 1.0.186');
+  assert.ok(html.includes('script.js?v=1.0.186'), 'index.html deve referenciar script.js?v=1.0.186');
+  assert.ok(html.includes('style.css?v=1.0.186'), 'index.html deve referenciar style.css?v=1.0.186');
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+  assert.ok(swContent.includes('vortex-vip-v1.0.186'), 'sw.js deve ter cache vortex-vip-v1.0.186');
+
+  // 2. Integridade de CSS dos novos elementos de rotação e câmera
+  assert.ok(css.includes('.switch-video-btn-content'), 'style.css deve conter .switch-video-btn-content');
+  assert.ok(css.includes('.switch-rotate-icon'), 'style.css deve conter .switch-rotate-icon');
+  assert.ok(css.includes('.switch-camera-inner-icon'), 'style.css deve conter .switch-camera-inner-icon');
+
+  // 3. Setup de Usuário e Contato
+  const currentUid = 'user_audio_rotation_me';
+  const currentUser = { uid: currentUid, displayName: 'Tester Rotation', email: 'rot@vortex.vip' };
+  win.setCurrentUser(currentUser);
+  win.setCurrentProfile(currentUser);
+
+  const contact = { uid: 'contact_dx_hub_2', name: 'DX HUB DIGITAL', status: 'Chamando...', avatar: '' };
+  win.setActiveChatContact(contact);
+
+  const overlay = env.elements['video-call-overlay'];
+  const toggleCamBtn = env.elements['toggle-camera-btn'];
+
+  // 4. Iniciar chamada em modo de áudio
+  await win.startCall(false);
+  assert.ok(overlay.classList.contains('active'), 'Overlay ativo');
+  assert.ok(overlay.classList.contains('audio-call-mode'), 'Em modo de áudio');
+
+  // 5. Verificar se o botão de câmera contém o ícone de rotação em volta da câmera
+  const btnHTML = toggleCamBtn.innerHTML;
+  assert.ok(btnHTML.includes('switch-video-btn-content'), 'Botão deve conter container switch-video-btn-content');
+  assert.ok(btnHTML.includes('switch-rotate-icon'), 'Botão deve conter ícone de rotação switch-rotate-icon em volta');
+  assert.ok(btnHTML.includes('refresh-cw'), 'Ícone de rotação deve ser refresh-cw (setas circulares)');
+  assert.ok(btnHTML.includes('switch-camera-inner-icon'), 'Botão deve conter ícone de câmera switch-camera-inner-icon no centro');
+  assert.ok(btnHTML.includes('data-lucide="video"'), 'Ícone interno deve ser a câmera de vídeo');
+
+  // 6. Clicar no botão para alternar para chamada de vídeo
+  await toggleCamBtn.click();
+  assert.ok(!overlay.classList.contains('audio-call-mode'), 'Deve ter saído do modo áudio');
+
+  // 7. Em modo de vídeo, o botão volta ao ícone normal de câmera/toggle
+  const btnVideoHTML = toggleCamBtn.innerHTML;
+  assert.ok(!btnVideoHTML.includes('switch-rotate-icon'), 'Em modo de vídeo, não deve mais ter ícone de rotação');
+  assert.strictEqual(toggleCamBtn.title, 'Desligar Câmera', 'Título do botão deve ser Desligar Câmera');
+
+  // 8. Desligar chamada
+  const endCallBtn = env.elements['end-call-btn'];
+  await endCallBtn.click();
+  assert.ok(!overlay.classList.contains('active'), 'Chamada encerrada');
 });
 
 

@@ -18249,7 +18249,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.185';
+export const CURRENT_APP_VERSION = '1.0.186';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -22772,7 +22772,7 @@ export function updateCameraToggleButtonUI(cameraOff = isCameraOff) {
         if (isAudioMode) {
             btn.title = 'Trocar para Chamada de Vídeo';
             btn.setAttribute('aria-label', 'Trocar para Chamada de Vídeo');
-            btn.innerHTML = `<i data-lucide="${cameraOff ? 'video-off' : 'video'}"></i>`;
+            btn.innerHTML = `<div class="switch-video-btn-content" title="Trocar para Chamada de Vídeo"><i data-lucide="refresh-cw" class="switch-rotate-icon"></i><i data-lucide="video" class="switch-camera-inner-icon"></i></div>`;
         } else {
             btn.title = cameraOff ? 'Ligar Câmera' : 'Desligar Câmera';
             btn.setAttribute('aria-label', cameraOff ? 'Ligar Câmera' : 'Desligar Câmera');
