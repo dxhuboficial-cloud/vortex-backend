@@ -17804,6 +17804,175 @@ body.theme-cyberpunk .catalog-order-total-units-pill {
     }
 }
 
+/* ==========================================================================
+   MODAL DE SELEÇÃO DE TIPO DE CHAMADA (VÍDEO OU ÁUDIO) - v1.0.184
+   ========================================================================== */
+.call-type-card {
+    max-width: 380px;
+    width: 92%;
+    background: #141416;
+    border: 1px solid rgba(0, 210, 106, 0.25);
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.9), 0 0 24px rgba(0, 210, 106, 0.1);
+    box-sizing: border-box;
+}
+
+.call-type-target-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 14px;
+    padding: 10px 14px;
+    margin: 8px 0 12px;
+}
+
+.call-type-meta {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+}
+
+.call-type-name {
+    font-size: 0.98rem;
+    font-weight: 700;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.call-type-status {
+    font-size: 0.76rem;
+    color: var(--text-dim, #888);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.call-type-options-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+}
+
+.call-type-option-btn {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    cursor: pointer;
+    text-align: left;
+    width: 100%;
+    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+    box-sizing: border-box;
+}
+
+.call-type-option-btn:hover,
+.call-type-option-btn:focus-visible {
+    transform: translateY(-2px);
+}
+
+.call-type-option-btn.video-call-opt:hover,
+.call-type-option-btn.video-call-opt:active {
+    background: rgba(0, 168, 255, 0.12);
+    border-color: rgba(0, 168, 255, 0.45);
+    box-shadow: 0 4px 18px rgba(0, 168, 255, 0.25);
+}
+
+.call-type-option-btn.audio-call-opt:hover,
+.call-type-option-btn.audio-call-opt:active {
+    background: rgba(0, 210, 106, 0.12);
+    border-color: rgba(0, 210, 106, 0.45);
+    box-shadow: 0 4px 18px rgba(0, 210, 106, 0.25);
+}
+
+.call-type-icon-box {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+}
+
+.call-type-option-btn:hover .call-type-icon-box {
+    transform: scale(1.08);
+}
+
+.video-icon-box {
+    background: linear-gradient(135deg, rgba(0, 168, 255, 0.25), rgba(98, 0, 238, 0.35));
+    color: #00e5ff;
+    border: 1px solid rgba(0, 229, 255, 0.4);
+}
+
+.audio-icon-box {
+    background: linear-gradient(135deg, rgba(0, 210, 106, 0.25), rgba(0, 150, 75, 0.35));
+    color: #00d26a;
+    border: 1px solid rgba(0, 210, 106, 0.4);
+}
+
+.call-type-text-box {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    flex: 1;
+    min-width: 0;
+}
+
+.call-type-btn-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+.call-type-btn-desc {
+    font-size: 0.74rem;
+    color: var(--text-dim, #999);
+    line-height: 1.3;
+}
+
+.call-type-arrow {
+    color: rgba(255, 255, 255, 0.3);
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.call-type-option-btn:hover .call-type-arrow {
+    transform: translateX(3px);
+    color: #fff;
+}
+
+/* Modo Chamada de Áudio no Overlay */
+.video-call-overlay.audio-call-mode .call-user-info {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+}
+
+.video-call-overlay.audio-call-mode .local-video-pip {
+    display: none !important;
+}
+
+.video-call-overlay.audio-call-mode #remote-webcam-feed {
+    display: none !important;
+}
+
+.video-call-overlay.audio-call-mode #switch-camera-btn {
+    display: none !important;
+}
+
+
 
 
 

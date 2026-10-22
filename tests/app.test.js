@@ -237,7 +237,8 @@ function createTestEnvironment() {
         cb({
           empty: docs.length === 0,
           docs,
-          forEach: (fn) => docs.forEach(fn)
+          forEach: (fn) => docs.forEach(fn),
+          docChanges: () => []
         });
       }
     });
@@ -576,8 +577,16 @@ function createTestEnvironment() {
       Blob: typeof Blob !== 'undefined' ? Blob : globalThis.Blob,
       atob: typeof atob !== 'undefined' ? atob : globalThis.atob,
       btoa: typeof btoa !== 'undefined' ? btoa : globalThis.btoa,
-      RTCPeerConnection: function() {},
-      MediaStream: function() { this.getTracks = () => []; },
+      RTCPeerConnection: function() {
+        this.addTrack = () => {};
+        this.createOffer = () => Promise.resolve({ sdp: 'mock_sdp', type: 'offer' });
+        this.createAnswer = () => Promise.resolve({ sdp: 'mock_sdp_answer', type: 'answer' });
+        this.setLocalDescription = () => Promise.resolve();
+        this.setRemoteDescription = () => Promise.resolve();
+        this.addIceCandidate = () => Promise.resolve();
+        this.close = () => {};
+      },
+      MediaStream: function() { this.getTracks = () => [{ stop: () => {}, enabled: true }]; this.addTrack = () => {}; },
       MediaRecorder: function(stream) {
         this.stream = stream;
         this.state = 'inactive';
@@ -589,8 +598,8 @@ function createTestEnvironment() {
         this.ondataavailable = null;
         this.onstop = null;
       },
-      RTCSessionDescription: function() {},
-      RTCIceCandidate: function() {},
+      RTCSessionDescription: function(init) { this.sdp = init?.sdp || 'sdp'; this.type = init?.type || 'offer'; },
+      RTCIceCandidate: function(init) { this.candidate = init?.candidate || 'cand'; },
       FileReader: function() {
         this.readAsDataURL = function(file) {
           setTimeout(() => {
@@ -623,10 +632,28 @@ function createTestEnvironment() {
       this.ondataavailable = null;
       this.onstop = null;
     },
+    RTCPeerConnection: function() {
+      this.addTrack = () => {};
+      this.createOffer = () => Promise.resolve({ sdp: 'mock_sdp', type: 'offer' });
+      this.createAnswer = () => Promise.resolve({ sdp: 'mock_sdp_answer', type: 'answer' });
+      this.setLocalDescription = () => Promise.resolve();
+      this.setRemoteDescription = () => Promise.resolve();
+      this.addIceCandidate = () => Promise.resolve();
+      this.close = () => {};
+    },
+    MediaStream: function() { this.getTracks = () => [{ stop: () => {}, enabled: true }]; this.addTrack = () => {}; },
+    RTCSessionDescription: function(init) { this.sdp = init?.sdp || 'sdp'; this.type = init?.type || 'offer'; },
+    RTCIceCandidate: function(init) { this.candidate = init?.candidate || 'cand'; },
     navigator: {
       userAgent: 'test',
       vibrate: (pattern) => { vibrationPattern = pattern; return true; },
-      mediaDevices: { getUserMedia: () => Promise.resolve({ getTracks: () => [{ stop: () => {} }] }) },
+      mediaDevices: {
+        getUserMedia: (constraints) => Promise.resolve({
+          getTracks: () => [{ stop: () => {}, enabled: true, kind: constraints?.video ? 'video' : 'audio' }],
+          getVideoTracks: () => constraints?.video ? [{ stop: () => {}, enabled: true, kind: 'video' }] : [],
+          getAudioTracks: () => [{ stop: () => {}, enabled: true, kind: 'audio' }]
+        })
+      },
       clipboard: {
         writeText: (txt) => { sandbox._copiedText = txt; return Promise.resolve(); },
         readText: () => Promise.resolve(sandbox._copiedText || '')
@@ -735,7 +762,7 @@ function createTestEnvironment() {
       const docPath = (colRef?.path || 'items') + '/' + id;
       firestoreDocs[docPath] = data;
       notifyFirestoreListeners(docPath);
-      return Promise.resolve({ id });
+      return Promise.resolve({ id, path: docPath });
     },
     onSnapshot: (refOrQuery, cb) => {
       if (typeof cb === 'function') {
@@ -754,7 +781,8 @@ function createTestEnvironment() {
           cb({
             empty: docs.length === 0,
             docs,
-            forEach: (fn) => docs.forEach(fn)
+            forEach: (fn) => docs.forEach(fn),
+            docChanges: () => []
           });
         } else {
           const exists = !!firestoreDocs[path];
@@ -11092,14 +11120,15 @@ test('Possibilidade de Apagar Avisos de Mensagens Apagadas no Chat (Individual, 
   const css = fs.readFileSync('public/style.css', 'utf8');
   const html = fs.readFileSync('public/index.html', 'utf8');
 
-  // 1. Integridade de Versionamento (v1.0.183)
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.183', 'script.js deve ter versão 1.0.183');
+  // 1. Integridade de Versionamento (v1.0.183+)
+  const parts = win.CURRENT_APP_VERSION.split('.').map(Number);
+  assert.ok(parts[0] > 1 || (parts[0] === 1 && parts[1] > 0) || (parts[0] === 1 && parts[1] === 0 && parts[2] >= 183), 'script.js deve ter versão >= 1.0.183');
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
-  assert.strictEqual(versionJson.version, '1.0.183', 'version.json deve ter versão 1.0.183');
-  assert.ok(html.includes('script.js?v=1.0.183'), 'index.html deve referenciar script.js?v=1.0.183');
-  assert.ok(html.includes('style.css?v=1.0.183'), 'index.html deve referenciar style.css?v=1.0.183');
+  assert.ok(versionJson.version >= '1.0.183', 'version.json deve ter versão >= 1.0.183');
+  assert.ok(html.includes(`script.js?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar script.js');
+  assert.ok(html.includes(`style.css?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar style.css');
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
-  assert.ok(swContent.includes('vortex-vip-v1.0.183'), 'sw.js deve ter cache vortex-vip-v1.0.183');
+  assert.ok(swContent.includes(`vortex-vip-v${win.CURRENT_APP_VERSION}`), 'sw.js deve ter cache');
 
   // 2. Integridade de DOM em index.html
   assert.ok(env.elements['floating-reaction-bar'], '#floating-reaction-bar deve existir');
@@ -11321,6 +11350,111 @@ test('Possibilidade de Apagar Avisos de Mensagens Apagadas no Chat (Individual, 
 
   win.confirm = origConfirm;
 });
+
+test('Seleção de Tipo de Chamada (Vídeo ou Áudio) ao Clicar no Ícone de Câmera (v1.0.184)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+  const css = fs.readFileSync('public/style.css', 'utf8');
+  const html = fs.readFileSync('public/index.html', 'utf8');
+
+  // 1. Integridade de Versionamento (v1.0.184)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.184', 'script.js deve ter versão 1.0.184');
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
+  assert.strictEqual(versionJson.version, '1.0.184', 'version.json deve ter versão 1.0.184');
+  assert.ok(html.includes('script.js?v=1.0.184'), 'index.html deve referenciar script.js?v=1.0.184');
+  assert.ok(html.includes('style.css?v=1.0.184'), 'index.html deve referenciar style.css?v=1.0.184');
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+  assert.ok(swContent.includes('vortex-vip-v1.0.184'), 'sw.js deve ter cache vortex-vip-v1.0.184');
+
+  // 2. Elementos DOM no index.html
+  assert.ok(env.elements['chat-audio-call-btn'], '#chat-audio-call-btn (ícone de câmera) deve existir no cabeçalho');
+  assert.ok(env.elements['call-type-modal'], '#call-type-modal deve existir');
+  assert.ok(env.elements['call-type-avatar'], '#call-type-avatar deve existir no modal');
+  assert.ok(env.elements['call-type-contact-name'], '#call-type-contact-name deve existir no modal');
+  assert.ok(env.elements['call-type-contact-status'], '#call-type-contact-status deve existir no modal');
+  assert.ok(env.elements['start-video-call-opt-btn'], '#start-video-call-opt-btn deve existir para escolher chamada de vídeo');
+  assert.ok(env.elements['start-audio-call-opt-btn'], '#start-audio-call-opt-btn deve existir para escolher chamada de áudio');
+  assert.ok(env.elements['close-call-type-modal'], '#close-call-type-modal deve existir');
+  assert.ok(env.elements['cancel-call-type-modal-btn'], '#cancel-call-type-modal-btn deve existir');
+
+  // 3. Regras de CSS em style.css
+  assert.ok(css.includes('.call-type-card'), 'style.css deve conter estilos para .call-type-card');
+  assert.ok(css.includes('.call-type-option-btn'), 'style.css deve conter estilos para .call-type-option-btn');
+  assert.ok(css.includes('.video-call-opt'), 'style.css deve conter estilos para .video-call-opt');
+  assert.ok(css.includes('.audio-call-opt'), 'style.css deve conter estilos para .audio-call-opt');
+  assert.ok(css.includes('.video-call-overlay.audio-call-mode'), 'style.css deve conter suporte para .audio-call-mode no overlay');
+
+  // 4. Usuário logado e contato ativo
+  const currentUid = 'user_call_tester_me';
+  const currentUser = { uid: currentUid, displayName: 'Tester Me', email: 'tester@vortex.vip' };
+  win.setCurrentUser(currentUser);
+  win.setCurrentProfile(currentUser);
+
+  const contact = { uid: 'contact_tester_bob', name: 'Bob Silva VIP', status: 'Disponível no VORTEX ⚡', avatar: '' };
+  win.setActiveChatContact(contact);
+
+  const modal = env.elements['call-type-modal'];
+  const callBtn = env.elements['chat-audio-call-btn'];
+
+  // 5. Clicar no ícone de câmera deve abrir o modal de escolha (e NÃO iniciar chamada direta)
+  await callBtn.click();
+  assert.ok(modal.classList.contains('active'), 'Ao clicar no ícone de câmera, o modal de escolha deve se abrir');
+  assert.strictEqual(env.elements['call-type-contact-name'].innerText, 'Bob Silva VIP', 'Nome do contato deve estar preenchido');
+  assert.strictEqual(env.elements['call-type-contact-status'].innerText, 'Disponível no VORTEX ⚡', 'Status do contato deve ser exibido');
+
+  // 6. Testar fechamento do modal
+  win.closeCallTypeModal();
+  assert.ok(!modal.classList.contains('active'), 'closeCallTypeModal deve fechar o modal');
+
+  // 7. Testar Escolha: Chamada de Vídeo
+  await callBtn.click();
+  assert.ok(modal.classList.contains('active'), 'Modal reaberto');
+  const videoOptBtn = env.elements['start-video-call-opt-btn'];
+  await videoOptBtn.click();
+  assert.ok(!modal.classList.contains('active'), 'Modal deve se fechar ao selecionar chamada de vídeo');
+
+  const overlay = env.elements['video-call-overlay'];
+  assert.ok(overlay.classList.contains('active'), 'Overlay de chamada deve ativar');
+  assert.ok(!overlay.classList.contains('audio-call-mode'), 'Chamada de vídeo não deve ter classe audio-call-mode');
+
+  // Verificar chamada criada no Firestore com type: 'video'
+  const createdCalls = Object.values(env.firestoreDocs).filter(d => d.callerUid === currentUid && d.calleeUid === contact.uid);
+  assert.ok(createdCalls.length > 0, 'Deve registrar chamada no Firestore');
+  const lastCall = createdCalls[createdCalls.length - 1];
+  assert.strictEqual(lastCall.type, 'video', 'Tipo da chamada criada deve ser "video"');
+
+  // Desligar chamada de vídeo
+  const endCallBtn = env.elements['end-call-btn'];
+  await endCallBtn.click();
+  assert.ok(!overlay.classList.contains('active'), 'Overlay deve fechar após desligar');
+
+  // 8. Testar Escolha: Chamada de Áudio
+  await callBtn.click();
+  assert.ok(modal.classList.contains('active'), 'Modal reaberto para teste de áudio');
+  const audioOptBtn = env.elements['start-audio-call-opt-btn'];
+  await audioOptBtn.click();
+  assert.ok(!modal.classList.contains('active'), 'Modal deve fechar ao escolher chamada de áudio');
+
+  assert.ok(overlay.classList.contains('active'), 'Overlay de chamada deve ativar para chamada de áudio');
+  assert.ok(overlay.classList.contains('audio-call-mode'), 'Chamada de áudio deve adicionar classe audio-call-mode no overlay');
+  assert.strictEqual(env.elements['call-status'].innerText, 'Chamando (Áudio)...', 'Status deve indicar Chamando (Áudio)...');
+
+  // Verificar chamada criada no Firestore com type: 'audio'
+  const createdAudioCalls = Object.values(env.firestoreDocs).filter(d => d.callerUid === currentUid && d.calleeUid === contact.uid && d.type === 'audio');
+  assert.ok(createdAudioCalls.length > 0, 'Deve registrar chamada com type: audio no Firestore');
+
+  // Desligar chamada de áudio
+  await endCallBtn.click();
+  assert.ok(!overlay.classList.contains('active'), 'Overlay deve fechar após desligar');
+  assert.ok(!overlay.classList.contains('audio-call-mode'), 'Classe audio-call-mode deve ser limpa');
+
+  // 9. Proteção para Contato Bloqueado
+  win.getBlockedContactsSet().add(contact.uid);
+  win.openCallTypeModal(contact);
+  assert.ok(!modal.classList.contains('active'), 'Modal não deve abrir se contato estiver bloqueado');
+  win.getBlockedContactsSet().delete(contact.uid);
+});
+
 
 
 

@@ -1148,15 +1148,24 @@ function stopPhoneVibration() {
     if (hasUserInteracted && "vibrate" in navigator) navigator.vibrate(0);
 }
 
-async function requestCallMedia() {
-    try {
-        return { stream: await navigator.mediaDevices.getUserMedia({ video: true, audio: true }), hasVideo: true };
-    } catch (videoError) {
-        console.warn('Câmera indisponível, tentando chamada somente com áudio:', videoError.name);
+async function requestCallMedia(preferVideo = true) {
+    if (preferVideo) {
+        try {
+            return { stream: await navigator.mediaDevices.getUserMedia({ video: true, audio: true }), hasVideo: true };
+        } catch (videoError) {
+            console.warn('Câmera indisponível, tentando chamada somente com áudio:', videoError.name);
+            try {
+                return { stream: await navigator.mediaDevices.getUserMedia({ video: false, audio: true }), hasVideo: false };
+            } catch (audioError) {
+                throw videoError;
+            }
+        }
+    } else {
         try {
             return { stream: await navigator.mediaDevices.getUserMedia({ video: false, audio: true }), hasVideo: false };
         } catch (audioError) {
-            throw videoError;
+            console.warn('Microfone indisponível para chamada de áudio:', audioError.name);
+            throw audioError;
         }
     }
 }
@@ -18240,7 +18249,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.183';
+export const CURRENT_APP_VERSION = '1.0.184';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -22065,7 +22074,7 @@ export async function renderCallHistoryList(filter = 'all', customCalls = null, 
     if (window.lucide) lucide.createIcons();
 }
 
-async function startCall(isVideo = true) {
+export async function startCall(isVideo = true) {
     if (!activeChatContact || !currentUser) return;
     if (isUserBanned(currentProfile)) {
         showToast('Conta Suspensa', 'Sua conta está banida.', 'red');
@@ -22092,33 +22101,48 @@ async function startCall(isVideo = true) {
     const statusEl = document.getElementById('call-status');
     const timerEl = document.getElementById('call-timer');
     const userInfoBox = document.getElementById('call-user-info-box');
+    const localPip = document.getElementById('local-video-wrapper');
+    const switchCamBtn = document.getElementById('switch-camera-btn');
 
     if (nameEl) nameEl.innerText = activeChatContact.name;
     if (avatarEl) avatarEl.style.backgroundImage = activeChatContact.avatar ? `url('${activeChatContact.avatar}')` : '';
-    if (statusEl) statusEl.innerText = 'Chamando...';
+    if (statusEl) statusEl.innerText = isVideo ? 'Chamando (Vídeo)...' : 'Chamando (Áudio)...';
     if (timerEl) {
         timerEl.style.display = 'none';
         timerEl.innerText = '00:00';
     }
-    if (userInfoBox) userInfoBox.classList.remove('video-active');
+    if (userInfoBox) {
+        userInfoBox.classList.remove('video-active');
+        if (!isVideo) userInfoBox.classList.add('audio-only-call');
+        else userInfoBox.classList.remove('audio-only-call');
+    }
 
-    if (overlay) overlay.classList.add('active');
+    if (overlay) {
+        overlay.classList.add('active');
+        if (!isVideo) overlay.classList.add('audio-call-mode');
+        else overlay.classList.remove('audio-call-mode');
+    }
+    if (localPip) localPip.style.display = isVideo ? '' : 'none';
+    if (switchCamBtn) switchCamBtn.style.display = isVideo ? 'flex' : 'none';
+
     playSound(clickSound);
     ringtoneSound.play().catch(() => {});
 
     try {
         isCallMuted = false;
-        isCameraOff = false;
-        updateCameraToggleButtonUI(false);
+        isCameraOff = !isVideo;
+        updateCameraToggleButtonUI(isCameraOff);
 
-        const callMedia = await requestCallMedia();
+        const callMedia = await requestCallMedia(isVideo);
         localStream = callMedia.stream;
-        if (!callMedia.hasVideo) {
-            if (statusEl) statusEl.innerText = 'Conectado somente com áudio';
+        if (!callMedia.hasVideo || !isVideo) {
+            if (statusEl) statusEl.innerText = isVideo ? 'Conectado somente com áudio' : 'Chamando (Áudio)...';
             if (userInfoBox) userInfoBox.classList.add('audio-only-call');
+            if (localPip) localPip.style.display = 'none';
+            if (switchCamBtn) switchCamBtn.style.display = 'none';
         }
         const localFeed = document.getElementById('local-webcam-feed');
-        if (localFeed) localFeed.srcObject = localStream;
+        if (localFeed && callMedia.hasVideo) localFeed.srcObject = localStream;
 
         peerConnection = new RTCPeerConnection(rtcServers);
         remoteStream = new MediaStream();
@@ -22130,7 +22154,9 @@ async function startCall(isVideo = true) {
 
         peerConnection.ontrack = (event) => {
             event.streams[0].getTracks().forEach(track => remoteStream.addTrack(track));
-            if (userInfoBox) userInfoBox.classList.add('video-active');
+            if (isVideo && callMedia.hasVideo && userInfoBox) {
+                userInfoBox.classList.add('video-active');
+            }
         };
 
         const targetChatId = getActiveChatId() || [currentUser.uid, activeChatContact.uid].sort().join('_');
@@ -22179,8 +22205,8 @@ async function startCall(isVideo = true) {
 
         if (activeCallDocUnsubscribe) activeCallDocUnsubscribe();
         activeCallDocUnsubscribe = onSnapshot(callDocRef, async (snap) => {
-            if (snap.exists()) {
-                const data = snap.data();
+            if (snap && (typeof snap.exists === 'function' ? snap.exists() : !!snap.exists)) {
+                const data = typeof snap.data === 'function' ? snap.data() : (snap.data || {});
                 if (!peerConnection.currentRemoteDescription && data.answer) {
                     const answerDescription = new RTCSessionDescription(data.answer);
                     await peerConnection.setRemoteDescription(answerDescription);
@@ -22188,7 +22214,11 @@ async function startCall(isVideo = true) {
                     if (activeCallRecordContext) activeCallRecordContext.isConnected = true;
                     ringtoneSound.pause();
                     ringtoneSound.currentTime = 0;
-                    if (statusEl) statusEl.innerText = 'Conectado • Criptografia Quântica VIP';
+                    if (statusEl) {
+                        statusEl.innerText = isVideo 
+                            ? 'Conectado • Criptografia Quântica VIP'
+                            : 'Conectado • Chamada de Áudio VIP';
+                    }
                     if (timerEl) timerEl.style.display = 'block';
 
                     if (!callTimerInterval) {
@@ -22216,17 +22246,19 @@ async function startCall(isVideo = true) {
         const calleeCandidatesCol = collection(db, 'calls', currentCallId, 'calleeCandidates');
         if (calleeCandidatesUnsubscribe) calleeCandidatesUnsubscribe();
         calleeCandidatesUnsubscribe = onSnapshot(calleeCandidatesCol, (snapshot) => {
-            snapshot.docChanges().forEach(async (change) => {
-                if (change.type === 'added') {
-                    const candidate = new RTCIceCandidate(change.doc.data());
-                    await peerConnection.addIceCandidate(candidate).catch(() => {});
-                }
-            });
+            if (snapshot && typeof snapshot.docChanges === 'function') {
+                snapshot.docChanges().forEach(async (change) => {
+                    if (change.type === 'added') {
+                        const candidate = new RTCIceCandidate(change.doc.data());
+                        await peerConnection.addIceCandidate(candidate).catch(() => {});
+                    }
+                });
+            }
         });
 
     } catch (err) {
         console.error("Erro ao iniciar chamada WebRTC:", err);
-        showToast("Erro", "Não foi possível acessar a câmera.", "red");
+        showToast("Erro", isVideo ? "Não foi possível acessar a câmera ou microfone." : "Não foi possível acessar o microfone.", "red");
         endCall();
     }
 }
@@ -22269,6 +22301,20 @@ function listenToIncomingCalls() {
             if (userEl) userEl.innerText = callData.callerUsername || '@usuario';
             if (avatarEl) avatarEl.style.backgroundImage = callData.callerAvatar ? `url('${callData.callerAvatar}')` : '';
 
+            const isVideoCall = callData.type !== 'audio';
+            const descEl = document.getElementById('incoming-caller-desc');
+            if (descEl) {
+                descEl.innerText = isVideoCall 
+                    ? 'Chamada de Vídeo e Áudio P2P Criptografada'
+                    : 'Chamada de Áudio P2P Criptografada';
+            }
+            const acceptBtn = document.getElementById('accept-call-btn');
+            if (acceptBtn) {
+                acceptBtn.innerHTML = `<i data-lucide="${isVideoCall ? 'video' : 'phone'}"></i>`;
+                acceptBtn.title = isVideoCall ? 'Atender Chamada de Vídeo' : 'Atender Chamada de Áudio';
+            }
+            if (window.lucide && typeof window.lucide.createIcons === 'function') lucide.createIcons();
+
             if (incomingOverlay) incomingOverlay.classList.add('active');
             
             ringtoneSound.play().catch(() => {});
@@ -22306,19 +22352,38 @@ async function acceptIncomingCall() {
     const statusEl = document.getElementById('call-status');
     const timerEl = document.getElementById('call-timer');
     const userInfoBox = document.getElementById('call-user-info-box');
+    const localPip = document.getElementById('local-video-wrapper');
+    const switchCamBtn = document.getElementById('switch-camera-btn');
 
     if (overlay) overlay.classList.add('active');
 
     try {
-        isCallMuted = false;
-        isCameraOff = false;
-        updateCameraToggleButtonUI(false);
+        const callDocRef = doc(db, 'calls', currentCallId);
+        const callSnap = await getDoc(callDocRef);
+        const callData = callSnap.data() || {};
+        const isVideo = callData.type !== 'audio';
 
-        const callMedia = await requestCallMedia();
+        if (overlay) {
+            if (!isVideo) overlay.classList.add('audio-call-mode');
+            else overlay.classList.remove('audio-call-mode');
+        }
+        if (localPip) localPip.style.display = isVideo ? '' : 'none';
+        if (switchCamBtn) switchCamBtn.style.display = isVideo ? 'flex' : 'none';
+
+        isCallMuted = false;
+        isCameraOff = !isVideo;
+        updateCameraToggleButtonUI(isCameraOff);
+
+        const callMedia = await requestCallMedia(isVideo);
         localStream = callMedia.stream;
-        if (!callMedia.hasVideo && statusEl) statusEl.innerText = 'Atendendo somente com áudio';
+        if (!callMedia.hasVideo || !isVideo) {
+            if (statusEl) statusEl.innerText = isVideo ? 'Atendendo somente com áudio' : 'Conectado • Chamada de Áudio VIP';
+            if (userInfoBox) userInfoBox.classList.add('audio-only-call');
+            if (localPip) localPip.style.display = 'none';
+            if (switchCamBtn) switchCamBtn.style.display = 'none';
+        }
         const localFeed = document.getElementById('local-webcam-feed');
-        if (localFeed) localFeed.srcObject = localStream;
+        if (localFeed && callMedia.hasVideo) localFeed.srcObject = localStream;
 
         peerConnection = new RTCPeerConnection(rtcServers);
         remoteStream = new MediaStream();
@@ -22330,12 +22395,10 @@ async function acceptIncomingCall() {
 
         peerConnection.ontrack = (event) => {
             event.streams[0].getTracks().forEach(track => remoteStream.addTrack(track));
-            if (userInfoBox) userInfoBox.classList.add('video-active');
+            if (isVideo && callMedia.hasVideo && userInfoBox) {
+                userInfoBox.classList.add('video-active');
+            }
         };
-
-        const callDocRef = doc(db, 'calls', currentCallId);
-        const callSnap = await getDoc(callDocRef);
-        const callData = callSnap.data();
 
         if (nameEl) nameEl.innerText = callData.callerName || 'Contato';
 
@@ -22361,15 +22424,21 @@ async function acceptIncomingCall() {
         const callerCandidatesCol = collection(db, 'calls', currentCallId, 'callerCandidates');
         if (callerCandidatesUnsubscribe) callerCandidatesUnsubscribe();
         callerCandidatesUnsubscribe = onSnapshot(callerCandidatesCol, (snapshot) => {
-            snapshot.docChanges().forEach(async (change) => {
-                if (change.type === 'added') {
-                    const candidate = new RTCIceCandidate(change.doc.data());
-                    await peerConnection.addIceCandidate(candidate).catch(() => {});
-                }
-            });
+            if (snapshot && typeof snapshot.docChanges === 'function') {
+                snapshot.docChanges().forEach(async (change) => {
+                    if (change.type === 'added') {
+                        const candidate = new RTCIceCandidate(change.doc.data());
+                        await peerConnection.addIceCandidate(candidate).catch(() => {});
+                    }
+                });
+            }
         });
 
-        if (statusEl) statusEl.innerText = 'Conectado • Criptografia Quântica VIP';
+        if (statusEl) {
+            statusEl.innerText = isVideo 
+                ? 'Conectado • Criptografia Quântica VIP'
+                : 'Conectado • Chamada de Áudio VIP';
+        }
         if (timerEl) {
             timerEl.style.display = 'block';
             callSeconds = 0;
@@ -22384,7 +22453,7 @@ async function acceptIncomingCall() {
 
         if (activeCallDocUnsubscribe) activeCallDocUnsubscribe();
         activeCallDocUnsubscribe = onSnapshot(callDocRef, (snap) => {
-            if (snap.exists() && snap.data().status === 'ended') endCall();
+            if (snap && (typeof snap.exists === 'function' ? snap.exists() : !!snap.exists) && typeof snap.data === 'function' && snap.data().status === 'ended') endCall();
         });
 
     } catch (e) {
@@ -22412,6 +22481,19 @@ async function endCall() {
     const finalSeconds = callSeconds;
     callTimerInterval = null;
 
+    if (activeCallDocUnsubscribe) {
+        activeCallDocUnsubscribe();
+        activeCallDocUnsubscribe = null;
+    }
+    if (calleeCandidatesUnsubscribe) {
+        calleeCandidatesUnsubscribe();
+        calleeCandidatesUnsubscribe = null;
+    }
+    if (callerCandidatesUnsubscribe) {
+        callerCandidatesUnsubscribe();
+        callerCandidatesUnsubscribe = null;
+    }
+
     if (activeCallRecordContext) {
         const finalStatus = (activeCallRecordContext.isConnected || finalSeconds > 0) ? 'completed' : 'missed';
         recordCallInChat(activeCallRecordContext, finalStatus, finalSeconds);
@@ -22419,8 +22501,9 @@ async function endCall() {
     }
 
     if (currentCallId) {
-        await updateDoc(doc(db, 'calls', currentCallId), { status: 'ended', endedAt: Date.now(), duration: finalSeconds }).catch(() => {});
+        const idToEnd = currentCallId;
         currentCallId = null;
+        await updateDoc(doc(db, 'calls', idToEnd), { status: 'ended', endedAt: Date.now(), duration: finalSeconds }).catch(() => {});
     }
     callSeconds = 0;
 
@@ -22440,7 +22523,19 @@ async function endCall() {
     if (remoteFeed) remoteFeed.srcObject = null;
 
     const overlay = document.getElementById('video-call-overlay');
-    if (overlay) overlay.classList.remove('active');
+    if (overlay) {
+        overlay.classList.remove('active');
+        overlay.classList.remove('audio-call-mode');
+    }
+    const localPip = document.getElementById('local-video-wrapper');
+    if (localPip) localPip.style.display = '';
+    const switchCamBtn = document.getElementById('switch-camera-btn');
+    if (switchCamBtn) switchCamBtn.style.display = '';
+    const userInfoBox = document.getElementById('call-user-info-box');
+    if (userInfoBox) {
+        userInfoBox.classList.remove('video-active');
+        userInfoBox.classList.remove('audio-only-call');
+    }
     dismissIncomingCallUI();
     playSound(clickSound);
 
@@ -22457,7 +22552,90 @@ async function endCall() {
     if (window.lucide) lucide.createIcons();
 }
 
-document.getElementById('chat-audio-call-btn')?.addEventListener('click', () => startCall(true));
+/* ==========================================================================
+   MODAL DE SELEÇÃO DE TIPO DE CHAMADA (VÍDEO OU ÁUDIO) - v1.0.184
+   ========================================================================== */
+export function openCallTypeModal(targetContact = null) {
+    const contact = targetContact || activeChatContact;
+    if (!contact || !currentUser) return;
+    if (isUserBanned(currentProfile)) {
+        showToast('Conta Suspensa', 'Sua conta está banida.', 'red');
+        return;
+    }
+    if (isUserRestricted(currentProfile)) {
+        showRestrictionActionNotice();
+        return;
+    }
+    if (!contact.isGroup) {
+        if (blockedContactsSet.has(contact.uid)) {
+            showToast('Contato Bloqueado', 'Você bloqueou este contato. Desbloqueie para fazer chamadas.', 'red');
+            return;
+        }
+        if (isBlockedByActiveContact) {
+            showToast('Bloqueado', 'Você foi bloqueado por este contato e não pode realizar chamadas.', 'red');
+            return;
+        }
+    }
+
+    const modal = document.getElementById('call-type-modal');
+    if (!modal) {
+        startCall(true);
+        return;
+    }
+
+    const nameEl = document.getElementById('call-type-contact-name');
+    const avatarEl = document.getElementById('call-type-avatar');
+    const statusEl = document.getElementById('call-type-contact-status');
+
+    const contactName = contact.name || 'Contato';
+    if (nameEl) nameEl.innerText = contactName;
+    if (avatarEl) {
+        if (contact.avatar) {
+            avatarEl.style.backgroundImage = `url('${contact.avatar}')`;
+            avatarEl.innerText = '';
+        } else {
+            avatarEl.style.backgroundImage = '';
+            avatarEl.innerText = contactName.charAt(0).toUpperCase();
+        }
+    }
+    if (statusEl) {
+        statusEl.innerText = contact.status || 'Disponível no VORTEX ⚡';
+    }
+
+    modal.style.display = 'flex';
+    modal.classList.add('active');
+    modal.setAttribute('aria-hidden', 'false');
+    playSound(clickSound);
+    if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+}
+
+export function closeCallTypeModal() {
+    const modal = document.getElementById('call-type-modal');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.classList.remove('active');
+        modal.setAttribute('aria-hidden', 'true');
+    }
+}
+
+document.getElementById('chat-audio-call-btn')?.addEventListener('click', () => {
+    openCallTypeModal();
+});
+document.getElementById('start-video-call-opt-btn')?.addEventListener('click', async () => {
+    closeCallTypeModal();
+    await startCall(true);
+});
+document.getElementById('start-audio-call-opt-btn')?.addEventListener('click', async () => {
+    closeCallTypeModal();
+    await startCall(false);
+});
+document.getElementById('close-call-type-modal')?.addEventListener('click', closeCallTypeModal);
+document.getElementById('cancel-call-type-modal-btn')?.addEventListener('click', closeCallTypeModal);
+document.getElementById('call-type-modal')?.addEventListener('click', (e) => {
+    if (e.target && e.target.id === 'call-type-modal') {
+        closeCallTypeModal();
+    }
+});
 document.getElementById('end-call-btn')?.addEventListener('click', endCall);
 document.getElementById('accept-call-btn')?.addEventListener('click', acceptIncomingCall);
 document.getElementById('decline-call-btn')?.addEventListener('click', declineIncomingCall);
@@ -30207,6 +30385,10 @@ if (typeof window !== 'undefined') {
     window.exitSelectionMode = exitSelectionMode;
     window.getSelectedMessageIds = () => selectedMessageIds;
     window.getCurrentChatMessagesMap = () => currentChatMessagesMap;
+    // Escolha de Chamada (Vídeo ou Áudio) - v1.0.184
+    window.openCallTypeModal = openCallTypeModal;
+    window.closeCallTypeModal = closeCallTypeModal;
+    window.startCall = startCall;
 }
 
 if (typeof window !== 'undefined') {

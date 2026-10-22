@@ -4,20 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.183">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.183">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.183">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.183">
-    <link rel="stylesheet" href="style.css?v=1.0.183">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.184">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.184">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.184">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.184">
+    <link rel="stylesheet" href="style.css?v=1.0.184">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.183">
+    <link rel="manifest" href="manifest.json?v=1.0.184">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.183">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.183">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.184">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.184">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -445,7 +445,7 @@
                     </div>
                 </div>
                 <div class="header-icons">
-                    <div class="header-icon-btn" id="chat-audio-call-btn" title="Iniciar Chamada de Vídeo VIP" aria-label="Chamada de Vídeo">
+                    <div class="header-icon-btn" id="chat-audio-call-btn" title="Iniciar Chamada (Vídeo ou Áudio)" aria-label="Iniciar Chamada">
                         <i data-lucide="video"></i>
                     </div>
                     <div class="header-icon-btn" id="chat-options-menu-btn" title="Opções da Conversa" aria-label="Opções">
@@ -3791,8 +3791,58 @@
             </div>
         </div>
 
+        <!-- Modal de Escolha de Tipo de Chamada: Vídeo ou Áudio (v1.0.184) -->
+        <div id="call-type-modal" class="custom-modal-overlay" style="display:none;" aria-hidden="true">
+            <div class="custom-modal-card call-type-card modal-center-align">
+                <div class="panel-top-bar" style="margin-bottom: 8px;">
+                    <h3 class="modal-title" style="font-size: 1.05rem; display: flex; align-items: center; gap: 8px; margin: 0; color: #fff;">
+                        <i data-lucide="phone-call" style="color: var(--accent-color, #00d26a);"></i> Iniciar Chamada
+                    </h3>
+                    <div class="header-icon-btn" id="close-call-type-modal" title="Fechar" aria-label="Fechar">
+                        <i data-lucide="x"></i>
+                    </div>
+                </div>
+
+                <div class="call-type-target-info" id="call-type-target-info">
+                    <div class="avatar md" id="call-type-avatar" style="border: 2px solid var(--accent-color, #00d26a); flex-shrink: 0;"></div>
+                    <div class="call-type-meta" style="text-align: left; overflow: hidden;">
+                        <span id="call-type-contact-name" class="call-type-name" style="display: block; font-weight: 700; color: #fff; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">Nome do Contato</span>
+                        <span id="call-type-contact-status" class="call-type-status" style="display: block; font-size: 0.76rem; color: #888; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">Disponível no VORTEX ⚡</span>
+                    </div>
+                </div>
+
+                <p class="modal-instruction-text" style="margin: 10px 0 14px; text-align: center;">Escolha como você deseja ligar para este contato:</p>
+
+                <div class="call-type-options-container">
+                    <button type="button" id="start-video-call-opt-btn" class="call-type-option-btn video-call-opt" title="Iniciar Chamada de Vídeo">
+                        <div class="call-type-icon-box video-icon-box">
+                            <i data-lucide="video"></i>
+                        </div>
+                        <div class="call-type-text-box">
+                            <span class="call-type-btn-title">Chamada de Vídeo</span>
+                            <span class="call-type-btn-desc">Câmera e microfone com imagem em alta resolução</span>
+                        </div>
+                        <i data-lucide="chevron-right" class="call-type-arrow"></i>
+                    </button>
+
+                    <button type="button" id="start-audio-call-opt-btn" class="call-type-option-btn audio-call-opt" title="Iniciar Chamada de Áudio">
+                        <div class="call-type-icon-box audio-icon-box">
+                            <i data-lucide="phone"></i>
+                        </div>
+                        <div class="call-type-text-box">
+                            <span class="call-type-btn-title">Chamada de Áudio</span>
+                            <span class="call-type-btn-desc">Apenas voz, sem ligar a câmera (conexão rápida)</span>
+                        </div>
+                        <i data-lucide="chevron-right" class="call-type-arrow"></i>
+                    </button>
+                </div>
+
+                <button type="button" id="cancel-call-type-modal-btn" class="close-btn modal-cancel-btn" style="margin-top: 14px; width: 100%;">Cancelar</button>
+            </div>
+        </div>
+
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.183" defer></script>
+    <script type="module" src="script.js?v=1.0.184" defer></script>
 </body>
 </html>
