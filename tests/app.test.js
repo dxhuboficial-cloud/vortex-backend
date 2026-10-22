@@ -139,7 +139,12 @@ function createTestEnvironment() {
         this.children.push(child);
         return child;
       },
-      remove() {},
+      remove() {
+        if (this.parentElement && Array.isArray(this.parentElement.children)) {
+          const idx = this.parentElement.children.indexOf(this);
+          if (idx !== -1) this.parentElement.children.splice(idx, 1);
+        }
+      },
       setAttribute(k, v) { this[k] = v; },
       getAttribute(k) { return this[k] || null; },
       removeAttribute(k) { delete this[k]; },
@@ -155,6 +160,7 @@ function createTestEnvironment() {
       set innerHTML(val) {
         this._innerHTML = String(val);
         this._innerText = String(val).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+        if (val === '') this.children = [];
         parseIdsIntoElements(val);
       },
       get innerText() {
@@ -322,7 +328,12 @@ function createTestEnvironment() {
         }
         return null;
       },
-      remove: () => {},
+      remove() {
+        if (this.parentElement && Array.isArray(this.parentElement.children)) {
+          const idx = this.parentElement.children.indexOf(this);
+          if (idx !== -1) this.parentElement.children.splice(idx, 1);
+        }
+      },
       querySelector(sel) {
         if (sel.startsWith('.')) {
           const cls = sel.slice(1);
@@ -374,6 +385,7 @@ function createTestEnvironment() {
       set innerHTML(val) {
         this._innerHTML = String(val);
         this._innerText = String(val).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+        if (val === '') this.children = [];
         parseIdsIntoElements(val);
       },
       get innerText() { return this._innerText; },
@@ -409,9 +421,21 @@ function createTestEnvironment() {
           return Object.values(elements).find(el => el.classList && el.classList.contains && el.classList.contains('chat-card') && el.dataset && el.dataset.uid === uidMatch[1]) || null;
         }
       }
+      if (sel.includes('[data-id=')) {
+        const idMatch = sel.match(/data-id="([^"]+)"/);
+        if (idMatch && elements['message-container'] && elements['message-container'].children) {
+          return elements['message-container'].children.find(el => el.dataset && el.dataset.id === idMatch[1]) || null;
+        }
+      }
       return null;
     },
     querySelectorAll: (sel) => {
+      if (sel.includes('[data-id=')) {
+        const idMatch = sel.match(/data-id="([^"]+)"/);
+        if (idMatch && elements['message-container'] && elements['message-container'].children) {
+          return elements['message-container'].children.filter(el => el.dataset && el.dataset.id === idMatch[1]);
+        }
+      }
       if (sel.startsWith('.')) {
         const cls = sel.slice(1).split(/[\s.:>+~[]/)[0];
         return Object.values(elements).filter(el => el.classList && el.classList.contains && el.classList.contains(cls));
@@ -772,10 +796,13 @@ function createTestEnvironment() {
                 }
               }
               firestoreDocs[op.ref.path] = updated;
+              notifyFirestoreListeners(op.ref.path);
             } else if (op.type === 'delete') {
               delete firestoreDocs[op.ref.path];
+              notifyFirestoreListeners(op.ref.path);
             } else if (op.type === 'set') {
               firestoreDocs[op.ref.path] = { ...(firestoreDocs[op.ref.path] || {}), ...op.data };
+              notifyFirestoreListeners(op.ref.path);
             }
           }
           return Promise.resolve();
@@ -10779,15 +10806,16 @@ test('Histórico de Ligações, Isolamento por Perfil e Botão de Desligar Câme
   const env = createTestEnvironment();
   const win = env.sandbox.window;
 
-  // 1. Integridade de Versionamento (v1.0.182)
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.182', 'script.js deve ter versão 1.0.182');
+  // 1. Integridade de Versionamento (v1.0.182+)
+  const parts = win.CURRENT_APP_VERSION.split('.').map(Number);
+  assert.ok(parts[0] > 1 || (parts[0] === 1 && parts[1] > 0) || (parts[0] === 1 && parts[1] === 0 && parts[2] >= 182), 'script.js deve ter versão >= 1.0.182');
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
-  assert.strictEqual(versionJson.version, '1.0.182', 'version.json deve ter versão 1.0.182');
+  assert.ok(versionJson.version >= '1.0.182', 'version.json deve ter versão >= 1.0.182');
   const htmlContent = fs.readFileSync('public/index.html', 'utf8');
-  assert.ok(htmlContent.includes('script.js?v=1.0.182'), 'index.html deve referenciar script.js?v=1.0.182');
-  assert.ok(htmlContent.includes('style.css?v=1.0.182'), 'index.html deve referenciar style.css?v=1.0.182');
+  assert.ok(htmlContent.includes(`script.js?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar script.js');
+  assert.ok(htmlContent.includes(`style.css?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar style.css');
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
-  assert.ok(swContent.includes('vortex-vip-v1.0.182'), 'sw.js deve ter cache vortex-vip-v1.0.182');
+  assert.ok(swContent.includes(`vortex-vip-v${win.CURRENT_APP_VERSION}`), 'sw.js deve ter cache');
 
   // 2. Elementos no DOM
   assert.ok(env.elements['view-call-history-trigger'], '#view-call-history-trigger deve existir no menu dropdown');
@@ -11056,6 +11084,242 @@ test('Histórico de Ligações, Isolamento por Perfil e Botão de Desligar Câme
   assert.ok(css.includes('#toggle-camera-btn'), 'style.css deve conter regras para #toggle-camera-btn');
   assert.ok(css.includes('.local-video-off-placeholder'), 'style.css deve conter regras para .local-video-off-placeholder');
   assert.ok(css.includes('.btn-active-off'), 'style.css deve conter regras para .btn-active-off');
+});
+
+test('Possibilidade de Apagar Avisos de Mensagens Apagadas no Chat (Individual, Seleção Múltipla e Limpar Todos) (v1.0.183)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+  const css = fs.readFileSync('public/style.css', 'utf8');
+  const html = fs.readFileSync('public/index.html', 'utf8');
+
+  // 1. Integridade de Versionamento (v1.0.183)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.183', 'script.js deve ter versão 1.0.183');
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
+  assert.strictEqual(versionJson.version, '1.0.183', 'version.json deve ter versão 1.0.183');
+  assert.ok(html.includes('script.js?v=1.0.183'), 'index.html deve referenciar script.js?v=1.0.183');
+  assert.ok(html.includes('style.css?v=1.0.183'), 'index.html deve referenciar style.css?v=1.0.183');
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+  assert.ok(swContent.includes('vortex-vip-v1.0.183'), 'sw.js deve ter cache vortex-vip-v1.0.183');
+
+  // 2. Integridade de DOM em index.html
+  assert.ok(env.elements['floating-reaction-bar'], '#floating-reaction-bar deve existir');
+  assert.ok(env.elements['floating-bar-deleted-hint'], '#floating-bar-deleted-hint deve existir no floating-reaction-bar');
+  assert.ok(env.elements['action-select-btn'], '#action-select-btn deve existir no floating-reaction-bar');
+  assert.ok(env.elements['action-delete-btn'], '#action-delete-btn deve existir no floating-reaction-bar');
+  assert.ok(env.elements['delete-message-modal'], '#delete-message-modal deve existir');
+  assert.ok(env.elements['delete-for-everyone-btn'], '#delete-for-everyone-btn deve existir');
+  assert.ok(env.elements['delete-for-me-btn'], '#delete-for-me-btn deve existir');
+  assert.ok(env.elements['clear-deleted-notices-trigger'], '#clear-deleted-notices-trigger deve existir no menu da conversa');
+
+  // 3. Integridade de CSS em style.css
+  assert.ok(css.includes('.deleted-msg-box'), 'style.css deve conter estilo para .deleted-msg-box');
+  assert.ok(css.includes('.deleted-msg-quick-del-btn'), 'style.css deve conter estilo para .deleted-msg-quick-del-btn');
+  assert.ok(css.includes('.floating-reaction-bar.deleted-msg-bar'), 'style.css deve conter estilo para .floating-reaction-bar.deleted-msg-bar');
+
+  // 3. Usuário logado e contato ativo
+  const currentUid = 'user_test_me';
+  const currentUser = { uid: currentUid, displayName: 'Test User', email: 'test@vortex.com' };
+  win.setCurrentUser(currentUser);
+  win.setCurrentProfile(currentUser);
+  const activeContact = { uid: 'contact_alice', name: 'Alice Santos', isGroup: false };
+  win.setActiveChatContact(activeContact);
+
+  const chatId = [currentUid, activeContact.uid].sort().join('_');
+  const msgMap = win.getCurrentChatMessagesMap();
+
+  // Simular 3 mensagens apagadas e 1 mensagem normal
+  const msgNotice1 = {
+    id: 'msg_del_1',
+    senderUid: 'contact_alice',
+    text: '🚫 Esta mensagem foi apagada',
+    deletedForEveryone: true,
+    deletedFor: [],
+    createdAt: Date.now() - 3000
+  };
+  const msgNotice2 = {
+    id: 'msg_del_2',
+    senderUid: currentUid,
+    text: '🚫 Esta mensagem foi apagada',
+    deletedForEveryone: true,
+    deletedFor: [],
+    createdAt: Date.now() - 2000
+  };
+  const msgNotice3 = {
+    id: 'msg_del_3',
+    senderUid: 'contact_alice',
+    text: '🚫 Esta mensagem foi apagada',
+    deletedForEveryone: true,
+    deletedFor: [],
+    createdAt: Date.now() - 1000
+  };
+  const msgNormal = {
+    id: 'msg_normal_1',
+    senderUid: 'contact_alice',
+    text: 'Oi tudo bem?',
+    deletedForEveryone: false,
+    deletedFor: [],
+    createdAt: Date.now()
+  };
+
+  msgMap.set(msgNotice1.id, msgNotice1);
+  msgMap.set(msgNotice2.id, msgNotice2);
+  msgMap.set(msgNotice3.id, msgNotice3);
+  msgMap.set(msgNormal.id, msgNormal);
+
+  // Criar documentos correspondentes no Firestore simulado
+  env.firestoreDocs[`chats/${chatId}/messages/${msgNotice1.id}`] = { ...msgNotice1 };
+  env.firestoreDocs[`chats/${chatId}/messages/${msgNotice2.id}`] = { ...msgNotice2 };
+  env.firestoreDocs[`chats/${chatId}/messages/${msgNotice3.id}`] = { ...msgNotice3 };
+  env.firestoreDocs[`chats/${chatId}/messages/${msgNormal.id}`] = { ...msgNormal };
+
+  // Renderizar elementos simulados no container de mensagens
+  const container = env.elements['message-container'];
+  container.children = [];
+
+  function createMsgElement(msg, isSent) {
+    const el = env.sandbox.document.createElement('div');
+    el.className = `message ${isSent ? 'sent' : 'received'} ${msg.deletedForEveryone ? 'deleted-msg' : ''}`;
+    el.dataset = { id: msg.id };
+    el.setAttribute('data-id', msg.id);
+    if (msg.deletedForEveryone) {
+      el.innerHTML = `
+        <div class="deleted-msg-box">
+          <span class="deleted-msg-text">🚫 Esta mensagem foi apagada</span>
+          <button class="deleted-msg-quick-del-btn" type="button" title="Apagar este aviso para você">
+            <i data-lucide="trash-2"></i>
+          </button>
+        </div>
+      `;
+    } else {
+      el.innerHTML = `<div>${msg.text}</div>`;
+    }
+    return el;
+  }
+
+  const elNotice1 = createMsgElement(msgNotice1, false);
+  const elNotice2 = createMsgElement(msgNotice2, true);
+  const elNotice3 = createMsgElement(msgNotice3, false);
+  const elNormal = createMsgElement(msgNormal, false);
+
+  container.appendChild(elNotice1);
+  container.appendChild(elNotice2);
+  container.appendChild(elNotice3);
+  container.appendChild(elNormal);
+
+  // 4. Testar showFloatingReactions para Mensagem Apagada
+  assert.ok(elNotice1, 'Elemento do aviso 1 deve existir no container');
+
+  win.showFloatingReactions(msgNotice1, elNotice1);
+  const bar = env.elements['floating-reaction-bar'];
+  assert.ok(bar.classList.contains('active'), 'Barra flutuante deve estar ativa para o aviso');
+  assert.ok(bar.classList.contains('deleted-msg-bar'), 'Barra deve ter a classe deleted-msg-bar');
+
+  const deletedHint = env.elements['floating-bar-deleted-hint'];
+  assert.strictEqual(deletedHint.style.display, 'inline-flex', 'Hint de aviso apagado deve estar visível');
+  const actionDeleteBtn = env.elements['action-delete-btn'];
+  assert.strictEqual(actionDeleteBtn.style.display, 'inline-flex', 'Botão de apagar deve estar visível');
+  assert.strictEqual(actionDeleteBtn.title, 'Apagar aviso', 'Título do botão deve ser "Apagar aviso"');
+
+  const actionSelectBtn = env.elements['action-select-btn'];
+  assert.strictEqual(actionSelectBtn.style.display, 'inline-flex', 'Botão de selecionar deve estar visível');
+
+  // Emoji pill e ações irrelevantes devem estar ocultos
+  const emojiPill = env.elements['emoji-reaction-pill'] || bar.querySelector('.emoji-reaction-pill');
+  assert.strictEqual(emojiPill.style.display, 'none', 'Pílula de emojis deve estar oculta no aviso');
+  assert.strictEqual(env.elements['action-star-btn'].style.display, 'none', 'Favoritar deve estar oculto');
+  assert.strictEqual(env.elements['action-reply-btn'].style.display, 'none', 'Responder deve estar oculto');
+  assert.strictEqual(env.elements['action-forward-btn'].style.display, 'none', 'Encaminhar deve estar oculto');
+
+  // 5. Testar openDeleteModal para o aviso individual
+  await win.openDeleteModal(false, msgNotice1);
+  const deleteModal = env.elements['delete-message-modal'];
+  assert.ok(deleteModal.classList.contains('active'), 'Modal de exclusão deve abrir');
+
+  const modalTitle = env.elements['delete-modal-title'] || deleteModal.querySelector('.modal-title');
+  const modalSubtitle = env.elements['delete-modal-subtitle'] || deleteModal.querySelector('.modal-subtitle');
+  assert.strictEqual(modalTitle.innerText, 'Apagar Aviso?', 'Título do modal deve ser "Apagar Aviso?"');
+  assert.ok(modalSubtitle.innerText.includes('remover este aviso de mensagem apagada'), 'Subtítulo deve ser adaptado para o aviso');
+
+  const deleteForEveryoneBtn = env.elements['delete-for-everyone-btn'];
+  const deleteForMeBtn = env.elements['delete-for-me-btn'];
+  assert.strictEqual(deleteForEveryoneBtn.style.display, 'none', 'Apagar para todos deve estar OCULTO para aviso já apagado');
+  assert.strictEqual(deleteForMeBtn.style.display, 'block', 'Apagar para mim deve estar VISÍVEL');
+  assert.strictEqual(deleteForMeBtn.innerText, 'Apagar Aviso para Mim', 'Texto do botão deve ser "Apagar Aviso para Mim"');
+
+  // 6. Clicar em "Apagar Aviso para Mim"
+  await deleteForMeBtn.click();
+  await new Promise(r => setTimeout(r, 50));
+
+  // O elemento do aviso 1 deve ter sumido do DOM
+  assert.strictEqual(container.children.some(c => c.dataset && c.dataset.id === msgNotice1.id), false, 'Aviso 1 deve ter sido removido do DOM');
+
+  // O Firestore deve conter currentUser.uid no array deletedFor
+  const updatedDoc1 = env.firestoreDocs[`chats/${chatId}/messages/${msgNotice1.id}`];
+  assert.ok(updatedDoc1, 'Documento 1 deve existir no Firestore');
+  assert.ok(Array.isArray(updatedDoc1.deletedFor), 'deletedFor deve ser array');
+  assert.ok(updatedDoc1.deletedFor.includes(currentUid), 'currentUser.uid deve ter sido adicionado ao deletedFor');
+
+  // 7. Testar Seleção Múltipla de Avisos Apagados
+  win.enterSelectionMode(msgNotice2.id);
+  const selectedIds = win.getSelectedMessageIds();
+  assert.ok(selectedIds.has(msgNotice2.id), 'msgNotice2 deve estar selecionada');
+
+  assert.ok(elNotice3, 'Elemento do aviso 3 deve existir no container');
+  win.toggleMessageSelection(msgNotice3.id, elNotice3);
+  assert.ok(selectedIds.has(msgNotice3.id), 'msgNotice3 deve estar selecionada');
+  assert.strictEqual(selectedIds.size, 2, '2 avisos devem estar selecionados');
+
+  // Abrir modal de exclusão para seleção múltipla
+  await win.openDeleteModal(true);
+  assert.strictEqual(modalTitle.innerText, 'Apagar 2 Mensagem(ns)?', 'Título deve indicar 2 mensagens selecionadas');
+  assert.strictEqual(deleteForEveryoneBtn.style.display, 'none', 'Como há aviso apagado selecionado, Apagar para todos deve ficar oculto');
+  assert.strictEqual(deleteForMeBtn.style.display, 'block', 'Apagar para mim deve estar ativo');
+
+  // Clicar em Apagar para Mim para a seleção múltipla
+  await deleteForMeBtn.click();
+  await new Promise(r => setTimeout(r, 100));
+
+  assert.strictEqual(container.children.some(c => c.dataset && c.dataset.id === msgNotice2.id), false, 'Aviso 2 deve ter sido removido do DOM');
+  assert.strictEqual(container.children.some(c => c.dataset && c.dataset.id === msgNotice3.id), false, 'Aviso 3 deve ter sido removido do DOM');
+  assert.strictEqual(container.children.some(c => c.dataset && c.dataset.id === msgNormal.id), true, 'Mensagem normal não selecionada deve permanecer no DOM');
+
+  const updatedDoc2 = env.firestoreDocs[`chats/${chatId}/messages/${msgNotice2.id}`];
+  const updatedDoc3 = env.firestoreDocs[`chats/${chatId}/messages/${msgNotice3.id}`];
+  assert.ok(updatedDoc2.deletedFor.includes(currentUid), 'Doc 2 deve ter currentUser no deletedFor');
+  assert.ok(updatedDoc3.deletedFor.includes(currentUid), 'Doc 3 deve ter currentUser no deletedFor');
+
+  // 8. Testar "Limpar Avisos Apagados" do menu dropdown
+  // Adiciona novo aviso para testar a ação em massa do menu
+  const msgNotice4 = {
+    id: 'msg_del_4',
+    senderUid: 'contact_alice',
+    text: '🚫 Esta mensagem foi apagada',
+    deletedForEveryone: true,
+    deletedFor: [],
+    createdAt: Date.now()
+  };
+  msgMap.set(msgNotice4.id, msgNotice4);
+  env.firestoreDocs[`chats/${chatId}/messages/${msgNotice4.id}`] = { ...msgNotice4 };
+  const divNotice4 = env.sandbox.document.createElement('div');
+  divNotice4.className = 'message received deleted-msg';
+  divNotice4.dataset = { id: msgNotice4.id };
+  divNotice4.innerHTML = `<span>🚫 Esta mensagem foi apagada</span>`;
+  container.appendChild(divNotice4);
+
+  // Simula confirmação do window.confirm
+  const origConfirm = win.confirm;
+  win.confirm = () => true;
+
+  const clearNoticesBtn = env.elements['clear-deleted-notices-trigger'];
+  assert.ok(clearNoticesBtn, 'Botão de limpar avisos apagados deve existir');
+  await clearNoticesBtn.click();
+  await new Promise(r => setTimeout(r, 50));
+
+  assert.strictEqual(container.children.some(c => c.dataset && c.dataset.id === msgNotice4.id), false, 'Aviso 4 deve ter sido limpo pelo menu');
+  const updatedDoc4 = env.firestoreDocs[`chats/${chatId}/messages/${msgNotice4.id}`];
+  assert.ok(updatedDoc4.deletedFor.includes(currentUid), 'Doc 4 deve ter currentUser no deletedFor');
+
+  win.confirm = origConfirm;
 });
 
 

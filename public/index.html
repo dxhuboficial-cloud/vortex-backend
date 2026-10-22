@@ -4,20 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.182">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.182">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.182">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.182">
-    <link rel="stylesheet" href="style.css?v=1.0.182">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.183">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.183">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.183">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.183">
+    <link rel="stylesheet" href="style.css?v=1.0.183">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.182">
+    <link rel="manifest" href="manifest.json?v=1.0.183">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.182">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.182">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.183">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.183">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -482,6 +482,10 @@
                         <i data-lucide="trash"></i>
                         <span>Limpar Conversa</span>
                     </div>
+                    <div class="dropdown-item" id="clear-deleted-notices-trigger">
+                        <i data-lucide="trash-2"></i>
+                        <span>Limpar Avisos Apagados</span>
+                    </div>
                     <div class="dropdown-item" id="block-contact-trigger">
                         <i data-lucide="ban" id="block-contact-icon"></i>
                         <span id="block-contact-text">Bloquear Contato</span>
@@ -626,7 +630,10 @@
 
         <!-- Barra Flutuante de Reações com Emojis Compacta -->
         <div id="floating-reaction-bar" class="floating-reaction-bar">
-            <div class="emoji-reaction-pill">
+            <span id="floating-bar-deleted-hint" class="deleted-action-label" style="display: none;">
+                <i data-lucide="info" style="width: 14px; height: 14px;"></i> Aviso apagado
+            </span>
+            <div id="emoji-reaction-pill" class="emoji-reaction-pill">
                 <span class="reaction-emoji" data-emoji="👍">👍</span>
                 <span class="reaction-emoji" data-emoji="❤️">❤️</span>
                 <span class="reaction-emoji" data-emoji="😂">😂</span>
@@ -636,8 +643,11 @@
                 <span class="reaction-emoji" data-emoji="🔥">🔥</span>
                 <span class="reaction-emoji" data-emoji="⚡">⚡</span>
             </div>
-            <div class="msg-action-divider"></div>
+            <div id="msg-action-divider" class="msg-action-divider"></div>
             <div class="msg-action-icons">
+                <div class="msg-action-item" id="action-select-btn" title="Selecionar" aria-label="Selecionar">
+                    <i data-lucide="check-square"></i>
+                </div>
                 <div class="msg-action-item" id="action-star-btn" title="Favoritar Mensagem" aria-label="Favoritar">
                     <i data-lucide="star"></i>
                 </div>
@@ -679,8 +689,8 @@
         <!-- Modal de Apagar Mensagem -->
         <div id="delete-message-modal" class="custom-modal-overlay">
             <div class="custom-modal-card modal-center-align">
-                <h3 class="modal-title">Apagar Mensagem?</h3>
-                <p class="modal-subtitle">Escolha como deseja remover esta mensagem:</p>
+                <h3 id="delete-modal-title" class="modal-title">Apagar Mensagem?</h3>
+                <p id="delete-modal-subtitle" class="modal-subtitle">Escolha como deseja remover esta mensagem:</p>
                 <div class="modal-actions-col">
                     <button id="delete-for-everyone-btn" class="danger-btn btn-delete-everyone">Apagar para Todos</button>
                     <button id="delete-for-me-btn" class="danger-btn btn-delete-me">Apagar para Mim</button>
@@ -3783,6 +3793,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.182" defer></script>
+    <script type="module" src="script.js?v=1.0.183" defer></script>
 </body>
 </html>

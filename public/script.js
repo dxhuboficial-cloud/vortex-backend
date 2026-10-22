@@ -13162,7 +13162,14 @@ function loadRealtimeMessages() {
 
             let mediaHTML = '';
             if (msg.deletedForEveryone) {
-                mediaHTML = `<div>🚫 Esta mensagem foi apagada</div>`;
+                mediaHTML = `
+                    <div class="deleted-msg-box">
+                        <span class="deleted-msg-text">🚫 Esta mensagem foi apagada</span>
+                        <button class="deleted-msg-quick-del-btn" type="button" title="Apagar este aviso para você" aria-label="Apagar este aviso">
+                            <i data-lucide="trash-2"></i>
+                        </button>
+                    </div>
+                `;
             } else if (msg.uploadState === 'uploading') {
                 const uploadPercent = Math.max(0, Math.min(100, Number(msg.uploadPercent) || 0));
                 const isVideoUpload = msg.type === 'video';
@@ -13433,11 +13440,23 @@ function loadRealtimeMessages() {
                 }
             }
 
-            msgDiv.addEventListener('click', () => {
+            msgDiv.addEventListener('click', (e) => {
                 if (isMultiSelectMode) {
                     toggleMessageSelection(msg.id, msgDiv);
+                    return;
+                }
+                if (msg.deletedForEveryone && !e.target.closest('.deleted-msg-quick-del-btn')) {
+                    showFloatingReactions(msg, msgDiv, e);
                 }
             });
+
+            const quickDelBtn = msgDiv.querySelector('.deleted-msg-quick-del-btn');
+            if (quickDelBtn) {
+                quickDelBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    openDeleteModal(false, msg);
+                });
+            }
 
             setupSwipeToReply(msgDiv, msg);
 
@@ -13447,12 +13466,21 @@ function loadRealtimeMessages() {
             });
 
             let pressTimer;
+            let isTouchMoved = false;
             msgDiv.addEventListener('touchstart', (e) => {
+                isTouchMoved = false;
                 pressTimer = setTimeout(() => {
-                    if (!isMultiSelectMode) showFloatingReactions(msg, msgDiv, e.touches[0]);
-                }, 500);
+                    if (!isMultiSelectMode && !isTouchMoved) {
+                        showFloatingReactions(msg, msgDiv, e.touches[0]);
+                    }
+                }, 450);
+            }, { passive: true });
+            msgDiv.addEventListener('touchmove', () => {
+                isTouchMoved = true;
+                clearTimeout(pressTimer);
             }, { passive: true });
             msgDiv.addEventListener('touchend', () => clearTimeout(pressTimer));
+            msgDiv.addEventListener('touchcancel', () => clearTimeout(pressTimer));
 
             const audioUi = msgDiv.querySelector('.audio-player-ui');
             const speedBtn = msgDiv.querySelector('.audio-speed-btn');
@@ -13844,25 +13872,61 @@ function cancelReply() {
 document.getElementById('cancel-reply-btn')?.addEventListener('click', cancelReply);
 
 function showFloatingReactions(msg, el, eventCoord) {
-    if (msg.deletedForEveryone) return;
+    if (!msg || !el) return;
     activeSelectedMsg = msg;
     activeSelectedMsgEl = el;
 
     const bar = document.getElementById('floating-reaction-bar');
     if (!bar) return;
 
+    const isDeleted = Boolean(msg.deletedForEveryone);
+    bar.classList.toggle('deleted-msg-bar', isDeleted);
+
+    const pill = document.getElementById('emoji-reaction-pill') || bar.querySelector('.emoji-reaction-pill');
+    const divider = document.getElementById('msg-action-divider') || bar.querySelector('.msg-action-divider');
+    const deletedHint = document.getElementById('floating-bar-deleted-hint');
+
+    if (pill) pill.style.display = isDeleted ? 'none' : 'flex';
+    if (divider) divider.style.display = isDeleted ? 'none' : 'block';
+    if (deletedHint) deletedHint.style.display = isDeleted ? 'inline-flex' : 'none';
+
+    const starBtn = document.getElementById('action-star-btn');
+    if (starBtn) starBtn.style.display = isDeleted ? 'none' : 'inline-flex';
+
+    const infoBtn = document.getElementById('action-info-btn');
+    if (infoBtn) infoBtn.style.display = isDeleted ? 'none' : 'inline-flex';
+
+    const replyBtn = document.getElementById('action-reply-btn');
+    if (replyBtn) replyBtn.style.display = isDeleted ? 'none' : 'inline-flex';
+
+    const forwardBtn = document.getElementById('action-forward-btn');
+    if (forwardBtn) forwardBtn.style.display = isDeleted ? 'none' : 'inline-flex';
+
     // Mostrar ou ocultar botão de copiar se houver texto
-    const canCopy = Boolean(!msg.deletedForEveryone && (msg.text || msg.caption));
+    const canCopy = Boolean(!isDeleted && (msg.text || msg.caption));
     const copyBtn = document.getElementById('action-copy-btn');
     if (copyBtn) {
         copyBtn.style.display = canCopy ? 'inline-flex' : 'none';
     }
 
     // Mostrar ou ocultar botão de editar apenas se for mensagem de texto do próprio usuário
-    const canEdit = Boolean(currentUser && msg.senderUid === currentUser.uid && !msg.deletedForEveryone && (msg.type === 'text' || (!msg.type && msg.text)));
+    const canEdit = Boolean(currentUser && msg.senderUid === currentUser.uid && !isDeleted && (msg.type === 'text' || (!msg.type && msg.text)));
     const editBtn = document.getElementById('action-edit-btn');
     if (editBtn) {
         editBtn.style.display = canEdit ? 'inline-flex' : 'none';
+    }
+
+    // Botão de selecionar sempre visível
+    const selectBtn = document.getElementById('action-select-btn');
+    if (selectBtn) {
+        selectBtn.style.display = 'inline-flex';
+    }
+
+    // Botão de apagar sempre ativo
+    const deleteBtn = document.getElementById('action-delete-btn');
+    if (deleteBtn) {
+        deleteBtn.style.display = 'inline-flex';
+        deleteBtn.title = isDeleted ? 'Apagar aviso' : 'Apagar';
     }
 
     const rect = (el && typeof el.getBoundingClientRect === 'function') ? el.getBoundingClientRect() : { top: 100, bottom: 130 };
@@ -13914,6 +13978,14 @@ document.querySelectorAll('.reaction-emoji').forEach(span => {
             hideFloatingReactions();
         }
     });
+});
+
+document.getElementById('action-select-btn')?.addEventListener('click', () => {
+    const msg = activeSelectedMsg;
+    hideFloatingReactions();
+    if (msg) {
+        enterSelectionMode(msg.id);
+    }
 });
 
 document.getElementById('action-star-btn')?.addEventListener('click', () => {
@@ -14605,15 +14677,32 @@ async function openDeleteModal(isMultiple = false, msgToDel = null) {
     messageToDelete = msgToDel;
     const modal = document.getElementById('delete-message-modal');
     const deleteForEveryoneBtn = document.getElementById('delete-for-everyone-btn');
+    const deleteForMeBtn = document.getElementById('delete-for-me-btn');
+    const modalTitle = document.getElementById('delete-modal-title') || modal?.querySelector('.modal-title');
+    const modalSubtitle = document.getElementById('delete-modal-subtitle') || modal?.querySelector('.modal-subtitle');
     if (!modal) return;
 
     if (!isMultiple && messageToDelete) {
         const isSender = messageToDelete.senderUid === currentUser.uid;
+        const isDeleted = Boolean(messageToDelete.deletedForEveryone);
+        if (modalTitle) {
+            modalTitle.innerText = isDeleted ? 'Apagar Aviso?' : 'Apagar Mensagem?';
+        }
+        if (modalSubtitle) {
+            modalSubtitle.innerText = isDeleted 
+                ? 'Deseja remover este aviso de mensagem apagada da sua conversa?' 
+                : 'Escolha como deseja remover esta mensagem:';
+        }
         if (deleteForEveryoneBtn) {
-            deleteForEveryoneBtn.style.display = (isSender && !messageToDelete.deletedForEveryone) ? 'block' : 'none';
+            deleteForEveryoneBtn.style.display = (isSender && !isDeleted) ? 'block' : 'none';
+        }
+        if (deleteForMeBtn) {
+            deleteForMeBtn.innerText = isDeleted ? 'Apagar Aviso para Mim' : 'Apagar para Mim';
+            deleteForMeBtn.style.display = 'block';
         }
     } else if (isMultiple) {
         let allMine = selectedMessageIds.size > 0;
+        let anyDeletedNotice = false;
         const chatId = getActiveChatId();
 
         for (const id of selectedMessageIds) {
@@ -14629,17 +14718,37 @@ async function openDeleteModal(isMultiple = false, msgToDel = null) {
                     console.warn('Erro ao verificar mensagem selecionada:', e);
                 }
             }
+            if (msg && msg.deletedForEveryone) {
+                anyDeletedNotice = true;
+            }
             if (!msg || msg.senderUid !== currentUser.uid || msg.deletedForEveryone) {
                 allMine = false;
-                break;
             }
         }
 
+        if (modalTitle) {
+            modalTitle.innerText = `Apagar ${selectedMessageIds.size} Mensagem(ns)?`;
+        }
+        if (modalSubtitle) {
+            modalSubtitle.innerText = anyDeletedNotice
+                ? 'Avisos de mensagens apagadas só podem ser removidos para você.'
+                : 'Escolha como deseja remover as mensagens selecionadas:';
+        }
         if (deleteForEveryoneBtn) {
             deleteForEveryoneBtn.style.display = allMine ? 'block' : 'none';
         }
+        if (deleteForMeBtn) {
+            deleteForMeBtn.innerText = 'Apagar para Mim';
+            deleteForMeBtn.style.display = 'block';
+        }
     } else {
+        if (modalTitle) modalTitle.innerText = 'Apagar Mensagem?';
+        if (modalSubtitle) modalSubtitle.innerText = 'Escolha como deseja remover esta mensagem:';
         if (deleteForEveryoneBtn) deleteForEveryoneBtn.style.display = 'none';
+        if (deleteForMeBtn) {
+            deleteForMeBtn.innerText = 'Apagar para Mim';
+            deleteForMeBtn.style.display = 'block';
+        }
     }
 
     modal.classList.add('active');
@@ -14708,21 +14817,59 @@ document.getElementById('delete-for-me-btn')?.addEventListener('click', async ()
     if (!chatId) return;
 
     if (isMultiSelectMode && selectedMessageIds.size > 0) {
+        const idsToDelete = Array.from(selectedMessageIds);
+        // Otimização visual imediata
+        idsToDelete.forEach(id => {
+            const msg = currentChatMessagesMap.get(id);
+            if (msg) {
+                msg.deletedFor = msg.deletedFor || [];
+                if (!msg.deletedFor.includes(currentUser.uid)) {
+                    msg.deletedFor.push(currentUser.uid);
+                }
+            }
+            document.querySelectorAll(`.message[data-id="${id}"]`).forEach(el => el.remove());
+            const el = document.querySelector(`.message[data-id="${id}"]`);
+            if (el) el.remove();
+        });
+
         const batch = writeBatch(db);
-        for (const id of selectedMessageIds) {
+        for (const id of idsToDelete) {
             const ref = doc(db, 'chats', chatId, 'messages', id);
             batch.update(ref, {
                 deletedFor: arrayUnion(currentUser.uid)
             });
         }
-        await batch.commit();
-        showToast("Apagadas", "Mensagens apagadas para você.", "blue");
+        try {
+            await batch.commit();
+            showToast("Apagadas", "Mensagens apagadas para você.", "blue");
+        } catch (err) {
+            console.error("Erro ao apagar mensagens para mim:", err);
+            showToast("Erro", "Falha ao apagar algumas mensagens.", "red");
+        }
         exitSelectionMode();
     } else if (messageToDelete) {
-        await updateDoc(doc(db, 'chats', chatId, 'messages', messageToDelete.id), {
-            deletedFor: arrayUnion(currentUser.uid)
-        });
-        showToast("Apagada", "Mensagem apagada para você.", "blue");
+        const targetId = messageToDelete.id;
+        const isNotice = Boolean(messageToDelete.deletedForEveryone);
+        const msg = currentChatMessagesMap.get(targetId) || messageToDelete;
+        if (msg) {
+            msg.deletedFor = msg.deletedFor || [];
+            if (!msg.deletedFor.includes(currentUser.uid)) {
+                msg.deletedFor.push(currentUser.uid);
+            }
+        }
+        document.querySelectorAll(`.message[data-id="${targetId}"]`).forEach(el => el.remove());
+        const el = document.querySelector(`.message[data-id="${targetId}"]`);
+        if (el) el.remove();
+
+        try {
+            await updateDoc(doc(db, 'chats', chatId, 'messages', targetId), {
+                deletedFor: arrayUnion(currentUser.uid)
+            });
+            showToast("Apagado", isNotice ? "Aviso apagado para você." : "Mensagem apagada para você.", "blue");
+        } catch (err) {
+            console.error("Erro ao apagar aviso para mim:", err);
+            showToast("Erro", "Falha ao apagar para você.", "red");
+        }
         messageToDelete = null;
     }
 
@@ -14757,6 +14904,58 @@ document.getElementById('chat-pin-trigger')?.addEventListener('click', () => {
 document.getElementById('clear-chat-trigger')?.addEventListener('click', () => {
     document.getElementById('chat-dropdown-menu')?.classList.remove('active');
     document.getElementById('clear-chat-modal')?.classList.add('active');
+});
+
+document.getElementById('clear-deleted-notices-trigger')?.addEventListener('click', async () => {
+    document.getElementById('chat-dropdown-menu')?.classList.remove('active');
+    if (!activeChatContact || !currentUser) return;
+    const chatId = getActiveChatId();
+    if (!chatId) return;
+
+    const noticesToClear = [];
+    currentChatMessagesMap.forEach((msg, id) => {
+        if (msg.deletedForEveryone && (!msg.deletedFor || !msg.deletedFor.includes(currentUser.uid))) {
+            noticesToClear.push(id);
+        }
+    });
+
+    if (noticesToClear.length === 0) {
+        showToast("Avisos", "Não há avisos de mensagens apagadas nesta conversa.", "yellow");
+        return;
+    }
+
+    const confirmClear = window.confirm(`Deseja remover ${noticesToClear.length} aviso(s) de mensagem apagada da sua conversa?`);
+    if (!confirmClear) return;
+
+    // Remover imediatamente da interface
+    noticesToClear.forEach(id => {
+        const msg = currentChatMessagesMap.get(id);
+        if (msg) {
+            msg.deletedFor = msg.deletedFor || [];
+            if (!msg.deletedFor.includes(currentUser.uid)) {
+                msg.deletedFor.push(currentUser.uid);
+            }
+        }
+        document.querySelectorAll(`.message[data-id="${id}"]`).forEach(el => el.remove());
+        const el = document.querySelector(`.message[data-id="${id}"]`);
+        if (el) el.remove();
+    });
+
+    try {
+        const batch = writeBatch(db);
+        noticesToClear.forEach(id => {
+            const ref = doc(db, 'chats', chatId, 'messages', id);
+            batch.update(ref, {
+                deletedFor: arrayUnion(currentUser.uid)
+            });
+        });
+        await batch.commit();
+        showToast("Sucesso", `${noticesToClear.length} aviso(s) removido(s) com sucesso!`, "green");
+        playSound(clickSound);
+    } catch (err) {
+        console.error("Erro ao limpar avisos apagados:", err);
+        showToast("Erro", "Não foi possível remover todos os avisos.", "red");
+    }
 });
 
 async function clearChatForCurrentUser(targetChatId = null) {
@@ -18041,7 +18240,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.182';
+export const CURRENT_APP_VERSION = '1.0.183';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -29999,6 +30198,15 @@ if (typeof window !== 'undefined') {
     window.updateCameraToggleButtonUI = updateCameraToggleButtonUI;
     window.getIsCameraOff = () => isCameraOff;
     window.setIsCameraOff = (val) => { isCameraOff = !!val; };
+    // Exclusão de Avisos de Mensagens Apagadas e Seleção (v1.0.183)
+    window.openDeleteModal = openDeleteModal;
+    window.showFloatingReactions = showFloatingReactions;
+    window.hideFloatingReactions = hideFloatingReactions;
+    window.enterSelectionMode = enterSelectionMode;
+    window.toggleMessageSelection = toggleMessageSelection;
+    window.exitSelectionMode = exitSelectionMode;
+    window.getSelectedMessageIds = () => selectedMessageIds;
+    window.getCurrentChatMessagesMap = () => currentChatMessagesMap;
 }
 
 if (typeof window !== 'undefined') {

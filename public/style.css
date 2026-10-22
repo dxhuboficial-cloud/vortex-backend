@@ -1844,7 +1844,53 @@ header h1 span {
 
 .message.sent { align-self: flex-end; background: var(--chat-sent-bg); border-bottom-right-radius: 2px; }
 .message.received { align-self: flex-start; background: var(--chat-recv-bg); border-bottom-left-radius: 2px; }
-.message.deleted-msg { font-style: italic; color: var(--text-dim); opacity: 0.75; }
+.message.deleted-msg {
+    font-style: italic;
+    color: var(--text-dim);
+    opacity: 0.85;
+    user-select: none;
+    -webkit-user-select: none;
+}
+.deleted-msg-box {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    justify-content: space-between;
+}
+.deleted-msg-text {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.88rem;
+    font-style: italic;
+    color: var(--text-dim, #aaa);
+}
+.deleted-msg-quick-del-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-dim, #888);
+    cursor: pointer;
+    padding: 3px 6px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    opacity: 0.65;
+    margin-left: 6px;
+    flex-shrink: 0;
+}
+.deleted-msg-quick-del-btn:hover,
+.deleted-msg-quick-del-btn:active {
+    color: #ff4444;
+    background: rgba(255, 68, 68, 0.16);
+    opacity: 1;
+}
+.deleted-msg-quick-del-btn i {
+    width: 14px;
+    height: 14px;
+}
 
 .message.selected {
     border: 2px solid var(--accent-color);
@@ -1956,6 +2002,21 @@ header h1 span {
 .msg-action-item:hover { background: rgba(255, 255, 255, 0.1); color: var(--accent-color); }
 .msg-action-item.danger:hover { background: rgba(255, 59, 48, 0.2); color: #ff3b30; }
 .msg-action-item i { width: 15px; height: 15px; }
+
+.floating-reaction-bar.deleted-msg-bar {
+    padding: 6px 14px;
+    gap: 10px;
+    border-color: rgba(255, 68, 68, 0.4);
+    box-shadow: 0 8px 24px rgba(255, 68, 68, 0.2);
+}
+.floating-reaction-bar.deleted-msg-bar .deleted-action-label {
+    font-size: 0.8rem;
+    color: var(--text-dim, #aaa);
+    font-style: italic;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
 
 .reply-preview-bar {
     background: rgba(20, 20, 20, 0.95);
