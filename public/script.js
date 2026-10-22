@@ -14564,7 +14564,7 @@ async function openMessageInfoModal(msg) {
             <div class="msg-info-reader-item">
                 <div class="msg-info-reader-left">
                     <div class="avatar sm" style="background-image: url('${r.avatar}'); width:34px; height:34px;"></div>
-                    <div>
+                    <div class="msg-info-reader-user-meta">
                         <div class="msg-info-reader-name">${escapeHTML(r.name)}</div>
                         <div class="msg-info-reader-user">@${escapeHTML(r.username)}</div>
                     </div>
@@ -18249,7 +18249,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.186';
+export const CURRENT_APP_VERSION = '1.0.187';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;

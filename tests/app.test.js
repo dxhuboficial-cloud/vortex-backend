@@ -11554,14 +11554,14 @@ test('Ícone de Rotação em Volta da Câmera para Troca de Chamada de Vídeo (v
   const css = fs.readFileSync('public/style.css', 'utf8');
   const html = fs.readFileSync('public/index.html', 'utf8');
 
-  // 1. Integridade de Versionamento (v1.0.186)
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.186', 'script.js deve ter versão 1.0.186');
+  // 1. Integridade de Versionamento (v1.0.186+)
+  assert.ok(parseInt(win.CURRENT_APP_VERSION.split('.')[2], 10) >= 186, 'script.js deve ter versão >= 1.0.186');
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
-  assert.strictEqual(versionJson.version, '1.0.186', 'version.json deve ter versão 1.0.186');
-  assert.ok(html.includes('script.js?v=1.0.186'), 'index.html deve referenciar script.js?v=1.0.186');
-  assert.ok(html.includes('style.css?v=1.0.186'), 'index.html deve referenciar style.css?v=1.0.186');
+  assert.ok(parseInt(versionJson.version.split('.')[2], 10) >= 186, 'version.json deve ter versão >= 1.0.186');
+  assert.ok(html.includes(`script.js?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar script.js');
+  assert.ok(html.includes(`style.css?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar style.css');
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
-  assert.ok(swContent.includes('vortex-vip-v1.0.186'), 'sw.js deve ter cache vortex-vip-v1.0.186');
+  assert.ok(swContent.includes(`vortex-vip-v${win.CURRENT_APP_VERSION}`), 'sw.js deve ter cache');
 
   // 2. Integridade de CSS dos novos elementos de rotação e câmera
   assert.ok(css.includes('.switch-video-btn-content'), 'style.css deve conter .switch-video-btn-content');
@@ -11606,6 +11606,38 @@ test('Ícone de Rotação em Volta da Câmera para Troca de Chamada de Vídeo (v
   const endCallBtn = env.elements['end-call-btn'];
   await endCallBtn.click();
   assert.ok(!overlay.classList.contains('active'), 'Chamada encerrada');
+});
+
+test('Organização em Linha Única dos Títulos Mensagens Favoritas e Dados da Mensagem (v1.0.187)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+  const css = fs.readFileSync('public/style.css', 'utf8');
+  const html = fs.readFileSync('public/index.html', 'utf8');
+
+  // 1. Integridade de Versionamento (v1.0.187)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.187', 'script.js deve ter versão 1.0.187');
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
+  assert.strictEqual(versionJson.version, '1.0.187', 'version.json deve ter versão 1.0.187');
+  assert.ok(html.includes('script.js?v=1.0.187'), 'index.html deve referenciar script.js?v=1.0.187');
+  assert.ok(html.includes('style.css?v=1.0.187'), 'index.html deve referenciar style.css?v=1.0.187');
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+  assert.ok(swContent.includes('vortex-vip-v1.0.187'), 'sw.js deve conter cache vortex-vip-v1.0.187');
+
+  // 2. CSS de Linha Única nos Títulos e Prevenção de Quebra
+  assert.ok(css.includes('.starred-messages-card .modal-title'), 'style.css deve estilizar título de mensagens favoritas');
+  assert.ok(css.includes('.msg-info-title-box h2'), 'style.css deve conter .msg-info-title-box h2');
+  assert.ok(css.includes('.msg-info-reader-user-meta'), 'style.css deve conter .msg-info-reader-user-meta para truncamento');
+  assert.ok(css.includes('white-space: nowrap !important;'), 'style.css deve aplicar white-space: nowrap !important');
+
+  // 3. Verificação DOM de Mensagens Favoritas
+  const starredModal = env.elements['starred-messages-modal'];
+  assert.ok(starredModal, '#starred-messages-modal deve existir');
+  assert.ok(html.includes('Mensagens Favoritas'), 'index.html deve conter título Mensagens Favoritas');
+
+  // 4. Verificação DOM de Dados da Mensagem
+  const msgInfoModal = env.elements['message-info-modal'];
+  assert.ok(msgInfoModal, '#message-info-modal deve existir');
+  assert.ok(html.includes('Dados da Mensagem'), 'index.html deve conter título Dados da Mensagem');
 });
 
 
