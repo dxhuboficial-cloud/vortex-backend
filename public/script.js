@@ -12554,6 +12554,7 @@ export function openDirectChat(contact) {
     exitSelectionMode();
     cancelReply();
     hideFloatingReactions();
+    hideFloatingEmojiBar();
     applyChatWallpaper(contact.uid || contact.chatId || contact.id);
 
     if (nameEl) nameEl.innerText = contact.name || 'Contato';
@@ -12601,6 +12602,12 @@ export function openDirectChat(contact) {
     if (msgContainer && !msgContainer._bioBubbleScrollBound) {
         msgContainer._bioBubbleScrollBound = true;
         msgContainer.addEventListener('scroll', () => {
+            if (document.getElementById('floating-reaction-bar')?.classList.contains('active')) {
+                hideFloatingReactions();
+            }
+            if (document.getElementById('floating-emoji-bar')?.classList.contains('active')) {
+                hideFloatingEmojiBar();
+            }
             const bubble = document.getElementById('chat-bio-bubble');
             if (bubble && bubble.style.display !== 'none' && !bubble.classList.contains('bubble-expired')) {
                 if (msgContainer.scrollTop > 50) {
@@ -13459,6 +13466,17 @@ function loadRealtimeMessages() {
                 }
             });
 
+            // Duplo clique na mensagem (Desktop): abre barra de reações de emojis e impede barra de ações
+            msgDiv.addEventListener('dblclick', (e) => {
+                if (isMultiSelectMode || msg.deletedForEveryone) return;
+                if (e.target.closest('button, .audio-play-btn, .deleted-msg-quick-del-btn, .image-action-btn, a')) return;
+                e.preventDefault();
+                e.stopPropagation();
+                if (pressTimer) clearTimeout(pressTimer);
+                hideFloatingReactions();
+                showFloatingEmojiBar(msg, msgDiv, e);
+            });
+
             const quickDelBtn = msgDiv.querySelector('.deleted-msg-quick-del-btn');
             if (quickDelBtn) {
                 quickDelBtn.addEventListener('click', (e) => {
@@ -13471,25 +13489,58 @@ function loadRealtimeMessages() {
 
             msgDiv.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
-                if (!isMultiSelectMode) showFloatingReactions(msg, msgDiv, e);
+                if (!isMultiSelectMode) {
+                    hideFloatingEmojiBar();
+                    showFloatingReactions(msg, msgDiv, e);
+                }
             });
 
             let pressTimer;
             let isTouchMoved = false;
+            let lastTapTime = 0;
+            let isDoubleTap = false;
+
             msgDiv.addEventListener('touchstart', (e) => {
                 isTouchMoved = false;
+                if (isMultiSelectMode) return;
+
+                const now = Date.now();
+                if (now - lastTapTime < 350 && !msg.deletedForEveryone && !e.target.closest('button, .audio-play-btn, .deleted-msg-quick-del-btn, .image-action-btn, a')) {
+                    // Duplo toque detectado no mobile: abre reações e evita acionar a barra de ações
+                    isDoubleTap = true;
+                    if (pressTimer) clearTimeout(pressTimer);
+                    hideFloatingReactions();
+                    showFloatingEmojiBar(msg, msgDiv, e.touches ? e.touches[0] : e);
+                    lastTapTime = 0;
+                    return;
+                }
+                lastTapTime = now;
+                isDoubleTap = false;
+
                 pressTimer = setTimeout(() => {
-                    if (!isMultiSelectMode && !isTouchMoved) {
-                        showFloatingReactions(msg, msgDiv, e.touches[0]);
+                    if (!isMultiSelectMode && !isTouchMoved && !isDoubleTap) {
+                        hideFloatingEmojiBar();
+                        showFloatingReactions(msg, msgDiv, e.touches ? e.touches[0] : e);
                     }
                 }, 450);
             }, { passive: true });
+
             msgDiv.addEventListener('touchmove', () => {
                 isTouchMoved = true;
-                clearTimeout(pressTimer);
+                if (pressTimer) clearTimeout(pressTimer);
             }, { passive: true });
-            msgDiv.addEventListener('touchend', () => clearTimeout(pressTimer));
-            msgDiv.addEventListener('touchcancel', () => clearTimeout(pressTimer));
+
+            msgDiv.addEventListener('touchend', () => {
+                if (pressTimer) clearTimeout(pressTimer);
+                if (isDoubleTap) {
+                    setTimeout(() => { isDoubleTap = false; }, 100);
+                }
+            });
+
+            msgDiv.addEventListener('touchcancel', () => {
+                if (pressTimer) clearTimeout(pressTimer);
+                isDoubleTap = false;
+            });
 
             const audioUi = msgDiv.querySelector('.audio-player-ui');
             const speedBtn = msgDiv.querySelector('.audio-speed-btn');
@@ -13885,6 +13936,8 @@ function showFloatingReactions(msg, el, eventCoord) {
     activeSelectedMsg = msg;
     activeSelectedMsgEl = el;
 
+    hideFloatingEmojiBar();
+
     const bar = document.getElementById('floating-reaction-bar');
     if (!bar) return;
 
@@ -13895,8 +13948,9 @@ function showFloatingReactions(msg, el, eventCoord) {
     const divider = document.getElementById('msg-action-divider') || bar.querySelector('.msg-action-divider');
     const deletedHint = document.getElementById('floating-bar-deleted-hint');
 
-    if (pill) pill.style.display = isDeleted ? 'none' : 'flex';
-    if (divider) divider.style.display = isDeleted ? 'none' : 'block';
+    // Emojis e divisor removidos da barra de ações (exclusivos do duplo clique)
+    if (pill) pill.style.display = 'none';
+    if (divider) divider.style.display = 'none';
     if (deletedHint) deletedHint.style.display = isDeleted ? 'inline-flex' : 'none';
 
     const starBtn = document.getElementById('action-star-btn');
@@ -13957,9 +14011,49 @@ function hideFloatingReactions() {
     document.getElementById('floating-reaction-bar')?.classList.remove('active');
 }
 
+function showFloatingEmojiBar(msg, el, eventCoord) {
+    if (!msg || !el || msg.deletedForEveryone) return;
+    activeSelectedMsg = msg;
+    activeSelectedMsgEl = el;
+
+    hideFloatingReactions();
+
+    const bar = document.getElementById('floating-emoji-bar');
+    if (!bar) return;
+
+    const pill = document.getElementById('emoji-reaction-pill') || bar.querySelector('.emoji-reaction-pill');
+    if (pill) pill.style.display = 'flex';
+
+    const rect = (el && typeof el.getBoundingClientRect === 'function') ? el.getBoundingClientRect() : { top: 100, bottom: 130 };
+    const appEl = document.querySelector('.app-container');
+    const containerRect = (appEl && typeof appEl.getBoundingClientRect === 'function') ? appEl.getBoundingClientRect() : { top: 0, bottom: 800 };
+
+    let topPos = rect.top - containerRect.top - 52;
+    if (topPos < 60) topPos = rect.bottom - containerRect.top + 10;
+
+    bar.style.top = `${topPos}px`;
+    bar.style.left = `50%`;
+    bar.style.transform = `translateX(-50%)`;
+    bar.style.display = 'flex';
+    bar.classList.add('active');
+
+    if ("vibrate" in navigator) navigator.vibrate(25);
+}
+
+function hideFloatingEmojiBar() {
+    const bar = document.getElementById('floating-emoji-bar');
+    if (bar) {
+        bar.classList.remove('active');
+        bar.style.display = 'none';
+    }
+}
+
 document.addEventListener('click', (e) => {
     if (!e.target.closest('#floating-reaction-bar') && !e.target.closest('.message')) {
         hideFloatingReactions();
+    }
+    if (!e.target.closest('#floating-emoji-bar') && !e.target.closest('.message')) {
+        hideFloatingEmojiBar();
     }
     if (!e.target.closest('#chat-options-menu-btn') && !e.target.closest('#chat-dropdown-menu')) {
         document.getElementById('chat-dropdown-menu')?.classList.remove('active');
@@ -13984,6 +14078,7 @@ document.querySelectorAll('.reaction-emoji').forEach(span => {
 
             await updateDoc(msgRef, { reactions: currentReactions });
             playSound(clickSound);
+            hideFloatingEmojiBar();
             hideFloatingReactions();
         }
     });
@@ -18249,7 +18344,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.187';
+export const CURRENT_APP_VERSION = '1.0.188';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -28291,6 +28386,7 @@ function closeChat() {
     cancelReply();
     cancelEditMessage();
     hideFloatingReactions();
+    hideFloatingEmojiBar();
     cleanupActiveGroupListeners();
     if (activeContactActivityTimer) {
         clearTimeout(activeContactActivityTimer);
@@ -29872,6 +29968,14 @@ export function closeTopmostActiveLayer() {
         return true;
     }
 
+    const emojiBar = document.getElementById('floating-emoji-bar');
+    if (emojiBar && (emojiBar.style.display === 'flex' || (emojiBar.classList && emojiBar.classList.contains('active')))) {
+        if (typeof hideFloatingEmojiBar === 'function') hideFloatingEmojiBar();
+        emojiBar.style.display = 'none';
+        if (emojiBar.classList) emojiBar.classList.remove('active');
+        return true;
+    }
+
     const floatingBar = document.getElementById('floating-reaction-bar');
     if (floatingBar && (floatingBar.style.display === 'flex' || (floatingBar.classList && floatingBar.classList.contains('active')) || (typeof isMessageActionActive !== 'undefined' && isMessageActionActive))) {
         if (typeof hideFloatingReactions === 'function') hideFloatingReactions();
@@ -30553,6 +30657,8 @@ if (typeof window !== 'undefined') {
     window.openDeleteModal = openDeleteModal;
     window.showFloatingReactions = showFloatingReactions;
     window.hideFloatingReactions = hideFloatingReactions;
+    window.showFloatingEmojiBar = showFloatingEmojiBar;
+    window.hideFloatingEmojiBar = hideFloatingEmojiBar;
     window.enterSelectionMode = enterSelectionMode;
     window.toggleMessageSelection = toggleMessageSelection;
     window.exitSelectionMode = exitSelectionMode;

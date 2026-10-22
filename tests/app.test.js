@@ -11614,14 +11614,14 @@ test('Organização em Linha Única dos Títulos Mensagens Favoritas e Dados da 
   const css = fs.readFileSync('public/style.css', 'utf8');
   const html = fs.readFileSync('public/index.html', 'utf8');
 
-  // 1. Integridade de Versionamento (v1.0.187)
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.187', 'script.js deve ter versão 1.0.187');
+  // 1. Integridade de Versionamento (v1.0.187+)
+  assert.ok(parseInt(win.CURRENT_APP_VERSION.split('.')[2], 10) >= 187, 'script.js deve ter versão >= 1.0.187');
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
-  assert.strictEqual(versionJson.version, '1.0.187', 'version.json deve ter versão 1.0.187');
-  assert.ok(html.includes('script.js?v=1.0.187'), 'index.html deve referenciar script.js?v=1.0.187');
-  assert.ok(html.includes('style.css?v=1.0.187'), 'index.html deve referenciar style.css?v=1.0.187');
+  assert.ok(parseInt(versionJson.version.split('.')[2], 10) >= 187, 'version.json deve ter versão >= 1.0.187');
+  assert.ok(html.includes(`script.js?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar script.js');
+  assert.ok(html.includes(`style.css?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar style.css');
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
-  assert.ok(swContent.includes('vortex-vip-v1.0.187'), 'sw.js deve conter cache vortex-vip-v1.0.187');
+  assert.ok(swContent.includes(`vortex-vip-v${win.CURRENT_APP_VERSION}`), 'sw.js deve conter cache');
 
   // 2. CSS de Linha Única nos Títulos e Prevenção de Quebra
   assert.ok(css.includes('.starred-messages-card .modal-title'), 'style.css deve estilizar título de mensagens favoritas');
@@ -11638,6 +11638,79 @@ test('Organização em Linha Única dos Títulos Mensagens Favoritas e Dados da 
   const msgInfoModal = env.elements['message-info-modal'];
   assert.ok(msgInfoModal, '#message-info-modal deve existir');
   assert.ok(html.includes('Dados da Mensagem'), 'index.html deve conter título Dados da Mensagem');
+});
+
+test('Reações com Emojis Exclusivas no Duplo Clique e Remoção da Barra de Ações (v1.0.188)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+  const css = fs.readFileSync('public/style.css', 'utf8');
+  const html = fs.readFileSync('public/index.html', 'utf8');
+
+  // 1. Integridade de Versionamento (v1.0.188)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.188', 'script.js deve ter versão 1.0.188');
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
+  assert.strictEqual(versionJson.version, '1.0.188', 'version.json deve ter versão 1.0.188');
+  assert.ok(html.includes('script.js?v=1.0.188'), 'index.html deve referenciar script.js?v=1.0.188');
+  assert.ok(html.includes('style.css?v=1.0.188'), 'index.html deve referenciar style.css?v=1.0.188');
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+  assert.ok(swContent.includes('vortex-vip-v1.0.188'), 'sw.js deve conter cache vortex-vip-v1.0.188');
+
+  // 2. Integridade dos Elementos no DOM e CSS
+  const emojiBar = env.elements['floating-emoji-bar'];
+  const actionBar = env.elements['floating-reaction-bar'];
+  const emojiPill = env.elements['emoji-reaction-pill'];
+
+  assert.ok(emojiBar, '#floating-emoji-bar deve existir no DOM');
+  assert.ok(actionBar, '#floating-reaction-bar deve existir no DOM');
+  assert.ok(emojiPill, '#emoji-reaction-pill deve existir no DOM');
+
+  assert.ok(css.includes('.floating-emoji-bar'), 'style.css deve conter estilos de .floating-emoji-bar');
+  assert.ok(css.includes('.floating-emoji-bar.active'), 'style.css deve conter .floating-emoji-bar.active');
+  assert.ok(css.includes('msg-action-divider'), 'style.css deve conter .msg-action-divider');
+
+  // 3. Mock de Mensagem e Elemento
+  const currentUser = { uid: 'user_reaction_me', name: 'Tester Emojis', email: 'emoji@vortex.vip' };
+  win.setCurrentUser(currentUser);
+  win.setCurrentProfile(currentUser);
+
+  const testMsg = {
+    id: 'msg-test-reaction-1',
+    senderUid: 'contact_friend_1',
+    text: 'Mensagem de teste para reações com emojis',
+    type: 'text',
+    createdAt: Date.now()
+  };
+
+  const mockMsgEl = env.makeMockElement('div');
+  mockMsgEl.getBoundingClientRect = () => ({ top: 200, bottom: 240, left: 20, right: 220, width: 200, height: 40 });
+
+  // 4. Testar Duplo Clique / Exibição Exclusiva da Barra de Emojis
+  win.showFloatingEmojiBar(testMsg, mockMsgEl);
+  assert.ok(emojiBar.classList.contains('active'), '#floating-emoji-bar deve ter classe active');
+  assert.strictEqual(emojiBar.style.display, 'flex', '#floating-emoji-bar deve ter display flex');
+  assert.strictEqual(emojiPill.style.display, 'flex', '#emoji-reaction-pill deve ter display flex');
+  assert.ok(!actionBar.classList.contains('active'), '#floating-reaction-bar de ações NÃO deve estar ativa ao abrir emojis');
+
+  // 5. Testar Ocultação da Barra de Emojis
+  win.hideFloatingEmojiBar();
+  assert.ok(!emojiBar.classList.contains('active'), '#floating-emoji-bar deve perder classe active ao ocultar');
+  assert.strictEqual(emojiBar.style.display, 'none', '#floating-emoji-bar deve ter display none');
+
+  // 6. Testar Pressionar / Barra de Ações (Sem os Emojis!)
+  win.showFloatingReactions(testMsg, mockMsgEl);
+  assert.ok(actionBar.classList.contains('active'), '#floating-reaction-bar deve estar ativa ao pressionar');
+  assert.ok(!emojiBar.classList.contains('active'), '#floating-emoji-bar deve estar fechada ao abrir ações');
+  assert.strictEqual(emojiPill.style.display, 'none', '#emoji-reaction-pill deve estar OCULTO na barra de ações');
+
+  // Botões de ação devem estar disponíveis normalmente na barra de ações
+  const actionSelectBtn = env.elements['action-select-btn'];
+  const actionDeleteBtn = env.elements['action-delete-btn'];
+  assert.strictEqual(actionSelectBtn.style.display, 'inline-flex', 'Botão selecionar deve estar visível');
+  assert.strictEqual(actionDeleteBtn.style.display, 'inline-flex', 'Botão apagar deve estar visível');
+
+  // 7. Ocultar Ações
+  win.hideFloatingReactions();
+  assert.ok(!actionBar.classList.contains('active'), '#floating-reaction-bar deve fechar');
 });
 
 

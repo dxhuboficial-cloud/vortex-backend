@@ -1949,15 +1949,46 @@ header h1 span {
     z-index: 5;
 }
 
-/* Barra de Emojis Compacta */
+/* Barra Flutuante Exclusiva de Emojis (Ativada via Duplo Clique na Mensagem) */
+.floating-emoji-bar {
+    position: absolute;
+    background: rgba(18, 18, 22, 0.98);
+    -webkit-backdrop-filter: blur(25px);
+    backdrop-filter: blur(25px);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 32px;
+    padding: 6px 14px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 12px 34px rgba(0, 0, 0, 0.85), 0 0 16px rgba(255, 240, 31, 0.12);
+    z-index: 1005;
+    max-width: 92vw;
+    animation: emojiBarPop 0.18s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.floating-emoji-bar.active { display: flex !important; }
+
+@keyframes emojiBarPop {
+    0% {
+        opacity: 0;
+        transform: translateX(-50%) scale(0.85);
+    }
+    100% {
+        opacity: 1;
+        transform: translateX(-50%) scale(1);
+    }
+}
+
+/* Barra de Ações da Mensagem (Ao pressionar / menu de contexto) */
 .floating-reaction-bar {
     position: absolute;
-    background: rgba(18, 18, 18, 0.98);
+    background: rgba(18, 18, 22, 0.98);
     -webkit-backdrop-filter: blur(25px);
     backdrop-filter: blur(25px);
     border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 30px;
-    padding: 4px 10px;
+    padding: 5px 12px;
     display: none;
     align-items: center;
     gap: 6px;
@@ -1970,27 +2001,30 @@ header h1 span {
 
 .emoji-reaction-pill {
     display: flex;
-    gap: 6px;
+    gap: 8px;
     overflow-x: auto;
     scrollbar-width: none;
-    max-width: 200px;
+    max-width: 280px;
     padding: 2px 4px;
+    align-items: center;
 }
 
 .emoji-reaction-pill::-webkit-scrollbar { display: none; }
 
 .reaction-emoji {
-    font-size: 1.15rem;
+    font-size: 1.32rem;
     cursor: pointer;
-    transition: transform 0.15s ease;
+    transition: transform 0.16s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     -webkit-user-select: none;
     user-select: none;
     flex-shrink: 0;
-    padding: 2px 4px;
+    padding: 2px 6px;
+    border-radius: 50%;
 }
 
-.reaction-emoji:hover { transform: scale(1.3); }
-.msg-action-divider { width: 1px; height: 20px; background: rgba(255, 255, 255, 0.15); margin: 0 2px; }
+.reaction-emoji:hover { transform: scale(1.35); }
+.reaction-emoji:active { transform: scale(0.92); }
+.msg-action-divider { display: none !important; width: 0; height: 0; margin: 0; }
 .msg-action-icons { display: flex; gap: 4px; }
 
 .msg-action-item {

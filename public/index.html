@@ -4,20 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.187">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.187">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.187">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.187">
-    <link rel="stylesheet" href="style.css?v=1.0.187">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.188">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.188">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.188">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.188">
+    <link rel="stylesheet" href="style.css?v=1.0.188">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.187">
+    <link rel="manifest" href="manifest.json?v=1.0.188">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.187">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.187">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.188">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.188">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -628,11 +628,8 @@
             </footer>
         </div>
 
-        <!-- Barra Flutuante de Reações com Emojis Compacta -->
-        <div id="floating-reaction-bar" class="floating-reaction-bar">
-            <span id="floating-bar-deleted-hint" class="deleted-action-label" style="display: none;">
-                <i data-lucide="info" style="width: 14px; height: 14px;"></i> Aviso apagado
-            </span>
+        <!-- Barra Flutuante de Reações com Emojis (Exclusiva do Duplo Clique na Mensagem) -->
+        <div id="floating-emoji-bar" class="floating-emoji-bar" style="display: none;">
             <div id="emoji-reaction-pill" class="emoji-reaction-pill">
                 <span class="reaction-emoji" data-emoji="👍">👍</span>
                 <span class="reaction-emoji" data-emoji="❤️">❤️</span>
@@ -643,7 +640,14 @@
                 <span class="reaction-emoji" data-emoji="🔥">🔥</span>
                 <span class="reaction-emoji" data-emoji="⚡">⚡</span>
             </div>
-            <div id="msg-action-divider" class="msg-action-divider"></div>
+        </div>
+
+        <!-- Barra Flutuante de Ações da Mensagem (Ao pressionar / menu de contexto) -->
+        <div id="floating-reaction-bar" class="floating-reaction-bar">
+            <span id="floating-bar-deleted-hint" class="deleted-action-label" style="display: none;">
+                <i data-lucide="info" style="width: 14px; height: 14px;"></i> Aviso apagado
+            </span>
+            <div id="msg-action-divider" class="msg-action-divider" style="display: none;"></div>
             <div class="msg-action-icons">
                 <div class="msg-action-item" id="action-select-btn" title="Selecionar" aria-label="Selecionar">
                     <i data-lucide="check-square"></i>
@@ -3843,6 +3847,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.187" defer></script>
+    <script type="module" src="script.js?v=1.0.188" defer></script>
 </body>
 </html>
