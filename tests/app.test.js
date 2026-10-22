@@ -10775,19 +10775,19 @@ test('Correção de Abertura do Catálogo no Perfil de Contato sem Erro de Null 
   assert.ok(catalogOverlay.classList.contains('active'), '#catalog-overlay deve ter classe active');
 });
 
-test('Histórico de Ligações Dentro das Conversas (v1.0.179)', async () => {
+test('Histórico de Ligações Dentro das Conversas e Responsividade Mobile (v1.0.180)', async () => {
   const env = createTestEnvironment();
   const win = env.sandbox.window;
 
-  // 1. Integridade de Versionamento (v1.0.179)
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.179', 'script.js deve ter versão 1.0.179');
+  // 1. Integridade de Versionamento (v1.0.180)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.180', 'script.js deve ter versão 1.0.180');
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
-  assert.strictEqual(versionJson.version, '1.0.179', 'version.json deve ter versão 1.0.179');
+  assert.strictEqual(versionJson.version, '1.0.180', 'version.json deve ter versão 1.0.180');
   const htmlContent = fs.readFileSync('public/index.html', 'utf8');
-  assert.ok(htmlContent.includes('script.js?v=1.0.179'), 'index.html deve referenciar script.js?v=1.0.179');
-  assert.ok(htmlContent.includes('style.css?v=1.0.179'), 'index.html deve referenciar style.css?v=1.0.179');
+  assert.ok(htmlContent.includes('script.js?v=1.0.180'), 'index.html deve referenciar script.js?v=1.0.180');
+  assert.ok(htmlContent.includes('style.css?v=1.0.180'), 'index.html deve referenciar style.css?v=1.0.180');
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
-  assert.ok(swContent.includes('vortex-vip-v1.0.179'), 'sw.js deve ter cache vortex-vip-v1.0.179');
+  assert.ok(swContent.includes('vortex-vip-v1.0.180'), 'sw.js deve ter cache vortex-vip-v1.0.180');
 
   // 2. Elementos no DOM
   assert.ok(env.elements['view-call-history-trigger'], '#view-call-history-trigger deve existir no menu dropdown');
@@ -10921,13 +10921,31 @@ test('Histórico de Ligações Dentro das Conversas (v1.0.179)', async () => {
   assert.strictEqual(modal.style.display, 'none', 'Modal deve estar fechado');
   assert.strictEqual(modal.getAttribute('aria-hidden'), 'true', 'aria-hidden deve ser true');
 
-  // 7. Integridade do CSS
+  // 7. Integridade do CSS e Responsividade Mobile
   const css = fs.readFileSync('public/style.css', 'utf8');
   assert.ok(css.includes('.chat-call-card'), 'style.css deve conter .chat-call-card');
   assert.ok(css.includes('.call-status-completed'), 'style.css deve conter .call-status-completed');
   assert.ok(css.includes('.call-status-missed'), 'style.css deve conter .call-status-missed');
   assert.ok(css.includes('.call-history-card'), 'style.css deve conter .call-history-card');
   assert.ok(css.includes('.chat-call-return-btn'), 'style.css deve conter .chat-call-return-btn');
+  assert.ok(css.includes('@media (max-width: 480px)'), 'style.css deve conter media query para mobile');
+  assert.ok(css.includes('#call-history-modal.custom-modal-overlay'), 'style.css deve conter padding adaptado para o overlay do modal');
+  assert.ok(css.includes('width: 98% !important'), 'style.css deve garantir largura responsiva no celular');
+
+  // 8. Teste de renderização do item no histórico com formatação limpa de data
+  const testCalls = [{
+    id: 'call_test_render',
+    callerUid: userMe.uid,
+    calleeUid: userOther.uid,
+    callType: 'video',
+    callStatus: 'missed',
+    createdAt: new Date('2026-10-21T21:07:00').getTime()
+  }];
+  await win.renderCallHistoryList(testCalls, 'all');
+  const renderedHTML = content.innerHTML;
+  assert.ok(renderedHTML.includes('Chamada de vídeo não atendida'), 'Deve conter título formatado');
+  assert.ok(renderedHTML.includes('Não atendida'), 'Deve conter status Não atendida');
+  assert.ok(renderedHTML.includes('21/10 às 21:07'), 'Deve conter data formatada sem quebra');
 });
 
 

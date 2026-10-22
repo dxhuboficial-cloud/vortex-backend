@@ -18033,7 +18033,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.179';
+export const CURRENT_APP_VERSION = '1.0.180';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -21418,7 +21418,7 @@ handleFileUpload(document.getElementById('chat-file-audio'), 'audio');
 handleFileUpload(document.getElementById('chat-file-doc'), 'file');
 
 /* ==========================================================================
-   HISTÓRICO DE LIGAÇÕES DENTRO DAS CONVERSAS & CHAMADAS WEBRTC P2P (v1.0.179)
+   HISTÓRICO DE LIGAÇÕES DENTRO DAS CONVERSAS & CHAMADAS WEBRTC P2P (v1.0.180)
    ========================================================================== */
 
 export function formatCallDuration(seconds) {
@@ -21603,15 +21603,20 @@ export function closeCallHistoryModal() {
     playSound(clickSound);
 }
 
-export async function renderCallHistoryList(filter = 'all') {
+export async function renderCallHistoryList(filter = 'all', customCalls = null) {
     const content = document.getElementById('call-history-content');
     if (!content) return;
 
+    if (Array.isArray(filter)) {
+        customCalls = filter;
+        filter = 'all';
+    }
+
     const chatId = getActiveChatId();
-    let callMessages = [];
+    let callMessages = Array.isArray(customCalls) ? [...customCalls] : [];
 
     // 1. Mensagens em memória da conversa atual
-    if (typeof currentChatMessagesMap !== 'undefined' && currentChatMessagesMap && currentChatMessagesMap.size > 0) {
+    if (callMessages.length === 0 && typeof currentChatMessagesMap !== 'undefined' && currentChatMessagesMap && currentChatMessagesMap.size > 0) {
         currentChatMessagesMap.forEach(msg => {
             if (msg.type === 'call') {
                 callMessages.push(msg);
@@ -21695,11 +21700,11 @@ export async function renderCallHistoryList(filter = 'all') {
             if (isMe) {
                 iconName = isVideo ? 'video' : 'phone-outgoing';
                 title = isVideo ? 'Chamada de vídeo efetuada' : 'Chamada de voz efetuada';
-                statusLabel = `Atendida • ${durFormatted}`;
+                statusLabel = durFormatted ? `Atendida (${durFormatted})` : 'Atendida';
             } else {
                 iconName = isVideo ? 'video' : 'phone-incoming';
                 title = isVideo ? 'Chamada de vídeo recebida' : 'Chamada de voz recebida';
-                statusLabel = `Atendida • ${durFormatted}`;
+                statusLabel = durFormatted ? `Atendida (${durFormatted})` : 'Atendida';
             }
         } else if (status === 'missed') {
             iconClass = 'icon-missed';
@@ -21718,9 +21723,19 @@ export async function renderCallHistoryList(filter = 'all') {
             statusLabel = 'Recusada';
         }
 
-        const dateStr = call.createdAt ? new Date(call.createdAt).toLocaleString('pt-BR', {
-            day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
-        }) : '';
+        let dateStr = '';
+        if (call.createdAt) {
+            try {
+                const d = new Date(call.createdAt);
+                if (!isNaN(d.getTime())) {
+                    const day = String(d.getDate()).padStart(2, '0');
+                    const month = String(d.getMonth() + 1).padStart(2, '0');
+                    const hours = String(d.getHours()).padStart(2, '0');
+                    const mins = String(d.getMinutes()).padStart(2, '0');
+                    dateStr = `${day}/${month} às ${hours}:${mins}`;
+                }
+            } catch (_) {}
+        }
 
         return `
             <div class="call-history-item" data-call-id="${call.id || ''}">
@@ -21731,9 +21746,9 @@ export async function renderCallHistoryList(filter = 'all') {
                     <div class="call-history-item-details">
                         <span class="call-history-item-title">${escapeHTML(title)}</span>
                         <div class="call-history-item-meta">
-                            <span>${dateStr}</span>
+                            <span>${escapeHTML(dateStr)}</span>
                             <span>•</span>
-                            <span class="call-history-item-duration status-${status}">${statusLabel}</span>
+                            <span class="call-history-item-duration status-${status}">${escapeHTML(statusLabel)}</span>
                         </div>
                     </div>
                 </div>
@@ -29776,7 +29791,7 @@ if (typeof window !== 'undefined') {
     window.closeShippingModal = closeShippingModal;
     window.updateShippingModalUI = updateShippingModalUI;
     window.calculateCartShipping = calculateCartShipping;
-    // Histórico de Ligações Dentro das Conversas (v1.0.179)
+    // Histórico de Ligações Dentro das Conversas (v1.0.180)
     window.formatCallDuration = formatCallDuration;
     window.formatCallDurationDigital = formatCallDurationDigital;
     window.buildCallCardHTML = buildCallCardHTML;
