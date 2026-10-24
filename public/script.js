@@ -18543,7 +18543,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.195';
+export const CURRENT_APP_VERSION = '1.0.196';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -23656,6 +23656,11 @@ function resetPostComposer() {
     if (postPreview) postPreview.innerHTML = '';
     if (postPreviewBox) postPreviewBox.classList.add('hidden');
     if (postCaptionInput) postCaptionInput.value = '';
+    const postCaptionCounter = document.getElementById('post-caption-char-count');
+    if (postCaptionCounter) {
+        postCaptionCounter.innerText = '0/500';
+        postCaptionCounter.classList.remove('limit-reached');
+    }
 
     const postTitleInp = document.getElementById('post-title-input');
     if (postTitleInp) postTitleInp.value = '';
@@ -24647,7 +24652,7 @@ export const PERSONAL_POST_CATEGORIES = [
     'Música',
     'Desafio',
     'Comedia',
-    'Dessinha',
+    'Danssinha',
     'Figura',
     'Destaques',
     'Esportes',
@@ -24742,6 +24747,27 @@ export function initBusinessPostControls() {
 export const initBusinessCategoryControls = initBusinessPostControls;
 
 export const MAX_POST_HASHTAGS = 3;
+export const MAX_POST_CAPTION_LENGTH = 500;
+
+export function enforcePostCaptionLimit(captionEl = document.getElementById('post-caption-input')) {
+    if (!captionEl) return { text: '', length: 0, wasTruncated: false };
+    const raw = String(captionEl.value || '');
+    const wasTruncated = raw.length > MAX_POST_CAPTION_LENGTH;
+    if (wasTruncated) {
+        captionEl.value = raw.slice(0, MAX_POST_CAPTION_LENGTH);
+    }
+    const currentLen = captionEl.value.length;
+    const counterEl = document.getElementById('post-caption-char-count');
+    if (counterEl) {
+        counterEl.innerText = `${currentLen}/${MAX_POST_CAPTION_LENGTH}`;
+        counterEl.classList.toggle('limit-reached', currentLen >= MAX_POST_CAPTION_LENGTH);
+    }
+    return {
+        text: captionEl.value,
+        length: currentLen,
+        wasTruncated
+    };
+}
 
 export function parsePostHashtags(raw = '') {
     if (!raw || typeof raw !== 'string') {
@@ -24871,6 +24897,19 @@ export function initPostTitleAndHashtagsControls() {
                 titleCount.innerText = `${titleInp.value.length}/80`;
             }
         });
+    }
+
+    const captionInp = document.getElementById('post-caption-input');
+    if (captionInp && !captionInp.dataset.boundCaptionLimit) {
+        captionInp.dataset.boundCaptionLimit = 'true';
+        captionInp.setAttribute('maxlength', String(MAX_POST_CAPTION_LENGTH));
+        captionInp.addEventListener('input', () => {
+            enforcePostCaptionLimit(captionInp);
+        });
+        captionInp.addEventListener('change', () => {
+            enforcePostCaptionLimit(captionInp);
+        });
+        enforcePostCaptionLimit(captionInp);
     }
 
     const hashtagsInp = document.getElementById('post-hashtags-input');
@@ -26767,7 +26806,7 @@ document.getElementById('publish-post-btn')?.addEventListener('click', async () 
                 isTrimmed: !!(pendingPostMediaInfo && pendingPostMediaInfo.isTrimmed) || !!(file && file.isTrimmed),
                 videoDuration: isVideo ? (pendingPostMediaInfo?.duration || (file && file.duration) || 0) : null,
                 title: document.getElementById('post-title-input')?.value?.trim() || '',
-                caption: postCaptionInput?.value?.trim() || '',
+                caption: (postCaptionInput?.value || '').slice(0, MAX_POST_CAPTION_LENGTH).trim(),
                 hashtags: hashtagValidation.hashtags.slice(0, MAX_POST_HASHTAGS),
                 isAd: isPostAd,
                 contentType: isPostAd ? 'ad' : 'normal',
@@ -31798,6 +31837,8 @@ if (typeof window !== 'undefined') {
     window.updateFeedFavoritesBadge = updateFeedFavoritesBadge;
     // Título do Post e Hashtags com Limite de 3 # e Bloqueio (v1.0.192)
     window.MAX_POST_HASHTAGS = MAX_POST_HASHTAGS;
+    window.MAX_POST_CAPTION_LENGTH = MAX_POST_CAPTION_LENGTH;
+    window.enforcePostCaptionLimit = enforcePostCaptionLimit;
     window.parsePostHashtags = parsePostHashtags;
     window.enforcePostHashtagsLimit = enforcePostHashtagsLimit;
     window.renderPostHashtagsChips = renderPostHashtagsChips;

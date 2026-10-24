@@ -12000,7 +12000,7 @@ test('Categoria do Post Exclusiva para Conta Pessoal (v1.0.193)', async () => {
   const requiredCategories = [
     'Entretenimento', 'Edição', 'Looks', 'Moda', 'Setup', 'Jogos',
     'Natureza', 'Estilos', 'Animais', 'Vida', 'Qualidade', 'Música',
-    'Desafio', 'Comedia', 'Dessinha', 'Figura', 'Destaques'
+    'Desafio', 'Comedia', 'Danssinha', 'Figura', 'Destaques'
   ];
   const personalCats = Array.from(win.PERSONAL_POST_CATEGORIES || []);
   for (const cat of requiredCategories) {
@@ -12171,14 +12171,9 @@ test('Sistema de Categoria nos Story Exclusivo para Conta Pessoal e Usuários VI
   const css = fs.readFileSync('public/style.css', 'utf8');
   const html = fs.readFileSync('public/index.html', 'utf8');
 
-  // 1. Integridade de Versionamento (v1.0.195)
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.195', 'script.js deve ter versão 1.0.195');
-  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
-  assert.strictEqual(versionJson.version, '1.0.195', 'version.json deve ter versão 1.0.195');
-  assert.ok(html.includes('script.js?v=1.0.195'), 'index.html deve referenciar script.js?v=1.0.195');
-  assert.ok(html.includes('style.css?v=1.0.195'), 'index.html deve referenciar style.css?v=1.0.195');
-  const swContent = fs.readFileSync('public/sw.js', 'utf8');
-  assert.ok(swContent.includes('vortex-vip-v1.0.195'), 'sw.js deve conter cache vortex-vip-v1.0.195');
+  // 1. Integridade de Versionamento (v1.0.195+)
+  const verParts195 = String(win.CURRENT_APP_VERSION || '').split('.').map(Number);
+  assert.ok(verParts195[2] >= 195, 'script.js deve ter versão >= 1.0.195');
 
   // 2. Elementos no DOM e Regras CSS
   const storyCatSection = env.elements['story-personal-category-section'];
@@ -12281,6 +12276,56 @@ test('Sistema de Categoria nos Story Exclusivo para Conta Pessoal e Usuários VI
 
   win.closeStoryViewer();
   assert.strictEqual(storyCategoryBadge.style.display, 'none', '#story-category-badge deve ocultar ao fechar o Story Viewer');
+});
+
+test('Limite de 500 Caracteres na Legenda dos Posts e Correção da Categoria Danssinha (v1.0.196)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+  const html = fs.readFileSync('public/index.html', 'utf8');
+
+  // 1. Integridade de Versionamento (v1.0.196)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.196', 'script.js deve ter versão 1.0.196');
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
+  assert.strictEqual(versionJson.version, '1.0.196', 'version.json deve ter versão 1.0.196');
+  assert.ok(html.includes('script.js?v=1.0.196'), 'index.html deve referenciar script.js?v=1.0.196');
+  assert.ok(html.includes('style.css?v=1.0.196'), 'index.html deve referenciar style.css?v=1.0.196');
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+  assert.ok(swContent.includes('vortex-vip-v1.0.196'), 'sw.js deve conter cache vortex-vip-v1.0.196');
+
+  // 2. Correção da Categoria: "🎨 Dessinha" -> "💃 Danssinha"
+  const personalCats = Array.from(win.PERSONAL_POST_CATEGORIES || []);
+  assert.ok(personalCats.includes('Danssinha'), 'PERSONAL_POST_CATEGORIES deve incluir "Danssinha"');
+  assert.ok(!personalCats.includes('Dessinha'), 'PERSONAL_POST_CATEGORIES não deve mais incluir "Dessinha"');
+  assert.ok(html.includes('<option value="Danssinha">💃 Danssinha</option>'), 'index.html deve ter <option value="Danssinha">💃 Danssinha</option>');
+  assert.ok(!html.includes('Dessinha'), 'index.html não deve mais conter "Dessinha"');
+
+  // 3. Limite Máximo de 500 Caracteres na Legenda dos Posts (#post-caption-input)
+  assert.strictEqual(win.MAX_POST_CAPTION_LENGTH, 500, 'MAX_POST_CAPTION_LENGTH deve ser 500');
+  const captionInput = env.elements['post-caption-input'];
+  const captionCounter = env.elements['post-caption-char-count'];
+  assert.ok(captionInput, '#post-caption-input deve existir no DOM');
+  assert.ok(captionCounter, '#post-caption-char-count deve existir no DOM');
+  assert.strictEqual(captionInput.getAttribute('maxlength'), '500', '#post-caption-input deve ter maxlength="500"');
+  assert.strictEqual(captionCounter.innerText, '0/500', 'Contador da legenda deve iniciar em 0/500');
+
+  // 4. Atualização do Contador e Truncamento Automático acima de 500 caracteres
+  captionInput.value = 'Legenda curta de teste VORTEX VIP!';
+  captionInput.dispatchEvent({ type: 'input' });
+  assert.strictEqual(captionCounter.innerText, '34/500', 'Contador deve atualizar para 34/500');
+  assert.ok(!captionCounter.classList.contains('limit-reached'), 'Não deve marcar limit-reached abaixo de 500');
+
+  const over500Text = 'A'.repeat(620);
+  captionInput.value = over500Text;
+  captionInput.dispatchEvent({ type: 'input' });
+  assert.strictEqual(captionInput.value.length, 500, 'Texto acima de 500 caracteres deve ser truncado para 500');
+  assert.strictEqual(captionCounter.innerText, '500/500', 'Contador deve exibir 500/500 ao atingir o limite');
+  assert.ok(captionCounter.classList.contains('limit-reached'), 'Contador deve receber classe limit-reached em 500/500');
+
+  // 5. Reset do compositor deve zerar a legenda e o contador para 0/500
+  win.resetPostComposer();
+  assert.strictEqual(captionInput.value, '', 'resetPostComposer deve limpar #post-caption-input');
+  assert.strictEqual(captionCounter.innerText, '0/500', 'resetPostComposer deve restaurar #post-caption-char-count para 0/500');
+  assert.ok(!captionCounter.classList.contains('limit-reached'), 'resetPostComposer deve remover limit-reached do contador');
 });
 
 
