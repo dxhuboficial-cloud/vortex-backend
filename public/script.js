@@ -8259,6 +8259,11 @@ function closeStoryViewer() {
     if (previewIndicator) previewIndicator.style.display = 'none';
     const storyAdBadge = document.getElementById('story-ad-badge');
     if (storyAdBadge) storyAdBadge.style.display = 'none';
+    const storyCategoryBadge = document.getElementById('story-category-badge');
+    if (storyCategoryBadge) {
+        storyCategoryBadge.style.display = 'none';
+        storyCategoryBadge.textContent = '';
+    }
     const previewFooter = document.getElementById('story-preview-footer');
     if (previewFooter) previewFooter.style.display = 'none';
     const ctaContainer = document.getElementById('story-link-cta-container');
@@ -8358,6 +8363,19 @@ async function displayCurrentStory() {
         storyAdBadge.style.display = isAdStory ? 'inline-flex' : 'none';
         if (isAdStory && window.lucide && typeof window.lucide.createIcons === 'function') {
             window.lucide.createIcons();
+        }
+    }
+
+    // Etiqueta de Categoria do Story (Conta Pessoal / VIP Verificado - v1.0.195)
+    const storyCat = story.storyCategory || story.personalCategory || story.category || '';
+    const storyCategoryBadge = document.getElementById('story-category-badge');
+    if (storyCategoryBadge) {
+        if (storyCat && !isAdStory) {
+            storyCategoryBadge.textContent = storyCat;
+            storyCategoryBadge.style.display = 'inline-flex';
+        } else {
+            storyCategoryBadge.textContent = '';
+            storyCategoryBadge.style.display = 'none';
         }
     }
 
@@ -9077,7 +9095,105 @@ export function getStoryCtaIcon(actionText) {
     return map[actionText] || 'arrow-right';
 }
 
+export const PERSONAL_STORY_CATEGORIES = [
+    'Destaque',
+    'Story',
+    'VIP⚡',
+    'Vortex VIP⚡',
+    'Nuke do sistema',
+    'Melhor'
+];
+
+let selectedStoryPersonalCategory = '';
+
+export function isStoryCategoryVipEligible(profile = currentProfile) {
+    if (!profile) return false;
+    if (isBusinessAccount(profile)) return false;
+    if (profile.isVerified === false && !checkIsAdminUser(profile)) return false;
+    const isVip = checkIsVipUser(profile);
+    const isVerified = Boolean(profile.isVerified || profile.isVip || checkIsAdminUser(profile) || isVip);
+    return Boolean(isVip && isVerified);
+}
+
+export function resetStoryPersonalCategory() {
+    selectedStoryPersonalCategory = '';
+    const sel = document.getElementById('story-personal-category-select');
+    if (sel) sel.value = '';
+    if (typeof document !== 'undefined') {
+        document.querySelectorAll('.story-personal-category-chip').forEach(chip => {
+            chip.classList.remove('active');
+        });
+    }
+}
+
+export function updateStoryPersonalCategoryVisibility(profile = currentProfile) {
+    const sec = document.getElementById('story-personal-category-section');
+    const lockBanner = document.getElementById('story-personal-category-vip-lock-banner');
+    if (!sec) return;
+
+    const isStrictBusiness = isBusinessAccount(profile);
+    if (isStrictBusiness) {
+        sec.style.display = 'none';
+        resetStoryPersonalCategory();
+        return;
+    }
+
+    sec.style.display = 'flex';
+    const isEligible = isStoryCategoryVipEligible(profile);
+    sec.classList.toggle('vip-locked', !isEligible);
+    if (lockBanner) {
+        lockBanner.style.display = isEligible ? 'none' : 'flex';
+    }
+    if (!isEligible && selectedStoryPersonalCategory) {
+        resetStoryPersonalCategory();
+    }
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+    }
+}
+
+export function selectStoryPersonalCategory(category = '', profile = currentProfile) {
+    const cleanCat = String(category || '').trim();
+    if (!cleanCat) {
+        resetStoryPersonalCategory();
+        return { allowed: true, category: '', redirectedToPayment: false };
+    }
+
+    if (isBusinessAccount(profile)) {
+        resetStoryPersonalCategory();
+        showToast('Exclusivo Conta Pessoal', 'A categoria de Story está disponível apenas para contas pessoais.', 'red');
+        return { allowed: false, reason: 'business_account', redirectedToPayment: false };
+    }
+
+    if (!isStoryCategoryVipEligible(profile)) {
+        resetStoryPersonalCategory();
+        showToast('Exclusivo VIP com Verificado ⚡', 'As categorias de Story estão disponíveis apenas para Usuários VIP com verificado. Assine agora!', 'yellow');
+        if (typeof openVipPaymentModal === 'function') {
+            openVipPaymentModal();
+        }
+        return { allowed: false, reason: 'not_vip_verified', redirectedToPayment: true };
+    }
+
+    if (!PERSONAL_STORY_CATEGORIES.includes(cleanCat)) {
+        resetStoryPersonalCategory();
+        return { allowed: false, reason: 'invalid_category', redirectedToPayment: false };
+    }
+
+    selectedStoryPersonalCategory = cleanCat;
+    const sel = document.getElementById('story-personal-category-select');
+    if (sel) sel.value = cleanCat;
+
+    if (typeof document !== 'undefined') {
+        document.querySelectorAll('.story-personal-category-chip').forEach(chip => {
+            chip.classList.toggle('active', chip.dataset.storyCategory === cleanCat);
+        });
+    }
+
+    return { allowed: true, category: cleanCat, redirectedToPayment: false };
+}
+
 export function updateStatusBusinessLinkVisibility(profile = currentProfile) {
+    updateStoryPersonalCategoryVisibility(profile);
     const sec = document.getElementById('status-business-link-section');
     if (!sec) return;
     const isCompany = isBusinessAccount(profile) || isUserAdmin(currentUser, profile);
@@ -9170,6 +9286,44 @@ export function initStoryCaptionAndLinkControls() {
             if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
         });
     }
+
+    // Categoria do Story Exclusiva para Conta Pessoal + Usuários VIP com Verificado (v1.0.195)
+    const storyCatSelect = document.getElementById('story-personal-category-select');
+    if (storyCatSelect && !storyCatSelect.dataset.boundStoryCat) {
+        storyCatSelect.dataset.boundStoryCat = 'true';
+        storyCatSelect.addEventListener('change', () => {
+            selectStoryPersonalCategory(storyCatSelect.value, currentProfile);
+        });
+    }
+
+    document.querySelectorAll('.story-personal-category-chip').forEach(chip => {
+        if (chip.dataset.boundStoryChip) return;
+        chip.dataset.boundStoryChip = 'true';
+        chip.addEventListener('click', (e) => {
+            if (e && typeof e.preventDefault === 'function') e.preventDefault();
+            playSound(clickSound);
+            const cat = chip.dataset.storyCategory || '';
+            if (chip.classList.contains('active') && isStoryCategoryVipEligible(currentProfile)) {
+                selectStoryPersonalCategory('', currentProfile);
+            } else {
+                selectStoryPersonalCategory(cat, currentProfile);
+            }
+        });
+    });
+
+    const lockBanner = document.getElementById('story-personal-category-vip-lock-banner');
+    if (lockBanner && !lockBanner.dataset.boundStoryLock) {
+        lockBanner.dataset.boundStoryLock = 'true';
+        lockBanner.addEventListener('click', () => {
+            playSound(clickSound);
+            showToast('Exclusivo VIP com Verificado ⚡', 'Assine o VORTEX VIP para desbloquear as categorias exclusivas de Story!', 'yellow');
+            if (typeof openVipPaymentModal === 'function') {
+                openVipPaymentModal();
+            }
+        });
+    }
+
+    updateStoryPersonalCategoryVisibility(currentProfile);
 }
 
 // Abertura do Painel de Postar Status
@@ -10074,11 +10228,26 @@ function openStoryPreview() {
         }
     }
 
+    const isStrictBusiness = isBusinessAccount(currentProfile);
+    const rawStoryCat = !isStrictBusiness
+        ? (document.getElementById('story-personal-category-select')?.value?.trim() || selectedStoryPersonalCategory || '')
+        : '';
+    if (rawStoryCat && !isStoryCategoryVipEligible(currentProfile)) {
+        selectStoryPersonalCategory(rawStoryCat, currentProfile);
+        return;
+    }
+    const validStoryCat = (!isStrictBusiness && isStoryCategoryVipEligible(currentProfile) && PERSONAL_STORY_CATEGORIES.includes(rawStoryCat))
+        ? rawStoryCat
+        : null;
+
     const previewStory = {
         id: 'preview-' + Date.now(),
         isPreview: true,
         isAd: isAdStory,
         contentType: isAdStory ? 'ad' : 'normal',
+        storyCategory: validStoryCat,
+        personalCategory: validStoryCat,
+        category: validStoryCat,
         type: isVideo ? 'video' : 'image',
         src: pendingStatusFileSrc,
         isTrimmed: !!(pendingStatusMediaInfo && pendingStatusMediaInfo.isTrimmed) || !!pendingStatusFile.isTrimmed,
@@ -10258,6 +10427,23 @@ document.getElementById('publish-status-btn')?.addEventListener('click', async (
             const rawCaption = document.getElementById('status-caption-input')?.value || '';
             const finalCaption = rawCaption.slice(0, 90).trim();
 
+            const isStrictBusiness = isBusinessAccount(currentProfile);
+            const rawStoryCat = !isStrictBusiness
+                ? (document.getElementById('story-personal-category-select')?.value?.trim() || selectedStoryPersonalCategory || '')
+                : '';
+            if (rawStoryCat && !isStoryCategoryVipEligible(currentProfile)) {
+                if (publishBtn) {
+                    publishBtn.disabled = false;
+                    publishBtn.innerHTML = '<i data-lucide="send"></i> <span>Publicar Status</span>';
+                    if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+                }
+                selectStoryPersonalCategory(rawStoryCat, currentProfile);
+                return;
+            }
+            const validStoryCat = (!isStrictBusiness && isStoryCategoryVipEligible(currentProfile) && PERSONAL_STORY_CATEGORIES.includes(rawStoryCat))
+                ? rawStoryCat
+                : null;
+
             const anonymousToggle = document.getElementById('story-anonymous-toggle');
             const hasAnonymous = Boolean(anonymousToggle && anonymousToggle.checked);
             const anonymousPromptInput = document.getElementById('story-anonymous-prompt');
@@ -10273,6 +10459,9 @@ document.getElementById('publish-status-btn')?.addEventListener('click', async (
                 customDuration: selectedStoryDuration || 15,
                 mediaSizeKB: pendingStatusMediaInfo?.sizeFormatted || formatBytesToKB(pendingStatusFile.size || 102400),
                 caption: finalCaption,
+                storyCategory: validStoryCat,
+                personalCategory: validStoryCat,
+                category: validStoryCat,
                 hasAnonymousQuestion: hasAnonymous,
                 anonymousQuestionPrompt: anonymousPrompt,
                 isAd: isAdStory,
@@ -10343,6 +10532,7 @@ document.getElementById('publish-status-btn')?.addEventListener('click', async (
             const anonymousBox = document.getElementById('story-anonymous-input-box');
             if (anonymousBox) anonymousBox.style.display = 'none';
             if (anonymousPromptInput) anonymousPromptInput.value = '';
+            resetStoryPersonalCategory();
             if (composerPreviewAudio) {
                 try { composerPreviewAudio.pause(); } catch(e) {}
                 composerPreviewAudio = null;
@@ -18353,7 +18543,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.194';
+export const CURRENT_APP_VERSION = '1.0.195';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -31615,6 +31805,13 @@ if (typeof window !== 'undefined') {
     // Categoria do Post Exclusiva para Conta Pessoal (v1.0.193)
     window.PERSONAL_POST_CATEGORIES = PERSONAL_POST_CATEGORIES;
     window.updatePersonalCategoryVisibility = updatePersonalCategoryVisibility;
+    // Categoria do Story Exclusiva para Conta Pessoal e Usuários VIP com Verificado (v1.0.195)
+    window.PERSONAL_STORY_CATEGORIES = PERSONAL_STORY_CATEGORIES;
+    window.isStoryCategoryVipEligible = isStoryCategoryVipEligible;
+    window.updateStoryPersonalCategoryVisibility = updateStoryPersonalCategoryVisibility;
+    window.selectStoryPersonalCategory = selectStoryPersonalCategory;
+    window.resetStoryPersonalCategory = resetStoryPersonalCategory;
+    window.getSelectedStoryPersonalCategory = () => selectedStoryPersonalCategory;
 }
 
 if (typeof window !== 'undefined') {

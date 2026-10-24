@@ -18869,6 +18869,216 @@ body.theme-hacker .feed-media-views-badge:hover {
     color: #00ff66 !important;
 }
 
+/* ==========================================================================
+   SISTEMA DE CATEGORIA NOS STORY (CONTA PESSOAL / EXCLUSIVO VIP VERIFICADO) - v1.0.195
+   ========================================================================== */
+.story-personal-category-setting-item {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 10px;
+    padding: 14px !important;
+    border-radius: 16px;
+    background: linear-gradient(145deg, rgba(255, 240, 31, 0.05), rgba(255, 255, 255, 0.02));
+    border: 1px solid rgba(255, 240, 31, 0.22);
+    transition: all 0.2s ease;
+}
+
+.story-personal-category-setting-item.vip-locked {
+    border-color: rgba(255, 193, 7, 0.35);
+    background: linear-gradient(145deg, rgba(255, 193, 7, 0.06), rgba(255, 255, 255, 0.02));
+}
+
+.story-personal-category-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.story-personal-category-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 0.9rem;
+    font-weight: 800;
+    color: #ffffff;
+}
+
+.story-personal-cat-icon {
+    width: 16px;
+    height: 16px;
+    color: var(--accent-color, #fff01f);
+}
+
+.story-personal-category-badges {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.story-personal-account-tag {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.85);
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    padding: 2px 8px;
+    border-radius: 999px;
+    white-space: nowrap;
+}
+
+.story-personal-vip-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.68rem;
+    font-weight: 800;
+    color: #000000;
+    background: linear-gradient(135deg, #fff01f, #ffb800);
+    padding: 2px 8px;
+    border-radius: 999px;
+    white-space: nowrap;
+    box-shadow: 0 0 10px rgba(255, 240, 31, 0.25);
+}
+
+.story-personal-vip-tag i,
+.story-personal-vip-tag svg {
+    width: 12px;
+    height: 12px;
+}
+
+.story-personal-category-select-wrap {
+    position: relative;
+    width: 100%;
+}
+
+#story-personal-category-select,
+.story-personal-category-select {
+    width: 100%;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background-color: rgba(10, 14, 24, 0.75);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px;
+    color: #ffffff;
+    padding: 10px 36px 10px 12px;
+    font-size: 0.86rem;
+    font-weight: 700;
+    outline: none;
+    box-sizing: border-box;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    transition: all 0.2s ease;
+}
+
+#story-personal-category-select:focus,
+.story-personal-category-select:focus {
+    border-color: var(--accent-color, #fff01f);
+    box-shadow: 0 0 12px rgba(255, 240, 31, 0.2);
+}
+
+#story-personal-category-select option,
+.story-personal-category-select option {
+    background-color: #141824;
+    color: #ffffff;
+}
+
+.story-personal-category-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.story-personal-category-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 11px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.88);
+    font-size: 0.76rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.story-personal-category-chip:hover {
+    border-color: rgba(255, 240, 31, 0.5);
+    color: #ffffff;
+    background: rgba(255, 240, 31, 0.1);
+}
+
+.story-personal-category-chip.active {
+    border-color: var(--accent-color, #fff01f);
+    background: rgba(255, 240, 31, 0.18);
+    color: var(--accent-color, #fff01f);
+    box-shadow: 0 0 12px rgba(255, 240, 31, 0.25);
+}
+
+.story-personal-vip-lock-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: rgba(255, 193, 7, 0.12);
+    border: 1px solid rgba(255, 193, 7, 0.35);
+    color: #ffd54f;
+    font-size: 0.76rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.story-personal-vip-lock-banner:hover {
+    background: rgba(255, 193, 7, 0.2);
+    border-color: #ffd54f;
+}
+
+.story-personal-vip-lock-banner i,
+.story-personal-vip-lock-banner svg {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+}
+
+.story-category-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 9px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, rgba(255, 240, 31, 0.22), rgba(255, 184, 0, 0.18));
+    border: 1px solid rgba(255, 240, 31, 0.55);
+    color: var(--accent-color, #fff01f);
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.2px;
+    box-shadow: 0 0 10px rgba(255, 240, 31, 0.25);
+    white-space: nowrap;
+}
+
+body.theme-hacker .story-personal-category-setting-item {
+    border-color: rgba(0, 255, 102, 0.3) !important;
+    background: linear-gradient(145deg, rgba(0, 255, 102, 0.06), rgba(0, 20, 8, 0.4)) !important;
+}
+
+body.theme-hacker .story-personal-category-chip.active,
+body.theme-hacker .story-category-badge {
+    border-color: #00ff66 !important;
+    color: #00ff66 !important;
+    background: rgba(0, 255, 102, 0.16) !important;
+}
+
+
 
 
 

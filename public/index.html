@@ -4,20 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.194">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.194">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.194">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.194">
-    <link rel="stylesheet" href="style.css?v=1.0.194">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.195">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.195">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.195">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.195">
+    <link rel="stylesheet" href="style.css?v=1.0.195">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.194">
+    <link rel="manifest" href="manifest.json?v=1.0.195">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.194">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.194">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.195">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.195">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -247,6 +247,7 @@
                             <span id="story-username">Nome</span>
                             <i data-lucide="badge-check" id="story-verified-badge" class="verified-badge" style="display: none;"></i>
                             <span id="story-ad-badge" class="story-ad-badge" style="display: none;"><i data-lucide="megaphone"></i> Anúncio</span>
+                            <span id="story-category-badge" class="story-category-badge" style="display: none;"></span>
                         </div>
                         <span id="story-user-status" class="story-user-status"></span>
                     </div>
@@ -1422,6 +1423,49 @@
                             </div>
                             <div id="status-snippet-hint" class="snippet-hint-banner" style="display: none;"></div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Categoria do Story Exclusiva para Conta Pessoal e Usuários VIP com Verificado (v1.0.195) -->
+                <div class="setting-item story-personal-category-setting-item" id="story-personal-category-section" style="display: flex;">
+                    <div class="story-personal-category-header">
+                        <div class="story-personal-category-title-wrap">
+                            <i data-lucide="sparkles" class="story-personal-cat-icon"></i>
+                            <span>Categoria do Story</span>
+                        </div>
+                        <div class="story-personal-category-badges">
+                            <span class="story-personal-account-tag">Conta Pessoal</span>
+                            <span class="story-personal-vip-tag" id="story-personal-vip-status-tag">
+                                <i data-lucide="badge-check"></i>
+                                <span>VIP Verificado</span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="story-personal-category-select-wrap">
+                        <select id="story-personal-category-select" class="story-personal-category-select" title="Escolha a categoria do seu Story (Exclusivo para Usuários VIP com Verificado)">
+                            <option value="" selected>Sem categoria (padrão)</option>
+                            <option value="Destaque">⭐ Destaque</option>
+                            <option value="Story">📸 Story</option>
+                            <option value="VIP⚡">⚡ VIP⚡</option>
+                            <option value="Vortex VIP⚡">👑 Vortex VIP⚡</option>
+                            <option value="Nuke do sistema">☢️ Nuke do sistema</option>
+                            <option value="Melhor">🏆 Melhor</option>
+                        </select>
+                    </div>
+
+                    <div class="story-personal-category-chips" id="story-personal-category-chips">
+                        <button type="button" class="story-personal-category-chip" data-story-category="Destaque">⭐ Destaque</button>
+                        <button type="button" class="story-personal-category-chip" data-story-category="Story">📸 Story</button>
+                        <button type="button" class="story-personal-category-chip" data-story-category="VIP⚡">⚡ VIP⚡</button>
+                        <button type="button" class="story-personal-category-chip" data-story-category="Vortex VIP⚡">👑 Vortex VIP⚡</button>
+                        <button type="button" class="story-personal-category-chip" data-story-category="Nuke do sistema">☢️ Nuke do sistema</button>
+                        <button type="button" class="story-personal-category-chip" data-story-category="Melhor">🏆 Melhor</button>
+                    </div>
+
+                    <div id="story-personal-category-vip-lock-banner" class="story-personal-vip-lock-banner" style="display: none;">
+                        <i data-lucide="lock"></i>
+                        <span>Disponível apenas para <strong>Usuários VIP com Verificado</strong>. Toque para assinar!</span>
                     </div>
                 </div>
 
@@ -3946,6 +3990,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.194" defer></script>
+    <script type="module" src="script.js?v=1.0.195" defer></script>
 </body>
 </html>

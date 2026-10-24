@@ -12068,14 +12068,9 @@ test('Sistema de Visualizações para os Posts (v1.0.194)', async () => {
   const css = fs.readFileSync('public/style.css', 'utf8');
   const html = fs.readFileSync('public/index.html', 'utf8');
 
-  // 1. Integridade de Versionamento (v1.0.194)
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.194', 'script.js deve ter versão 1.0.194');
-  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
-  assert.strictEqual(versionJson.version, '1.0.194', 'version.json deve ter versão 1.0.194');
-  assert.ok(html.includes('script.js?v=1.0.194'), 'index.html deve referenciar script.js?v=1.0.194');
-  assert.ok(html.includes('style.css?v=1.0.194'), 'index.html deve referenciar style.css?v=1.0.194');
-  const swContent = fs.readFileSync('public/sw.js', 'utf8');
-  assert.ok(swContent.includes('vortex-vip-v1.0.194'), 'sw.js deve conter cache vortex-vip-v1.0.194');
+  // 1. Integridade de Versionamento (v1.0.194+)
+  const verParts194 = String(win.CURRENT_APP_VERSION || '').split('.').map(Number);
+  assert.ok(verParts194[2] >= 194, 'script.js deve ter versão >= 1.0.194');
 
   // 2. Elementos do Modal de Visualizações no DOM e Regras CSS
   const viewsModal = env.elements['post-views-modal'];
@@ -12169,6 +12164,125 @@ test('Sistema de Visualizações para os Posts (v1.0.194)', async () => {
   win.closePostViewsModal();
   assert.ok(!viewsModal.classList.contains('active'), '#post-views-modal deve fechar corretamente');
 });
+
+test('Sistema de Categoria nos Story Exclusivo para Conta Pessoal e Usuários VIP com Verificado (v1.0.195)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+  const css = fs.readFileSync('public/style.css', 'utf8');
+  const html = fs.readFileSync('public/index.html', 'utf8');
+
+  // 1. Integridade de Versionamento (v1.0.195)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.195', 'script.js deve ter versão 1.0.195');
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
+  assert.strictEqual(versionJson.version, '1.0.195', 'version.json deve ter versão 1.0.195');
+  assert.ok(html.includes('script.js?v=1.0.195'), 'index.html deve referenciar script.js?v=1.0.195');
+  assert.ok(html.includes('style.css?v=1.0.195'), 'index.html deve referenciar style.css?v=1.0.195');
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+  assert.ok(swContent.includes('vortex-vip-v1.0.195'), 'sw.js deve conter cache vortex-vip-v1.0.195');
+
+  // 2. Elementos no DOM e Regras CSS
+  const storyCatSection = env.elements['story-personal-category-section'];
+  const storyCatSelect = env.elements['story-personal-category-select'];
+  const storyCatChips = env.elements['story-personal-category-chips'];
+  const storyCatLockBanner = env.elements['story-personal-category-vip-lock-banner'];
+  const storyCategoryBadge = env.elements['story-category-badge'];
+  const statusBizSection = env.elements['status-business-link-section'];
+  const vipPaymentModal = env.elements['vip-payment-modal'];
+
+  assert.ok(storyCatSection, '#story-personal-category-section deve existir no DOM');
+  assert.ok(storyCatSelect, '#story-personal-category-select deve existir no DOM');
+  assert.ok(storyCatChips, '#story-personal-category-chips deve existir no DOM');
+  assert.ok(storyCatLockBanner, '#story-personal-category-vip-lock-banner deve existir no DOM');
+  assert.ok(storyCategoryBadge, '#story-category-badge deve existir no DOM');
+  assert.ok(vipPaymentModal, '#vip-payment-modal deve existir no DOM');
+
+  assert.ok(css.includes('.story-personal-category-setting-item'), 'style.css deve conter .story-personal-category-setting-item');
+  assert.ok(css.includes('.story-personal-category-chip'), 'style.css deve conter .story-personal-category-chip');
+  assert.ok(css.includes('.story-category-badge'), 'style.css deve conter .story-category-badge');
+
+  // 3. Lista Completa das 6 Categorias de Story Solicitadas
+  const requiredStoryCats = ['Destaque', 'Story', 'VIP⚡', 'Vortex VIP⚡', 'Nuke do sistema', 'Melhor'];
+  const actualStoryCats = Array.from(win.PERSONAL_STORY_CATEGORIES || []);
+  assert.deepStrictEqual(actualStoryCats, requiredStoryCats, 'PERSONAL_STORY_CATEGORIES deve conter exatamente as 6 categorias solicitadas');
+  for (const cat of requiredStoryCats) {
+    assert.ok(html.includes(`value="${cat}"`), `#story-personal-category-select deve incluir a opção "${cat}"`);
+    assert.ok(html.includes(`data-story-category="${cat}"`), `#story-personal-category-chips deve incluir o chip "${cat}"`);
+  }
+
+  // 4. Visibilidade Exclusiva para Conta Pessoal (oculta para Conta Empresa)
+  win.updateStatusBusinessLinkVisibility({ accountType: 'personal', isVip: false, isVerified: false });
+  assert.strictEqual(storyCatSection.style.display, 'flex', 'Categoria do Story deve aparecer (flex) para Conta Pessoal');
+  assert.strictEqual(statusBizSection.style.display, 'none', 'Seção empresarial do Story deve ficar oculta para Conta Pessoal');
+
+  win.updateStatusBusinessLinkVisibility({ accountType: 'business', isVip: true, isVerified: true });
+  assert.strictEqual(storyCatSection.style.display, 'none', 'Categoria do Story deve ficar oculta (none) para Conta Empresa');
+  assert.strictEqual(statusBizSection.style.display, 'block', 'Seção empresarial do Story deve aparecer para Conta Empresa');
+
+  // 5. Usuário Comum (sem VIP Verificado) tentando usar -> Bloqueia e leva para a Tela de Pagamento (#vip-payment-modal)
+  const regularUser = { uid: 'user_regular_195', name: 'João Comum', email: 'joao@teste.com', accountType: 'personal', isVip: false, isVerified: false };
+  win.setCurrentUser(regularUser);
+  win.setCurrentProfile(regularUser);
+  win.updateStatusBusinessLinkVisibility(regularUser);
+
+  assert.strictEqual(win.isStoryCategoryVipEligible(regularUser), false, 'Usuário sem VIP verificado não deve ser elegível');
+  assert.strictEqual(storyCatLockBanner.style.display, 'flex', 'Banner de bloqueio VIP deve estar visível para usuário sem VIP');
+
+  vipPaymentModal.style.display = 'none';
+  vipPaymentModal.classList.remove('active');
+
+  const blockedAttempt = win.selectStoryPersonalCategory('Vortex VIP⚡', regularUser);
+  assert.strictEqual(blockedAttempt.allowed, false, 'Tentativa de usuário não-VIP deve ser bloqueada');
+  assert.strictEqual(blockedAttempt.redirectedToPayment, true, 'Deve indicar redirecionamento para tela de pagamento');
+  assert.strictEqual(win.getSelectedStoryPersonalCategory(), '', 'Categoria selecionada deve permanecer vazia');
+  assert.strictEqual(storyCatSelect.value, '', 'Select deve ser resetado para vazio');
+  assert.ok(vipPaymentModal.classList.contains('active') && vipPaymentModal.style.display === 'flex', 'Deve abrir a tela de pagamento (#vip-payment-modal) imediatamente');
+
+  // Fechar modal de pagamento para o próximo teste
+  vipPaymentModal.style.display = 'none';
+  vipPaymentModal.classList.remove('active');
+
+  // 6. Usuário VIP com Verificado (Conta Pessoal) -> Pode escolher qualquer categoria normalmente
+  const vipVerifiedUser = { uid: 'user_vip_195', name: 'Deyvison VIP', email: 'vip@vortex.com', accountType: 'personal', isVip: true, isVerified: true };
+  win.setCurrentUser(vipVerifiedUser);
+  win.setCurrentProfile(vipVerifiedUser);
+  win.updateStatusBusinessLinkVisibility(vipVerifiedUser);
+
+  assert.strictEqual(win.isStoryCategoryVipEligible(vipVerifiedUser), true, 'Usuário VIP com verificado e Conta Pessoal deve ser elegível');
+  assert.strictEqual(storyCatLockBanner.style.display, 'none', 'Banner de bloqueio VIP deve ficar oculto para usuário VIP verificado');
+
+  const allowedAttempt = win.selectStoryPersonalCategory('Nuke do sistema', vipVerifiedUser);
+  assert.strictEqual(allowedAttempt.allowed, true, 'Usuário VIP com verificado deve conseguir selecionar categoria');
+  assert.strictEqual(allowedAttempt.category, 'Nuke do sistema', 'Categoria selecionada deve ser "Nuke do sistema"');
+  assert.strictEqual(allowedAttempt.redirectedToPayment, false, 'Não deve redirecionar para tela de pagamento');
+  assert.strictEqual(win.getSelectedStoryPersonalCategory(), 'Nuke do sistema');
+  assert.strictEqual(storyCatSelect.value, 'Nuke do sistema');
+  assert.ok(!vipPaymentModal.classList.contains('active'), 'Tela de pagamento não deve abrir para usuário VIP verificado');
+
+  // 7. Exibição do Selo de Categoria no Story Viewer (#story-category-badge)
+  const sampleVipStory = {
+    id: 'story_vip_cat_195',
+    authorUid: vipVerifiedUser.uid,
+    authorName: vipVerifiedUser.name,
+    type: 'image',
+    src: 'data:image/png;base64,story195',
+    caption: 'Story com categoria VIP!',
+    storyCategory: 'Vortex VIP⚡',
+    personalCategory: 'Vortex VIP⚡',
+    category: 'Vortex VIP⚡',
+    views: {},
+    reactions: {},
+    replies: [],
+    createdAt: Date.now()
+  };
+
+  await win.openStoryViewer([sampleVipStory], vipVerifiedUser, { isPreview: true });
+  assert.strictEqual(storyCategoryBadge.style.display, 'inline-flex', '#story-category-badge deve ficar visível no Story Viewer');
+  assert.strictEqual(storyCategoryBadge.textContent, 'Vortex VIP⚡', '#story-category-badge deve exibir "Vortex VIP⚡"');
+
+  win.closeStoryViewer();
+  assert.strictEqual(storyCategoryBadge.style.display, 'none', '#story-category-badge deve ocultar ao fechar o Story Viewer');
+});
+
 
 
 
