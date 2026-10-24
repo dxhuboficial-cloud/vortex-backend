@@ -4,20 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.193">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.193">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.193">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.193">
-    <link rel="stylesheet" href="style.css?v=1.0.193">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.194">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.194">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.194">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.194">
+    <link rel="stylesheet" href="style.css?v=1.0.194">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.193">
+    <link rel="manifest" href="manifest.json?v=1.0.194">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.193">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.193">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.194">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.194">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -2649,6 +2649,36 @@
             </div>
         </div>
 
+        <!-- Modal de Visualizações da Publicação (v1.0.194) -->
+        <div id="post-views-modal" class="custom-modal-overlay post-views-modal-overlay" aria-hidden="true" style="display: none;">
+            <div class="custom-modal-card post-views-modal-card">
+                <div class="panel-top-bar post-views-modal-top-bar">
+                    <div class="share-modal-title-wrap">
+                        <i data-lucide="eye" class="neon-icon"></i>
+                        <h2>Visualizações do Post</h2>
+                    </div>
+                    <div class="header-icon-btn" id="close-post-views-modal" title="Fechar" aria-label="Fechar">
+                        <i data-lucide="x"></i>
+                    </div>
+                </div>
+
+                <div class="post-views-summary-bar" id="post-views-summary-bar">
+                    <div class="post-views-summary-info">
+                        <span class="post-views-summary-author" id="post-views-modal-author">Publicação</span>
+                        <span class="post-views-summary-caption" id="post-views-modal-caption"></span>
+                    </div>
+                    <div class="post-views-total-pill" id="post-views-modal-total">
+                        <i data-lucide="eye"></i>
+                        <span>0 visualizações</span>
+                    </div>
+                </div>
+
+                <div class="post-views-modal-list" id="post-views-modal-list">
+                    <!-- Lista de visualizações renderizada dinamicamente -->
+                </div>
+            </div>
+        </div>
+
         <!-- Modal de Criação de Enquete -->
         <div id="poll-creator-modal" class="custom-modal-overlay poll-creator-overlay" aria-hidden="true" style="display: none;">
             <div class="custom-modal-card poll-creator-card">
@@ -3916,6 +3946,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.193" defer></script>
+    <script type="module" src="script.js?v=1.0.194" defer></script>
 </body>
 </html>

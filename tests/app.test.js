@@ -11981,14 +11981,9 @@ test('Categoria do Post Exclusiva para Conta Pessoal (v1.0.193)', async () => {
   const css = fs.readFileSync('public/style.css', 'utf8');
   const html = fs.readFileSync('public/index.html', 'utf8');
 
-  // 1. Integridade de Versionamento (v1.0.193)
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.193', 'script.js deve ter versão 1.0.193');
-  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
-  assert.strictEqual(versionJson.version, '1.0.193', 'version.json deve ter versão 1.0.193');
-  assert.ok(html.includes('script.js?v=1.0.193'), 'index.html deve referenciar script.js?v=1.0.193');
-  assert.ok(html.includes('style.css?v=1.0.193'), 'index.html deve referenciar style.css?v=1.0.193');
-  const swContent = fs.readFileSync('public/sw.js', 'utf8');
-  assert.ok(swContent.includes('vortex-vip-v1.0.193'), 'sw.js deve conter cache vortex-vip-v1.0.193');
+  // 1. Integridade de Versionamento (v1.0.193+)
+  const verParts193 = String(win.CURRENT_APP_VERSION || '').split('.').map(Number);
+  assert.ok(verParts193[2] >= 193, 'script.js deve ter versão >= 1.0.193');
 
   // 2. Elementos no DOM e CSS da Categoria Pessoal
   const personalWrap = env.elements['post-personal-category-wrap'];
@@ -12066,6 +12061,115 @@ test('Categoria do Post Exclusiva para Conta Pessoal (v1.0.193)', async () => {
   win.resetPostComposer();
   assert.strictEqual(personalSelect.value, '', 'resetPostComposer deve limpar #post-personal-category-select');
 });
+
+test('Sistema de Visualizações para os Posts (v1.0.194)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+  const css = fs.readFileSync('public/style.css', 'utf8');
+  const html = fs.readFileSync('public/index.html', 'utf8');
+
+  // 1. Integridade de Versionamento (v1.0.194)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.194', 'script.js deve ter versão 1.0.194');
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
+  assert.strictEqual(versionJson.version, '1.0.194', 'version.json deve ter versão 1.0.194');
+  assert.ok(html.includes('script.js?v=1.0.194'), 'index.html deve referenciar script.js?v=1.0.194');
+  assert.ok(html.includes('style.css?v=1.0.194'), 'index.html deve referenciar style.css?v=1.0.194');
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+  assert.ok(swContent.includes('vortex-vip-v1.0.194'), 'sw.js deve conter cache vortex-vip-v1.0.194');
+
+  // 2. Elementos do Modal de Visualizações no DOM e Regras CSS
+  const viewsModal = env.elements['post-views-modal'];
+  const viewsModalAuthor = env.elements['post-views-modal-author'];
+  const viewsModalTotal = env.elements['post-views-modal-total'];
+  const viewsModalList = env.elements['post-views-modal-list'];
+  const closeViewsModalBtn = env.elements['close-post-views-modal'];
+
+  assert.ok(viewsModal, '#post-views-modal deve existir no DOM');
+  assert.ok(viewsModalAuthor, '#post-views-modal-author deve existir no DOM');
+  assert.ok(viewsModalTotal, '#post-views-modal-total deve existir no DOM');
+  assert.ok(viewsModalList, '#post-views-modal-list deve existir no DOM');
+  assert.ok(closeViewsModalBtn, '#close-post-views-modal deve existir no DOM');
+
+  assert.ok(css.includes('.feed-media-views-badge'), 'style.css deve conter .feed-media-views-badge');
+  assert.ok(css.includes('.feed-action-btn.feed-views-btn'), 'style.css deve conter .feed-action-btn.feed-views-btn');
+  assert.ok(css.includes('.post-views-modal-card'), 'style.css deve conter .post-views-modal-card');
+  assert.ok(css.includes('.post-viewer-item'), 'style.css deve conter .post-viewer-item');
+
+  // 3. Formatação e Contagem de Visualizações
+  assert.strictEqual(win.formatPostViewsCount(0), '0');
+  assert.strictEqual(win.formatPostViewsCount(42), '42');
+  assert.strictEqual(win.formatPostViewsCount(1000), '1 mil');
+  assert.strictEqual(win.formatPostViewsCount(1500), '1,5 mil');
+  assert.strictEqual(win.formatPostViewsCount(2000000), '2 mi');
+
+  // 4. Renderização Inicial dos Contadores de Visualizações no Feed Reels e Preview
+  const viewer1 = { uid: 'viewer_194_1', name: 'Lucas Viewer', username: '@lucasviewer', avatar: 'https://vortex.vip/lucas.png' };
+  win.setCurrentUser(viewer1);
+  win.setCurrentProfile(viewer1);
+
+  const post194 = {
+    id: 'post_views_194',
+    authorUid: 'author_194',
+    authorName: 'Criador Oficial',
+    title: 'Post com Sistema de Visualizações',
+    caption: 'Testando contagem de views em tempo real!',
+    type: 'image',
+    mediaData: 'data:image/png;base64,img194',
+    likes: [],
+    comments: [],
+    views: [],
+    viewsCount: 0,
+    viewers: {},
+    createdAt: Date.now()
+  };
+  env.firestoreDocs['posts/post_views_194'] = { ...post194 };
+
+  const feedList = env.elements['feed-list'];
+  win.renderPostsFeed([post194]);
+
+  assert.ok(feedList.innerHTML.includes('data-action="post-views"'), 'Card do post deve ter botão/badge com data-action="post-views"');
+  assert.ok(feedList.innerHTML.includes('data-post-views-count="post_views_194"'), 'Card do post deve ter contador data-post-views-count');
+  assert.ok(feedList.innerHTML.includes('0 visualizações'), 'Badge na mídia deve iniciar com 0 visualizações');
+  assert.strictEqual(win.getPostViewsCount(post194), 0, 'Contagem inicial de views deve ser 0');
+  assert.strictEqual(win.hasUserViewedPost(post194, viewer1.uid), false, 'Usuário ainda não visualizou o post');
+
+  // 5. Registrar Visualização Única (registerPostView) e Persistência no Firestore
+  const res1 = await win.registerPostView('post_views_194');
+  assert.strictEqual(res1.viewed, true, 'Primeira visualização deve retornar viewed: true');
+  assert.strictEqual(res1.count, 1, 'Contagem deve subir para 1');
+  assert.strictEqual(win.getPostViewsCount(post194), 1, 'getPostViewsCount deve retornar 1');
+  assert.strictEqual(win.hasUserViewedPost(post194, viewer1.uid), true, 'hasUserViewedPost deve retornar true após visualizar');
+  assert.deepStrictEqual(Array.from(env.firestoreDocs['posts/post_views_194'].views), ['viewer_194_1'], 'Firestore deve persistir o UID em views');
+  assert.strictEqual(env.firestoreDocs['posts/post_views_194'].viewsCount, 1, 'Firestore deve persistir viewsCount = 1');
+
+  // 6. Deduplicação: Mesmo usuário visualizando novamente não duplica o contador
+  const resDup = await win.registerPostView('post_views_194');
+  assert.strictEqual(resDup.viewed, false, 'Repetição do mesmo usuário não deve contar nova view');
+  assert.strictEqual(resDup.alreadyViewed, true, 'Deve indicar alreadyViewed: true');
+  assert.strictEqual(resDup.count, 1, 'Contagem deve permanecer 1');
+
+  // 7. Segundo Usuário Visualiza o Post -> Sobe para 2 Visualizações
+  const res2 = await win.registerPostView('post_views_194', {
+    uid: 'viewer_194_2',
+    name: 'Mariana VIP',
+    username: '@marianavip',
+    isVip: true,
+    viewedAt: Date.now() + 1000
+  });
+  assert.strictEqual(res2.viewed, true, 'Visualização de segundo usuário deve ser contabilizada');
+  assert.strictEqual(res2.count, 2, 'Contagem total deve subir para 2');
+  assert.strictEqual(win.getPostViewsCount(post194), 2, 'getPostViewsCount deve retornar 2');
+
+  // 8. Abrir e Fechar o Modal de Visualizações do Post (#post-views-modal)
+  win.openPostViewsModal('post_views_194');
+  assert.ok(viewsModal.classList.contains('active'), '#post-views-modal deve ficar ativo ao abrir');
+  assert.ok(viewsModalTotal.innerHTML.includes('2 visualizações'), 'Total no modal deve exibir 2 visualizações');
+  assert.ok(viewsModalList.innerHTML.includes('Lucas Viewer') && viewsModalList.innerHTML.includes('Mariana VIP'), 'Lista do modal deve exibir os usuários que visualizaram o post');
+
+  win.closePostViewsModal();
+  assert.ok(!viewsModal.classList.contains('active'), '#post-views-modal deve fechar corretamente');
+});
+
 
 
 

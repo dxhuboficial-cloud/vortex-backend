@@ -17846,6 +17846,7 @@ export async function adminOpenPostPreview(postId) {
         <div class="admin-post-preview-stats">
             <span>❤️ ${(post.likes || []).length} curtidas</span>
             <span>💬 ${(post.comments || []).length} comentários</span>
+            <span>👁️ ${getPostViewsCount(post)} visualizações</span>
         </div>
         ${(post.comments || []).length > 0 ? `
         <div class="admin-post-preview-comments">
@@ -18352,7 +18353,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.193';
+export const CURRENT_APP_VERSION = '1.0.194';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -24006,6 +24007,418 @@ export async function toggleSaveFeedPost(postId) {
 }
 
 /* ==========================================================================
+   SISTEMA DE VISUALIZAÇÕES PARA OS POSTS (v1.0.194)
+   ========================================================================== */
+const VORTEX_VIEWED_POSTS_STORAGE_KEY = 'vortex_viewed_posts_v1';
+const viewedPostsSessionSet = new Set();
+let activePostViewsModalPostId = null;
+let feedPostViewsObserver = null;
+
+function loadViewedPostsFromStorage() {
+    if (typeof localStorage === 'undefined') return;
+    try {
+        const raw = localStorage.getItem(VORTEX_VIEWED_POSTS_STORAGE_KEY);
+        if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) {
+                parsed.forEach(item => {
+                    if (item) viewedPostsSessionSet.add(String(item));
+                });
+            }
+        }
+    } catch (e) {}
+}
+
+function saveViewedPostsToStorage() {
+    if (typeof localStorage === 'undefined') return;
+    try {
+        const arr = Array.from(viewedPostsSessionSet).slice(-500);
+        localStorage.setItem(VORTEX_VIEWED_POSTS_STORAGE_KEY, JSON.stringify(arr));
+    } catch (e) {}
+}
+
+loadViewedPostsFromStorage();
+
+export function getPostViewsList(post) {
+    if (!post) return [];
+    const uidSet = new Set();
+    if (Array.isArray(post.views)) {
+        post.views.forEach(v => {
+            if (typeof v === 'string' && v.trim()) {
+                uidSet.add(v.trim());
+            } else if (v && typeof v === 'object' && v.uid) {
+                uidSet.add(String(v.uid));
+            }
+        });
+    } else if (post.views && typeof post.views === 'object') {
+        Object.keys(post.views).forEach(k => {
+            if (k) uidSet.add(String(k));
+        });
+    }
+    if (post.viewers && typeof post.viewers === 'object' && !Array.isArray(post.viewers)) {
+        Object.keys(post.viewers).forEach(k => {
+            if (k) uidSet.add(String(k));
+        });
+    } else if (Array.isArray(post.viewers)) {
+        post.viewers.forEach(v => {
+            if (v && v.uid) uidSet.add(String(v.uid));
+        });
+    }
+    return Array.from(uidSet);
+}
+
+export function getPostViewsCount(post) {
+    if (!post) return 0;
+    const listCount = getPostViewsList(post).length;
+    const numericViews = typeof post.views === 'number' ? post.views : 0;
+    const explicitCount = Number(post.viewsCount) || 0;
+    return Math.max(listCount, numericViews, explicitCount, 0);
+}
+
+export function formatPostViewsCount(count) {
+    const n = Math.max(0, Math.floor(Number(count) || 0));
+    if (n < 1000) return String(n);
+    if (n < 1000000) {
+        const k = n / 1000;
+        const formatted = (n % 1000 === 0) ? String(k) : k.toFixed(1).replace(/\.0$/, '').replace('.', ',');
+        return `${formatted} mil`;
+    }
+    const m = n / 1000000;
+    const formattedM = (n % 1000000 === 0) ? String(m) : m.toFixed(1).replace(/\.0$/, '').replace('.', ',');
+    return `${formattedM} mi`;
+}
+
+export function hasUserViewedPost(postOrId, uid = currentUser?.uid) {
+    if (!postOrId) return false;
+    const post = (typeof postOrId === 'object')
+        ? postOrId
+        : (Array.isArray(cachedFeedPosts) ? cachedFeedPosts.find(p => String(p.id) === String(postOrId)) : null);
+    const postId = (typeof postOrId === 'object') ? postOrId.id : String(postOrId);
+    const viewerUid = uid || currentUser?.uid || '';
+
+    if (viewerUid && post) {
+        const list = getPostViewsList(post);
+        if (list.includes(String(viewerUid))) return true;
+    }
+    if (viewerUid && postId && viewedPostsSessionSet.has(`${viewerUid}_${postId}`)) {
+        return true;
+    }
+    return false;
+}
+
+export function getPostViewersDetails(post) {
+    if (!post) return [];
+    const detailsMap = new Map();
+
+    if (post.viewers && typeof post.viewers === 'object' && !Array.isArray(post.viewers)) {
+        Object.entries(post.viewers).forEach(([uid, info]) => {
+            if (info && typeof info === 'object') {
+                detailsMap.set(String(info.uid || uid), {
+                    uid: String(info.uid || uid),
+                    name: info.name || 'Usuário',
+                    username: info.username || '@usuario',
+                    avatar: getLiveAuthorAvatar(info.uid || uid, info.avatar || ''),
+                    isVip: !!info.isVip,
+                    viewedAt: Number(info.viewedAt) || 0
+                });
+            }
+        });
+    } else if (Array.isArray(post.viewers)) {
+        post.viewers.forEach(info => {
+            if (info && typeof info === 'object' && info.uid) {
+                detailsMap.set(String(info.uid), {
+                    uid: String(info.uid),
+                    name: info.name || 'Usuário',
+                    username: info.username || '@usuario',
+                    avatar: getLiveAuthorAvatar(info.uid, info.avatar || ''),
+                    isVip: !!info.isVip,
+                    viewedAt: Number(info.viewedAt) || 0
+                });
+            }
+        });
+    }
+
+    if ( post.views && typeof post.views === 'object' && !Array.isArray(post.views)) {
+        Object.entries(post.views).forEach(([uid, info]) => {
+            if (info && typeof info === 'object' && !detailsMap.has(String(uid))) {
+                detailsMap.set(String(uid), {
+                    uid: String(info.uid || uid),
+                    name: info.name || 'Usuário',
+                    username: info.username || '@usuario',
+                    avatar: getLiveAuthorAvatar(info.uid || uid, info.avatar || ''),
+                    isVip: !!info.isVip,
+                    viewedAt: Number(info.viewedAt) || 0
+                });
+            }
+        });
+    }
+
+    if (Array.isArray(post.views)) {
+        post.views.forEach(v => {
+            if (typeof v === 'string' && v.trim() && !detailsMap.has(v.trim())) {
+                const isSelf = currentUser && v.trim() === currentUser.uid;
+                detailsMap.set(v.trim(), {
+                    uid: v.trim(),
+                    name: isSelf ? (currentProfile?.name || 'Você') : 'Usuário VORTEX',
+                    username: isSelf ? (currentProfile?.username || '@voce') : '@usuario',
+                    avatar: isSelf ? (currentProfile?.avatar || '') : getLiveAuthorAvatar(v.trim(), ''),
+                    isVip: isSelf ? checkIsVipUser(currentProfile) : false,
+                    viewedAt: 0
+                });
+            } else if (v && typeof v === 'object' && v.uid && !detailsMap.has(String(v.uid))) {
+                detailsMap.set(String(v.uid), {
+                    uid: String(v.uid),
+                    name: v.name || 'Usuário',
+                    username: v.username || '@usuario',
+                    avatar: getLiveAuthorAvatar(v.uid, v.avatar || ''),
+                    isVip: !!v.isVip,
+                    viewedAt: Number(v.viewedAt) || 0
+                });
+            }
+        });
+    }
+
+    return Array.from(detailsMap.values()).sort((a, b) => (b.viewedAt || 0) - (a.viewedAt || 0));
+}
+
+export function updatePostViewsDOM(postId, postObj = null) {
+    if (!postId || typeof document === 'undefined') return;
+    const idStr = String(postId);
+    const post = postObj || (Array.isArray(cachedFeedPosts) ? cachedFeedPosts.find(p => String(p.id) === idStr) : null);
+    const count = getPostViewsCount(post);
+    const formatted = formatPostViewsCount(count);
+    const viewed = hasUserViewedPost(post || idStr);
+
+    document.querySelectorAll(`[data-post-views-count="${idStr}"]`).forEach(el => {
+        el.innerText = formatted;
+    });
+
+    document.querySelectorAll(`[data-post-views-badge="${idStr}"]`).forEach(el => {
+        el.innerText = `${formatted} visualizaç${count === 1 ? 'ão' : 'ões'}`;
+    });
+
+    document.querySelectorAll(`.feed-views-btn[data-post-id="${idStr}"], .post-views-btn[data-post-id="${idStr}"]`).forEach(btn => {
+        btn.classList.toggle('viewed', viewed);
+    });
+}
+
+export async function registerPostView(postId, customViewer = null) {
+    if (!postId) return { viewed: false, alreadyViewed: false, count: 0 };
+    const idStr = String(postId);
+    const post = Array.isArray(cachedFeedPosts) ? cachedFeedPosts.find(p => String(p.id) === idStr) : null;
+    const viewerUid = customViewer?.uid || currentUser?.uid || null;
+
+    if (!viewerUid) {
+        return { viewed: false, alreadyViewed: false, count: getPostViewsCount(post) };
+    }
+
+    const sessionKey = `${viewerUid}_${idStr}`;
+    const existingList = post ? getPostViewsList(post) : [];
+    if (existingList.includes(String(viewerUid)) || ( viewedPostsSessionSet.has(sessionKey) && post && existingList.includes(String(viewerUid)) )) {
+        viewedPostsSessionSet.add(sessionKey);
+        return { viewed: false, alreadyViewed: true, count: getPostViewsCount(post) };
+    }
+
+    const updatedViews = Array.from(new Set([...existingList, String(viewerUid)]));
+    const rawName = customViewer?.name || currentProfile?.name || currentUser?.displayName || 'Usuário';
+    const rawUsername = customViewer?.username || currentProfile?.username || ('@' + rawName.toLowerCase().replace(/\s+/g, ''));
+    const viewerEntry = {
+        uid: String(viewerUid),
+        name: rawName,
+        username: rawUsername.startsWith('@') ? rawUsername : `@${rawUsername}`,
+        avatar: customViewer?.avatar || currentProfile?.avatar || '',
+        isVip: !!(customViewer?.isVip ?? checkIsVipUser(currentProfile)),
+        viewedAt: customViewer?.viewedAt || Date.now()
+    };
+
+    const existingViewers = (post?.viewers && typeof post.viewers === 'object' && !Array.isArray(post.viewers))
+        ? { ...post.viewers }
+        : {};
+    const updatedViewers = {
+        ...existingViewers,
+        [String(viewerUid)]: viewerEntry
+    };
+
+    const prevCount = getPostViewsCount(post);
+    const newCount = Math.max(updatedViews.length, Object.keys(updatedViewers).length, prevCount + (existingList.length === 0 && prevCount > 0 ? 1 : 0));
+
+    if (post) {
+        post.views = updatedViews;
+        post.viewers = updatedViewers;
+        post.viewsCount = newCount;
+    }
+
+    viewedPostsSessionSet.add(sessionKey);
+    saveViewedPostsToStorage();
+    updatePostViewsDOM(idStr, post || { id: idStr, views: updatedViews, viewers: updatedViewers, viewsCount: newCount });
+
+    if (activePostViewsModalPostId === idStr && post) {
+        renderPostViewsModalContent(post);
+    }
+
+    if (typeof updateDoc === 'function' && typeof doc === 'function' && typeof db !== 'undefined') {
+        try {
+            await updateDoc(doc(db, 'posts', idStr), {
+                views: updatedViews,
+                viewsCount: newCount,
+                viewers: updatedViewers
+            });
+        } catch (err) {
+            console.warn('Erro ao salvar visualização do post:', err);
+        }
+    }
+
+    return { viewed: true, alreadyViewed: false, count: newCount };
+}
+
+export function renderPostViewsModalContent(post) {
+    if (!post) return;
+    const authorEl = document.getElementById('post-views-modal-author');
+    const captionEl = document.getElementById('post-views-modal-caption');
+    const totalEl = document.getElementById('post-views-modal-total');
+    const listEl = document.getElementById('post-views-modal-list');
+
+    const totalCount = getPostViewsCount(post);
+    const formattedTotal = formatPostViewsCount(totalCount);
+
+    if (authorEl) {
+        authorEl.innerText = post.title || (post.authorName ? `Post de ${post.authorName}` : 'Publicação');
+    }
+    if (captionEl) {
+        captionEl.innerText = post.caption || (post.authorName ? `Por ${post.authorName}` : '');
+    }
+    if (totalEl) {
+        totalEl.innerHTML = `<i data-lucide="eye"></i> <span>${formattedTotal} visualizaç${totalCount === 1 ? 'ão' : 'ões'}</span>`;
+    }
+
+    if (!listEl) return;
+
+    const viewers = getPostViewersDetails(post);
+    if (totalCount === 0 || viewers.length === 0) {
+        if (totalCount > 0 && viewers.length === 0) {
+            listEl.innerHTML = `
+                <div class="post-views-empty">
+                    <i data-lucide="eye" style="width: 36px; height: 36px; color: var(--accent-color, #fff01f);"></i>
+                    <strong style="color: #ffffff; font-size: 0.95rem;">${formattedTotal} visualizaç${totalCount === 1 ? 'ão registrada' : 'ões registradas'}</strong>
+                    <span style="font-size: 0.8rem;">Este post já recebeu ${formattedTotal} visualizaç${totalCount === 1 ? 'ão' : 'ões'} no Feed Reels.</span>
+                </div>
+            `;
+        } else {
+            listEl.innerHTML = `
+                <div class="post-views-empty">
+                    <i data-lucide="eye-off" style="width: 36px; height: 36px; opacity: 0.6;"></i>
+                    <strong style="color: #ffffff; font-size: 0.95rem;">Nenhuma visualização ainda</strong>
+                    <span style="font-size: 0.8rem;">Quando os usuários visualizarem este post no Feed Reels, eles aparecerão aqui.</span>
+                </div>
+            `;
+        }
+        if (window.lucide && typeof window.lucide.createIcons === 'function') {
+            window.lucide.createIcons();
+        }
+        return;
+    }
+
+    listEl.innerHTML = viewers.map(v => {
+        const avatarStyle = v.avatar ? `style="background-image: url('${escapeHTML(v.avatar)}');"` : '';
+        const timeStr = v.viewedAt ? formatLastSeen(v.viewedAt) : 'Visualizou';
+        const isViewerVip = isAuthorVipUser(v.uid, v);
+        return `
+            <div class="post-viewer-item" data-viewer-uid="${escapeHTML(v.uid)}">
+                <div class="post-viewer-user">
+                    <div class="post-viewer-avatar" ${avatarStyle}></div>
+                    <div class="post-viewer-meta">
+                        <div class="post-viewer-name">
+                            <span>${escapeHTML(v.name || 'Usuário')}</span>
+                            <i data-lucide="badge-check" class="verified-badge" style="display:${isViewerVip ? 'inline-flex' : 'none'}; width:14px; height:14px;"></i>
+                        </div>
+                        <div class="post-viewer-username">${escapeHTML(v.username || '@usuario')}</div>
+                    </div>
+                </div>
+                <span class="post-viewer-time">${escapeHTML(timeStr)}</span>
+            </div>
+        `;
+    }).join('');
+
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+    }
+}
+
+export function openPostViewsModal(postOrId) {
+    const post = (typeof postOrId === 'object' && postOrId !== null)
+        ? postOrId
+        : (Array.isArray(cachedFeedPosts) ? cachedFeedPosts.find(p => String(p.id) === String(postOrId)) : null);
+    if (!post) return;
+
+    activePostViewsModalPostId = String(post.id);
+    const modal = document.getElementById('post-views-modal');
+    if (!modal) return;
+
+    renderPostViewsModalContent(post);
+
+    modal.style.display = 'flex';
+    modal.classList.add('active');
+    modal.setAttribute('aria-hidden', 'false');
+
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+    }
+}
+
+export function closePostViewsModal() {
+    const modal = document.getElementById('post-views-modal');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.classList.remove('active');
+        modal.setAttribute('aria-hidden', 'true');
+    }
+    activePostViewsModalPostId = null;
+}
+
+export function setupFeedPostViewsObserver(container) {
+    if (!container || typeof window === 'undefined' || typeof window.IntersectionObserver !== 'function') return;
+    try {
+        if (feedPostViewsObserver) {
+            feedPostViewsObserver.disconnect();
+        }
+        feedPostViewsObserver = new window.IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const card = entry.target;
+                    const postId = card?.dataset?.postId;
+                    if (postId && currentUser) {
+                        registerPostView(postId);
+                    }
+                }
+            });
+        }, { threshold: 0.5 });
+
+        container.querySelectorAll('.feed-card[data-post-id], .post-card[data-post-id]').forEach(card => {
+            feedPostViewsObserver.observe(card);
+        });
+    } catch (e) {}
+}
+
+document.getElementById('close-post-views-modal')?.addEventListener('click', closePostViewsModal);
+document.getElementById('post-views-modal')?.addEventListener('click', (e) => {
+    if (e.target && e.target.id === 'post-views-modal') {
+        closePostViewsModal();
+    }
+});
+
+window.getPostViewsList = getPostViewsList;
+window.getPostViewsCount = getPostViewsCount;
+window.formatPostViewsCount = formatPostViewsCount;
+window.hasUserViewedPost = hasUserViewedPost;
+window.getPostViewersDetails = getPostViewersDetails;
+window.updatePostViewsDOM = updatePostViewsDOM;
+window.registerPostView = registerPostView;
+window.openPostViewsModal = openPostViewsModal;
+window.closePostViewsModal = closePostViewsModal;
+window.renderPostViewsModalContent = renderPostViewsModalContent;
+window.setupFeedPostViewsObserver = setupFeedPostViewsObserver;
+
+/* ==========================================================================
    CONTA EMPRESA: CATEGORIAS DE CONTEÚDO TEMPORÁRIO (24H)
    Categorias disponíveis: Editor, Software, Engenharia, Variedades, Studio,
    Design, Logo Marca, Serviços, Loja Online, Catálogo, Casa, Eletrônicas,
@@ -24568,11 +24981,14 @@ function renderPostsFeed(posts = []) {
                 const timeLabel = createdAt.toLocaleString([], { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
                 const canDeletePost = isPostOwner(post, currentUser, currentProfile);
                 const isPostAd = !!(post.isAd || post.contentType === 'ad');
+                const viewsCount = getPostViewsCount(post);
+                const formattedViews = formatPostViewsCount(viewsCount);
+                const userViewed = hasUserViewedPost(post);
 
                 const isThisMusicPlaying = currentFeedMusicAudio && !currentFeedMusicAudio.paused && currentFeedMusicPostId === post.id;
 
                 return `
-                    <article class="post-card" id="preview-post-card-${post.id}">
+                    <article class="post-card" id="preview-post-card-${post.id}" data-post-id="${post.id}">
                         <div class="post-head">
                             <div class="post-author">
                                 <div class="post-author-avatar" data-author-uid="${post.authorUid || ''}" ${avatar}></div>
@@ -24597,7 +25013,13 @@ function renderPostsFeed(posts = []) {
                                 </button>
                             `}
                         </div>
-                        <div class="post-media">${mediaTag}</div>
+                        <div class="post-media">
+                            ${mediaTag}
+                            <div class="feed-media-views-badge" data-action="post-views" data-post-id="${post.id}" title="Ver visualizações da publicação">
+                                <i data-lucide="eye"></i>
+                                <span data-post-views-badge="${post.id}">${formattedViews} visualizaç${viewsCount === 1 ? 'ão' : 'ões'}</span>
+                            </div>
+                        </div>
                         ${post.music && post.music.title ? `
                             <div class="feed-music-badge ${isThisMusicPlaying ? 'playing' : ''}" id="preview-music-badge-${post.id}" data-action="toggle-feed-music" data-post-id="${post.id}" data-audio-url="${escapeHTML(post.music.audioUrl || '')}" data-snippet-start="${post.music.snippetStart || 0}" data-snippet-duration="${post.music.snippetDuration || 0}" role="button" tabindex="0" title="Tocar música">
                                 <i data-lucide="disc-3" class="feed-music-disc"></i>
@@ -24634,6 +25056,9 @@ function renderPostsFeed(posts = []) {
                         <div class="post-actions">
                             <button class="post-action-btn" type="button">❤ ${likes}</button>
                             <button class="post-action-btn" type="button" data-action="open-comment-modal" data-post-id="${post.id}">💬 ${comments.length}</button>
+                            <button class="post-action-btn post-views-btn ${userViewed ? 'viewed' : ''}" type="button" data-action="post-views" data-post-id="${post.id}" title="Visualizações da publicação">
+                                <i data-lucide="eye"></i> <span data-post-views-count="${post.id}">${formattedViews}</span>
+                            </button>
                             <button class="post-action-btn post-share-btn" type="button" data-action="share-post" data-post-id="${post.id}" title="Compartilhar" aria-label="Compartilhar">
                                 <i data-lucide="share-2"></i>
                             </button>
@@ -24771,9 +25196,12 @@ function renderPostsFeed(posts = []) {
         const isPostAd = !!(post.isAd || post.contentType === 'ad');
         const isCommentsOpen = openPostCommentCards.has(post.id);
         const isThisMusicPlaying = currentFeedMusicAudio && !currentFeedMusicAudio.paused && currentFeedMusicPostId === post.id;
+        const viewsCount = getPostViewsCount(post);
+        const formattedViews = formatPostViewsCount(viewsCount);
+        const userViewed = hasUserViewedPost(post);
 
         return `
-            <article class="feed-card" id="post-card-${post.id}">
+            <article class="feed-card" id="post-card-${post.id}" data-post-id="${post.id}">
                 <div class="feed-header">
                     <div class="feed-author">
                         <div class="feed-avatar" data-author-uid="${post.authorUid || ''}" ${avatar}></div>
@@ -24798,7 +25226,13 @@ function renderPostsFeed(posts = []) {
                         </button>
                     `}
                 </div>
-                <div class="feed-media">${mediaTag}</div>
+                <div class="feed-media">
+                    ${mediaTag}
+                    <div class="feed-media-views-badge" data-action="post-views" data-post-id="${post.id}" title="Ver visualizações do post">
+                        <i data-lucide="eye"></i>
+                        <span data-post-views-badge="${post.id}">${formattedViews} visualizaç${viewsCount === 1 ? 'ão' : 'ões'}</span>
+                    </div>
+                </div>
                 ${post.music && post.music.title ? `
                     <div class="feed-music-badge ${isThisMusicPlaying ? 'playing' : ''}" id="feed-music-badge-${post.id}" data-action="toggle-feed-music" data-post-id="${post.id}" data-audio-url="${escapeHTML(post.music.audioUrl || '')}" data-snippet-start="${post.music.snippetStart || 0}" data-snippet-duration="${post.music.snippetDuration || 0}" role="button" tabindex="0" title="Tocar música">
                         <i data-lucide="disc-3" class="feed-music-disc"></i>
@@ -24841,6 +25275,10 @@ function renderPostsFeed(posts = []) {
                         <button class="feed-action-btn ${isCommentsOpen ? 'active' : ''}" type="button" data-post-id="${post.id}" data-action="comment" title="Comentários">
                             <i data-lucide="message-circle"></i>
                             <span>${rawComments.length}</span>
+                        </button>
+                        <button class="feed-action-btn feed-views-btn ${userViewed ? 'viewed' : ''}" type="button" data-post-id="${post.id}" data-action="post-views" title="Visualizações da publicação" aria-label="Visualizações da publicação">
+                            <i data-lucide="eye"></i>
+                            <span data-post-views-count="${post.id}">${formattedViews}</span>
                         </button>
                         <button class="feed-action-btn share-action-btn" type="button" data-post-id="${post.id}" data-action="share-post" title="Compartilhar" aria-label="Compartilhar">
                             <i data-lucide="share-2"></i>
@@ -25266,6 +25704,33 @@ function renderPostsFeed(posts = []) {
             }
         });
     });
+
+    // Abrir modal de visualizações do post (Feed e Publicações Recentes) - v1.0.194
+    document.querySelectorAll('[data-action="post-views"]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const postId = btn.dataset.postId;
+            const post = posts.find(p => String(p.id) === String(postId));
+            if (post) {
+                openPostViewsModal(post);
+            }
+        });
+    });
+
+    // Registrar visualização ao dar play no vídeo ou clicar na mídia do post - v1.0.194
+    document.querySelectorAll('.feed-card video, .post-card video').forEach(videoEl => {
+        videoEl.addEventListener('play', () => {
+            const card = videoEl.closest('[data-post-id]');
+            const postId = card?.dataset?.postId;
+            if (postId && currentUser) {
+                registerPostView(postId);
+            }
+        });
+    });
+
+    setupFeedPostViewsObserver(feedList);
+    if (previewFeed) setupFeedPostViewsObserver(previewFeed);
 
     if (typeof checkUrlForSharedPost === 'function') {
         checkUrlForSharedPost(posts);
@@ -26126,6 +26591,9 @@ document.getElementById('publish-post-btn')?.addEventListener('click', async () 
                 createdAt: now,
                 likes: [],
                 comments: [],
+                views: [],
+                viewsCount: 0,
+                viewers: {},
                 music: pendingPostMusic ? {
                     id: pendingPostMusic.id,
                     title: pendingPostMusic.title,

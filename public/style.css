@@ -18639,6 +18639,237 @@ body.theme-hacker .post-personal-category-tag {
     border-color: rgba(0, 255, 102, 0.35) !important;
 }
 
+/* ==========================================================================
+   SISTEMA DE VISUALIZAÇÕES PARA OS POSTS (v1.0.194)
+   ========================================================================== */
+.feed-media,
+.post-media {
+    position: relative;
+}
+
+.feed-media-views-badge {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    z-index: 3;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(10, 14, 24, 0.78);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    color: rgba(255, 255, 255, 0.94);
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.feed-media-views-badge:hover {
+    border-color: var(--accent-color, #fff01f);
+    color: var(--accent-color, #fff01f);
+    transform: translateY(-1px);
+}
+
+.feed-media-views-badge i,
+.feed-media-views-badge svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+}
+
+.feed-action-btn.feed-views-btn,
+.post-action-btn.post-views-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.2s ease;
+}
+
+.feed-action-btn.feed-views-btn:hover,
+.post-action-btn.post-views-btn:hover {
+    color: var(--accent-color, #fff01f);
+}
+
+.feed-action-btn.feed-views-btn.viewed,
+.post-action-btn.post-views-btn.viewed {
+    color: #38bdf8;
+}
+
+.post-views-modal-card {
+    max-width: 460px;
+    width: 94%;
+    max-height: 84vh;
+    display: flex;
+    flex-direction: column;
+    border-radius: 20px;
+    background: rgba(16, 20, 32, 0.98);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65);
+    overflow: hidden;
+}
+
+.post-views-summary-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 18px;
+    background: rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.post-views-summary-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    flex: 1;
+}
+
+.post-views-summary-author {
+    font-size: 0.88rem;
+    font-weight: 800;
+    color: #ffffff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.post-views-summary-caption {
+    font-size: 0.76rem;
+    color: var(--text-dim, #888);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.post-views-total-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 999px;
+    background: rgba(255, 240, 31, 0.12);
+    border: 1px solid rgba(255, 240, 31, 0.35);
+    color: var(--accent-color, #fff01f);
+    font-size: 0.78rem;
+    font-weight: 800;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.post-views-total-pill i,
+.post-views-total-pill svg {
+    width: 14px;
+    height: 14px;
+}
+
+.post-views-modal-list {
+    padding: 12px 16px 18px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 55vh;
+}
+
+.post-viewer-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    transition: background 0.2s ease;
+}
+
+.post-viewer-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.post-viewer-user {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    flex: 1;
+}
+
+.post-viewer-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.08);
+    background-size: cover;
+    background-position: center;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    flex-shrink: 0;
+}
+
+.post-viewer-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.post-viewer-name {
+    font-size: 0.86rem;
+    font-weight: 700;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.post-viewer-username {
+    font-size: 0.74rem;
+    color: var(--text-dim, #888);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.post-viewer-time {
+    font-size: 0.74rem;
+    font-weight: 600;
+    color: var(--text-dim, #888);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.post-views-empty {
+    text-align: center;
+    padding: 32px 16px;
+    color: var(--text-dim, #888);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+body.theme-hacker .post-views-total-pill {
+    color: #00ff66 !important;
+    background: rgba(0, 255, 102, 0.12) !important;
+    border-color: rgba(0, 255, 102, 0.35) !important;
+}
+
+body.theme-hacker .feed-media-views-badge:hover {
+    border-color: #00ff66 !important;
+    color: #00ff66 !important;
+}
+
+
 
 
 
