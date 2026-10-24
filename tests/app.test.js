@@ -11775,14 +11775,14 @@ test('Opção de Salvar Posts nos Favoritos na Aba de Feed Reels e Alinhamento a
   const css = fs.readFileSync('public/style.css', 'utf8');
   const html = fs.readFileSync('public/index.html', 'utf8');
 
-  // 1. Integridade de Versionamento (v1.0.191)
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.191', 'script.js deve ter versão 1.0.191');
+  // 1. Integridade de Versionamento (v1.0.191+)
+  assert.ok(parseInt(win.CURRENT_APP_VERSION.split('.')[2], 10) >= 191, 'script.js deve ter versão >= 1.0.191');
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
-  assert.strictEqual(versionJson.version, '1.0.191', 'version.json deve ter versão 1.0.191');
-  assert.ok(html.includes('script.js?v=1.0.191'), 'index.html deve referenciar script.js?v=1.0.191');
-  assert.ok(html.includes('style.css?v=1.0.191'), 'index.html deve referenciar style.css?v=1.0.191');
+  assert.ok(parseInt(versionJson.version.split('.')[2], 10) >= 191, 'version.json deve ter versão >= 1.0.191');
+  assert.ok(html.includes(`script.js?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar script.js');
+  assert.ok(html.includes(`style.css?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar style.css');
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
-  assert.ok(swContent.includes('vortex-vip-v1.0.191'), 'sw.js deve conter cache vortex-vip-v1.0.191');
+  assert.ok(swContent.includes(`vortex-vip-v${win.CURRENT_APP_VERSION}`), 'sw.js deve conter cache');
 
   // 2. Elementos de Abas de Filtro no DOM e Regras de CSS
   const filterBar = env.elements['feed-filter-bar'];
@@ -11874,6 +11874,112 @@ test('Opção de Salvar Posts nos Favoritos na Aba de Feed Reels e Alinhamento a
   assert.strictEqual(win.getFeedFilterMode(), 'all', 'Modo deve voltar para all');
   assert.ok(feedList.innerHTML.includes('post_reel_1') && feedList.innerHTML.includes('post_reel_2'), 'Todos os posts devem voltar a aparecer na aba Todos');
 });
+
+test('Opção de Título do Post e Hashtags com Limite Máximo de 3 # e Bloqueio Automático (v1.0.192)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+  const css = fs.readFileSync('public/style.css', 'utf8');
+  const html = fs.readFileSync('public/index.html', 'utf8');
+
+  // 1. Integridade de Versionamento (v1.0.192)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.192', 'script.js deve ter versão 1.0.192');
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
+  assert.strictEqual(versionJson.version, '1.0.192', 'version.json deve ter versão 1.0.192');
+  assert.ok(html.includes('script.js?v=1.0.192'), 'index.html deve referenciar script.js?v=1.0.192');
+  assert.ok(html.includes('style.css?v=1.0.192'), 'index.html deve referenciar style.css?v=1.0.192');
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+  assert.ok(swContent.includes('vortex-vip-v1.0.192'), 'sw.js deve conter cache vortex-vip-v1.0.192');
+
+  // 2. Elementos de Título do Post e Hashtags no DOM e Regras de CSS
+  const titleWrap = env.elements['post-title-wrap'];
+  const titleInput = env.elements['post-title-input'];
+  const titleCount = env.elements['post-title-char-count'];
+  const hashtagsWrap = env.elements['post-hashtags-wrap'];
+  const hashtagsInput = env.elements['post-hashtags-input'];
+  const hashtagsCount = env.elements['post-hashtags-count'];
+  const hashtagsChips = env.elements['post-hashtags-chips'];
+  const hashtagsHint = env.elements['post-hashtags-limit-hint'];
+
+  assert.ok(titleWrap, '#post-title-wrap deve existir no DOM');
+  assert.ok(titleInput, '#post-title-input deve existir no DOM');
+  assert.ok(titleCount, '#post-title-char-count deve existir no DOM');
+  assert.ok(hashtagsWrap, '#post-hashtags-wrap deve existir no DOM');
+  assert.ok(hashtagsInput, '#post-hashtags-input deve existir no DOM');
+  assert.ok(hashtagsCount, '#post-hashtags-count deve existir no DOM');
+  assert.ok(hashtagsChips, '#post-hashtags-chips deve existir no DOM');
+  assert.ok(hashtagsHint, '#post-hashtags-limit-hint deve existir no DOM');
+
+  assert.ok(css.includes('.post-title-input'), 'style.css deve conter .post-title-input');
+  assert.ok(css.includes('.post-hashtags-input'), 'style.css deve conter .post-hashtags-input');
+  assert.ok(css.includes('.post-hashtags-input.hashtags-blocked'), 'style.css deve conter .post-hashtags-input.hashtags-blocked');
+  assert.ok(css.includes('.feed-post-title'), 'style.css deve conter .feed-post-title');
+  assert.ok(css.includes('.feed-hashtag-pill'), 'style.css deve conter .feed-hashtag-pill');
+
+  // 3. Testar Validação e Limite de até 3 # (parsePostHashtags e enforcePostHashtagsLimit)
+  assert.strictEqual(win.MAX_POST_HASHTAGS, 3, 'Limite máximo de hashtags deve ser 3');
+
+  // Até 3 hashtags: permitido normalmente
+  hashtagsInput.value = '#vortex #reels #vip';
+  const okResult = win.enforcePostHashtagsLimit(hashtagsInput, false);
+  assert.strictEqual(okResult.wasBlocked, false, '3 hashtags não devem disparar bloqueio');
+  assert.strictEqual(okResult.count, 3, 'Contagem deve ser 3');
+  assert.deepStrictEqual(Array.from(okResult.hashtags), ['#vortex', '#reels', '#vip'], 'Deve extrair as 3 hashtags corretamente');
+  assert.strictEqual(hashtagsCount.innerText, '3/3 #', 'Contador visual deve exibir 3/3 #');
+  assert.ok(hashtagsChips.innerHTML.includes('#vortex') && hashtagsChips.innerHTML.includes('#vip'), 'Chips de preview devem renderizar as 3 hashtags');
+
+  // 4. Tentar colocar mais de 3 # (ex: 4ª hashtag ou 4º símbolo #): DEVE BLOQUEAR!
+  hashtagsInput.value = '#vortex #reels #vip #quarta';
+  const blockedResult = win.enforcePostHashtagsLimit(hashtagsInput, true);
+  assert.strictEqual(blockedResult.wasBlocked, true, '4ª hashtag (#) deve ser bloqueada imediatamente');
+  assert.strictEqual(hashtagsInput.value, '#vortex #reels #vip', 'O valor do input deve ser truncado/bloqueado nas 3 primeiras hashtags');
+  assert.ok(hashtagsInput.classList.contains('hashtags-blocked'), 'Input deve receber a classe hashtags-blocked quando bloqueado');
+  assert.strictEqual(hashtagsHint.style.display, 'flex', 'Aviso de bloqueio #post-hashtags-limit-hint deve ficar visível');
+  assert.ok(hashtagsCount.classList.contains('limit-reached'), 'Contador deve receber classe limit-reached');
+
+  // Tentar colar 4 símbolos # juntos (#um#dois#tres#quatro)
+  hashtagsInput.value = '#um#dois#tres#quatro';
+  const pastedBlocked = win.enforcePostHashtagsLimit(hashtagsInput, false);
+  assert.strictEqual(pastedBlocked.wasBlocked, true, 'Mais de 3 # colados juntos também devem ser bloqueados');
+  assert.strictEqual(pastedBlocked.hashtags.length, 3, 'Apenas 3 hashtags devem permanecer');
+
+  // 5. Renderização do Título e das 3 # no Card do Feed Reels e Busca
+  const feedList = env.elements['feed-list'];
+  const postsWithTitleAndTags = [
+    {
+      id: 'post_titled_192',
+      authorUid: 'user_creator_192',
+      authorName: 'Deyvison Criador',
+      title: 'Lançamento Oficial no Feed Reels',
+      caption: 'Confira todas as novidades desta versão!',
+      hashtags: ['#vortex', '#reels', '#lancamento'],
+      type: 'image',
+      mediaData: 'data:image/png;base64,img192',
+      likes: [],
+      comments: [],
+      createdAt: 5000
+    }
+  ];
+
+  win.renderPostsFeed(postsWithTitleAndTags);
+  assert.ok(feedList.innerHTML.includes('feed-post-title'), 'Feed deve renderizar o elemento .feed-post-title');
+  assert.ok(feedList.innerHTML.includes('Lançamento Oficial no Feed Reels'), 'Feed deve exibir o título do post');
+  assert.ok(feedList.innerHTML.includes('feed-hashtag-pill'), 'Feed deve renderizar as pílulas de hashtags (.feed-hashtag-pill)');
+  assert.ok(feedList.innerHTML.includes('#vortex') && feedList.innerHTML.includes('#lancamento'), 'Feed deve exibir as hashtags do post');
+
+  // Busca por título ou hashtag no Feed Reels
+  const matchedByTitle = win.filterFeedPosts(postsWithTitleAndTags, 'Lançamento Oficial');
+  assert.strictEqual(matchedByTitle.length, 1, 'filterFeedPosts deve encontrar o post pelo título');
+  const matchedByHashtag = win.filterFeedPosts(postsWithTitleAndTags, '#lancamento');
+  assert.strictEqual(matchedByHashtag.length, 1, 'filterFeedPosts deve encontrar o post pela hashtag');
+
+  // 6. Reset do compositor deve limpar título e hashtags
+  titleInput.value = 'Título Temporário';
+  win.resetPostComposer();
+  assert.strictEqual(titleInput.value, '', 'resetPostComposer deve limpar #post-title-input');
+  assert.strictEqual(hashtagsInput.value, '', 'resetPostComposer deve limpar #post-hashtags-input');
+  assert.strictEqual(hashtagsCount.innerText, '0/3 #', 'resetPostComposer deve restaurar contador para 0/3 #');
+});
+
 
 
 

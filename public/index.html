@@ -4,20 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.191">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.191">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.191">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.191">
-    <link rel="stylesheet" href="style.css?v=1.0.191">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.192">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.192">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.192">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.192">
+    <link rel="stylesheet" href="style.css?v=1.0.192">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.191">
+    <link rel="manifest" href="manifest.json?v=1.0.192">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.191">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.191">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.192">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.192">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -2367,9 +2367,30 @@
                     </div>
                 </div>
 
+                <div class="post-title-wrap" id="post-title-wrap">
+                    <div class="post-field-header-row">
+                        <label for="post-title-input" class="post-caption-label">Título do Post</label>
+                        <span id="post-title-char-count" class="post-char-counter">0/80</span>
+                    </div>
+                    <input type="text" id="post-title-input" class="post-title-input" maxlength="80" placeholder="Digite o título do post..." autocomplete="off">
+                </div>
+
                 <div class="post-caption-wrap">
                     <label for="post-caption-input" class="post-caption-label">Legenda</label>
                     <textarea id="post-caption-input" rows="4" placeholder="Escreva algo incrível..."></textarea>
+                </div>
+
+                <div class="post-hashtags-wrap" id="post-hashtags-wrap">
+                    <div class="post-field-header-row">
+                        <label for="post-hashtags-input" class="post-caption-label">Hashtags (Máx. 3 #)</label>
+                        <span id="post-hashtags-count" class="post-hashtags-counter">0/3 #</span>
+                    </div>
+                    <input type="text" id="post-hashtags-input" class="post-hashtags-input" placeholder="Ex: #vortex #reels #vip (máximo 3 #)" autocomplete="off">
+                    <div id="post-hashtags-chips" class="post-hashtags-chips"></div>
+                    <small id="post-hashtags-limit-hint" class="post-hashtags-limit-hint" style="display: none;">
+                        <i data-lucide="lock"></i>
+                        <span>Bloqueado: limite máximo de 3 # (hashtags) atingido!</span>
+                    </small>
                 </div>
 
                 <!-- Opção Exclusiva de Botão com Link (Conta Empresa) -->
@@ -3860,6 +3881,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.191" defer></script>
+    <script type="module" src="script.js?v=1.0.192" defer></script>
 </body>
 </html>

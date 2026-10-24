@@ -18344,7 +18344,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.191';
+export const CURRENT_APP_VERSION = '1.0.192';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -23458,6 +23458,26 @@ function resetPostComposer() {
     if (postPreviewBox) postPreviewBox.classList.add('hidden');
     if (postCaptionInput) postCaptionInput.value = '';
 
+    const postTitleInp = document.getElementById('post-title-input');
+    if (postTitleInp) postTitleInp.value = '';
+    const postTitleCounter = document.getElementById('post-title-char-count');
+    if (postTitleCounter) postTitleCounter.innerText = '0/80';
+
+    const postHashtagsInp = document.getElementById('post-hashtags-input');
+    if (postHashtagsInp) {
+        postHashtagsInp.value = '';
+        postHashtagsInp.classList.remove('hashtags-blocked');
+    }
+    const postHashtagsCounter = document.getElementById('post-hashtags-count');
+    if (postHashtagsCounter) {
+        postHashtagsCounter.innerText = '0/3 #';
+        postHashtagsCounter.classList.remove('limit-reached');
+    }
+    const postHashtagsChips = document.getElementById('post-hashtags-chips');
+    if (postHashtagsChips) postHashtagsChips.innerHTML = '';
+    const postHashtagsHint = document.getElementById('post-hashtags-limit-hint');
+    if (postHashtagsHint) postHashtagsHint.style.display = 'none';
+
     const bizBtnText = document.getElementById('post-business-btn-text');
     const bizBtnUrl = document.getElementById('post-business-btn-url');
     if (bizBtnText) bizBtnText.value = '';
@@ -24072,6 +24092,166 @@ export function initBusinessPostControls() {
 
 export const initBusinessCategoryControls = initBusinessPostControls;
 
+export const MAX_POST_HASHTAGS = 3;
+
+export function parsePostHashtags(raw = '') {
+    if (!raw || typeof raw !== 'string') {
+        return {
+            hashtags: [],
+            rawTokens: [],
+            count: 0,
+            totalFound: 0,
+            wasBlocked: false,
+            sanitizedText: ''
+        };
+    }
+
+    const tokens = raw
+        .split(/[\s,]+/)
+        .flatMap(token => {
+            if (!token) return [];
+            if (token.indexOf('#', 1) !== -1) {
+                return token.split('#').filter(Boolean).map(t => '#' + t);
+            }
+            return [token];
+        })
+        .map(t => t.trim())
+        .filter(Boolean)
+        .map(t => (t.startsWith('#') ? t : `#${t}`));
+
+    const hashCountInRaw = (raw.match(/#/g) || []).length;
+    const totalFound = Math.max(tokens.length, hashCountInRaw);
+    const wasBlocked = totalFound > MAX_POST_HASHTAGS;
+
+    const limitedTokens = tokens.slice(0, MAX_POST_HASHTAGS).map(t => {
+        const cleaned = '#' + t.replace(/^#+/, '').replace(/[^\p{L}\p{N}_]/gu, '');
+        return cleaned;
+    });
+
+    const validHashtags = limitedTokens.filter(t => t.length > 1);
+    const count = Math.min(MAX_POST_HASHTAGS, Math.max(validHashtags.length, Math.min(hashCountInRaw, MAX_POST_HASHTAGS)));
+    const sanitizedText = wasBlocked ? limitedTokens.join(' ') : raw;
+
+    return {
+        hashtags: validHashtags,
+        rawTokens: limitedTokens,
+        count,
+        totalFound,
+        wasBlocked,
+        sanitizedText
+    };
+}
+
+export function renderPostHashtagsChips(hashtags = []) {
+    const chipsContainer = document.getElementById('post-hashtags-chips');
+    if (!chipsContainer) return;
+    if (!Array.isArray(hashtags) || !hashtags.length) {
+        chipsContainer.innerHTML = '';
+        return;
+    }
+    chipsContainer.innerHTML = hashtags.slice(0, MAX_POST_HASHTAGS).map((tag, idx) => `
+        <span class="post-hashtag-chip" data-hashtag-idx="${idx}">
+            <span>${escapeHTML(tag)}</span>
+            <button type="button" class="post-hashtag-chip-remove" data-remove-hashtag-idx="${idx}" title="Remover ${escapeHTML(tag)}" aria-label="Remover ${escapeHTML(tag)}">&times;</button>
+        </span>
+    `).join('');
+
+    chipsContainer.querySelectorAll('[data-remove-hashtag-idx]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const idx = parseInt(btn.dataset.removeHashtagIdx, 10);
+            const inp = document.getElementById('post-hashtags-input');
+            if (!inp) return;
+            const parsed = parsePostHashtags(inp.value);
+            const remaining = parsed.hashtags.filter((_, i) => i !== idx);
+            inp.value = remaining.join(' ');
+            enforcePostHashtagsLimit(inp, false);
+        });
+    });
+}
+
+export function enforcePostHashtagsLimit(inputEl = document.getElementById('post-hashtags-input'), showWarningToast = true) {
+    if (!inputEl) return { hashtags: [], count: 0, wasBlocked: false };
+    const result = parsePostHashtags(inputEl.value);
+    const counterEl = document.getElementById('post-hashtags-count');
+    const hintEl = document.getElementById('post-hashtags-limit-hint');
+
+    if (result.wasBlocked) {
+        inputEl.value = result.sanitizedText;
+        inputEl.classList.add('hashtags-blocked');
+        if (counterEl) {
+            counterEl.innerText = `${MAX_POST_HASHTAGS}/${MAX_POST_HASHTAGS} #`;
+            counterEl.classList.add('limit-reached');
+        }
+        if (hintEl) {
+            hintEl.style.display = 'flex';
+        }
+        if (showWarningToast && typeof showToast === 'function') {
+            showToast('Limite de 3 # Atingido 🔒', 'Só é permitido colocar até 3 hashtags (#) no post.', 'red');
+        }
+    } else {
+        const atMax = result.count >= MAX_POST_HASHTAGS;
+        inputEl.classList.toggle('hashtags-blocked', false);
+        if (counterEl) {
+            counterEl.innerText = `${result.count}/${MAX_POST_HASHTAGS} #`;
+            counterEl.classList.toggle('limit-reached', atMax);
+        }
+        if (hintEl) {
+            hintEl.style.display = atMax ? 'flex' : 'none';
+        }
+    }
+
+    renderPostHashtagsChips(result.hashtags);
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+    }
+    return result;
+}
+
+export function initPostTitleAndHashtagsControls() {
+    const titleInp = document.getElementById('post-title-input');
+    const titleCount = document.getElementById('post-title-char-count');
+    if (titleInp && !titleInp.dataset.boundTitle) {
+        titleInp.dataset.boundTitle = 'true';
+        titleInp.addEventListener('input', () => {
+            if (titleInp.value.length > 80) {
+                titleInp.value = titleInp.value.slice(0, 80);
+            }
+            if (titleCount) {
+                titleCount.innerText = `${titleInp.value.length}/80`;
+            }
+        });
+    }
+
+    const hashtagsInp = document.getElementById('post-hashtags-input');
+    if (hashtagsInp && !hashtagsInp.dataset.boundHashtags) {
+        hashtagsInp.dataset.boundHashtags = 'true';
+        hashtagsInp.addEventListener('keydown', (e) => {
+            const currentVal = hashtagsInp.value || '';
+            const currentParsed = parsePostHashtags(currentVal);
+            const hashMatches = (currentVal.match(/#/g) || []).length;
+            const isAddingFourthHash = e.key === '#' && (hashMatches >= MAX_POST_HASHTAGS || currentParsed.hashtags.length >= MAX_POST_HASHTAGS);
+            const isStartingFourthWord = (e.key === ' ' || e.key === ',') && currentParsed.hashtags.length >= MAX_POST_HASHTAGS;
+            if (isAddingFourthHash || isStartingFourthWord) {
+                e.preventDefault();
+                hashtagsInp.classList.add('hashtags-blocked');
+                const hintEl = document.getElementById('post-hashtags-limit-hint');
+                if (hintEl) hintEl.style.display = 'flex';
+                const counterEl = document.getElementById('post-hashtags-count');
+                if (counterEl) {
+                    counterEl.innerText = `${MAX_POST_HASHTAGS}/${MAX_POST_HASHTAGS} #`;
+                    counterEl.classList.add('limit-reached');
+                }
+                showToast('Limite de 3 # Atingido 🔒', 'Só é permitido colocar até 3 hashtags (#) no post.', 'red');
+            }
+        });
+        hashtagsInp.addEventListener('input', () => {
+            enforcePostHashtagsLimit(hashtagsInp, true);
+        });
+    }
+}
+
 export function normalizeSearchText(str) {
     if (!str || typeof str !== 'string') return '';
     return str
@@ -24089,7 +24269,9 @@ export function filterFeedPosts(posts = [], query = '') {
     return active.filter(p => {
         const authorName = normalizeSearchText(p.authorName || '');
         const authorUsername = normalizeSearchText(p.authorUsername || '');
+        const postTitle = normalizeSearchText(p.title || '');
         const caption = normalizeSearchText(p.caption || '');
+        const hashtagsStr = normalizeSearchText(Array.isArray(p.hashtags) ? p.hashtags.join(' ') : (p.hashtags || ''));
         const category = normalizeSearchText(p.businessCategory || p.category || '');
         const musicTitle = normalizeSearchText(p.music?.title || '');
         const musicArtist = normalizeSearchText(p.music?.artist || '');
@@ -24106,7 +24288,9 @@ export function filterFeedPosts(posts = [], query = '') {
         return matchesAdQuery ||
                authorName.includes(q) ||
                authorUsername.includes(q) ||
+               postTitle.includes(q) ||
                caption.includes(q) ||
+               hashtagsStr.includes(q) ||
                category.includes(q) ||
                musicTitle.includes(q) ||
                musicArtist.includes(q) ||
@@ -24386,7 +24570,13 @@ function renderPostsFeed(posts = []) {
                                 ${getPostCategoryBadgeHTML(post)}
                             </div>
                         ` : ''}
+                        ${post.title ? `<h4 class="post-card-title">${escapeHTML(post.title)}</h4>` : ''}
                         ${caption ? `<p class="post-caption">${escapeHTML(caption)}</p>` : ''}
+                        ${Array.isArray(post.hashtags) && post.hashtags.length ? `
+                            <div class="feed-hashtags-row">
+                                ${post.hashtags.slice(0, 3).map(tag => `<span class="feed-hashtag-pill" data-action="filter-hashtag" data-hashtag="${escapeHTML(tag)}">${escapeHTML(tag)}</span>`).join('')}
+                            </div>
+                        ` : ''}
                         ${post.actionButton && post.actionButton.url ? `
                             <div class="feed-cta-wrapper">
                                 <a href="${escapeHTML(post.actionButton.url)}" target="_blank" rel="noopener noreferrer" class="feed-cta-btn" onclick="event.stopPropagation();">
@@ -24582,7 +24772,13 @@ function renderPostsFeed(posts = []) {
                             ${getPostCategoryBadgeHTML(post)}
                         </div>
                     ` : ''}
+                    ${post.title ? `<h4 class="feed-post-title">${escapeHTML(post.title)}</h4>` : ''}
                     ${caption ? `<p class="feed-caption">${escapeHTML(caption)}</p>` : ''}
+                    ${Array.isArray(post.hashtags) && post.hashtags.length ? `
+                        <div class="feed-hashtags-row">
+                            ${post.hashtags.slice(0, 3).map(tag => `<span class="feed-hashtag-pill" data-action="filter-hashtag" data-hashtag="${escapeHTML(tag)}">${escapeHTML(tag)}</span>`).join('')}
+                        </div>
+                    ` : ''}
                     ${post.actionButton && post.actionButton.url ? `
                         <div class="feed-cta-wrapper">
                             <a href="${escapeHTML(post.actionButton.url)}" target="_blank" rel="noopener noreferrer" class="feed-cta-btn" onclick="event.stopPropagation();">
@@ -24983,6 +25179,21 @@ function renderPostsFeed(posts = []) {
                 });
             }
         }
+    });
+
+    // Filtrar por hashtag ao clicar na pílula de hashtag (v1.0.192)
+    document.querySelectorAll('[data-action="filter-hashtag"]').forEach(pill => {
+        pill.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const tag = pill.dataset.hashtag;
+            if (tag) {
+                currentFeedSearchQuery = tag;
+                const searchInp = document.getElementById('feed-search-input');
+                if (searchInp) searchInp.value = tag;
+                renderPostsFeed(cachedFeedPosts);
+            }
+        });
     });
 
     // Salvar / Favoritar postagem no Feed Reels (v1.0.190)
@@ -25772,6 +25983,15 @@ document.getElementById('publish-post-btn')?.addEventListener('click', async () 
         return;
     }
 
+    // Validação e bloqueio de limite de 3 # (hashtags) antes de publicar (v1.0.192)
+    const hashtagsInputEl = document.getElementById('post-hashtags-input');
+    const rawHashtagsText = hashtagsInputEl?.value || '';
+    const hashtagValidation = parsePostHashtags(rawHashtagsText);
+    if (hashtagValidation.wasBlocked) {
+        enforcePostHashtagsLimit(hashtagsInputEl, true);
+        return;
+    }
+
     const publishPostBtn = document.getElementById('publish-post-btn');
     if (publishPostBtn) {
         publishPostBtn.disabled = true;
@@ -25842,7 +26062,9 @@ document.getElementById('publish-post-btn')?.addEventListener('click', async () 
                 mediaSizeKB: pendingPostMediaInfo?.sizeFormatted || formatBytesToKB(file?.size || 102400),
                 isTrimmed: !!(pendingPostMediaInfo && pendingPostMediaInfo.isTrimmed) || !!(file && file.isTrimmed),
                 videoDuration: isVideo ? (pendingPostMediaInfo?.duration || (file && file.duration) || 0) : null,
+                title: document.getElementById('post-title-input')?.value?.trim() || '',
                 caption: postCaptionInput?.value?.trim() || '',
+                hashtags: hashtagValidation.hashtags.slice(0, MAX_POST_HASHTAGS),
                 isAd: isPostAd,
                 contentType: isPostAd ? 'ad' : 'normal',
                 businessCategory: isTemporaryCategory ? selectedCategory : null,
@@ -30866,6 +31088,12 @@ if (typeof window !== 'undefined') {
     window.setFeedFilterMode = setFeedFilterMode;
     window.getFeedFilterMode = () => currentFeedFilterMode;
     window.updateFeedFavoritesBadge = updateFeedFavoritesBadge;
+    // Título do Post e Hashtags com Limite de 3 # e Bloqueio (v1.0.192)
+    window.MAX_POST_HASHTAGS = MAX_POST_HASHTAGS;
+    window.parsePostHashtags = parsePostHashtags;
+    window.enforcePostHashtagsLimit = enforcePostHashtagsLimit;
+    window.renderPostHashtagsChips = renderPostHashtagsChips;
+    window.initPostTitleAndHashtagsControls = initPostTitleAndHashtagsControls;
 }
 
 if (typeof window !== 'undefined') {
@@ -30881,4 +31109,5 @@ if (typeof window !== 'undefined') {
     setupProductDigitalLinkValidation();
     initStoryCaptionAndLinkControls();
     initBusinessPostControls();
+    initPostTitleAndHashtagsControls();
 }

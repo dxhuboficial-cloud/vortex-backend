@@ -18404,6 +18404,172 @@ body.theme-hacker .feed-filter-tab.active .feed-fav-count-badge {
     color: #000000 !important;
 }
 
+/* ==========================================================================
+   TÍTULO DO POST E HASHTAGS COM LIMITE DE 3 # E BLOQUEIO (v1.0.192)
+   ========================================================================== */
+.post-title-wrap,
+.post-hashtags-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.post-field-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.post-char-counter,
+.post-hashtags-counter {
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: var(--text-dim, #888);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 2px 8px;
+    border-radius: 999px;
+    transition: all 0.2s ease;
+}
+
+.post-hashtags-counter.limit-reached {
+    color: #ff4d67;
+    background: rgba(255, 77, 103, 0.14);
+    border-color: rgba(255, 77, 103, 0.45);
+    box-shadow: 0 0 10px rgba(255, 77, 103, 0.2);
+}
+
+#post-title-input,
+.post-title-input,
+#post-hashtags-input,
+.post-hashtags-input {
+    width: 100%;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--text-main, #ffffff);
+    padding: 11px 14px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    outline: none;
+    box-sizing: border-box;
+    transition: all 0.2s ease;
+}
+
+#post-title-input:focus,
+.post-title-input:focus,
+#post-hashtags-input:focus,
+.post-hashtags-input:focus {
+    border-color: var(--accent-color, #fff01f);
+    background: rgba(255, 255, 255, 0.06);
+    box-shadow: 0 0 12px rgba(255, 240, 31, 0.18);
+}
+
+.post-hashtags-input.hashtags-blocked {
+    border-color: #ff4d67 !important;
+    background: rgba(255, 77, 103, 0.08) !important;
+    box-shadow: 0 0 12px rgba(255, 77, 103, 0.28) !important;
+}
+
+.post-hashtags-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.post-hashtag-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(255, 240, 31, 0.12);
+    border: 1px solid rgba(255, 240, 31, 0.35);
+    color: var(--accent-color, #fff01f);
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.post-hashtag-chip-remove {
+    background: transparent;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    padding: 0;
+    font-size: 0.85rem;
+    line-height: 1;
+    opacity: 0.8;
+}
+
+.post-hashtag-chip-remove:hover {
+    opacity: 1;
+}
+
+.post-hashtags-limit-hint {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: #ff6b81;
+    background: rgba(255, 77, 103, 0.1);
+    border: 1px solid rgba(255, 77, 103, 0.3);
+    padding: 7px 11px;
+    border-radius: 10px;
+}
+
+.post-hashtags-limit-hint i,
+.post-hashtags-limit-hint svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+}
+
+.feed-post-title,
+.post-card-title {
+    margin: 0 0 6px;
+    font-size: 0.96rem;
+    font-weight: 800;
+    color: #ffffff;
+    line-height: 1.35;
+    word-break: break-word;
+}
+
+.feed-hashtags-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0 0 10px;
+}
+
+.feed-hashtag-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: rgba(255, 240, 31, 0.1);
+    border: 1px solid rgba(255, 240, 31, 0.28);
+    color: var(--accent-color, #fff01f);
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.feed-hashtag-pill:hover {
+    background: rgba(255, 240, 31, 0.2);
+    border-color: var(--accent-color, #fff01f);
+}
+
+body.theme-hacker .feed-hashtag-pill,
+body.theme-hacker .post-hashtag-chip {
+    background: rgba(0, 255, 102, 0.1) !important;
+    border-color: rgba(0, 255, 102, 0.35) !important;
+    color: #00ff66 !important;
+}
+
+
 
 
 
