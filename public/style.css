@@ -18356,16 +18356,17 @@ svg.switch-camera-inner-icon {
 .post-actions {
     display: flex;
     align-items: center;
-    flex-wrap: wrap;
-    gap: 12px;
+    flex-wrap: nowrap;
+    gap: 14px;
 }
 
 .feed-action-btn.save-post-btn,
 .post-action-btn.save-post-btn {
-    margin-left: auto;
+    margin-left: 0;
     transition: all 0.2s ease;
     border-radius: 999px;
     padding: 5px 10px;
+    white-space: nowrap;
 }
 
 .feed-action-btn.save-post-btn:hover,

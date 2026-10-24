@@ -18344,7 +18344,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.190';
+export const CURRENT_APP_VERSION = '1.0.191';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -24398,8 +24398,8 @@ function renderPostsFeed(posts = []) {
                         <div class="post-actions">
                             <button class="post-action-btn" type="button">❤ ${likes}</button>
                             <button class="post-action-btn" type="button" data-action="open-comment-modal" data-post-id="${post.id}">💬 ${comments.length}</button>
-                            <button class="post-action-btn post-share-btn" type="button" data-action="share-post" data-post-id="${post.id}" title="Compartilhar">
-                                <i data-lucide="share-2"></i> <span>Compartilhar</span>
+                            <button class="post-action-btn post-share-btn" type="button" data-action="share-post" data-post-id="${post.id}" title="Compartilhar" aria-label="Compartilhar">
+                                <i data-lucide="share-2"></i>
                             </button>
                             <button class="post-action-btn save-post-btn ${isPostSaved(post.id) ? 'saved' : ''}" type="button" data-action="save-post" data-post-id="${post.id}" title="${isPostSaved(post.id) ? 'Remover dos favoritos' : 'Salvar nos favoritos'}">
                                 <i data-lucide="bookmark"></i> <span>${isPostSaved(post.id) ? 'Salvo' : 'Favoritar'}</span>
@@ -24600,9 +24600,8 @@ function renderPostsFeed(posts = []) {
                             <i data-lucide="message-circle"></i>
                             <span>${rawComments.length}</span>
                         </button>
-                        <button class="feed-action-btn share-action-btn" type="button" data-post-id="${post.id}" data-action="share-post" title="Compartilhar">
+                        <button class="feed-action-btn share-action-btn" type="button" data-post-id="${post.id}" data-action="share-post" title="Compartilhar" aria-label="Compartilhar">
                             <i data-lucide="share-2"></i>
-                            <span>Compartilhar</span>
                         </button>
                         <button class="feed-action-btn save-post-btn ${isPostSaved(post.id) ? 'saved' : ''}" type="button" data-post-id="${post.id}" data-action="save-post" title="${isPostSaved(post.id) ? 'Remover dos favoritos' : 'Salvar nos favoritos'}">
                             <i data-lucide="bookmark"></i>

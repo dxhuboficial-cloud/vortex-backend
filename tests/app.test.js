@@ -11769,20 +11769,20 @@ test('Organização e Estilização Visual dos Modais de Cupons e Frete da Loja 
   assert.ok(previewText.innerText.includes('Frete Fixo:') && previewText.innerText.includes('20,00') && previewText.innerText.includes('6 a 16 dias úteis'), 'Prévia de frete deve estar limpa e correta');
 });
 
-test('Opção de Salvar Posts nos Favoritos na Aba de Feed Reels (v1.0.190)', async () => {
+test('Opção de Salvar Posts nos Favoritos na Aba de Feed Reels e Alinhamento ao Lado do Ícone de Compartilhar (v1.0.191)', async () => {
   const env = createTestEnvironment();
   const win = env.sandbox.window;
   const css = fs.readFileSync('public/style.css', 'utf8');
   const html = fs.readFileSync('public/index.html', 'utf8');
 
-  // 1. Integridade de Versionamento (v1.0.190)
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.190', 'script.js deve ter versão 1.0.190');
+  // 1. Integridade de Versionamento (v1.0.191)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.191', 'script.js deve ter versão 1.0.191');
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
-  assert.strictEqual(versionJson.version, '1.0.190', 'version.json deve ter versão 1.0.190');
-  assert.ok(html.includes('script.js?v=1.0.190'), 'index.html deve referenciar script.js?v=1.0.190');
-  assert.ok(html.includes('style.css?v=1.0.190'), 'index.html deve referenciar style.css?v=1.0.190');
+  assert.strictEqual(versionJson.version, '1.0.191', 'version.json deve ter versão 1.0.191');
+  assert.ok(html.includes('script.js?v=1.0.191'), 'index.html deve referenciar script.js?v=1.0.191');
+  assert.ok(html.includes('style.css?v=1.0.191'), 'index.html deve referenciar style.css?v=1.0.191');
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
-  assert.ok(swContent.includes('vortex-vip-v1.0.190'), 'sw.js deve conter cache vortex-vip-v1.0.190');
+  assert.ok(swContent.includes('vortex-vip-v1.0.191'), 'sw.js deve conter cache vortex-vip-v1.0.191');
 
   // 2. Elementos de Abas de Filtro no DOM e Regras de CSS
   const filterBar = env.elements['feed-filter-bar'];
@@ -11801,6 +11801,8 @@ test('Opção de Salvar Posts nos Favoritos na Aba de Feed Reels (v1.0.190)', as
   assert.ok(css.includes('.feed-filter-tab.active'), 'style.css deve conter .feed-filter-tab.active');
   assert.ok(css.includes('.feed-fav-count-badge'), 'style.css deve conter .feed-fav-count-badge');
   assert.ok(css.includes('.feed-action-btn.save-post-btn.saved'), 'style.css deve conter .feed-action-btn.save-post-btn.saved');
+  assert.ok(css.includes('flex-wrap: nowrap;'), 'style.css deve manter botões de ação em linha única com flex-wrap: nowrap');
+  assert.ok(css.includes('margin-left: 0;'), 'style.css deve posicionar save-post-btn logo ao lado do botão de compartilhar');
 
   // 3. Configurar Usuário e Postagens de Teste no Feed Reels
   const user = { uid: 'user_fav_reels_190', name: 'Carlos Reels', email: 'carlos@vortex.vip', savedPosts: [] };
@@ -11838,6 +11840,7 @@ test('Opção de Salvar Posts nos Favoritos na Aba de Feed Reels (v1.0.190)', as
   assert.strictEqual(favCountBadge.innerText, '0', 'Contador inicial de favoritos deve ser 0');
   assert.ok(feedList.innerHTML.includes('data-action="save-post"'), 'Cada post deve ter botão de salvar nos favoritos (data-action="save-post")');
   assert.ok(feedList.innerHTML.includes('Favoritar'), 'Botão deve exibir texto Favoritar');
+  assert.ok(!feedList.innerHTML.includes('<span>Compartilhar</span>'), 'Botão de compartilhar deve exibir apenas o ícone sem o título em texto');
 
   // 4. Salvar o post_reel_2 nos favoritos
   const savedResult = await win.toggleSaveFeedPost('post_reel_2');
