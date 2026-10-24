@@ -18569,6 +18569,77 @@ body.theme-hacker .post-hashtag-chip {
     color: #00ff66 !important;
 }
 
+/* ==========================================================================
+   CATEGORIA DO POST EXCLUSIVA PARA CONTA PESSOAL (v1.0.193)
+   ========================================================================== */
+.post-personal-category-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.post-personal-category-tag {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--accent-color, #fff01f);
+    background: rgba(255, 240, 31, 0.1);
+    border: 1px solid rgba(255, 240, 31, 0.3);
+    padding: 2px 8px;
+    border-radius: 999px;
+    white-space: nowrap;
+}
+
+.personal-category-select-wrap {
+    position: relative;
+    width: 100%;
+}
+
+#post-personal-category-select,
+.post-personal-category-select {
+    width: 100%;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background-color: rgba(255, 255, 255, 0.03);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    background-size: 16px;
+    color: var(--text-main, #ffffff);
+    padding: 11px 38px 11px 14px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    outline: none;
+    box-sizing: border-box;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    transition: all 0.2s ease;
+}
+
+#post-personal-category-select:focus,
+.post-personal-category-select:focus {
+    border-color: var(--accent-color, #fff01f);
+    background-color: rgba(255, 255, 255, 0.06);
+    box-shadow: 0 0 12px rgba(255, 240, 31, 0.18);
+}
+
+#post-personal-category-select option,
+.post-personal-category-select option {
+    background-color: #141824;
+    color: #ffffff;
+}
+
+.personal-category-pill {
+    cursor: pointer;
+}
+
+body.theme-hacker .post-personal-category-tag {
+    color: #00ff66 !important;
+    background: rgba(0, 255, 102, 0.1) !important;
+    border-color: rgba(0, 255, 102, 0.35) !important;
+}
+
+
 
 
 

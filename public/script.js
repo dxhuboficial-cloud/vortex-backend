@@ -16197,7 +16197,15 @@ export function isUserAdmin(user = currentUser, profile = currentProfile) {
     return VORTEX_ADMIN_EMAILS.includes(email);
 }
 
+export function updatePersonalCategoryVisibility(profile = currentProfile) {
+    const personalCatWrap = document.getElementById('post-personal-category-wrap');
+    if (!personalCatWrap) return;
+    const isPersonal = !isBusinessAccount(profile);
+    personalCatWrap.style.display = isPersonal ? 'flex' : 'none';
+}
+
 export function updateCompanyLinkSectionVisibility(profile = currentProfile) {
+    updatePersonalCategoryVisibility(profile);
     const bizSection = document.getElementById('post-business-link-section');
     if (!bizSection) return;
     const isCompany = isBusinessAccount(profile) || isUserAdmin(currentUser, profile);
@@ -18344,7 +18352,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.192';
+export const CURRENT_APP_VERSION = '1.0.193';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -23478,6 +23486,10 @@ function resetPostComposer() {
     const postHashtagsHint = document.getElementById('post-hashtags-limit-hint');
     if (postHashtagsHint) postHashtagsHint.style.display = 'none';
 
+    const personalCatSelect = document.getElementById('post-personal-category-select');
+    if (personalCatSelect) personalCatSelect.value = '';
+    updatePersonalCategoryVisibility();
+
     const bizBtnText = document.getElementById('post-business-btn-text');
     const bizBtnUrl = document.getElementById('post-business-btn-url');
     if (bizBtnText) bizBtnText.value = '';
@@ -24017,6 +24029,31 @@ export const BUSINESS_CONTENT_CATEGORIES = [
     'Aluga-se'
 ];
 
+export const PERSONAL_POST_CATEGORIES = [
+    'Entretenimento',
+    'Edição',
+    'Looks',
+    'Moda',
+    'Setup',
+    'Jogos',
+    'Natureza',
+    'Estilos',
+    'Animais',
+    'Vida',
+    'Qualidade',
+    'Música',
+    'Desafio',
+    'Comedia',
+    'Dessinha',
+    'Figura',
+    'Destaques',
+    'Esportes',
+    'Viagem',
+    'Tecnologia',
+    'Arte',
+    'Cotidiano'
+];
+
 export function isPostExpired(post) {
     if (!post) return false;
     const now = Date.now();
@@ -24034,8 +24071,17 @@ export function isPostExpired(post) {
 }
 
 export function getPostCategoryBadgeHTML(post) {
-    const cat = post?.businessCategory || post?.category;
+    const cat = post?.businessCategory || post?.personalCategory || post?.category;
     if (!cat) return '';
+    const isTemporaryBiz = !!(post?.businessCategory || post?.isTemporary);
+    if (!isTemporaryBiz) {
+        return `
+            <div class="feed-category-pill personal-category-pill" data-action="filter-category" data-category="${escapeHTML(cat)}" title="Categoria: ${escapeHTML(cat)}">
+                <i data-lucide="tag" class="category-pill-icon"></i>
+                <span class="category-name">${escapeHTML(cat)}</span>
+            </div>
+        `;
+    }
     const now = Date.now();
     const expiresAt = post.expiresAt || ((post.createdAt || now) + (24 * 60 * 60 * 1000));
     const msLeft = Math.max(0, expiresAt - now);
@@ -24272,7 +24318,7 @@ export function filterFeedPosts(posts = [], query = '') {
         const postTitle = normalizeSearchText(p.title || '');
         const caption = normalizeSearchText(p.caption || '');
         const hashtagsStr = normalizeSearchText(Array.isArray(p.hashtags) ? p.hashtags.join(' ') : (p.hashtags || ''));
-        const category = normalizeSearchText(p.businessCategory || p.category || '');
+        const category = normalizeSearchText(p.businessCategory || p.personalCategory || p.category || '');
         const musicTitle = normalizeSearchText(p.music?.title || '');
         const musicArtist = normalizeSearchText(p.music?.artist || '');
         const actionText = normalizeSearchText(p.actionButton?.text || '');
@@ -24564,7 +24610,7 @@ function renderPostsFeed(posts = []) {
                                 </button>
                             </div>
                         ` : ''}
-                        ${(isPostAd || (post.businessCategory || post.category)) ? `
+                        ${(isPostAd || (post.businessCategory || post.personalCategory || post.category)) ? `
                             <div class="feed-tags-row">
                                 ${getPostAdBadgeHTML(post)}
                                 ${getPostCategoryBadgeHTML(post)}
@@ -24766,7 +24812,7 @@ function renderPostsFeed(posts = []) {
                     </div>
                 ` : ''}
                 <div class="feed-body">
-                    ${(isPostAd || (post.businessCategory || post.category)) ? `
+                    ${(isPostAd || (post.businessCategory || post.personalCategory || post.category)) ? `
                         <div class="feed-tags-row">
                             ${getPostAdBadgeHTML(post)}
                             ${getPostCategoryBadgeHTML(post)}
@@ -25181,16 +25227,16 @@ function renderPostsFeed(posts = []) {
         }
     });
 
-    // Filtrar por hashtag ao clicar na pílula de hashtag (v1.0.192)
-    document.querySelectorAll('[data-action="filter-hashtag"]').forEach(pill => {
+    // Filtrar por hashtag ou categoria ao clicar na pílula (v1.0.192 / v1.0.193)
+    document.querySelectorAll('[data-action="filter-hashtag"], [data-action="filter-category"]').forEach(pill => {
         pill.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            const tag = pill.dataset.hashtag;
-            if (tag) {
-                currentFeedSearchQuery = tag;
+            const filterVal = pill.dataset.hashtag || pill.dataset.category;
+            if (filterVal) {
+                currentFeedSearchQuery = filterVal;
                 const searchInp = document.getElementById('feed-search-input');
-                if (searchInp) searchInp.value = tag;
+                if (searchInp) searchInp.value = filterVal;
                 renderPostsFeed(cachedFeedPosts);
             }
         });
@@ -26017,10 +26063,13 @@ document.getElementById('publish-post-btn')?.addEventListener('click', async () 
             }
 
             const isCompany = isBusinessAccount(currentProfile) || isUserAdmin(currentUser, currentProfile);
+            const isStrictBusiness = isBusinessAccount(currentProfile);
             const postContentType = isCompany ? (document.getElementById('post-content-type-select')?.value || 'normal') : 'normal';
             const isPostAd = isCompany && postContentType === 'ad';
             const selectedCategory = isCompany ? (document.getElementById('post-business-category-select')?.value?.trim() || '') : '';
             const isTemporaryCategory = !!(selectedCategory && BUSINESS_CONTENT_CATEGORIES.includes(selectedCategory));
+            const selectedPersonalCategory = !isStrictBusiness ? (document.getElementById('post-personal-category-select')?.value?.trim() || '') : '';
+            const validPersonalCategory = (selectedPersonalCategory && PERSONAL_POST_CATEGORIES.includes(selectedPersonalCategory)) ? selectedPersonalCategory : '';
             const now = Date.now();
             const postExpiresAt = isTemporaryCategory ? (now + 24 * 60 * 60 * 1000) : null;
             const bizBtnText = document.getElementById('post-business-btn-text')?.value?.trim() || '';
@@ -26068,7 +26117,8 @@ document.getElementById('publish-post-btn')?.addEventListener('click', async () 
                 isAd: isPostAd,
                 contentType: isPostAd ? 'ad' : 'normal',
                 businessCategory: isTemporaryCategory ? selectedCategory : null,
-                category: isTemporaryCategory ? selectedCategory : null,
+                personalCategory: (!isTemporaryCategory && validPersonalCategory) ? validPersonalCategory : null,
+                category: isTemporaryCategory ? selectedCategory : (validPersonalCategory || null),
                 isTemporary: isTemporaryCategory,
                 expiresAt: postExpiresAt,
                 temporaryDurationHours: isTemporaryCategory ? 24 : null,
@@ -31094,6 +31144,9 @@ if (typeof window !== 'undefined') {
     window.enforcePostHashtagsLimit = enforcePostHashtagsLimit;
     window.renderPostHashtagsChips = renderPostHashtagsChips;
     window.initPostTitleAndHashtagsControls = initPostTitleAndHashtagsControls;
+    // Categoria do Post Exclusiva para Conta Pessoal (v1.0.193)
+    window.PERSONAL_POST_CATEGORIES = PERSONAL_POST_CATEGORIES;
+    window.updatePersonalCategoryVisibility = updatePersonalCategoryVisibility;
 }
 
 if (typeof window !== 'undefined') {

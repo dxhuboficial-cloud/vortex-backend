@@ -4,20 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.192">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.192">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.192">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.192">
-    <link rel="stylesheet" href="style.css?v=1.0.192">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.193">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.193">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.193">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.193">
+    <link rel="stylesheet" href="style.css?v=1.0.193">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.192">
+    <link rel="manifest" href="manifest.json?v=1.0.193">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.192">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.192">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.193">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.193">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -2393,6 +2393,41 @@
                     </small>
                 </div>
 
+                <!-- Categoria do Post Exclusiva para Conta Pessoal (v1.0.193) -->
+                <div class="post-personal-category-wrap" id="post-personal-category-wrap" style="display: flex;">
+                    <div class="post-field-header-row">
+                        <label for="post-personal-category-select" class="post-caption-label">Categoria do Post</label>
+                        <span class="post-personal-category-tag">Conta Pessoal</span>
+                    </div>
+                    <div class="personal-category-select-wrap">
+                        <select id="post-personal-category-select" class="post-personal-category-select" title="Escolha a categoria da sua postagem">
+                            <option value="" selected>Selecionar categoria (opcional)</option>
+                            <option value="Entretenimento">🎬 Entretenimento</option>
+                            <option value="Edição">✂️ Edição</option>
+                            <option value="Looks">👗 Looks</option>
+                            <option value="Moda">✨ Moda</option>
+                            <option value="Setup">🖥️ Setup</option>
+                            <option value="Jogos">🎮 Jogos</option>
+                            <option value="Natureza">🌿 Natureza</option>
+                            <option value="Estilos">🕶️ Estilos</option>
+                            <option value="Animais">🐾 Animais</option>
+                            <option value="Vida">🌱 Vida</option>
+                            <option value="Qualidade">💎 Qualidade</option>
+                            <option value="Música">🎵 Música</option>
+                            <option value="Desafio">🔥 Desafio</option>
+                            <option value="Comedia">😂 Comedia</option>
+                            <option value="Dessinha">🎨 Dessinha</option>
+                            <option value="Figura">🖼️ Figura</option>
+                            <option value="Destaques">⭐ Destaques</option>
+                            <option value="Esportes">⚽ Esportes</option>
+                            <option value="Viagem">✈️ Viagem</option>
+                            <option value="Tecnologia">🚀 Tecnologia</option>
+                            <option value="Arte">🎭 Arte</option>
+                            <option value="Cotidiano">☕ Cotidiano</option>
+                        </select>
+                    </div>
+                </div>
+
                 <!-- Opção Exclusiva de Botão com Link (Conta Empresa) -->
                 <div id="post-business-link-section" class="post-business-link-section" style="display: none;">
                     <div class="business-link-header">
@@ -3881,6 +3916,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.192" defer></script>
+    <script type="module" src="script.js?v=1.0.193" defer></script>
 </body>
 </html>

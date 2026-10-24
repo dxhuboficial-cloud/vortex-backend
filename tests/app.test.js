@@ -11881,14 +11881,9 @@ test('Opção de Título do Post e Hashtags com Limite Máximo de 3 # e Bloqueio
   const css = fs.readFileSync('public/style.css', 'utf8');
   const html = fs.readFileSync('public/index.html', 'utf8');
 
-  // 1. Integridade de Versionamento (v1.0.192)
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.192', 'script.js deve ter versão 1.0.192');
-  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
-  assert.strictEqual(versionJson.version, '1.0.192', 'version.json deve ter versão 1.0.192');
-  assert.ok(html.includes('script.js?v=1.0.192'), 'index.html deve referenciar script.js?v=1.0.192');
-  assert.ok(html.includes('style.css?v=1.0.192'), 'index.html deve referenciar style.css?v=1.0.192');
-  const swContent = fs.readFileSync('public/sw.js', 'utf8');
-  assert.ok(swContent.includes('vortex-vip-v1.0.192'), 'sw.js deve conter cache vortex-vip-v1.0.192');
+  // 1. Integridade de Versionamento (v1.0.192+)
+  const verParts192 = String(win.CURRENT_APP_VERSION || '').split('.').map(Number);
+  assert.ok(verParts192[2] >= 192, 'script.js deve ter versão >= 1.0.192');
 
   // 2. Elementos de Título do Post e Hashtags no DOM e Regras de CSS
   const titleWrap = env.elements['post-title-wrap'];
@@ -11979,6 +11974,99 @@ test('Opção de Título do Post e Hashtags com Limite Máximo de 3 # e Bloqueio
   assert.strictEqual(hashtagsInput.value, '', 'resetPostComposer deve limpar #post-hashtags-input');
   assert.strictEqual(hashtagsCount.innerText, '0/3 #', 'resetPostComposer deve restaurar contador para 0/3 #');
 });
+
+test('Categoria do Post Exclusiva para Conta Pessoal (v1.0.193)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+  const css = fs.readFileSync('public/style.css', 'utf8');
+  const html = fs.readFileSync('public/index.html', 'utf8');
+
+  // 1. Integridade de Versionamento (v1.0.193)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.193', 'script.js deve ter versão 1.0.193');
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
+  assert.strictEqual(versionJson.version, '1.0.193', 'version.json deve ter versão 1.0.193');
+  assert.ok(html.includes('script.js?v=1.0.193'), 'index.html deve referenciar script.js?v=1.0.193');
+  assert.ok(html.includes('style.css?v=1.0.193'), 'index.html deve referenciar style.css?v=1.0.193');
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+  assert.ok(swContent.includes('vortex-vip-v1.0.193'), 'sw.js deve conter cache vortex-vip-v1.0.193');
+
+  // 2. Elementos no DOM e CSS da Categoria Pessoal
+  const personalWrap = env.elements['post-personal-category-wrap'];
+  const personalSelect = env.elements['post-personal-category-select'];
+  const bizSection = env.elements['post-business-link-section'];
+
+  assert.ok(personalWrap, '#post-personal-category-wrap deve existir no DOM');
+  assert.ok(personalSelect, '#post-personal-category-select deve existir no DOM');
+  assert.ok(css.includes('.post-personal-category-wrap'), 'style.css deve conter .post-personal-category-wrap');
+  assert.ok(css.includes('.post-personal-category-select'), 'style.css deve conter .post-personal-category-select');
+  assert.ok(css.includes('.personal-category-pill'), 'style.css deve conter .personal-category-pill');
+
+  // 3. Lista Completa das Categorias Pessoais Solicitadas
+  const requiredCategories = [
+    'Entretenimento', 'Edição', 'Looks', 'Moda', 'Setup', 'Jogos',
+    'Natureza', 'Estilos', 'Animais', 'Vida', 'Qualidade', 'Música',
+    'Desafio', 'Comedia', 'Dessinha', 'Figura', 'Destaques'
+  ];
+  const personalCats = Array.from(win.PERSONAL_POST_CATEGORIES || []);
+  for (const cat of requiredCategories) {
+    assert.ok(personalCats.includes(cat), `PERSONAL_POST_CATEGORIES deve incluir "${cat}"`);
+    assert.ok(html.includes(`value="${cat}"`), `#post-personal-category-select no HTML deve incluir option "${cat}"`);
+  }
+
+  // 4. Exclusividade para Conta Pessoal vs Conta Empresarial
+  // Conta Pessoal -> exibe seletor de categoria pessoal e oculta seção empresarial
+  win.updateCompanyLinkSectionVisibility({ accountType: 'personal' });
+  assert.strictEqual(personalWrap.style.display, 'flex', 'Seletor de categoria pessoal deve ficar visível (flex) para Conta Pessoal');
+  assert.strictEqual(bizSection.style.display, 'none', 'Seção empresarial deve ficar oculta para Conta Pessoal');
+
+  // Conta Empresarial -> oculta seletor de categoria pessoal e exibe seção empresarial
+  win.updateCompanyLinkSectionVisibility({ accountType: 'business' });
+  assert.strictEqual(personalWrap.style.display, 'none', 'Seletor de categoria pessoal deve ficar oculto (none) para Conta Empresarial');
+  assert.strictEqual(bizSection.style.display, 'flex', 'Seção empresarial deve ficar visível para Conta Empresarial');
+
+  // Sem accountType definido (padrão é Conta Pessoal) -> exibe seletor de categoria pessoal
+  win.updateCompanyLinkSectionVisibility({});
+  assert.strictEqual(personalWrap.style.display, 'flex', 'Perfil padrão (pessoal) deve exibir seletor de categoria pessoal');
+
+  // 5. Post com Categoria Pessoal é Permanente (não expira em 24h) e Renderiza Badge Próprio
+  const now = 1000000000000;
+  const personalPost = {
+    id: 'post_personal_cat_193',
+    authorUid: 'user_personal_193',
+    authorName: 'Ana Pessoal',
+    personalCategory: 'Looks',
+    category: 'Looks',
+    isTemporary: false,
+    expiresAt: null,
+    caption: 'Look do dia especial!',
+    type: 'image',
+    mediaData: 'data:image/png;base64,look193',
+    likes: [],
+    comments: [],
+    createdAt: now - (48 * 60 * 60 * 1000) // Criado há 48 horas
+  };
+
+  assert.strictEqual(win.isPostExpired(personalPost, now), false, 'Post de conta pessoal com categoria NÃO deve expirar após 24h/48h');
+  const badgeHtml = win.getPostCategoryBadgeHTML(personalPost);
+  assert.ok(badgeHtml.includes('personal-category-pill'), 'Badge de categoria pessoal deve usar a classe .personal-category-pill');
+  assert.ok(badgeHtml.includes('Looks'), 'Badge deve exibir o nome da categoria escolhida ("Looks")');
+  assert.ok(!badgeHtml.includes('24h'), 'Badge de categoria pessoal não deve exibir relógio de expiração 24h');
+
+  // 6. Renderização no Feed Reels e Filtro de Busca por Categoria Pessoal
+  const feedList = env.elements['feed-list'];
+  win.renderPostsFeed([personalPost]);
+  assert.ok(feedList.innerHTML.includes('personal-category-pill'), 'Feed Reels deve renderizar a pílula .personal-category-pill');
+  assert.ok(feedList.innerHTML.includes('Looks'), 'Feed Reels deve exibir a categoria "Looks" no post');
+
+  const filteredByCat = win.filterFeedPosts([personalPost], 'looks');
+  assert.strictEqual(filteredByCat.length, 1, 'filterFeedPosts deve encontrar o post pela categoria pessoal');
+
+  // 7. Reset do compositor deve limpar a seleção de categoria pessoal
+  personalSelect.value = 'Jogos';
+  win.resetPostComposer();
+  assert.strictEqual(personalSelect.value, '', 'resetPostComposer deve limpar #post-personal-category-select');
+});
+
 
 
 
