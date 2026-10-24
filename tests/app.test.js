@@ -11377,10 +11377,10 @@ test('Seleção de Tipo de Chamada (Vídeo ou Áudio) ao Clicar no Ícone de Câ
   assert.ok(parseInt(win.CURRENT_APP_VERSION.split('.')[2], 10) >= 184, 'script.js deve ter versão >= 1.0.184');
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
   assert.ok(parseInt(versionJson.version.split('.')[2], 10) >= 184, 'version.json deve ter versão >= 1.0.184');
-  assert.ok(html.includes('script.js?v=1.0.18'), 'index.html deve referenciar script.js versionado');
-  assert.ok(html.includes('style.css?v=1.0.18'), 'index.html deve referenciar style.css versionado');
+  assert.ok(html.includes(`script.js?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar script.js versionado');
+  assert.ok(html.includes(`style.css?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar style.css versionado');
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
-  assert.ok(swContent.includes('vortex-vip-v1.0.18'), 'sw.js deve ter cache vortex-vip-v1.0.18x');
+  assert.ok(swContent.includes(`vortex-vip-v${win.CURRENT_APP_VERSION}`), 'sw.js deve ter cache vortex-vip-v1.0.x');
 
   // 2. Elementos DOM no index.html
   assert.ok(env.elements['chat-audio-call-btn'], '#chat-audio-call-btn (ícone de câmera) deve existir no cabeçalho');
@@ -11481,10 +11481,10 @@ test('Trocar para Chamada de Vídeo durante Chamada de Áudio via Botão de Câm
   assert.ok(parseInt(win.CURRENT_APP_VERSION.split('.')[2], 10) >= 185, 'script.js deve ter versão >= 1.0.185');
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
   assert.ok(parseInt(versionJson.version.split('.')[2], 10) >= 185, 'version.json deve ter versão >= 1.0.185');
-  assert.ok(html.includes('script.js?v=1.0.18'), 'index.html deve referenciar script.js versionado');
-  assert.ok(html.includes('style.css?v=1.0.18'), 'index.html deve referenciar style.css versionado');
+  assert.ok(html.includes(`script.js?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar script.js versionado');
+  assert.ok(html.includes(`style.css?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar style.css versionado');
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
-  assert.ok(swContent.includes('vortex-vip-v1.0.18'), 'sw.js deve ter cache vortex-vip-v1.0.18x');
+  assert.ok(swContent.includes(`vortex-vip-v${win.CURRENT_APP_VERSION}`), 'sw.js deve ter cache vortex-vip-v1.0.x');
 
   // 2. Integridade de CSS e Funções
   assert.ok(css.includes('.video-call-overlay.audio-call-mode #toggle-camera-btn'), 'style.css deve conter regras para #toggle-camera-btn em audio-call-mode');
@@ -11719,14 +11719,14 @@ test('Organização e Estilização Visual dos Modais de Cupons e Frete da Loja 
   const css = fs.readFileSync('public/style.css', 'utf8');
   const html = fs.readFileSync('public/index.html', 'utf8');
 
-  // 1. Integridade de Versionamento (v1.0.189)
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.189', 'script.js deve ter versão 1.0.189');
+  // 1. Integridade de Versionamento (v1.0.189+)
+  assert.ok(parseInt(win.CURRENT_APP_VERSION.split('.')[2], 10) >= 189, 'script.js deve ter versão >= 1.0.189');
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
-  assert.strictEqual(versionJson.version, '1.0.189', 'version.json deve ter versão 1.0.189');
-  assert.ok(html.includes('script.js?v=1.0.189'), 'index.html deve referenciar script.js?v=1.0.189');
-  assert.ok(html.includes('style.css?v=1.0.189'), 'index.html deve referenciar style.css?v=1.0.189');
+  assert.ok(parseInt(versionJson.version.split('.')[2], 10) >= 189, 'version.json deve ter versão >= 1.0.189');
+  assert.ok(html.includes(`script.js?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar script.js');
+  assert.ok(html.includes(`style.css?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar style.css');
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
-  assert.ok(swContent.includes('vortex-vip-v1.0.189'), 'sw.js deve conter cache vortex-vip-v1.0.189');
+  assert.ok(swContent.includes(`vortex-vip-v${win.CURRENT_APP_VERSION}`), 'sw.js deve conter cache');
 
   // 2. Integridade dos Estilos CSS (.catalog-field-input, cabeçalhos em linha única, layout responsivo)
   assert.ok(css.includes('.catalog-field-input'), 'style.css deve definir .catalog-field-input para inputs escuros');
@@ -11768,6 +11768,110 @@ test('Organização e Estilização Visual dos Modais de Cupons e Frete da Loja 
   assert.ok(!previewText.innerText.includes('R$ R$'), 'Prévia de frete NÃO deve duplicar o símbolo de moeda (R$ R$)');
   assert.ok(previewText.innerText.includes('Frete Fixo:') && previewText.innerText.includes('20,00') && previewText.innerText.includes('6 a 16 dias úteis'), 'Prévia de frete deve estar limpa e correta');
 });
+
+test('Opção de Salvar Posts nos Favoritos na Aba de Feed Reels (v1.0.190)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+  const css = fs.readFileSync('public/style.css', 'utf8');
+  const html = fs.readFileSync('public/index.html', 'utf8');
+
+  // 1. Integridade de Versionamento (v1.0.190)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.190', 'script.js deve ter versão 1.0.190');
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
+  assert.strictEqual(versionJson.version, '1.0.190', 'version.json deve ter versão 1.0.190');
+  assert.ok(html.includes('script.js?v=1.0.190'), 'index.html deve referenciar script.js?v=1.0.190');
+  assert.ok(html.includes('style.css?v=1.0.190'), 'index.html deve referenciar style.css?v=1.0.190');
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+  assert.ok(swContent.includes('vortex-vip-v1.0.190'), 'sw.js deve conter cache vortex-vip-v1.0.190');
+
+  // 2. Elementos de Abas de Filtro no DOM e Regras de CSS
+  const filterBar = env.elements['feed-filter-bar'];
+  const allBtn = env.elements['feed-filter-all-btn'];
+  const favBtn = env.elements['feed-filter-favorites-btn'];
+  const favCountBadge = env.elements['feed-favorites-count'];
+  const feedList = env.elements['feed-list'];
+  const countLabel = env.elements['posts-count-label'];
+
+  assert.ok(filterBar, '#feed-filter-bar deve existir no DOM');
+  assert.ok(allBtn, '#feed-filter-all-btn deve existir no DOM');
+  assert.ok(favBtn, '#feed-filter-favorites-btn deve existir no DOM');
+  assert.ok(favCountBadge, '#feed-favorites-count deve existir no DOM');
+
+  assert.ok(css.includes('.feed-filter-bar'), 'style.css deve conter .feed-filter-bar');
+  assert.ok(css.includes('.feed-filter-tab.active'), 'style.css deve conter .feed-filter-tab.active');
+  assert.ok(css.includes('.feed-fav-count-badge'), 'style.css deve conter .feed-fav-count-badge');
+  assert.ok(css.includes('.feed-action-btn.save-post-btn.saved'), 'style.css deve conter .feed-action-btn.save-post-btn.saved');
+
+  // 3. Configurar Usuário e Postagens de Teste no Feed Reels
+  const user = { uid: 'user_fav_reels_190', name: 'Carlos Reels', email: 'carlos@vortex.vip', savedPosts: [] };
+  win.setCurrentUser(user);
+  win.setCurrentProfile(user);
+  env.firestoreDocs[`users/${user.uid}`] = { ...user };
+
+  const samplePosts = [
+    {
+      id: 'post_reel_1',
+      authorUid: 'author_1',
+      authorName: 'Ana Criadora',
+      caption: 'Primeiro vídeo incrível no Feed Reels!',
+      type: 'image',
+      mediaData: 'data:image/png;base64,img1',
+      likes: [],
+      comments: [],
+      createdAt: 1000
+    },
+    {
+      id: 'post_reel_2',
+      authorUid: 'author_2',
+      authorName: 'Bruno Tech',
+      caption: 'Dica de programação e tecnologia VIP',
+      type: 'image',
+      mediaData: 'data:image/png;base64,img2',
+      likes: [],
+      comments: [],
+      createdAt: 2000
+    }
+  ];
+
+  win.renderPostsFeed(samplePosts);
+  assert.strictEqual(win.getFeedFilterMode(), 'all', 'Modo inicial deve ser all');
+  assert.strictEqual(favCountBadge.innerText, '0', 'Contador inicial de favoritos deve ser 0');
+  assert.ok(feedList.innerHTML.includes('data-action="save-post"'), 'Cada post deve ter botão de salvar nos favoritos (data-action="save-post")');
+  assert.ok(feedList.innerHTML.includes('Favoritar'), 'Botão deve exibir texto Favoritar');
+
+  // 4. Salvar o post_reel_2 nos favoritos
+  const savedResult = await win.toggleSaveFeedPost('post_reel_2');
+  assert.strictEqual(savedResult, true, 'toggleSaveFeedPost deve retornar true ao salvar');
+  assert.strictEqual(win.isPostSaved('post_reel_2'), true, 'isPostSaved deve retornar true para post_reel_2');
+  assert.strictEqual(win.isPostSaved('post_reel_1'), false, 'isPostSaved deve retornar false para post_reel_1');
+  assert.deepStrictEqual(Array.from(win.getSavedPostIds()), ['post_reel_2'], 'getSavedPostIds deve conter post_reel_2');
+  assert.strictEqual(favCountBadge.innerText, '1', 'Badge de favoritos deve atualizar para 1');
+  assert.deepStrictEqual(Array.from(env.firestoreDocs[`users/${user.uid}`].savedPosts), ['post_reel_2'], 'Firestore do usuário deve persistir savedPosts');
+
+  // 5. Alternar para a aba "Favoritos" no Feed Reels
+  win.setFeedFilterMode('favorites');
+  assert.strictEqual(win.getFeedFilterMode(), 'favorites', 'Modo de filtro deve ser favorites');
+  assert.ok(favBtn.classList.contains('active'), 'Botão Favoritos deve estar ativo');
+  assert.ok(!allBtn.classList.contains('active'), 'Botão Todos não deve estar ativo');
+  assert.strictEqual(countLabel.innerText, '1 favorito salvo', 'Label de contagem deve indicar 1 favorito salvo');
+  assert.ok(feedList.innerHTML.includes('post_reel_2'), 'Aba de favoritos deve exibir post_reel_2');
+  assert.ok(!feedList.innerHTML.includes('post_reel_1'), 'Aba de favoritos NÃO deve exibir post_reel_1 não salvo');
+  assert.ok(feedList.innerHTML.includes('Salvo'), 'Botão do post favoritado deve exibir Salvo');
+
+  // 6. Remover post_reel_2 dos favoritos estando na aba Favoritos -> Deve exibir estado vazio
+  const unsavedResult = await win.toggleSaveFeedPost('post_reel_2');
+  assert.strictEqual(unsavedResult, false, 'toggleSaveFeedPost deve retornar false ao remover dos favoritos');
+  assert.strictEqual(win.isPostSaved('post_reel_2'), false, 'post_reel_2 não deve mais estar salvo');
+  assert.strictEqual(favCountBadge.innerText, '0', 'Badge de favoritos deve voltar para 0');
+  assert.ok(feedList.innerHTML.includes('feed-favorites-empty'), 'Deve exibir estado vazio de favoritos quando não há posts salvos');
+  assert.ok(feedList.innerHTML.includes('Nenhum post nos favoritos'), 'Mensagem de estado vazio deve aparecer');
+
+  // 7. Voltar para a aba "Todos"
+  win.setFeedFilterMode('all');
+  assert.strictEqual(win.getFeedFilterMode(), 'all', 'Modo deve voltar para all');
+  assert.ok(feedList.innerHTML.includes('post_reel_1') && feedList.innerHTML.includes('post_reel_2'), 'Todos os posts devem voltar a aparecer na aba Todos');
+});
+
 
 
 

@@ -18344,7 +18344,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.189';
+export const CURRENT_APP_VERSION = '1.0.190';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -23859,6 +23859,119 @@ export const authorVipCache = new Map();
 export const authorAvatarCache = new Map();
 let cachedFeedPosts = [];
 export let currentFeedSearchQuery = '';
+export let currentFeedFilterMode = 'all';
+
+export function getSavedPostIds() {
+    const uid = currentUser?.uid || currentProfile?.uid || 'guest';
+    const set = new Set();
+    if (currentProfile && Array.isArray(currentProfile.savedPosts)) {
+        currentProfile.savedPosts.forEach(id => {
+            if (id) set.add(String(id));
+        });
+    }
+    try {
+        if (typeof localStorage !== 'undefined') {
+            const raw = localStorage.getItem(`vortex_saved_posts_${uid}`);
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed)) {
+                    parsed.forEach(id => {
+                        if (id) set.add(String(id));
+                    });
+                }
+            }
+        }
+    } catch (e) {}
+    return Array.from(set);
+}
+
+export function savePostIdsToStorage(ids = []) {
+    const uid = currentUser?.uid || currentProfile?.uid || 'guest';
+    const uniqueIds = Array.from(new Set((Array.isArray(ids) ? ids : []).filter(Boolean).map(String)));
+    if (currentProfile) {
+        currentProfile.savedPosts = uniqueIds;
+    }
+    try {
+        if (typeof localStorage !== 'undefined') {
+            localStorage.setItem(`vortex_saved_posts_${uid}`, JSON.stringify(uniqueIds));
+        }
+    } catch (e) {}
+    if (currentUser && currentUser.uid) {
+        updateDoc(doc(db, 'users', currentUser.uid), { savedPosts: uniqueIds }).catch(() => {});
+    }
+    return uniqueIds;
+}
+
+export function isPostSaved(postId) {
+    if (!postId) return false;
+    return getSavedPostIds().includes(String(postId));
+}
+
+export function updateFeedFavoritesBadge(activePosts = cachedFeedPosts) {
+    const badge = document.getElementById('feed-favorites-count');
+    if (!badge) return;
+    const savedIds = getSavedPostIds();
+    let count = savedIds.length;
+    if (Array.isArray(activePosts) && activePosts.length > 0) {
+        const isAdmin = isUserAdmin(currentUser, currentProfile) || checkIsAdminUser(currentUser, currentProfile);
+        const validPosts = activePosts.filter(p => p && !isUserAccountDeleted(p.authorUid) && !p.isDeleted && !p.deleted && !isPostExpired(p) && (!p.hiddenByAi || isAdmin));
+        count = validPosts.filter(p => savedIds.includes(String(p.id))).length;
+    }
+    badge.innerText = String(count);
+}
+
+export function setFeedFilterMode(mode = 'all') {
+    currentFeedFilterMode = mode === 'favorites' ? 'favorites' : 'all';
+    const allBtn = document.getElementById('feed-filter-all-btn');
+    const favBtn = document.getElementById('feed-filter-favorites-btn');
+    if (allBtn) allBtn.classList.toggle('active', currentFeedFilterMode === 'all');
+    if (favBtn) favBtn.classList.toggle('active', currentFeedFilterMode === 'favorites');
+    renderPostsFeed(cachedFeedPosts);
+}
+
+export async function toggleSaveFeedPost(postId) {
+    if (!currentUser) {
+        showToast('Login necessário', 'Entre para salvar publicações nos favoritos.', 'red');
+        return false;
+    }
+    if (!postId) return false;
+    const idStr = String(postId);
+    const currentSaved = getSavedPostIds();
+    const alreadySaved = currentSaved.includes(idStr);
+    let updatedIds;
+    if (alreadySaved) {
+        updatedIds = currentSaved.filter(id => id !== idStr);
+    } else {
+        updatedIds = [idStr, ...currentSaved];
+    }
+    savePostIdsToStorage(updatedIds);
+    playSound(clickSound);
+
+    const nowSaved = !alreadySaved;
+    if (nowSaved) {
+        showToast('Favoritos ⭐', 'Post salvo nos favoritos!', 'green');
+    } else {
+        showToast('Favoritos', 'Post removido dos favoritos.', 'white');
+    }
+
+    // Atualizar botões de salvar no DOM imediatamente
+    if (typeof document !== 'undefined') {
+        document.querySelectorAll(`[data-action="save-post"][data-post-id="${idStr}"]`).forEach(btn => {
+            btn.classList.toggle('saved', nowSaved);
+            btn.title = nowSaved ? 'Remover dos favoritos' : 'Salvar nos favoritos';
+            const span = btn.querySelector('span');
+            if (span) span.innerText = nowSaved ? 'Salvo' : 'Favoritar';
+        });
+    }
+
+    updateFeedFavoritesBadge(cachedFeedPosts);
+
+    if (currentFeedFilterMode === 'favorites') {
+        renderPostsFeed(cachedFeedPosts);
+    }
+
+    return nowSaved;
+}
 
 /* ==========================================================================
    CONTA EMPRESA: CATEGORIAS DE CONTEÚDO TEMPORÁRIO (24H)
@@ -24030,6 +24143,25 @@ export function setupFeedSearchListeners() {
             searchInput?.focus();
         });
     }
+
+    const filterAllBtn = document.getElementById('feed-filter-all-btn');
+    const filterFavBtn = document.getElementById('feed-filter-favorites-btn');
+
+    if (filterAllBtn && !filterAllBtn.dataset.bound) {
+        filterAllBtn.dataset.bound = 'true';
+        filterAllBtn.addEventListener('click', () => {
+            playSound(clickSound);
+            setFeedFilterMode('all');
+        });
+    }
+
+    if (filterFavBtn && !filterFavBtn.dataset.bound) {
+        filterFavBtn.dataset.bound = 'true';
+        filterFavBtn.addEventListener('click', () => {
+            playSound(clickSound);
+            setFeedFilterMode('favorites');
+        });
+    }
 }
 
 window.normalizeSearchText = normalizeSearchText;
@@ -24169,6 +24301,12 @@ function renderPostsFeed(posts = []) {
         .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
     if (countLabel) countLabel.innerText = `${sorted.length} ${sorted.length === 1 ? 'postagem' : 'postagens'}`;
 
+    updateFeedFavoritesBadge(sorted);
+    const allFilterBtn = document.getElementById('feed-filter-all-btn');
+    const favFilterBtn = document.getElementById('feed-filter-favorites-btn');
+    if (allFilterBtn) allFilterBtn.classList.toggle('active', currentFeedFilterMode === 'all');
+    if (favFilterBtn) favFilterBtn.classList.toggle('active', currentFeedFilterMode === 'favorites');
+
     syncFeedAuthorsVipStatus(sorted);
 
     if (previewFeed) {
@@ -24263,6 +24401,9 @@ function renderPostsFeed(posts = []) {
                             <button class="post-action-btn post-share-btn" type="button" data-action="share-post" data-post-id="${post.id}" title="Compartilhar">
                                 <i data-lucide="share-2"></i> <span>Compartilhar</span>
                             </button>
+                            <button class="post-action-btn save-post-btn ${isPostSaved(post.id) ? 'saved' : ''}" type="button" data-action="save-post" data-post-id="${post.id}" title="${isPostSaved(post.id) ? 'Remover dos favoritos' : 'Salvar nos favoritos'}">
+                                <i data-lucide="bookmark"></i> <span>${isPostSaved(post.id) ? 'Salvo' : 'Favoritar'}</span>
+                            </button>
                         </div>
                     </article>
                 `;
@@ -24275,6 +24416,15 @@ function renderPostsFeed(posts = []) {
                     const postId = btn.dataset.postId;
                     const post = posts.find(p => p.id === postId);
                     if (post) openPostCommentModal(post);
+                });
+            });
+
+            previewFeed.querySelectorAll('[data-action="save-post"]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const postId = btn.dataset.postId;
+                    if (postId) toggleSaveFeedPost(postId);
                 });
             });
 
@@ -24295,11 +24445,19 @@ function renderPostsFeed(posts = []) {
         clearBtn.style.display = query.trim() ? 'flex' : 'none';
     }
 
-    const filtered = filterFeedPosts(sorted, query);
+    const basePosts = currentFeedFilterMode === 'favorites'
+        ? sorted.filter(p => isPostSaved(p.id))
+        : sorted;
+
+    const filtered = filterFeedPosts(basePosts, query);
 
     if (query.trim()) {
         if (countLabel) {
             countLabel.innerText = `${filtered.length} ${filtered.length === 1 ? 'resultado' : 'resultados'}`;
+        }
+    } else if (currentFeedFilterMode === 'favorites') {
+        if (countLabel) {
+            countLabel.innerText = `${basePosts.length} ${basePosts.length === 1 ? 'favorito salvo' : 'favoritos salvos'}`;
         }
     } else {
         if (countLabel) {
@@ -24309,6 +24467,22 @@ function renderPostsFeed(posts = []) {
 
     if (!sorted.length) {
         feedList.innerHTML = '<div class="post-empty">Nenhuma postagem ainda. Seja o primeiro a publicar.</div>';
+        if (window.lucide) lucide.createIcons();
+        return;
+    }
+
+    if (currentFeedFilterMode === 'favorites' && !basePosts.length) {
+        feedList.innerHTML = `
+            <div class="post-empty feed-favorites-empty">
+                <i data-lucide="bookmark" class="feed-empty-search-icon"></i>
+                <h4 style="color:#ffffff; font-size:1.05rem; margin:6px 0 2px;">Nenhum post nos favoritos</h4>
+                <p style="color:var(--text-dim, #888); font-size:0.86rem; margin:0 0 10px;">Toque em <strong>Favoritar</strong> em qualquer publicação do Feed Reels para salvá-la aqui.</p>
+                <button type="button" id="feed-favorites-empty-all-btn" class="feed-clear-search-link">Ver todos os posts</button>
+            </div>
+        `;
+        document.getElementById('feed-favorites-empty-all-btn')?.addEventListener('click', () => {
+            setFeedFilterMode('all');
+        });
         if (window.lucide) lucide.createIcons();
         return;
     }
@@ -24429,6 +24603,10 @@ function renderPostsFeed(posts = []) {
                         <button class="feed-action-btn share-action-btn" type="button" data-post-id="${post.id}" data-action="share-post" title="Compartilhar">
                             <i data-lucide="share-2"></i>
                             <span>Compartilhar</span>
+                        </button>
+                        <button class="feed-action-btn save-post-btn ${isPostSaved(post.id) ? 'saved' : ''}" type="button" data-post-id="${post.id}" data-action="save-post" title="${isPostSaved(post.id) ? 'Remover dos favoritos' : 'Salvar nos favoritos'}">
+                            <i data-lucide="bookmark"></i>
+                            <span>${isPostSaved(post.id) ? 'Salvo' : 'Favoritar'}</span>
                         </button>
                     </div>
 
@@ -24806,6 +24984,18 @@ function renderPostsFeed(posts = []) {
                 });
             }
         }
+    });
+
+    // Salvar / Favoritar postagem no Feed Reels (v1.0.190)
+    feedList.querySelectorAll('[data-action="save-post"]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const postId = btn.dataset.postId;
+            if (postId) {
+                toggleSaveFeedPost(postId);
+            }
+        });
     });
 
     // Compartilhar postagem (Feed e Publicações Recentes)
@@ -30669,6 +30859,14 @@ if (typeof window !== 'undefined') {
     window.closeCallTypeModal = closeCallTypeModal;
     window.startCall = startCall;
     window.switchToVideoCall = switchToVideoCall;
+    // Favoritos no Feed Reels (v1.0.190)
+    window.getSavedPostIds = getSavedPostIds;
+    window.savePostIdsToStorage = savePostIdsToStorage;
+    window.isPostSaved = isPostSaved;
+    window.toggleSaveFeedPost = toggleSaveFeedPost;
+    window.setFeedFilterMode = setFeedFilterMode;
+    window.getFeedFilterMode = () => currentFeedFilterMode;
+    window.updateFeedFavoritesBadge = updateFeedFavoritesBadge;
 }
 
 if (typeof window !== 'undefined') {

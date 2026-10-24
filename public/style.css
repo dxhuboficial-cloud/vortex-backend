@@ -18277,6 +18277,133 @@ svg.switch-camera-inner-icon {
     transform: rotate(360deg);
 }
 
+/* ==========================================================================
+   FAVORITOS NO FEED REELS (ABAS DE FILTRO & BOTÃO DE SALVAR POST - v1.0.190)
+   ========================================================================== */
+.feed-filter-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 8px 14px 10px;
+    background: rgba(5, 5, 5, 0.85);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    position: relative;
+    z-index: 10;
+    flex-shrink: 0;
+}
+
+.feed-filter-tab {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 7px 16px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: var(--text-dim, #9aa5b5);
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.22s ease;
+    white-space: nowrap;
+}
+
+.feed-filter-tab i,
+.feed-filter-tab svg {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+}
+
+.feed-filter-tab:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    border-color: rgba(255, 240, 31, 0.35);
+}
+
+.feed-filter-tab.active {
+    background: rgba(255, 240, 31, 0.14);
+    border-color: var(--accent-color, #fff01f);
+    color: var(--accent-color, #fff01f);
+    box-shadow: 0 0 12px rgba(255, 240, 31, 0.2);
+}
+
+.feed-fav-count-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 19px;
+    height: 19px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+    font-size: 0.72rem;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.feed-filter-tab.active .feed-fav-count-badge {
+    background: var(--accent-color, #fff01f);
+    color: #000000;
+}
+
+.feed-actions,
+.post-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.feed-action-btn.save-post-btn,
+.post-action-btn.save-post-btn {
+    margin-left: auto;
+    transition: all 0.2s ease;
+    border-radius: 999px;
+    padding: 5px 10px;
+}
+
+.feed-action-btn.save-post-btn:hover,
+.post-action-btn.save-post-btn:hover {
+    color: var(--accent-color, #fff01f);
+    background: rgba(255, 240, 31, 0.08);
+}
+
+.feed-action-btn.save-post-btn.saved,
+.post-action-btn.save-post-btn.saved {
+    color: var(--accent-color, #fff01f) !important;
+    background: rgba(255, 240, 31, 0.14);
+    border: 1px solid rgba(255, 240, 31, 0.35);
+    box-shadow: 0 0 10px rgba(255, 240, 31, 0.18);
+}
+
+.feed-action-btn.save-post-btn.saved svg,
+.post-action-btn.save-post-btn.saved svg {
+    fill: currentColor;
+}
+
+body.theme-hacker .feed-filter-bar {
+    background: rgba(3, 12, 5, 0.9) !important;
+    border-bottom: 1px solid rgba(0, 255, 102, 0.25) !important;
+}
+
+body.theme-hacker .feed-filter-tab.active {
+    border-color: #00ff66 !important;
+    color: #00ff66 !important;
+    background: rgba(0, 255, 102, 0.12) !important;
+}
+
+body.theme-hacker .feed-filter-tab.active .feed-fav-count-badge {
+    background: #00ff66 !important;
+    color: #000000 !important;
+}
+
+
 
 
 
