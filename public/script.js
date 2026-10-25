@@ -5799,6 +5799,18 @@ export async function openStorefront(sellerUid, sellerData = {}) {
         } else {
             chatBtn.style.display = 'inline-flex';
             chatBtn.onclick = async () => {
+                const sName = (sellerData && sellerData.name) || 'Vendedor VORTEX';
+                const sAvatar = (sellerData && sellerData.avatar) || '';
+                const sStatus = (sellerData && sellerData.status) || (sellerData && sellerData.bio) || 'Disponível no VORTEX ⚡';
+                closeCatalogOverlay();
+                openDirectChat({
+                    uid: sellerUid,
+                    name: sName,
+                    avatar: sAvatar,
+                    status: sStatus,
+                    isGroup: false
+                });
+                fillCatalogChatReadyMessage(`Olá! Vim pelo catálogo da loja "${sName}" e gostaria de saber mais sobre os produtos.`);
                 if (currentUser && currentUser.uid) {
                     const buyerContactData = {
                         uid: currentUser.uid,
@@ -5810,22 +5822,14 @@ export async function openStorefront(sellerUid, sellerData = {}) {
                     };
                     const sellerContactData = {
                         uid: sellerUid,
-                        name: (sellerData && sellerData.name) || 'Vendedor VORTEX',
-                        avatar: (sellerData && sellerData.avatar) || '',
-                        status: (sellerData && sellerData.status) || (sellerData && sellerData.bio) || 'Disponível no VORTEX ⚡',
+                        name: sName,
+                        avatar: sAvatar,
+                        status: sStatus,
                         isVip: Boolean(sellerData && (sellerData.isVip || sellerData.isVerified || checkIsVipUser(sellerData))),
                         isVerified: Boolean(sellerData && (sellerData.isVip || sellerData.isVerified || checkIsVipUser(sellerData)))
                     };
                     await ensureMutualContacts(buyerContactData, sellerContactData);
                 }
-                closeCatalogOverlay();
-                openDirectChat({
-                    uid: sellerUid,
-                    name: (sellerData && sellerData.name) || 'Vendedor VORTEX',
-                    avatar: (sellerData && sellerData.avatar) || '',
-                    status: (sellerData && sellerData.status) || (sellerData && sellerData.bio) || 'Disponível no VORTEX ⚡',
-                    isGroup: false
-                });
             };
         }
     }
@@ -6054,7 +6058,11 @@ export function renderCatalogGrid(container, products, isOwner) {
         // Botão de conversar quando compras estiverem desativadas
         card.querySelector('.cat-talk-btn')?.addEventListener('click', (e) => {
             e.stopPropagation();
-            openProductDetail(pid, prod?.sellerUid || activeCatalogSellerUid);
+            if (prod) {
+                talkToSellerAboutProduct(prod, prod.sellerUid || activeCatalogSellerUid, activeCatalogSellerData || {});
+            } else {
+                openProductDetail(pid, activeCatalogSellerUid);
+            }
         });
 
         // Botões do proprietário
@@ -6800,6 +6808,128 @@ export async function deleteCatalogCategory(catId) {
     }
 }
 
+// Mensagens já prontas para produtos do catálogo (v1.0.197)
+export function buildCatalogProductReadyMessage(prod, options = {}) {
+    if (options && typeof options.customMessage === 'string' && options.customMessage.trim()) {
+        return options.customMessage.trim();
+    }
+    const prodName = (prod && prod.name) ? prod.name : 'Produto';
+    const varParts = [];
+    if (options?.selectedColor) {
+        const colorName = typeof options.selectedColor === 'object'
+            ? (options.selectedColor.name || options.selectedColor.hex || '')
+            : String(options.selectedColor);
+        if (colorName) varParts.push(`Cor: ${colorName}`);
+    }
+    if (options?.selectedSize) {
+        varParts.push(`Tamanho: ${options.selectedSize}`);
+    }
+    if (options?.selectedVoltage) {
+        varParts.push(`Voltagem: ${options.selectedVoltage}`);
+    }
+    const varSuffix = varParts.length > 0 ? ` (${varParts.join(', ')})` : '';
+    return `Olá! Gostaria de saber mais sobre o produto "${prodName}"${varSuffix}.`;
+}
+
+export function fillCatalogChatReadyMessage(messageText) {
+    const text = String(messageText || '').trim();
+    if (!text) return '';
+
+    const chatInputEl = document.getElementById('chat-input-main') || document.getElementById('message-input');
+    const legacyInputEl = document.getElementById('message-input');
+
+    if (chatInputEl) {
+        chatInputEl.disabled = false;
+        chatInputEl.value = text;
+        if (typeof chatInputEl.focus === 'function') {
+            chatInputEl.focus();
+        }
+        try {
+            chatInputEl.dispatchEvent(new Event('input', { bubbles: true }));
+        } catch (_) {
+            if (typeof chatInputEl.dispatchEvent === 'function') {
+                try { chatInputEl.dispatchEvent({ type: 'input' }); } catch (__) {}
+            }
+        }
+    }
+
+    if (legacyInputEl && legacyInputEl !== chatInputEl) {
+        legacyInputEl.value = text;
+    }
+
+    const sendIcon = document.getElementById('chat-send-icon');
+    if (sendIcon) {
+        sendIcon.setAttribute('data-lucide', 'send');
+    }
+    if (typeof window !== 'undefined' && window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+    }
+
+    return text;
+}
+
+export async function talkToSellerAboutProduct(prod, sellerUid, sellerData = {}, options = {}) {
+    const targetSellerUid = sellerUid || prod?.sellerUid || activeCatalogSellerUid;
+    if (!targetSellerUid) return '';
+
+    const resolvedSellerData = (sellerData && Object.keys(sellerData).length > 0)
+        ? sellerData
+        : (activeCatalogSellerData || {});
+
+    const sellerName = resolvedSellerData.name || prod?.sellerName || 'Vendedor VORTEX';
+    const sellerAvatar = resolvedSellerData.avatar || '';
+    const sellerStatus = resolvedSellerData.status || resolvedSellerData.bio || 'Disponível no VORTEX ⚡';
+    const readyMessage = buildCatalogProductReadyMessage(prod, options);
+
+    closeProductDetail();
+    closeCatalogOverlay();
+
+    openDirectChat({
+        uid: targetSellerUid,
+        name: sellerName,
+        avatar: sellerAvatar,
+        status: sellerStatus,
+        isGroup: false
+    });
+
+    fillCatalogChatReadyMessage(readyMessage);
+
+    if (currentUser && currentUser.uid && currentUser.uid !== targetSellerUid) {
+        try {
+            const buyerContactData = {
+                uid: currentUser.uid,
+                name: (`${currentProfile?.name || ''} ${currentProfile?.surname || ''}`).trim() || currentProfile?.name || currentUser.displayName || 'Comprador VORTEX',
+                avatar: currentProfile?.avatar || currentUser.photoURL || '',
+                status: currentProfile?.status || currentProfile?.bio || 'Disponível no VORTEX ⚡',
+                isVip: checkIsVipUser(currentProfile),
+                isVerified: checkIsVipUser(currentProfile)
+            };
+            const sellerContactData = {
+                uid: targetSellerUid,
+                name: sellerName,
+                avatar: sellerAvatar,
+                status: sellerStatus,
+                isVip: Boolean(resolvedSellerData.isVip || resolvedSellerData.isVerified || checkIsVipUser(resolvedSellerData)),
+                isVerified: Boolean(resolvedSellerData.isVip || resolvedSellerData.isVerified || checkIsVipUser(resolvedSellerData))
+            };
+            await ensureMutualContacts(buyerContactData, sellerContactData);
+        } catch (err) {
+            console.warn('[VORTEX CATALOG] Aviso ao sincronizar contato do vendedor:', err);
+        }
+    }
+
+    fillCatalogChatReadyMessage(readyMessage);
+
+    if (options && options.autoSend === true && typeof sendChatMessage === 'function') {
+        const chatInputEl = document.getElementById('chat-input-main');
+        if (chatInputEl) chatInputEl.value = '';
+        document.getElementById('chat-send-icon')?.setAttribute('data-lucide', 'mic');
+        await sendChatMessage('text', { text: readyMessage });
+    }
+
+    return readyMessage;
+}
+
 // Modal de Detalhe do Produto
 export async function openProductDetail(productId, sellerUid) {
     const modal = document.getElementById('catalog-product-detail-modal');
@@ -7024,6 +7154,33 @@ export async function openProductDetail(productId, sellerUid) {
 
                 ${digitalCtaBtnHTML}
 
+                ${!isOwner ? `
+                    <div class="catalog-ready-messages-box" id="catalog-detail-ready-messages">
+                        <div class="catalog-ready-messages-header">
+                            <i data-lucide="message-Square-plus"></i>
+                            <span>Mensagens prontas (toque para conversar)</span>
+                        </div>
+                        <div class="catalog-ready-messages-list">
+                            <button type="button" class="catalog-ready-msg-chip" data-msg="Olá! Gostaria de saber mais sobre o produto &quot;${escapeHTML(prod.name)}&quot;.">
+                                <span>💬 Olá! Gostaria de saber mais sobre o produto "${escapeHTML(prod.name)}".</span>
+                                <i data-lucide="send"></i>
+                            </button>
+                            <button type="button" class="catalog-ready-msg-chip" data-msg="Olá! O produto &quot;${escapeHTML(prod.name)}&quot; ainda está disponível?">
+                                <span>📦 Olá! O produto "${escapeHTML(prod.name)}" ainda está disponível?</span>
+                                <i data-lucide="send"></i>
+                            </button>
+                            <button type="button" class="catalog-ready-msg-chip" data-msg="Olá! Qual o prazo e valor de entrega para o produto &quot;${escapeHTML(prod.name)}&quot;?">
+                                <span>🚚 Olá! Qual o prazo e valor de entrega para "${escapeHTML(prod.name)}"?</span>
+                                <i data-lucide="send"></i>
+                            </button>
+                            <button type="button" class="catalog-ready-msg-chip" data-msg="Olá! Quais as condições de pagamento para o produto &quot;${escapeHTML(prod.name)}&quot;?">
+                                <span>⚡ Olá! Quais as condições de pagamento para "${escapeHTML(prod.name)}"?</span>
+                                <i data-lucide="send"></i>
+                            </button>
+                        </div>
+                    </div>
+                ` : ''}
+
                 <div class="catalog-detail-actions">
                     ${isOwner ? `
                         <button type="button" id="catalog-detail-edit-btn" class="catalog-primary-btn catalog-grow"><i data-lucide="pencil"></i><span>Editar produto</span></button>
@@ -7031,6 +7188,10 @@ export async function openProductDetail(productId, sellerUid) {
                         <button type="button" id="catalog-detail-add-cart-btn" class="catalog-primary-btn catalog-grow" ${isOutOfStock ? 'disabled' : ''}>
                             <i data-lucide="shopping-cart"></i>
                             <span>${isOutOfStock ? 'Esgotado' : 'Adicionar ao carrinho'}</span>
+                        </button>
+                        <button type="button" id="catalog-detail-talk-btn" class="catalog-secondary-btn catalog-grow" style="border-color:rgba(34,197,94,0.45);color:#4ade80;">
+                            <i data-lucide="message-circle"></i>
+                            <span>Conversar com vendedor</span>
                         </button>
                     ` : `
                         <button type="button" id="catalog-detail-talk-btn" class="catalog-primary-btn catalog-grow" style="background:#22c55e;color:#fff;">
@@ -7082,7 +7243,7 @@ export async function openProductDetail(productId, sellerUid) {
             };
         });
 
-        document.getElementById('catalog-detail-add-cart-btn')?.addEventListener('click', () => {
+        const getSelectedDetailVariations = () => {
             let selectedColor = null;
             const activeColorChip = content.querySelector('.catalog-color-chip.active');
             if (activeColorChip) {
@@ -7112,6 +7273,12 @@ export async function openProductDetail(productId, sellerUid) {
                 selectedVoltage = 'Bivolt';
             }
 
+            return { selectedColor, selectedSize, selectedVoltage };
+        };
+
+        document.getElementById('catalog-detail-add-cart-btn')?.addEventListener('click', () => {
+            const { selectedColor, selectedSize, selectedVoltage } = getSelectedDetailVariations();
+
             addToCatalogCart(prod, sellerUid, activeCatalogSellerData || {}, {
                 selectedColor,
                 selectedSize,
@@ -7120,40 +7287,17 @@ export async function openProductDetail(productId, sellerUid) {
             closeProductDetail();
         });
 
-        document.getElementById('catalog-detail-talk-btn')?.addEventListener('click', async () => {
-            closeProductDetail();
-            if (currentUser && currentUser.uid) {
-                const buyerContactData = {
-                    uid: currentUser.uid,
-                    name: (`${currentProfile?.name || ''} ${currentProfile?.surname || ''}`).trim() || currentProfile?.name || currentUser.displayName || 'Comprador VORTEX',
-                    avatar: currentProfile?.avatar || currentUser.photoURL || '',
-                    status: currentProfile?.status || currentProfile?.bio || 'Disponível no VORTEX ⚡',
-                    isVip: checkIsVipUser(currentProfile),
-                    isVerified: checkIsVipUser(currentProfile)
-                };
-                const sellerContactData = {
-                    uid: sellerUid,
-                    name: (activeCatalogSellerData && activeCatalogSellerData.name) || 'Vendedor VORTEX',
-                    avatar: (activeCatalogSellerData && activeCatalogSellerData.avatar) || '',
-                    status: (activeCatalogSellerData && activeCatalogSellerData.status) || (activeCatalogSellerData && activeCatalogSellerData.bio) || 'Disponível no VORTEX ⚡',
-                    isVip: Boolean(activeCatalogSellerData && (activeCatalogSellerData.isVip || activeCatalogSellerData.isVerified || checkIsVipUser(activeCatalogSellerData))),
-                    isVerified: Boolean(activeCatalogSellerData && (activeCatalogSellerData.isVip || activeCatalogSellerData.isVerified || checkIsVipUser(activeCatalogSellerData)))
-                };
-                await ensureMutualContacts(buyerContactData, sellerContactData);
-            }
-            closeCatalogOverlay();
-            openDirectChat({
-                uid: sellerUid,
-                name: (activeCatalogSellerData && activeCatalogSellerData.name) || 'Vendedor VORTEX',
-                avatar: (activeCatalogSellerData && activeCatalogSellerData.avatar) || '',
-                status: (activeCatalogSellerData && activeCatalogSellerData.status) || (activeCatalogSellerData && activeCatalogSellerData.bio) || 'Disponível no VORTEX ⚡',
-                isGroup: false
+        content.querySelectorAll('.catalog-ready-msg-chip').forEach(chip => {
+            chip.addEventListener('click', async () => {
+                const customMsg = chip.dataset.msg || '';
+                await talkToSellerAboutProduct(prod, sellerUid, activeCatalogSellerData || {}, {
+                    customMessage: customMsg
+                });
             });
-            const chatInput = document.getElementById('message-input');
-            if (chatInput) {
-                chatInput.value = `Olá! Gostaria de saber mais sobre o produto "${prod.name}".`;
-                chatInput.focus();
-            }
+        });
+
+        document.getElementById('catalog-detail-talk-btn')?.addEventListener('click', async () => {
+            await talkToSellerAboutProduct(prod, sellerUid, activeCatalogSellerData || {});
         });
 
         document.getElementById('catalog-detail-edit-btn')?.addEventListener('click', () => {
@@ -18543,7 +18687,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.196';
+export const CURRENT_APP_VERSION = '1.0.197';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -31655,6 +31799,9 @@ if (typeof window !== 'undefined') {
     window.deleteCatalogCategory = deleteCatalogCategory;
     window.openProductDetail = openProductDetail;
     window.closeProductDetail = closeProductDetail;
+    window.buildCatalogProductReadyMessage = buildCatalogProductReadyMessage;
+    window.fillCatalogChatReadyMessage = fillCatalogChatReadyMessage;
+    window.talkToSellerAboutProduct = talkToSellerAboutProduct;
     window.getCatalogCart = getCatalogCart;
     window.saveCatalogCart = saveCatalogCart;
     window.clearCatalogCart = clearCatalogCart;

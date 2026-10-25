@@ -12283,14 +12283,9 @@ test('Limite de 500 Caracteres na Legenda dos Posts e Correção da Categoria Da
   const win = env.sandbox.window;
   const html = fs.readFileSync('public/index.html', 'utf8');
 
-  // 1. Integridade de Versionamento (v1.0.196)
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.196', 'script.js deve ter versão 1.0.196');
-  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
-  assert.strictEqual(versionJson.version, '1.0.196', 'version.json deve ter versão 1.0.196');
-  assert.ok(html.includes('script.js?v=1.0.196'), 'index.html deve referenciar script.js?v=1.0.196');
-  assert.ok(html.includes('style.css?v=1.0.196'), 'index.html deve referenciar style.css?v=1.0.196');
-  const swContent = fs.readFileSync('public/sw.js', 'utf8');
-  assert.ok(swContent.includes('vortex-vip-v1.0.196'), 'sw.js deve conter cache vortex-vip-v1.0.196');
+  // 1. Integridade de Versionamento (v1.0.196+)
+  const verParts196 = String(win.CURRENT_APP_VERSION || '').split('.').map(Number);
+  assert.ok(verParts196[2] >= 196, 'script.js deve ter versão >= 1.0.196');
 
   // 2. Correção da Categoria: "🎨 Dessinha" -> "💃 Danssinha"
   const personalCats = Array.from(win.PERSONAL_POST_CATEGORIES || []);
@@ -12326,6 +12321,89 @@ test('Limite de 500 Caracteres na Legenda dos Posts e Correção da Categoria Da
   assert.strictEqual(captionInput.value, '', 'resetPostComposer deve limpar #post-caption-input');
   assert.strictEqual(captionCounter.innerText, '0/500', 'resetPostComposer deve restaurar #post-caption-char-count para 0/500');
   assert.ok(!captionCounter.classList.contains('limit-reached'), 'resetPostComposer deve remover limit-reached do contador');
+});
+
+test('Correção da Mensagem Já Pronta dos Produtos do Catálogo (v1.0.197)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+  const css = fs.readFileSync('public/style.css', 'utf8');
+  const html = fs.readFileSync('public/index.html', 'utf8');
+
+  // 1. Integridade de Versionamento (v1.0.197)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.197', 'script.js deve ter versão 1.0.197');
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
+  assert.strictEqual(versionJson.version, '1.0.197', 'version.json deve ter versão 1.0.197');
+  assert.ok(html.includes('script.js?v=1.0.197'), 'index.html deve referenciar script.js?v=1.0.197');
+  assert.ok(html.includes('style.css?v=1.0.197'), 'index.html deve referenciar style.css?v=1.0.197');
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+  assert.ok(swContent.includes('vortex-vip-v1.0.197'), 'sw.js deve conter cache vortex-vip-v1.0.197');
+
+  // 2. Regras CSS das Mensagens Prontas do Produto
+  assert.ok(css.includes('.catalog-ready-messages-box'), 'style.css deve conter .catalog-ready-messages-box');
+  assert.ok(css.includes('.catalog-ready-msg-chip'), 'style.css deve conter .catalog-ready-msg-chip');
+
+  // 3. Funções de construção e preenchimento da mensagem pronta no input real (#chat-input-main)
+  assert.strictEqual(typeof win.buildCatalogProductReadyMessage, 'function', 'buildCatalogProductReadyMessage deve existir');
+  assert.strictEqual(typeof win.fillCatalogChatReadyMessage, 'function', 'fillCatalogChatReadyMessage deve existir');
+  assert.strictEqual(typeof win.talkToSellerAboutProduct, 'function', 'talkToSellerAboutProduct deve existir');
+
+  const sampleProd = {
+    id: 'prod_ready_197',
+    name: 'Headset Gamer VORTEX Pro',
+    price: 299.90,
+    sellerUid: 'seller_ready_197',
+    sellerName: 'VORTEX Tech Store',
+    buyEnabled: false
+  };
+  env.firestoreDocs['users/seller_ready_197/catalog/prod_ready_197'] = { ...sampleProd };
+
+  const defaultMsg = win.buildCatalogProductReadyMessage(sampleProd);
+  assert.strictEqual(defaultMsg, 'Olá! Gostaria de saber mais sobre o produto "Headset Gamer VORTEX Pro".');
+
+  const varMsg = win.buildCatalogProductReadyMessage(sampleProd, {
+    selectedColor: { name: 'Preto Neon' },
+    selectedSize: 'Único',
+    selectedVoltage: 'Bivolt'
+  });
+  assert.strictEqual(varMsg, 'Olá! Gostaria de saber mais sobre o produto "Headset Gamer VORTEX Pro" (Cor: Preto Neon, Tamanho: Único, Voltagem: Bivolt).');
+
+  // 4. Fluxo completo: talkToSellerAboutProduct preenche #chat-input-main e muda #chat-send-icon para "send"
+  const buyer = { uid: 'buyer_197', name: 'Carlos Cliente', accountType: 'personal' };
+  win.setCurrentUser(buyer);
+  win.setCurrentProfile(buyer);
+
+  const chatInputMain = env.elements['chat-input-main'];
+  const chatSendIcon = env.elements['chat-send-icon'];
+  const chatWindow = env.elements['chat-window'];
+  assert.ok(chatInputMain, '#chat-input-main deve existir no DOM');
+
+  chatInputMain.value = '';
+  if (chatSendIcon) chatSendIcon.setAttribute('data-lucide', 'mic');
+
+  await win.talkToSellerAboutProduct(sampleProd, 'seller_ready_197', {
+    uid: 'seller_ready_197',
+    name: 'VORTEX Tech Store'
+  });
+
+  assert.strictEqual(chatInputMain.value, 'Olá! Gostaria de saber mais sobre o produto "Headset Gamer VORTEX Pro".', '#chat-input-main deve receber a mensagem já pronta do produto');
+  if (chatSendIcon) {
+    assert.strictEqual(chatSendIcon.getAttribute('data-lucide'), 'send', '#chat-send-icon deve mudar para o ícone de enviar ("send")');
+  }
+  assert.ok(chatWindow.classList.contains('active'), '#chat-window deve abrir com a conversa do vendedor');
+
+  // 5. Detalhe do Produto (#catalog-product-detail-modal) exibe as Mensagens Prontas Rápidas e o botão Conversar com vendedor
+  await win.openProductDetail('prod_ready_197', 'seller_ready_197');
+  const detailContent = env.elements['catalog-detail-content'];
+  assert.ok(detailContent.innerHTML.includes('catalog-ready-messages-box'), 'Modal de detalhe deve exibir a caixa de mensagens prontas');
+  assert.ok(detailContent.innerHTML.includes('catalog-ready-msg-chip'), 'Modal de detalhe deve exibir os chips de mensagens prontas');
+  assert.ok(detailContent.innerHTML.includes('catalog-detail-talk-btn'), 'Modal de detalhe deve exibir #catalog-detail-talk-btn');
+
+  // 6. Testar clique em um chip de mensagem pronta personalizada
+  chatInputMain.value = '';
+  await win.talkToSellerAboutProduct(sampleProd, 'seller_ready_197', { name: 'VORTEX Tech Store' }, {
+    customMessage: 'Olá! O produto "Headset Gamer VORTEX Pro" ainda está disponível?'
+  });
+  assert.strictEqual(chatInputMain.value, 'Olá! O produto "Headset Gamer VORTEX Pro" ainda está disponível?', '#chat-input-main deve receber a mensagem pronta clicada');
 });
 
 

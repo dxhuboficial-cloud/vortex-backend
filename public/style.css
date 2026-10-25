@@ -19078,6 +19078,80 @@ body.theme-hacker .story-category-badge {
     background: rgba(0, 255, 102, 0.16) !important;
 }
 
+/* ==========================================================================
+   MENSAGENS JÁ PRONTAS DOS PRODUTOS DO CATÁLOGO (v1.0.197)
+   ========================================================================== */
+.catalog-ready-messages-box {
+    margin-top: 14px;
+    padding: 12px;
+    background: rgba(34, 197, 94, 0.06);
+    border: 1px solid rgba(34, 197, 94, 0.25);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.catalog-ready-messages-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #4ade80;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.catalog-ready-messages-header i,
+.catalog-ready-messages-header svg {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+}
+
+.catalog-ready-messages-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.catalog-ready-msg-chip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    text-align: left;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-main, #ffffff);
+    font-size: 0.8rem;
+    font-weight: 500;
+    line-height: 1.35;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.catalog-ready-msg-chip:hover,
+.catalog-ready-msg-chip:active {
+    background: rgba(34, 197, 94, 0.16);
+    border-color: rgba(34, 197, 94, 0.5);
+    color: #ffffff;
+    transform: translateY(-1px);
+}
+
+.catalog-ready-msg-chip i,
+.catalog-ready-msg-chip svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    color: #4ade80;
+}
+
+
 
 
 
