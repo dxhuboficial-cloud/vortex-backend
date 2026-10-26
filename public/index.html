@@ -7,17 +7,17 @@
     <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.199">
     <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.199">
     <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.199">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.201">
-    <link rel="stylesheet" href="style.css?v=1.0.201">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.202">
+    <link rel="stylesheet" href="style.css?v=1.0.202">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.201">
+    <link rel="manifest" href="manifest.json?v=1.0.202">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.201">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.201">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.202">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.202">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -1670,6 +1670,97 @@
                             <option value="">Selecione um contato</option>
                         </select>
                         <button id="add-group-member-btn" class="group-action-btn" type="button" title="Adicionar membro">Adicionar membro</button>
+                    </div>
+
+                    <!-- Mini Painel Admin do Grupo (v1.0.202) -->
+                    <div class="group-mini-admin-section" id="group-mini-admin-section">
+                        <div class="group-mini-admin-header">
+                            <div class="group-mini-admin-title">
+                                <i data-lucide="shield-check"></i>
+                                <span>Mini Painel Admin do Grupo</span>
+                            </div>
+                            <span class="group-mini-admin-tag">Regras & Moderação</span>
+                        </div>
+
+                        <!-- 1. Regra de Segurança: Palavras Proibidas / Palavras-chave -->
+                        <div class="group-rule-card" id="group-rule-banned-words-card">
+                            <div class="group-rule-header">
+                                <label for="group-banned-words-toggle" class="group-rule-label">
+                                    <span class="group-rule-name"><i data-lucide="ban"></i> Palavras Proibidas no Grupo</span>
+                                    <small class="group-rule-desc">Impedir mensagens com palavras-chave indesejadas</small>
+                                </label>
+                                <label class="switch schedule-switch" for="group-banned-words-toggle" title="Ativar filtro de palavras proibidas">
+                                    <input type="checkbox" id="group-banned-words-toggle" aria-label="Ativar filtro de palavras proibidas">
+                                    <span class="slider schedule-slider"></span>
+                                </label>
+                            </div>
+                            <div id="group-banned-words-panel" class="group-rule-expandable" style="display: none;">
+                                <label for="group-banned-words-input" class="group-input-label">Palavras-chave bloqueadas (separadas por vírgula):</label>
+                                <textarea id="group-banned-words-input" class="group-rule-textarea" rows="2" placeholder="Ex: palavrão, golpe, link, porn, spam..."></textarea>
+                                <button type="button" id="save-group-banned-words-btn" class="group-rule-save-btn">
+                                    <i data-lucide="save"></i> Salvar Palavras Proibidas
+                                </button>
+                                <small class="group-rule-hint">💡 Membros comuns serão impedidos de enviar mensagens que contenham essas palavras.</small>
+                            </div>
+                        </div>
+
+                        <!-- 2. Solicitação para Participar do Grupo (Entrada sob Aprovação) -->
+                        <div class="group-rule-card" id="group-rule-approval-card">
+                            <div class="group-rule-header">
+                                <label for="group-approval-toggle" class="group-rule-label">
+                                    <span class="group-rule-name"><i data-lucide="user-check"></i> Solicitação para Participar</span>
+                                    <small class="group-rule-desc">Exigir aprovação de administradores para novos membros</small>
+                                </label>
+                                <label class="switch schedule-switch" for="group-approval-toggle" title="Ativar solicitação para participar">
+                                    <input type="checkbox" id="group-approval-toggle" aria-label="Ativar solicitação para participar">
+                                    <span class="slider schedule-slider"></span>
+                                </label>
+                            </div>
+                            <div id="group-pending-requests-box" class="group-rule-expandable" style="display: none;">
+                                <div class="group-pending-requests-header">
+                                    <span class="group-input-label"><i data-lucide="clock"></i> Solicitações Pendentes (<span id="group-pending-count">0</span>):</span>
+                                </div>
+                                <div id="group-pending-requests-list" class="group-pending-requests-list">
+                                    <p class="group-empty-subtext">Nenhuma solicitação pendente no momento.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 3. Programação de Pausa e Despausa Automática com Horários -->
+                        <div class="group-rule-card" id="group-rule-schedule-card">
+                            <div class="group-rule-header">
+                                <label for="group-auto-pause-toggle" class="group-rule-label">
+                                    <span class="group-rule-name"><i data-lucide="timer"></i> Programar Pausa Automática</span>
+                                    <small class="group-rule-desc">Definir horário de silêncio (pausar e despausar automático)</small>
+                                </label>
+                                <label class="switch schedule-switch" for="group-auto-pause-toggle" title="Ativar agendamento de silêncio">
+                                    <input type="checkbox" id="group-auto-pause-toggle" aria-label="Ativar agendamento de silêncio">
+                                    <span class="slider schedule-slider"></span>
+                                </label>
+                            </div>
+                            <div id="group-schedule-panel" class="group-rule-expandable" style="display: none;">
+                                <div class="schedule-inputs-row">
+                                    <div class="schedule-input-group">
+                                        <label for="group-auto-pause-time" class="schedule-input-label">
+                                            <i data-lucide="moon"></i>
+                                            <span>Hora de Pausar (Silêncio)</span>
+                                        </label>
+                                        <input type="time" id="group-auto-pause-time" class="schedule-time-input" aria-label="Hora para pausar automaticamente">
+                                    </div>
+                                    <div class="schedule-input-group">
+                                        <label for="group-auto-unpause-time" class="schedule-input-label">
+                                            <i data-lucide="sun"></i>
+                                            <span>Hora de Despausar (Liberar)</span>
+                                        </label>
+                                        <input type="time" id="group-auto-unpause-time" class="schedule-time-input" aria-label="Hora para despausar automaticamente">
+                                    </div>
+                                </div>
+                                <button type="button" id="save-group-schedule-btn" class="group-rule-save-btn">
+                                    <i data-lucide="save"></i> Salvar Horários de Silêncio
+                                </button>
+                                <small class="group-rule-hint">💡 Entre o horário de pausa e despausa, apenas administradores e moderadores podem falar.</small>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -4163,6 +4254,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.201" defer></script>
+    <script type="module" src="script.js?v=1.0.202" defer></script>
 </body>
 </html>

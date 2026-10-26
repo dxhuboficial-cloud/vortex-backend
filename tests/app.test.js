@@ -12864,12 +12864,14 @@ test('Silenciar Contatos (Mensagens e Ligações) nos 3 Pontinhos da Conversa (v
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
 
-  // 1. Integridade de Versionamento (v1.0.201)
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.201', 'script.js deve ter versão 1.0.201');
-  assert.strictEqual(versionJson.version, '1.0.201', 'version.json deve ter versão 1.0.201');
-  assert.ok(html.includes('script.js?v=1.0.201'), 'index.html deve referenciar script.js?v=1.0.201');
-  assert.ok(html.includes('style.css?v=1.0.201'), 'index.html deve referenciar style.css?v=1.0.201');
-  assert.ok(swContent.includes('vortex-vip-v1.0.201'), 'sw.js deve conter cache vortex-vip-v1.0.201');
+  // 1. Integridade de Versionamento (v1.0.201+)
+  const versionNum = parseInt((win.CURRENT_APP_VERSION || '0.0.0').split('.')[2] || '0', 10);
+  assert.ok(versionNum >= 201, 'script.js deve ter versão >= 1.0.201');
+  const jsonVerNum = parseInt((versionJson.version || '0.0.0').split('.')[2] || '0', 10);
+  assert.ok(jsonVerNum >= 201, 'version.json deve ter versão >= 1.0.201');
+  assert.ok(html.includes(`script.js?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar script.js atualizado');
+  assert.ok(html.includes(`style.css?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar style.css atualizado');
+  assert.ok(swContent.includes(`vortex-vip-v${win.CURRENT_APP_VERSION}`), 'sw.js deve conter cache correspondente');
 
   // 2. Elementos HTML do Menu de 3 Pontinhos e Cabeçalho do Chat
   assert.ok(html.includes('id="chat-mute-trigger"'), 'index.html deve conter a opção de silenciar no menu de 3 pontinhos');
@@ -12930,18 +12932,161 @@ test('Silenciar Contatos (Mensagens e Ligações) nos 3 Pontinhos da Conversa (v
   assert.strictEqual(muteBadge.style.display, 'none');
 });
 
+test('Segurança contra Comportamentos Suspeitos e Mini Painel Admin de Grupos (v1.0.202)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+  const css = fs.readFileSync('public/style.css', 'utf8');
+  const html = fs.readFileSync('public/index.html', 'utf8');
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
 
+  // 1. Integridade de Versionamento (v1.0.202)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.202', 'script.js deve ter versão 1.0.202');
+  assert.strictEqual(versionJson.version, '1.0.202', 'version.json deve ter versão 1.0.202');
+  assert.ok(html.includes('script.js?v=1.0.202'), 'index.html deve referenciar script.js?v=1.0.202');
+  assert.ok(html.includes('style.css?v=1.0.202'), 'index.html deve referenciar style.css?v=1.0.202');
+  assert.ok(swContent.includes('vortex-vip-v1.0.202'), 'sw.js deve conter cache vortex-vip-v1.0.202');
 
+  // 2. Estrutura HTML do Mini Painel Admin do Grupo
+  assert.ok(html.includes('id="group-mini-admin-section"'), 'index.html deve conter #group-mini-admin-section');
+  assert.ok(html.includes('id="group-banned-words-toggle"'), 'index.html deve conter toggle de palavras proibidas');
+  assert.ok(html.includes('id="group-banned-words-input"'), 'index.html deve conter textarea de palavras proibidas');
+  assert.ok(html.includes('id="save-group-banned-words-btn"'), 'index.html deve conter botão de salvar palavras proibidas');
+  assert.ok(html.includes('id="group-approval-toggle"'), 'index.html deve conter toggle de solicitação para participar');
+  assert.ok(html.includes('id="group-pending-requests-box"'), 'index.html deve conter container de solicitações pendentes');
+  assert.ok(html.includes('id="group-auto-pause-toggle"'), 'index.html deve conter toggle de pausa automática');
+  assert.ok(html.includes('id="group-auto-pause-time"'), 'index.html deve conter input de hora para pausar');
+  assert.ok(html.includes('id="group-auto-unpause-time"'), 'index.html deve conter input de hora para despausar');
+  assert.ok(html.includes('id="save-group-schedule-btn"'), 'index.html deve conter botão para salvar agendamento de silêncio');
 
+  // 3. Estilos CSS do Mini Painel Admin e Badges
+  assert.ok(css.includes('.group-mini-admin-section'), 'style.css deve conter .group-mini-admin-section');
+  assert.ok(css.includes('.group-rule-card'), 'style.css deve conter .group-rule-card');
+  assert.ok(css.includes('.group-rule-textarea'), 'style.css deve conter .group-rule-textarea');
+  assert.ok(css.includes('.group-rule-save-btn'), 'style.css deve conter .group-rule-save-btn');
+  assert.ok(css.includes('.group-pending-req-item'), 'style.css deve conter .group-pending-req-item');
+  assert.ok(css.includes('.group-approve-req-btn'), 'style.css deve conter .group-approve-req-btn');
+  assert.ok(css.includes('.group-reject-req-btn'), 'style.css deve conter .group-reject-req-btn');
 
+  // 4. Funções Exportadas na Janela
+  assert.strictEqual(typeof win.detectSuspiciousBehavior, 'function', 'detectSuspiciousBehavior deve existir');
+  assert.strictEqual(typeof win.isUserGroupModerator, 'function', 'isUserGroupModerator deve existir');
+  assert.strictEqual(typeof win.promoteGroupModerator, 'function', 'promoteGroupModerator deve existir');
+  assert.strictEqual(typeof win.demoteGroupModerator, 'function', 'demoteGroupModerator deve existir');
+  assert.strictEqual(typeof win.isWithinScheduledPauseWindow, 'function', 'isWithinScheduledPauseWindow deve existir');
+  assert.strictEqual(typeof win.checkGroupScheduledPause, 'function', 'checkGroupScheduledPause deve existir');
+  assert.strictEqual(typeof win.checkGroupBannedWords, 'function', 'checkGroupBannedWords deve existir');
+  assert.strictEqual(typeof win.renderGroupMiniAdminPanel, 'function', 'renderGroupMiniAdminPanel deve existir');
+  assert.strictEqual(typeof win.approveGroupJoinRequest, 'function', 'approveGroupJoinRequest deve existir');
+  assert.strictEqual(typeof win.rejectGroupJoinRequest, 'function', 'rejectGroupJoinRequest deve existir');
+  assert.strictEqual(typeof win.requestToJoinGroup, 'function', 'requestToJoinGroup deve existir');
 
+  // 5. Teste Unitário: Detecção de Comportamentos Suspeitos
+  // 5.1 Phishing / Golpes
+  const scamCheck = win.detectSuspiciousBehavior({
+    uid: 'user_malicious_202',
+    type: 'message',
+    text: 'Acesse o pix premiado e receba o dobro do pix agora mesmo!'
+  });
+  assert.strictEqual(scamCheck.isSuspicious, true, 'Deve identificar tentativa de golpe / pix premiado');
+  assert.strictEqual(scamCheck.reason, 'phishing_pattern');
+  assert.ok(scamCheck.alertMessage.includes('Segurança VORTEX'));
 
+  // 5.2 Mensagem normal não deve ser bloqueada
+  const normalCheck = win.detectSuspiciousBehavior({
+    uid: 'user_good_202',
+    type: 'message',
+    text: 'Olá pessoal, boa tarde a todos no grupo!'
+  });
+  assert.strictEqual(normalCheck.isSuspicious, false, 'Mensagem regular não deve ser considerada suspeita');
 
+  // 5.3 Flood de Mensagens (> 4 msgs em 4s)
+  win.suspiciousTracker.messageTimestamps.clear();
+  win.suspiciousTracker.cooldowns.clear();
+  for (let i = 0; i < 4; i++) {
+    win.detectSuspiciousBehavior({ uid: 'user_flooder_202', type: 'message', text: 'Msg rápida ' + i });
+  }
+  const floodCheck = win.detectSuspiciousBehavior({ uid: 'user_flooder_202', type: 'message', text: 'Msg 5 flood' });
+  assert.strictEqual(floodCheck.isSuspicious, true, 'Deve detectar flood com mais de 4 mensagens');
+  assert.strictEqual(floodCheck.reason, 'flood_rate_limit');
 
+  // 5.4 Repetição de Bot (3 mensagens idênticas)
+  win.suspiciousTracker.recentMessages.clear();
+  win.suspiciousTracker.cooldowns.clear();
+  win.detectSuspiciousBehavior({ uid: 'user_bot_202', type: 'message', text: 'Spam idêntico' });
+  win.detectSuspiciousBehavior({ uid: 'user_bot_202', type: 'message', text: 'Spam idêntico' });
+  const botCheck = win.detectSuspiciousBehavior({ uid: 'user_bot_202', type: 'message', text: 'Spam idêntico' });
+  assert.strictEqual(botCheck.isSuspicious, true, 'Deve detectar 3 mensagens idênticas seguidas como bot');
+  assert.strictEqual(botCheck.reason, 'repetitive_bot_behavior');
 
+  // 6. Teste Unitário: Palavras Proibidas no Grupo
+  const groupRules = {
+    groupId: 'grp_rules_202',
+    bannedWordsEnabled: true,
+    bannedWords: ['pirataria', 'golpe', 'aposta ilegal']
+  };
+  const cleanMsg = win.checkGroupBannedWords(groupRules, 'Bom dia pessoal!');
+  assert.strictEqual(cleanMsg, false, 'Mensagem limpa não é bloqueada');
 
+  const dirtyMsg = win.checkGroupBannedWords(groupRules, 'Aqui tem link de PIRATARIA de graça');
+  assert.ok(dirtyMsg && dirtyMsg.matched, 'Mensagem com palavra proibida deve ser bloqueada');
+  assert.strictEqual(dirtyMsg.word, 'pirataria');
 
+  // Teste com filtro desativado
+  const disabledRules = { ...groupRules, bannedWordsEnabled: false };
+  assert.strictEqual(win.checkGroupBannedWords(disabledRules, 'Pirataria liberada'), false, 'Não bloqueia se o filtro estiver desativado');
 
+  // 7. Teste Unitário: Janela de Horário Programado de Pausa
+  // Horário Diurno (13:00 às 15:00)
+  const dateAt14 = new Date(2026, 0, 1, 14, 0);
+  const dateAt16 = new Date(2026, 0, 1, 16, 0);
+  assert.strictEqual(win.isWithinScheduledPauseWindow('13:00', '15:00', dateAt14), true, '14:00 deve estar pausado (13:00 às 15:00)');
+  assert.strictEqual(win.isWithinScheduledPauseWindow('13:00', '15:00', dateAt16), false, '16:00 não deve estar pausado');
 
+  // Horário Noturno / Overnight (22:00 às 08:00)
+  const dateAt23 = new Date(2026, 0, 1, 23, 30);
+  const dateAt03 = new Date(2026, 0, 1, 3, 15);
+  const dateAt10 = new Date(2026, 0, 1, 10, 0);
+  assert.strictEqual(win.isWithinScheduledPauseWindow('22:00', '08:00', dateAt23), true, '23:30 deve estar pausado na janela noturna');
+  assert.strictEqual(win.isWithinScheduledPauseWindow('22:00', '08:00', dateAt03), true, '03:15 da madrugada deve estar pausado na janela noturna');
+  assert.strictEqual(win.isWithinScheduledPauseWindow('22:00', '08:00', dateAt10), false, '10:00 da manhã não deve estar pausado');
 
+  // 8. Teste Unitário: Moderadores de Grupo
+  const groupWithMod = {
+    creatorUid: 'admin_owner_202',
+    admins: ['admin_owner_202'],
+    moderators: ['mod_samuel_202'],
+    members: ['admin_owner_202', 'mod_samuel_202', 'user_john_202']
+  };
+  assert.strictEqual(win.isUserGroupModerator(groupWithMod, { uid: 'mod_samuel_202' }), true, 'Samuel é moderador');
+  assert.strictEqual(win.isUserGroupModerator(groupWithMod, { uid: 'user_john_202' }), false, 'John não é moderador');
 
+  // 9. Teste Funcional: Aprovação e Recusa de Solicitação de Entrada
+  env.firestoreDocs['groups/grp_requests_202'] = {
+    groupId: 'grp_requests_202',
+    name: 'Grupo Secreto VIP',
+    creatorUid: 'admin_owner_202',
+    admins: ['admin_owner_202'],
+    moderators: [],
+    approvalRequired: true,
+    members: ['admin_owner_202'],
+    pendingRequests: [
+      { uid: 'candidate_1', name: 'Candidato 1' },
+      { uid: 'candidate_2', name: 'Candidato 2' }
+    ]
+  };
+
+  win.setCurrentUser({ uid: 'admin_owner_202' });
+
+  // Aprovar Candidato 1
+  await win.approveGroupJoinRequest('grp_requests_202', 'candidate_1');
+  const grpAfterApproval = env.firestoreDocs['groups/grp_requests_202'];
+  assert.ok(grpAfterApproval.members.includes('candidate_1'), 'candidate_1 deve entrar na lista de membros');
+  assert.strictEqual(grpAfterApproval.pendingRequests.some(p => p.uid === 'candidate_1'), false, 'candidate_1 deve ser removido das pendências');
+
+  // Recusar Candidato 2
+  await win.rejectGroupJoinRequest('grp_requests_202', 'candidate_2');
+  const grpAfterReject = env.firestoreDocs['groups/grp_requests_202'];
+  assert.strictEqual(grpAfterReject.members.includes('candidate_2'), false, 'candidate_2 não deve entrar nos membros');
+  assert.strictEqual(grpAfterReject.pendingRequests.some(p => p.uid === 'candidate_2'), false, 'candidate_2 deve ser removido das pendências');
+});

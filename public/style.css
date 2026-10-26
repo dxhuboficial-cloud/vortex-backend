@@ -19969,6 +19969,273 @@ input:checked + .schedule-slider {
     color: #fbbf24 !important;
 }
 
+/* ===== MINI PAINEL ADMIN DO GRUPO (v1.0.202) ===== */
+.group-mini-admin-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 16px;
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.group-mini-admin-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.group-mini-admin-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.96rem;
+    font-weight: 700;
+    color: var(--accent-color, #fff01f);
+}
+
+.group-mini-admin-title i,
+.group-mini-admin-title svg {
+    width: 18px;
+    height: 18px;
+    color: var(--accent-color, #fff01f);
+}
+
+.group-mini-admin-tag {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: rgba(255, 240, 31, 0.12);
+    border: 1px solid rgba(255, 240, 31, 0.3);
+    color: var(--accent-color, #fff01f);
+}
+
+.group-rule-card {
+    background: #14141c;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: all 0.2s ease;
+}
+
+.group-rule-card:hover {
+    border-color: rgba(168, 85, 247, 0.4);
+}
+
+.group-rule-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
+}
+
+.group-rule-label {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    cursor: pointer;
+    flex: 1;
+}
+
+.group-rule-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.group-rule-name i,
+.group-rule-name svg {
+    width: 15px;
+    height: 15px;
+    color: #c084fc;
+}
+
+.group-rule-desc {
+    font-size: 0.76rem;
+    color: var(--text-dim, #94a3b8);
+}
+
+.group-rule-expandable {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    animation: fadeInSchedule 0.25s ease;
+}
+
+.group-input-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #cbd5e1;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.group-rule-textarea {
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    padding: 8px 10px;
+    color: #ffffff;
+    font-size: 0.85rem;
+    font-family: inherit;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+.group-rule-textarea:focus {
+    border-color: #a855f7;
+    box-shadow: 0 0 10px rgba(168, 85, 247, 0.25);
+}
+
+.group-rule-save-btn {
+    background: linear-gradient(135deg, #a855f7, #7c3aed);
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: fit-content;
+    transition: all 0.2s ease;
+}
+
+.group-rule-save-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 10px rgba(168, 85, 247, 0.4);
+}
+
+.group-rule-save-btn i,
+.group-rule-save-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
+.group-rule-hint {
+    font-size: 0.74rem;
+    color: #94a3b8;
+    line-height: 1.3;
+}
+
+.group-pending-requests-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.group-pending-requests-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 220px;
+    overflow-y: auto;
+}
+
+.group-pending-req-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 8px 10px;
+}
+
+.group-pending-req-user {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.group-pending-req-name {
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: #ffffff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.group-pending-req-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.group-approve-req-btn {
+    background: #22c55e;
+    color: #052e16;
+    border: none;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.group-approve-req-btn:hover {
+    background: #16a34a;
+    color: #ffffff;
+}
+
+.group-reject-req-btn {
+    background: rgba(239, 68, 68, 0.18);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.group-reject-req-btn:hover {
+    background: #ef4444;
+    color: #ffffff;
+}
+
+.group-empty-subtext {
+    font-size: 0.78rem;
+    color: #64748b;
+    font-style: italic;
+    margin: 4px 0;
+}
+
+.group-member-moderator-badge {
+    color: #38bdf8;
+    font-weight: 600;
+    font-size: 0.8rem;
+}
+
 
 
 

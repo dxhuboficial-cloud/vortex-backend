@@ -12785,6 +12785,14 @@ export function isUserGroupAdmin(group, user = currentUser) {
     return false;
 }
 
+export function isUserGroupModerator(group, user = currentUser) {
+    if (!group || !user) return false;
+    const uid = typeof user === 'string' ? user : (user.uid || '');
+    if (!uid) return false;
+    if (Array.isArray(group.moderators) && group.moderators.includes(uid)) return true;
+    return false;
+}
+
 async function openGroupProfile(group) {
     if (!currentUser) return;
     const groupId = group.groupId || group.id || group.uid;
@@ -12825,6 +12833,7 @@ async function openGroupProfile(group) {
         if (liveAdminFields) liveAdminFields.style.display = liveIsAdmin ? 'flex' : 'none';
         if (liveDeleteBtn) liveDeleteBtn.style.display = liveIsAdmin ? 'flex' : 'none';
         if (liveAvatarInputLabel) liveAvatarInputLabel.style.display = liveIsAdmin ? 'inline-flex' : 'none';
+        if (liveIsAdmin) renderGroupMiniAdminPanel(managedGroup);
     }, (err) => {
         console.warn('Erro ao carregar dados do grupo em tempo real:', err);
     });
@@ -12863,6 +12872,7 @@ async function openGroupProfile(group) {
     if (adminFields) adminFields.style.display = isAdmin ? 'flex' : 'none';
     if (deleteButton) deleteButton.style.display = isAdmin ? 'flex' : 'none';
     if (avatarInputLabel) avatarInputLabel.style.display = isAdmin ? 'inline-flex' : 'none';
+    if (isAdmin) renderGroupMiniAdminPanel(managedGroup);
     const addMemberSelect = document.getElementById('group-add-member-select');
     if (addMemberSelect) {
         addMemberSelect.innerHTML = '<option value="">Selecione um contato</option>';
@@ -12888,18 +12898,29 @@ async function openGroupProfile(group) {
             const uid = managedGroup.members[index];
             const isCreator = uid === managedGroup.creatorUid;
             const isAdminMember = (managedGroup.admins || []).includes(uid) || isCreator;
+            const isModeratorMember = isUserGroupModerator(managedGroup, uid);
+            let modAction = '';
+            if (!isAdminMember) {
+                if (isModeratorMember) {
+                    modAction = '<button type="button" class="group-member-action" data-action="demote_mod">Remover moderador</button>';
+                } else {
+                    modAction = '<button type="button" class="group-member-action" data-action="promote_mod">Definir como moderador</button>';
+                }
+            }
             const menu = isAdmin && !isCreator ? `
                 <div class="group-member-menu-wrap">
                     <button class="group-member-menu-btn" type="button" title="Opções do membro" aria-label="Opções do membro"><i data-lucide="more-vertical"></i></button>
                     <div class="group-member-menu">
                         <button type="button" class="group-member-action" data-action="remove">Remover usuário</button>
                         ${isAdminMember ? '' : '<button type="button" class="group-member-action" data-action="promote">Promover como admin</button>'}
+                        ${modAction}
                     </div>
                 </div>
             ` : '';
             const memberAvatar = member.avatar || '';
             const memberName = member.name || 'Membro';
-            return `<div class="contact-selection-item group-member-row" data-member-uid="${uid}"><div class="contact-info-mini"><div class="avatar sm" id="group-profile-member-avatar-${uid}" style="background-image:url('${memberAvatar}')">${!memberAvatar ? memberName.charAt(0).toUpperCase() : ''}</div><span id="group-profile-member-name-${uid}">${memberName}${isAdminMember ? ' (admin)' : ''}</span></div>${menu}</div>`;
+            const roleBadge = isAdminMember ? ' (admin)' : (isModeratorMember ? ' (moderador 🛡️)' : '');
+            return `<div class="contact-selection-item group-member-row" data-member-uid="${uid}"><div class="contact-info-mini"><div class="avatar sm" id="group-profile-member-avatar-${uid}" style="background-image:url('${memberAvatar}')">${!memberAvatar ? memberName.charAt(0).toUpperCase() : ''}</div><span id="group-profile-member-name-${uid}">${memberName}${roleBadge}</span></div>${menu}</div>`;
         }).join('') || '<p class="group-member-loading">Nenhum membro encontrado.</p>';
 
         (managedGroup.members || []).forEach(uid => {
@@ -12912,6 +12933,8 @@ async function openGroupProfile(group) {
                     const liveName = mData.name || 'Membro';
                     const isCreator = uid === managedGroup.creatorUid;
                     const isAdminMember = (managedGroup.admins || []).includes(uid) || isCreator;
+                    const isModeratorMember = isUserGroupModerator(managedGroup, uid);
+                    const roleBadge = isAdminMember ? ' (admin)' : (isModeratorMember ? ' (moderador 🛡️)' : '');
 
                     if (avEl) {
                         if (liveAvatar) {
@@ -12923,7 +12946,7 @@ async function openGroupProfile(group) {
                         }
                     }
                     if (nameEl) {
-                        nameEl.innerText = `${liveName}${isAdminMember ? ' (admin)' : ''}`;
+                        nameEl.innerText = `${liveName}${roleBadge}`;
                     }
                 }
             });
@@ -12949,6 +12972,8 @@ async function openGroupProfile(group) {
             row?.querySelector('.group-member-menu')?.classList.remove('active');
             if (button.dataset.action === 'remove') await removeGroupMember(memberUid);
             if (button.dataset.action === 'promote') await promoteGroupMember(memberUid);
+            if (button.dataset.action === 'promote_mod') await promoteGroupModerator(memberUid);
+            if (button.dataset.action === 'demote_mod') await demoteGroupModerator(memberUid);
         };
     });
 
@@ -12980,6 +13005,14 @@ async function syncGroupReferences(group) {
             avatar: group.avatar || '',
             creatorUid: group.creatorUid,
             admins: group.admins || [group.creatorUid],
+            moderators: group.moderators || [],
+            bannedWordsEnabled: !!group.bannedWordsEnabled,
+            bannedWords: group.bannedWords || [],
+            approvalRequired: !!group.approvalRequired,
+            pendingRequests: group.pendingRequests || [],
+            autoPauseEnabled: !!group.autoPauseEnabled,
+            autoPauseTime: group.autoPauseTime || '',
+            autoUnpauseTime: group.autoUnpauseTime || '',
             members: group.members,
             paused: !!group.paused,
             updatedAt: Date.now()
@@ -13167,6 +13200,68 @@ async function promoteGroupMember(memberUid) {
     } catch (error) {
         console.error('Erro ao promover membro:', error);
         showToast('Erro', 'Não foi possível promover o usuário.', 'red');
+    }
+}
+
+export async function promoteGroupModerator(memberUid) {
+    if (!managedGroup || !currentUser || !memberUid) return;
+    if (!isUserGroupAdmin(managedGroup, currentUser)) {
+        showToast('Sem permissão', 'Somente administradores do grupo podem definir moderadores.', 'red');
+        return;
+    }
+    try {
+        const currentMods = Array.isArray(managedGroup.moderators) ? managedGroup.moderators : [];
+        if (currentMods.includes(memberUid)) {
+            showToast('Já é moderador', 'Este usuário já é moderador do grupo.', 'blue');
+            return;
+        }
+        managedGroup.moderators = [...new Set([...currentMods, memberUid])];
+        await updateDoc(doc(db, 'groups', managedGroup.groupId), {
+            moderators: managedGroup.moderators,
+            updatedAt: Date.now()
+        });
+        await syncGroupReferences(managedGroup);
+        await notifyUser(
+            memberUid,
+            '🛡️ Você é moderador do grupo!',
+            `Você foi definido como moderador do grupo "${managedGroup.name || 'Grupo VIP'}". Agora você pode gerenciar solicitações e mediar mensagens.`,
+            'group_moderator',
+            'shield-check'
+        );
+        await openGroupProfile(managedGroup);
+        showToast('Novo moderador', 'O usuário agora é moderador do grupo.', 'green');
+    } catch (e) {
+        console.error('Erro ao promover moderador:', e);
+        showToast('Erro', 'Não foi possível definir o moderador.', 'red');
+    }
+}
+
+export async function demoteGroupModerator(memberUid) {
+    if (!managedGroup || !currentUser || !memberUid) return;
+    if (!isUserGroupAdmin(managedGroup, currentUser)) {
+        showToast('Sem permissão', 'Somente administradores do grupo podem remover moderadores.', 'red');
+        return;
+    }
+    try {
+        const currentMods = Array.isArray(managedGroup.moderators) ? managedGroup.moderators : [];
+        managedGroup.moderators = currentMods.filter(uid => uid !== memberUid);
+        await updateDoc(doc(db, 'groups', managedGroup.groupId), {
+            moderators: managedGroup.moderators,
+            updatedAt: Date.now()
+        });
+        await syncGroupReferences(managedGroup);
+        await notifyUser(
+            memberUid,
+            'Moderação encerrada',
+            `Sua função de moderador no grupo "${managedGroup.name || 'Grupo VIP'}" foi encerrada pelo administrador.`,
+            'group_moderator',
+            'shield-alert'
+        );
+        await openGroupProfile(managedGroup);
+        showToast('Moderador removido', 'O usuário não é mais moderador do grupo.', 'blue');
+    } catch (e) {
+        console.error('Erro ao remover moderador:', e);
+        showToast('Erro', 'Não foi possível remover o moderador.', 'red');
     }
 }
 
@@ -13536,7 +13631,7 @@ function openGroupChat(group) {
                     nEl.innerText = activeChatContact.name;
                 }
 
-                const isLiveAdmin = isUserGroupAdmin(activeGroupDoc, currentUser);
+                const isLiveAdmin = isUserGroupAdmin(activeGroupDoc, currentUser) || isUserGroupModerator(activeGroupDoc, currentUser);
                 const cInp = document.getElementById('chat-input-main');
                 const cBtn = document.getElementById('chat-send-btn-main');
                 if (cInp) {
@@ -13551,7 +13646,7 @@ function openGroupChat(group) {
 
     showToast('Grupo', `${group.name || 'Grupo VIP'} aberto.`, 'blue');
 
-    const isChatAdmin = isUserGroupAdmin(group, currentUser);
+    const isChatAdmin = isUserGroupAdmin(group, currentUser) || isUserGroupModerator(group, currentUser);
     const chatInput = document.getElementById('chat-input-main');
     const chatSendButton = document.getElementById('chat-send-btn-main');
     if (chatInput) {
@@ -19714,7 +19809,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.201';
+export const CURRENT_APP_VERSION = '1.0.202';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -20829,6 +20924,548 @@ document.getElementById('recording-slide-cancel')?.addEventListener('click', () 
     cancelVoiceRecording();
 });
 
+
+/* ==========================================================================
+   SEGURANÇA VORTEX 🛡️: DETECÇÃO DE COMPORTAMENTOS SUSPEITOS (v1.0.202)
+   ========================================================================== */
+export const suspiciousTracker = {
+    messageTimestamps: new Map(), // uid -> number[]
+    recentMessages: new Map(),    // uid -> { text: string, timestamp: number }[]
+    callTimestamps: new Map(),    // uid -> number[]
+    cooldowns: new Map()          // uid -> number (timestamp de término do cooldown)
+};
+
+export function detectSuspiciousBehavior({ uid, type = 'message', text = '', targetId = '' }) {
+    if (!uid) return { isSuspicious: false };
+    const now = Date.now();
+
+    // 1. Checagem de Cooldown ativo
+    if (suspiciousTracker.cooldowns.has(uid)) {
+        const cdUntil = suspiciousTracker.cooldowns.get(uid);
+        if (now < cdUntil) {
+            const sec = Math.ceil((cdUntil - now) / 1000);
+            return {
+                isSuspicious: true,
+                reason: 'cooldown_active',
+                alertMessage: `Modo de segurança ativo. Aguarde ${sec}s para realizar novas ações.`
+            };
+        } else {
+            suspiciousTracker.cooldowns.delete(uid);
+        }
+    }
+
+    if (type === 'message') {
+        const cleanText = (text || '').trim();
+
+        // 2. Padrões de Phishing / Golpes / Roubo de credenciais / Links maliciosos
+        if (cleanText) {
+            const phishingPatterns = [
+                /(pix\s*premiado|dobro\s*do\s*pix|multiplicador\s*de\s*pix|urubu\s*do\s*pix|gerador\s*de\s*pix)/i,
+                /(suporte\s*(oficial\s*)?vortex.*(senha|token|c[oó]digo|confirme\s*sua\s*conta|envie\s*seu\s*acesso))/i,
+                /(recupera[cç][aã]o\s*de\s*conta.*(envie\s*(o|seu)?\s*c[oó]digo|passe\s*seu\s*c[oó]digo))/i,
+                /(grabify\.link|iplogger\.(org|com)|2no\.co|blasze\.com)/i,
+                /(vortex.*(login|suporte|auth)\.(tk|ml|ga|cf|gq|xyz|top|ru))/i
+            ];
+
+            for (const pattern of phishingPatterns) {
+                if (pattern.test(cleanText)) {
+                    suspiciousTracker.cooldowns.set(uid, now + 30000); // 30s cooldown
+                    try {
+                        addDoc(collection(db, 'security_alerts'), {
+                            uid,
+                            type: 'phishing',
+                            reason: 'phishing_pattern',
+                            textSnippet: cleanText.substring(0, 150),
+                            targetId: targetId || null,
+                            severity: 'high',
+                            createdAt: now
+                        }).catch(() => {});
+                    } catch (e) {}
+                    try {
+                        notifyAdmins('🚨 Alerta de Segurança 🛡️', `Tentativa de golpe/phishing detectada para o usuário ${uid}. Ação bloqueada.`);
+                    } catch (e) {}
+                    return {
+                        isSuspicious: true,
+                        reason: 'phishing_pattern',
+                        alertMessage: 'Mensagem bloqueada: identificamos conteúdo suspeito ou tentativa de golpe (Segurança VORTEX 🛡️).'
+                    };
+                }
+            }
+        }
+
+        // 3. Flood de Mensagens (> 4 mensagens em 4 segundos)
+        const userMsgTimes = (suspiciousTracker.messageTimestamps.get(uid) || []).filter(t => now - t < 4000);
+        userMsgTimes.push(now);
+        suspiciousTracker.messageTimestamps.set(uid, userMsgTimes);
+
+        if (userMsgTimes.length > 4) {
+            suspiciousTracker.cooldowns.set(uid, now + 15000); // 15s cooldown
+            try {
+                addDoc(collection(db, 'security_alerts'), {
+                    uid,
+                    type: 'flood',
+                    reason: 'flood_rate_limit',
+                    count: userMsgTimes.length,
+                    targetId: targetId || null,
+                    severity: 'medium',
+                    createdAt: now
+                }).catch(() => {});
+            } catch (e) {}
+            return {
+                isSuspicious: true,
+                reason: 'flood_rate_limit',
+                alertMessage: 'Envio rápido demais detectado! Aguarde alguns segundos para enviar novamente (Proteção contra Flood).'
+            };
+        }
+
+        // 4. Mensagens Repetitivas / Bot (3 mensagens idênticas seguidas em 15 segundos)
+        if (cleanText) {
+            const userRecent = (suspiciousTracker.recentMessages.get(uid) || []).filter(m => now - m.timestamp < 15000);
+            userRecent.push({ text: cleanText, timestamp: now });
+            suspiciousTracker.recentMessages.set(uid, userRecent);
+
+            const identicalCount = userRecent.filter(m => m.text.toLowerCase() === cleanText.toLowerCase()).length;
+            if (identicalCount >= 3) {
+                suspiciousTracker.cooldowns.set(uid, now + 15000);
+                try {
+                    addDoc(collection(db, 'security_alerts'), {
+                        uid,
+                        type: 'bot_spam',
+                        reason: 'repetitive_bot_behavior',
+                        textSnippet: cleanText.substring(0, 100),
+                        targetId: targetId || null,
+                        severity: 'medium',
+                        createdAt: now
+                    }).catch(() => {});
+                } catch (e) {}
+                return {
+                    isSuspicious: true,
+                    reason: 'repetitive_bot_behavior',
+                    alertMessage: 'Envio repetitivo de mensagens idênticas detectado (Proteção contra Bot).'
+                };
+            }
+        }
+    }
+
+    if (type === 'call') {
+        // 5. Call Bombing (> 4 chamadas em 45 segundos)
+        const userCallTimes = (suspiciousTracker.callTimestamps.get(uid) || []).filter(t => now - t < 45000);
+        userCallTimes.push(now);
+        suspiciousTracker.callTimestamps.set(uid, userCallTimes);
+
+        if (userCallTimes.length > 4) {
+            suspiciousTracker.cooldowns.set(uid, now + 45000);
+            try {
+                addDoc(collection(db, 'security_alerts'), {
+                    uid,
+                    type: 'call_bombing',
+                    reason: 'call_bombing',
+                    count: userCallTimes.length,
+                    targetId: targetId || null,
+                    severity: 'high',
+                    createdAt: now
+                }).catch(() => {});
+            } catch (e) {}
+            return {
+                isSuspicious: true,
+                reason: 'call_bombing',
+                alertMessage: 'Muitas chamadas iniciadas em sequência. Bloqueio temporário ativado por segurança.'
+            };
+        }
+    }
+
+    return { isSuspicious: false };
+}
+
+/* ==========================================================================
+   MINI PAINEL ADMIN DE GRUPO: REGRAS, MODERAÇÃO E AGENDAMENTO (v1.0.202)
+   ========================================================================== */
+
+export function isWithinScheduledPauseWindow(pauseTimeStr, unpauseTimeStr, now = new Date()) {
+    if (!pauseTimeStr || !unpauseTimeStr) return false;
+    const parseTimeToMinutes = (tStr) => {
+        const [h, m] = String(tStr).split(':').map(n => parseInt(n, 10) || 0);
+        return h * 60 + m;
+    };
+    const pauseMins = parseTimeToMinutes(pauseTimeStr);
+    const unpauseMins = parseTimeToMinutes(unpauseTimeStr);
+    if (pauseMins === unpauseMins) return false;
+
+    const currentMins = now.getHours() * 60 + now.getMinutes();
+
+    if (pauseMins < unpauseMins) {
+        // Ex: 13:00 às 15:00
+        return currentMins >= pauseMins && currentMins < unpauseMins;
+    } else {
+        // Noturno / overnight: Ex: 22:00 às 08:00
+        return currentMins >= pauseMins || currentMins < unpauseMins;
+    }
+}
+
+export function checkGroupScheduledPause(group, now = new Date()) {
+    if (!group || !group.autoPauseEnabled) return false;
+    const { autoPauseTime, autoUnpauseTime } = group;
+    if (!autoPauseTime || !autoUnpauseTime) return false;
+    return isWithinScheduledPauseWindow(autoPauseTime, autoUnpauseTime, now);
+}
+
+export function checkGroupBannedWords(group, text) {
+    if (!group || !group.bannedWordsEnabled || !group.bannedWords || !text) return false;
+    const wordsList = Array.isArray(group.bannedWords)
+        ? group.bannedWords
+        : String(group.bannedWords).split(/[,;\n]+/).map(w => w.trim()).filter(Boolean);
+    if (!wordsList.length) return false;
+
+    const normalize = (str) => String(str).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const cleanText = normalize(text);
+
+    for (const rawWord of wordsList) {
+        const cleanWord = normalize(rawWord);
+        if (!cleanWord) continue;
+        const escaped = cleanWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const pattern = new RegExp(`(^|\\W)${escaped}(\\W|$)`, 'i');
+        if (pattern.test(cleanText) || cleanText.includes(cleanWord)) {
+            return {
+                matched: true,
+                word: rawWord
+            };
+        }
+    }
+    return false;
+}
+
+export function renderGroupMiniAdminPanel(group = managedGroup) {
+    if (!group) return;
+
+    // 1. Palavras Proibidas
+    const bannedToggle = document.getElementById('group-banned-words-toggle');
+    const bannedPanel = document.getElementById('group-banned-words-panel');
+    const bannedInput = document.getElementById('group-banned-words-input');
+
+    if (bannedToggle) bannedToggle.checked = !!group.bannedWordsEnabled;
+    if (bannedPanel) bannedPanel.style.display = group.bannedWordsEnabled ? 'block' : 'none';
+    if (bannedInput) {
+        const words = Array.isArray(group.bannedWords) ? group.bannedWords.join(', ') : (group.bannedWords || '');
+        bannedInput.value = words;
+    }
+
+    // 2. Solicitação de Entrada
+    const approvalToggle = document.getElementById('group-approval-toggle');
+    const pendingBox = document.getElementById('group-pending-requests-box');
+    const pendingCount = document.getElementById('group-pending-count');
+    const pendingList = document.getElementById('group-pending-requests-list');
+
+    if (approvalToggle) approvalToggle.checked = !!group.approvalRequired;
+    if (pendingBox) pendingBox.style.display = group.approvalRequired ? 'block' : 'none';
+
+    const pendingRequests = Array.isArray(group.pendingRequests) ? group.pendingRequests : [];
+    if (pendingCount) pendingCount.innerText = pendingRequests.length;
+
+    if (pendingList) {
+        if (!pendingRequests.length) {
+            pendingList.innerHTML = '<p class="group-empty-subtext">Nenhuma solicitação pendente no momento.</p>';
+        } else {
+            pendingList.innerHTML = pendingRequests.map(req => {
+                const reqUid = typeof req === 'string' ? req : req.uid;
+                const reqName = (typeof req === 'object' && req.name) ? req.name : 'Usuário';
+                const reqAvatar = (typeof req === 'object' && req.avatar) ? req.avatar : '';
+                return `
+                    <div class="group-pending-req-item" data-req-uid="${reqUid}">
+                        <div class="group-pending-req-info">
+                            <div class="avatar sm" style="${reqAvatar ? `background-image:url('${reqAvatar}')` : ''}">${!reqAvatar ? reqName.charAt(0).toUpperCase() : ''}</div>
+                            <span class="group-pending-req-name">${reqName}</span>
+                        </div>
+                        <div class="group-pending-req-actions">
+                            <button type="button" class="group-approve-req-btn" data-req-uid="${reqUid}" title="Aprovar">
+                                <i data-lucide="check"></i> Aprovar
+                            </button>
+                            <button type="button" class="group-reject-req-btn" data-req-uid="${reqUid}" title="Recusar">
+                                <i data-lucide="x"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            pendingList.querySelectorAll('.group-approve-req-btn').forEach(btn => {
+                btn.onclick = async (e) => {
+                    e.stopPropagation();
+                    const reqUid = btn.dataset.reqUid;
+                    await approveGroupJoinRequest(group.groupId, reqUid);
+                };
+            });
+            pendingList.querySelectorAll('.group-reject-req-btn').forEach(btn => {
+                btn.onclick = async (e) => {
+                    e.stopPropagation();
+                    const reqUid = btn.dataset.reqUid;
+                    await rejectGroupJoinRequest(group.groupId, reqUid);
+                };
+            });
+        }
+    }
+
+    // 3. Pausa Automática Programada
+    const autoPauseToggle = document.getElementById('group-auto-pause-toggle');
+    const schedulePanel = document.getElementById('group-schedule-panel');
+    const autoPauseTime = document.getElementById('group-auto-pause-time');
+    const autoUnpauseTime = document.getElementById('group-auto-unpause-time');
+
+    if (autoPauseToggle) autoPauseToggle.checked = !!group.autoPauseEnabled;
+    if (schedulePanel) schedulePanel.style.display = group.autoPauseEnabled ? 'block' : 'none';
+    if (autoPauseTime) autoPauseTime.value = group.autoPauseTime || '22:00';
+    if (autoUnpauseTime) autoUnpauseTime.value = group.autoUnpauseTime || '08:00';
+
+    if (window.lucide) lucide.createIcons();
+}
+
+export async function approveGroupJoinRequest(groupId, requesterUid) {
+    if (!currentUser || !groupId || !requesterUid) return;
+    try {
+        const gSnap = await getDoc(doc(db, 'groups', groupId));
+        if (!gSnap.exists()) return;
+        const group = gSnap.data();
+        if (!isUserGroupAdmin(group, currentUser) && !isUserGroupModerator(group, currentUser)) {
+            showToast('Sem permissão', 'Apenas administradores e moderadores podem aprovar solicitações.', 'red');
+            return;
+        }
+        const pending = Array.isArray(group.pendingRequests) ? group.pendingRequests : [];
+        const updatedPending = pending.filter(p => (typeof p === 'string' ? p : p.uid) !== requesterUid);
+        const updatedMembers = [...new Set([...(group.members || []), requesterUid])];
+
+        await updateDoc(doc(db, 'groups', groupId), {
+            members: updatedMembers,
+            pendingRequests: updatedPending,
+            updatedAt: Date.now()
+        });
+
+        // Adicionar grupo para o usuário aprovado
+        await setDoc(doc(db, 'users', requesterUid, 'groups', groupId), {
+            groupId,
+            name: group.name,
+            description: group.description || '',
+            avatar: group.avatar || '',
+            creatorUid: group.creatorUid,
+            admins: group.admins || [group.creatorUid],
+            moderators: group.moderators || [],
+            members: updatedMembers,
+            updatedAt: Date.now()
+        }, { merge: true });
+
+        await notifyUser(
+            requesterUid,
+            'Solicitação Aprovada! 🎉',
+            `Sua solicitação para entrar no grupo "${group.name || 'Grupo VIP'}" foi aprovada.`,
+            'group_approved',
+            'user-check'
+        );
+
+        if (managedGroup && managedGroup.groupId === groupId) {
+            managedGroup.members = updatedMembers;
+            managedGroup.pendingRequests = updatedPending;
+            await openGroupProfile(managedGroup);
+        }
+        showToast('Solicitação Aprovada', 'O membro foi adicionado ao grupo.', 'green');
+    } catch (e) {
+        console.error('Erro ao aprovar solicitação:', e);
+        showToast('Erro', 'Não foi possível aprovar a solicitação.', 'red');
+    }
+}
+
+export async function rejectGroupJoinRequest(groupId, requesterUid) {
+    if (!currentUser || !groupId || !requesterUid) return;
+    try {
+        const gSnap = await getDoc(doc(db, 'groups', groupId));
+        if (!gSnap.exists()) return;
+        const group = gSnap.data();
+        if (!isUserGroupAdmin(group, currentUser) && !isUserGroupModerator(group, currentUser)) {
+            showToast('Sem permissão', 'Apenas administradores e moderadores podem recusar solicitações.', 'red');
+            return;
+        }
+        const pending = Array.isArray(group.pendingRequests) ? group.pendingRequests : [];
+        const updatedPending = pending.filter(p => (typeof p === 'string' ? p : p.uid) !== requesterUid);
+
+        await updateDoc(doc(db, 'groups', groupId), {
+            pendingRequests: updatedPending,
+            updatedAt: Date.now()
+        });
+
+        await notifyUser(
+            requesterUid,
+            'Solicitação Recusada',
+            `Sua solicitação para entrar no grupo "${group.name || 'Grupo VIP'}" não foi aceita.`,
+            'group_rejected',
+            'user-x'
+        );
+
+        if (managedGroup && managedGroup.groupId === groupId) {
+            managedGroup.pendingRequests = updatedPending;
+            await openGroupProfile(managedGroup);
+        }
+        showToast('Solicitação Recusada', 'A solicitação foi recusada.', 'blue');
+    } catch (e) {
+        console.error('Erro ao recusar solicitação:', e);
+        showToast('Erro', 'Não foi possível recusar a solicitação.', 'red');
+    }
+}
+
+export async function requestToJoinGroup(groupId) {
+    if (!currentUser || !groupId) return;
+    try {
+        const gSnap = await getDoc(doc(db, 'groups', groupId));
+        if (!gSnap.exists()) {
+            showToast('Grupo inexistente', 'Este grupo não foi encontrado.', 'red');
+            return;
+        }
+        const gData = gSnap.data();
+        if ((gData.members || []).includes(currentUser.uid)) {
+            showToast('Já é membro', 'Você já participa deste grupo.', 'blue');
+            return;
+        }
+        if (gData.approvalRequired) {
+            const currentPending = Array.isArray(gData.pendingRequests) ? gData.pendingRequests : [];
+            const alreadyPending = currentPending.some(p => (typeof p === 'string' ? p : p.uid) === currentUser.uid);
+            if (alreadyPending) {
+                showToast('Solicitação Pendente', 'Sua solicitação para entrar já foi enviada e aguarda aprovação.', 'blue');
+                return;
+            }
+            const newRequest = {
+                uid: currentUser.uid,
+                name: currentProfile?.name || currentUser.displayName || 'Usuário',
+                avatar: currentProfile?.avatar || currentUser.photoURL || '',
+                requestedAt: Date.now()
+            };
+            await updateDoc(doc(db, 'groups', groupId), {
+                pendingRequests: arrayUnion(newRequest),
+                updatedAt: Date.now()
+            });
+            const admins = gData.admins || [gData.creatorUid];
+            admins.forEach(adminUid => {
+                notifyUser(
+                    adminUid,
+                    'Nova Solicitação de Entrada 👥',
+                    `${newRequest.name} solicitou entrar no grupo "${gData.name}".`,
+                    'group_request',
+                    'user-check'
+                );
+            });
+            showToast('Solicitação Enviada', 'Sua solicitação para entrar no grupo foi enviada aos administradores.', 'green');
+        } else {
+            await updateDoc(doc(db, 'groups', groupId), {
+                members: arrayUnion(currentUser.uid),
+                updatedAt: Date.now()
+            });
+            await setDoc(doc(db, 'users', currentUser.uid, 'groups', groupId), {
+                groupId,
+                name: gData.name,
+                creatorUid: gData.creatorUid,
+                admins: gData.admins || [gData.creatorUid],
+                members: [...(gData.members || []), currentUser.uid],
+                updatedAt: Date.now()
+            }, { merge: true });
+            showToast('Você entrou no grupo!', `Bem-vindo(a) ao grupo "${gData.name}".`, 'green');
+        }
+    } catch (e) {
+        console.error('Erro ao solicitar entrada no grupo:', e);
+        showToast('Erro', 'Não foi possível enviar a solicitação.', 'red');
+    }
+}
+
+export function initGroupMiniAdminControls() {
+    document.getElementById('group-banned-words-toggle')?.addEventListener('change', function() {
+        const panel = document.getElementById('group-banned-words-panel');
+        if (panel) panel.style.display = this.checked ? 'block' : 'none';
+    });
+
+    document.getElementById('save-group-banned-words-btn')?.addEventListener('click', async () => {
+        if (!managedGroup || !isUserGroupAdmin(managedGroup, currentUser)) {
+            showToast('Sem permissão', 'Apenas administradores podem configurar as regras.', 'red');
+            return;
+        }
+        const toggle = document.getElementById('group-banned-words-toggle');
+        const input = document.getElementById('group-banned-words-input');
+        const words = input?.value ? input.value.split(/[,;\n]+/).map(w => w.trim()).filter(Boolean) : [];
+        const enabled = !!toggle?.checked;
+
+        managedGroup.bannedWordsEnabled = enabled;
+        managedGroup.bannedWords = words;
+
+        try {
+            await updateDoc(doc(db, 'groups', managedGroup.groupId), {
+                bannedWordsEnabled: enabled,
+                bannedWords: words,
+                updatedAt: Date.now()
+            });
+            await syncGroupReferences(managedGroup);
+            showToast('Palavras Salvas', enabled ? `${words.length} palavra(s) proibida(s) ativas no grupo.` : 'Filtro desativado.', 'green');
+        } catch (e) {
+            console.error('Erro ao salvar palavras proibidas:', e);
+            showToast('Erro', 'Não foi possível salvar as regras.', 'red');
+        }
+    });
+
+    document.getElementById('group-approval-toggle')?.addEventListener('change', async function() {
+        if (!managedGroup || !isUserGroupAdmin(managedGroup, currentUser)) {
+            showToast('Sem permissão', 'Apenas administradores podem alterar esta opção.', 'red');
+            this.checked = !this.checked;
+            return;
+        }
+        const enabled = this.checked;
+        const box = document.getElementById('group-pending-requests-box');
+        if (box) box.style.display = enabled ? 'block' : 'none';
+
+        managedGroup.approvalRequired = enabled;
+        try {
+            await updateDoc(doc(db, 'groups', managedGroup.groupId), {
+                approvalRequired: enabled,
+                updatedAt: Date.now()
+            });
+            await syncGroupReferences(managedGroup);
+            showToast('Solicitação de Entrada', enabled ? 'Novos membros precisarão de aprovação para entrar.' : 'Entrada livre no grupo ativada.', 'blue');
+        } catch (e) {
+            console.error('Erro ao salvar aprovação:', e);
+            this.checked = !this.checked;
+            showToast('Erro', 'Não foi possível atualizar a configuração.', 'red');
+        }
+    });
+
+    document.getElementById('group-auto-pause-toggle')?.addEventListener('change', function() {
+        const panel = document.getElementById('group-schedule-panel');
+        if (panel) panel.style.display = this.checked ? 'block' : 'none';
+    });
+
+    document.getElementById('save-group-schedule-btn')?.addEventListener('click', async () => {
+        if (!managedGroup || !isUserGroupAdmin(managedGroup, currentUser)) {
+            showToast('Sem permissão', 'Apenas administradores podem configurar o horário.', 'red');
+            return;
+        }
+        const toggle = document.getElementById('group-auto-pause-toggle');
+        const pauseInput = document.getElementById('group-auto-pause-time');
+        const unpauseInput = document.getElementById('group-auto-unpause-time');
+
+        const enabled = !!toggle?.checked;
+        const pauseTime = pauseInput?.value || '22:00';
+        const unpauseTime = unpauseInput?.value || '08:00';
+
+        managedGroup.autoPauseEnabled = enabled;
+        managedGroup.autoPauseTime = pauseTime;
+        managedGroup.autoUnpauseTime = unpauseTime;
+
+        try {
+            await updateDoc(doc(db, 'groups', managedGroup.groupId), {
+                autoPauseEnabled: enabled,
+                autoPauseTime: pauseTime,
+                autoUnpauseTime: unpauseTime,
+                updatedAt: Date.now()
+            });
+            await syncGroupReferences(managedGroup);
+            showToast('Horário Programado', enabled ? `Pausa automática configurada: ${pauseTime} às ${unpauseTime}.` : 'Pausa automática desativada.', 'green');
+        } catch (e) {
+            console.error('Erro ao salvar horários de pausa:', e);
+            showToast('Erro', 'Não foi possível salvar o horário.', 'red');
+        }
+    });
+}
+
 async function sendChatMessage(type = 'text', payload = {}) {
     if (!currentUser || !activeChatContact) return;
     if (isSendingChatMessage) {
@@ -20845,6 +21482,19 @@ async function sendChatMessage(type = 'text', payload = {}) {
             showRestrictionActionNotice();
             return;
         }
+
+        // 🛡️ Detecção de Comportamento Suspeito (v1.0.202)
+        const suspCheck = detectSuspiciousBehavior({
+            uid: currentUser.uid,
+            type: 'message',
+            text: payload.text || '',
+            targetId: activeChatContact.uid
+        });
+        if (suspCheck && suspCheck.isSuspicious) {
+            showToast('Segurança VORTEX 🛡️', suspCheck.alertMessage, 'red');
+            return;
+        }
+
         if (!activeChatContact.isGroup) {
             if (blockedContactsSet.has(activeChatContact.uid)) {
                 showToast('Contato Bloqueado', 'Você bloqueou este contato. Desbloqueie para conversar.', 'red');
@@ -20866,11 +21516,34 @@ async function sendChatMessage(type = 'text', payload = {}) {
                 console.warn('Erro ao checar bloqueio:', e);
             }
         }
-        if (activeChatContact.isGroup && activeChatContact.paused) {
-            const isGroupAdmin = isUserGroupAdmin(activeChatContact, currentUser) || (activeGroupDoc && isUserGroupAdmin(activeGroupDoc, currentUser));
-            if (!isGroupAdmin) {
+        if (activeChatContact.isGroup) {
+            const isStaff = isUserGroupAdmin(activeChatContact, currentUser) ||
+                            (activeGroupDoc && isUserGroupAdmin(activeGroupDoc, currentUser)) ||
+                            isUserGroupModerator(activeChatContact, currentUser) ||
+                            (activeGroupDoc && isUserGroupModerator(activeGroupDoc, currentUser));
+
+            if (activeChatContact.paused && !isStaff) {
                 showToast('Grupo pausado', 'O administrador pausou o envio de mensagens.', 'red');
                 return;
+            }
+
+            const targetGrp = activeGroupDoc || activeChatContact;
+
+            // Checagem de Horário Programado de Silêncio (Pausa Automática)
+            if (!isStaff && checkGroupScheduledPause(targetGrp)) {
+                const pTime = targetGrp.autoPauseTime || '22:00';
+                const uTime = targetGrp.autoUnpauseTime || '08:00';
+                showToast('Horário de Silêncio 🌙', `Este grupo está no período de silêncio programado (${pTime} às ${uTime}).`, 'orange');
+                return;
+            }
+
+            // Checagem de Palavras Proibidas / Palavras-chave do Grupo
+            if (!isStaff && payload.text) {
+                const bannedCheck = checkGroupBannedWords(targetGrp, payload.text);
+                if (bannedCheck && bannedCheck.matched) {
+                    showToast('Palavra Proibida 🚫', `Sua mensagem contém palavras proibidas pelas regras do grupo ("${bannedCheck.word}").`, 'red');
+                    return;
+                }
             }
         }
         // Verificar se o grupo está banido pelo ADM
@@ -20888,7 +21561,9 @@ async function sendChatMessage(type = 'text', payload = {}) {
                 showToast('Grupo indisponível', 'Este grupo não existe mais.', 'red');
                 return;
             }
-            if (groupSnap.data().paused) {
+            const gData = groupSnap.data();
+            const isStaff = isUserGroupAdmin(gData, currentUser) || isUserGroupModerator(gData, currentUser);
+            if (gData.paused && !isStaff) {
                 activeChatContact.paused = true;
                 const chatInput = document.getElementById('chat-input-main');
                 const chatSendButton = document.getElementById('chat-send-btn-main');
@@ -20899,6 +21574,17 @@ async function sendChatMessage(type = 'text', payload = {}) {
                 if (chatSendButton) chatSendButton.disabled = true;
                 showToast('Grupo pausado', 'O administrador pausou o envio de mensagens.', 'red');
                 return;
+            }
+            if (!isStaff && checkGroupScheduledPause(gData)) {
+                showToast('Horário de Silêncio 🌙', `Este grupo está no período de silêncio programado (${gData.autoPauseTime || '22:00'} às ${gData.autoUnpauseTime || '08:00'}).`, 'orange');
+                return;
+            }
+            if (!isStaff && payload.text) {
+                const bannedCheck = checkGroupBannedWords(gData, payload.text);
+                if (bannedCheck && bannedCheck.matched) {
+                    showToast('Palavra Proibida 🚫', `Sua mensagem contém palavras proibidas pelas regras do grupo ("${bannedCheck.word}").`, 'red');
+                    return;
+                }
             }
         }
         const chatId = getActiveChatId();
@@ -23547,6 +24233,11 @@ export async function startCall(isVideo = true) {
     }
     if (isUserRestricted(currentProfile)) {
         showRestrictionActionNotice();
+        return;
+    }
+    const suspCallCheck = detectSuspiciousBehavior({ uid: currentUser.uid, type: 'call', targetId: activeChatContact.uid });
+    if (suspCallCheck && suspCallCheck.isSuspicious) {
+        showToast('Segurança VORTEX 🛡️', suspCallCheck.alertMessage, 'red');
         return;
     }
     if (!activeChatContact.isGroup) {
@@ -33153,6 +33844,21 @@ if (typeof window !== 'undefined') {
     window.publishScheduledPostNow = publishScheduledPostNow;
     window.publishScheduledStoryNow = publishScheduledStoryNow;
     window.checkAndReleaseScheduledItems = checkAndReleaseScheduledItems;
+    // Sistema contra Comportamentos Suspeitos (v1.0.202)
+    window.detectSuspiciousBehavior = detectSuspiciousBehavior;
+    window.suspiciousTracker = suspiciousTracker;
+    // Mini Painel Admin do Grupo e Moderação (v1.0.202)
+    window.isUserGroupModerator = isUserGroupModerator;
+    window.promoteGroupModerator = promoteGroupModerator;
+    window.demoteGroupModerator = demoteGroupModerator;
+    window.isWithinScheduledPauseWindow = isWithinScheduledPauseWindow;
+    window.checkGroupScheduledPause = checkGroupScheduledPause;
+    window.checkGroupBannedWords = checkGroupBannedWords;
+    window.renderGroupMiniAdminPanel = renderGroupMiniAdminPanel;
+    window.approveGroupJoinRequest = approveGroupJoinRequest;
+    window.rejectGroupJoinRequest = rejectGroupJoinRequest;
+    window.requestToJoinGroup = requestToJoinGroup;
+    window.initGroupMiniAdminControls = initGroupMiniAdminControls;
 }
 
 if (typeof window !== 'undefined') {
@@ -33170,4 +33876,5 @@ if (typeof window !== 'undefined') {
     initBusinessPostControls();
     initPostTitleAndHashtagsControls();
     initScheduleControls();
+    initGroupMiniAdminControls();
 }
