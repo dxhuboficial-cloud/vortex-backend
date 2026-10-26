@@ -12940,12 +12940,14 @@ test('Segurança contra Comportamentos Suspeitos e Mini Painel Admin de Grupos (
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
 
-  // 1. Integridade de Versionamento (v1.0.202)
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.202', 'script.js deve ter versão 1.0.202');
-  assert.strictEqual(versionJson.version, '1.0.202', 'version.json deve ter versão 1.0.202');
-  assert.ok(html.includes('script.js?v=1.0.202'), 'index.html deve referenciar script.js?v=1.0.202');
-  assert.ok(html.includes('style.css?v=1.0.202'), 'index.html deve referenciar style.css?v=1.0.202');
-  assert.ok(swContent.includes('vortex-vip-v1.0.202'), 'sw.js deve conter cache vortex-vip-v1.0.202');
+  // 1. Integridade de Versionamento (v1.0.202+)
+  const versionNum = parseInt((win.CURRENT_APP_VERSION || '0.0.0').split('.')[2] || '0', 10);
+  assert.ok(versionNum >= 202, 'script.js deve ter versão >= 1.0.202');
+  const jsonVerNum = parseInt((versionJson.version || '0.0.0').split('.')[2] || '0', 10);
+  assert.ok(jsonVerNum >= 202, 'version.json deve ter versão >= 1.0.202');
+  assert.ok(html.includes(`script.js?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar script.js atualizado');
+  assert.ok(html.includes(`style.css?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar style.css atualizado');
+  assert.ok(swContent.includes(`vortex-vip-v${win.CURRENT_APP_VERSION}`), 'sw.js deve conter cache correspondente');
 
   // 2. Estrutura HTML do Mini Painel Admin do Grupo
   assert.ok(html.includes('id="group-mini-admin-section"'), 'index.html deve conter #group-mini-admin-section');
@@ -13089,4 +13091,118 @@ test('Segurança contra Comportamentos Suspeitos e Mini Painel Admin de Grupos (
   const grpAfterReject = env.firestoreDocs['groups/grp_requests_202'];
   assert.strictEqual(grpAfterReject.members.includes('candidate_2'), false, 'candidate_2 não deve entrar nos membros');
   assert.strictEqual(grpAfterReject.pendingRequests.some(p => p.uid === 'candidate_2'), false, 'candidate_2 deve ser removido das pendências');
+});
+
+test('Ativar Conta Privada: Ocultação do Perfil e @ nas Buscas da Vortex VIP (v1.0.203)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+  const css = fs.readFileSync('public/style.css', 'utf8');
+  const html = fs.readFileSync('public/index.html', 'utf8');
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
+
+  // 1. Integridade de Versionamento (v1.0.203)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.203', 'script.js deve ter versão 1.0.203');
+  assert.strictEqual(versionJson.version, '1.0.203', 'version.json deve ter versão 1.0.203');
+  assert.ok(html.includes('script.js?v=1.0.203'), 'index.html deve referenciar script.js?v=1.0.203');
+  assert.ok(html.includes('style.css?v=1.0.203'), 'index.html deve referenciar style.css?v=1.0.203');
+  assert.ok(swContent.includes('vortex-vip-v1.0.203'), 'sw.js deve conter cache vortex-vip-v1.0.203');
+
+  // 2. Estrutura HTML do Botão / Switch de Conta Privada e Badge
+  assert.ok(html.includes('id="profile-private-toggle"'), 'index.html deve conter #profile-private-toggle no editar perfil');
+  assert.ok(html.includes('id="settings-private-account-toggle"'), 'index.html deve conter #settings-private-account-toggle nas configurações');
+  assert.ok(html.includes('id="contact-profile-private-badge"'), 'index.html deve conter badge #contact-profile-private-badge');
+
+  // 3. Estilos CSS de Conta Privada
+  assert.ok(css.includes('.profile-private-account-setting'), 'style.css deve estilizar .profile-private-account-setting');
+  assert.ok(css.includes('.private-account-setting-row'), 'style.css deve estilizar .private-account-setting-row');
+  assert.ok(css.includes('.private-account-badge'), 'style.css deve estilizar .private-account-badge');
+
+  // 4. Funções Exportadas na Janela
+  assert.strictEqual(typeof win.isUserPrivateAccount, 'function', 'isUserPrivateAccount deve existir');
+  assert.strictEqual(typeof win.togglePrivateAccount, 'function', 'togglePrivateAccount deve existir');
+  assert.strictEqual(typeof win.syncPrivateAccountToggles, 'function', 'syncPrivateAccountToggles deve existir');
+
+  // 5. Teste Unitário: isUserPrivateAccount
+  assert.strictEqual(win.isUserPrivateAccount({ isPrivateAccount: true }), true);
+  assert.strictEqual(win.isUserPrivateAccount({ privateAccount: true }), true);
+  assert.strictEqual(win.isUserPrivateAccount({ isPrivateAccount: false }), false);
+  assert.strictEqual(win.isUserPrivateAccount({}), false);
+  assert.strictEqual(win.isUserPrivateAccount(null), false);
+
+  // 6. Teste Funcional: Ativar e Desativar Conta Privada
+  win.setCurrentUser({ uid: 'user_stealth_203', displayName: 'Lucas Oculto' });
+  win.setCurrentProfile({ uid: 'user_stealth_203', name: 'Lucas Oculto', username: '@lucasoculto', isPrivateAccount: false });
+
+  // Toggles no DOM inicialmente desmarcados
+  const pToggle = env.elements['profile-private-toggle'];
+  const sToggle = env.elements['settings-private-account-toggle'];
+  if (pToggle) pToggle.checked = false;
+  if (sToggle) sToggle.checked = false;
+
+  // Ativar Conta Privada
+  const activated = await win.togglePrivateAccount(true);
+  assert.strictEqual(activated, true, 'Deve retornar true ao ativar');
+  assert.strictEqual(win.getCurrentProfile().isPrivateAccount, true, 'currentProfile deve ter isPrivateAccount true');
+  assert.strictEqual(env.firestoreDocs['users/user_stealth_203'].isPrivateAccount, true, 'Firestore users/{uid} deve ter isPrivateAccount true');
+  if (pToggle) assert.strictEqual(pToggle.checked, true, 'Toggle no perfil deve estar marcado');
+  if (sToggle) assert.strictEqual(sToggle.checked, true, 'Toggle nas configurações deve estar marcado');
+
+  // Desativar Conta Privada
+  const deactivated = await win.togglePrivateAccount(false);
+  assert.strictEqual(deactivated, false, 'Deve retornar false ao desativar');
+  assert.strictEqual(win.getCurrentProfile().isPrivateAccount, false, 'currentProfile deve ter isPrivateAccount false');
+  assert.strictEqual(env.firestoreDocs['users/user_stealth_203'].isPrivateAccount, false, 'Firestore users/{uid} deve ter isPrivateAccount false');
+  if (pToggle) assert.strictEqual(pToggle.checked, false, 'Toggle no perfil deve estar desmarcado');
+  if (sToggle) assert.strictEqual(sToggle.checked, false, 'Toggle nas configurações deve estar desmarcado');
+
+  // 7. Teste de Busca e Pesquisa na Vortex VIP: Ocultação do Perfil e do @
+  // Cadastrar 2 usuários no Firestore do ambiente de teste:
+  // 1) Usuário Privado: "Renato Privado", username: "@renatoprivado", isPrivateAccount: true
+  // 2) Usuário Público: "Renato Publico", username: "@renatopublico", isPrivateAccount: false
+  env.firestoreDocs['users/user_renato_private'] = {
+    id: 'user_renato_private',
+    name: 'Renato',
+    surname: 'Privado',
+    username: '@renatoprivado',
+    status: 'Perfil Privado VIP',
+    isPrivateAccount: true
+  };
+  env.firestoreDocs['users/user_renato_public'] = {
+    id: 'user_renato_public',
+    name: 'Renato',
+    surname: 'Publico',
+    username: '@renatopublico',
+    status: 'Perfil Aberto',
+    isPrivateAccount: false
+  };
+
+  // Um usuário comum (estranho) faz a busca por "Renato"
+  win.setCurrentUser({ uid: 'stranger_user_203', email: 'estranho@gmail.com' });
+  const searchContainer = env.elements['search-results-container'];
+
+  // Busca por nome "Renato"
+  await win.loadUsersForSearch('Renato');
+  let searchHtml = searchContainer ? (searchContainer.innerHTML || '') : '';
+  assert.ok(searchHtml.includes('Renato Publico'), 'Usuário público deve aparecer nos resultados de busca');
+  assert.ok(searchHtml.includes('@renatopublico'), '@ do usuário público deve aparecer nos resultados');
+  assert.strictEqual(searchHtml.includes('Renato Privado'), false, 'Perfil de conta privada NÃO deve aparecer na busca por nome');
+  assert.strictEqual(searchHtml.includes('@renatoprivado'), false, '@ de conta privada NÃO deve aparecer na busca');
+
+  // Busca específica pelo @username do privado: "@renatoprivado"
+  await win.loadUsersForSearch('@renatoprivado');
+  searchHtml = searchContainer ? (searchContainer.innerHTML || '') : '';
+  assert.strictEqual(searchHtml.includes('Renato Privado'), false, 'Busca pelo @ do usuário privado não deve retornar resultados');
+  assert.strictEqual(searchHtml.includes('@renatoprivado'), false, 'O @ do usuário privado deve estar completamente oculto');
+
+  // Busca específica pelo @username do público: "@renatopublico"
+  await win.loadUsersForSearch('@renatopublico');
+  searchHtml = searchContainer ? (searchContainer.innerHTML || '') : '';
+  assert.ok(searchHtml.includes('Renato Publico'), 'Busca pelo @ público deve encontrar o usuário');
+
+  // O admin da plataforma consegue visualizar perfis privados na busca para fins de moderação
+  win.setCurrentUser({ uid: 'admin_master', email: 'dxhub.oficial@gmail.com' });
+  await win.loadUsersForSearch('Renato');
+  searchHtml = searchContainer ? (searchContainer.innerHTML || '') : '';
+  assert.ok(searchHtml.includes('Renato Privado'), 'O admin da plataforma pode ver perfis privados nas buscas');
 });

@@ -7,17 +7,17 @@
     <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.199">
     <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.199">
     <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.199">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.202">
-    <link rel="stylesheet" href="style.css?v=1.0.202">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.203">
+    <link rel="stylesheet" href="style.css?v=1.0.203">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.202">
+    <link rel="manifest" href="manifest.json?v=1.0.203">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.202">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.202">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.203">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.203">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -1222,6 +1222,18 @@
                     </div>
                 </div>
 
+                <!-- Botão / Switch de Conta Privada (v1.0.203) -->
+                <div class="setting-item profile-private-account-setting" id="profile-private-account-setting">
+                    <label for="profile-private-toggle" class="setting-info">
+                        <span class="profile-field-title"><i data-lucide="lock" class="profile-field-icon"></i> Conta Privada</span>
+                        <small>Priva seu perfil e seu @ nas buscas e pesquisas da Vortex VIP</small>
+                    </label>
+                    <label class="switch schedule-switch" for="profile-private-toggle" title="Ativar conta privada">
+                        <input type="checkbox" id="profile-private-toggle" aria-label="Ativar conta privada">
+                        <span class="slider schedule-slider"></span>
+                    </label>
+                </div>
+
                 <div class="profile-edit-section-header">
                     <span class="profile-edit-section-title"><i data-lucide="share-2"></i> Redes Sociais</span>
                 </div>
@@ -1805,6 +1817,10 @@
                         <i data-lucide="building-2"></i>
                         <span>Conta Empresa</span>
                     </div>
+                    <div id="contact-profile-private-badge" class="private-account-badge" style="display: none;">
+                        <i data-lucide="lock"></i>
+                        <span>Conta Privada</span>
+                    </div>
                 </div>
 
                 <!-- Seção de Recado / Bio em Destaque -->
@@ -2037,6 +2053,17 @@
                     </label>
                     <label class="switch">
                         <input type="checkbox" id="privacy-toggle" title="Privacidade">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="setting-item private-account-setting-row" id="private-account-setting-item">
+                    <label for="settings-private-account-toggle" class="setting-info">
+                        <span class="setting-title"><i data-lucide="lock" style="width:16px;height:16px;vertical-align:middle;margin-right:4px;"></i> Conta Privada</span>
+                        <small>Priva seu perfil e seu @ nas buscas e pesquisas da Vortex VIP</small>
+                    </label>
+                    <label class="switch">
+                        <input type="checkbox" id="settings-private-account-toggle" title="Ativar conta privada">
                         <span class="slider"></span>
                     </label>
                 </div>
@@ -4254,6 +4281,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.202" defer></script>
+    <script type="module" src="script.js?v=1.0.203" defer></script>
 </body>
 </html>

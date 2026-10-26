@@ -12400,11 +12400,75 @@ export function formatSocialLink(network, val) {
     return clean;
 }
 
+/* ==========================================================================
+   CONTA PRIVADA (v1.0.203) - OCULTAÇÃO DE PERFIL E @ NAS BUSCAS DA VORTEX VIP
+   ========================================================================== */
+export function isUserPrivateAccount(user) {
+    if (!user) return false;
+    return Boolean(user.isPrivateAccount || user.privateAccount || user.isPrivate);
+}
+
+export function syncPrivateAccountToggles(isPrivate) {
+    const pToggle = document.getElementById('profile-private-toggle');
+    const sToggle = document.getElementById('settings-private-account-toggle');
+    if (pToggle) pToggle.checked = Boolean(isPrivate);
+    if (sToggle) sToggle.checked = Boolean(isPrivate);
+}
+
+export async function togglePrivateAccount(forceValue = null) {
+    if (!currentUser) return false;
+    const currentVal = Boolean(currentProfile?.isPrivateAccount);
+    const newVal = forceValue !== null ? Boolean(forceValue) : !currentVal;
+
+    if (currentProfile) {
+        currentProfile.isPrivateAccount = newVal;
+    }
+    syncPrivateAccountToggles(newVal);
+
+    try {
+        await updateDoc(doc(db, 'users', currentUser.uid), {
+            isPrivateAccount: newVal,
+            updatedAt: Date.now()
+        });
+        showToast(
+            newVal ? 'Conta Privada Ativada 🔒' : 'Conta Privada Desativada 🔓',
+            newVal ? 'Seu perfil e seu @ agora estão ocultos nas buscas da Vortex VIP.' : 'Seu perfil agora está visível nas buscas da Vortex VIP.',
+            newVal ? 'green' : 'blue'
+        );
+        return newVal;
+    } catch (e) {
+        console.error('Erro ao alternar conta privada:', e);
+        showToast('Erro', 'Não foi possível atualizar a privacidade da conta.', 'red');
+        if (currentProfile) currentProfile.isPrivateAccount = currentVal;
+        syncPrivateAccountToggles(currentVal);
+        return currentVal;
+    }
+}
+
+export function initPrivateAccountControls() {
+    const pToggle = document.getElementById('profile-private-toggle');
+    const sToggle = document.getElementById('settings-private-account-toggle');
+
+    pToggle?.addEventListener('change', function() {
+        togglePrivateAccount(this.checked);
+    });
+
+    sToggle?.addEventListener('change', function() {
+        togglePrivateAccount(this.checked);
+    });
+}
+
 export function updateContactProfileSocialUI(data) {
     const isBusiness = data?.accountType === 'business';
     const businessBadge = document.getElementById('contact-profile-business-badge');
     if (businessBadge) {
         businessBadge.style.display = isBusiness ? 'inline-flex' : 'none';
+    }
+
+    const isPrivate = isUserPrivateAccount(data);
+    const privateBadge = document.getElementById('contact-profile-private-badge');
+    if (privateBadge) {
+        privateBadge.style.display = isPrivate ? 'inline-flex' : 'none';
     }
 
     const catalogBtn = document.getElementById('contact-profile-catalog-btn');
@@ -19809,7 +19873,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.202';
+export const CURRENT_APP_VERSION = '1.0.203';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -25143,6 +25207,13 @@ export async function loadUsersForSearch(qText = '') {
             const u = d.data();
             const uid = d.id;
             if (isUserAccountDeleted(uid) || u.isDeleted || u.deleted || u.banned) return;
+
+            // Se a conta for privada, priva o perfil e o @ nas buscas da Vortex VIP para outros usuários (v1.0.203)
+            if (isUserPrivateAccount(u)) {
+                const isSelfOrAdmin = currentUser && (uid === currentUser.uid || checkIsAdminUser(currentUser));
+                if (!isSelfOrAdmin) return;
+            }
+
             if (!currentUser || uid !== currentUser.uid) {
                 const uName = (u.name + ' ' + (u.surname || '')).toLowerCase();
                 const uUsername = (u.username || '').toLowerCase().replace('@', '');
@@ -29006,6 +29077,11 @@ document.getElementById('profile-btn')?.addEventListener('click', () => {
     if (instaInp) instaInp.value = currentProfile.instagram || currentProfile.socialLinks?.instagram || '';
     if (tiktokInp) tiktokInp.value = currentProfile.tiktok || currentProfile.socialLinks?.tiktok || '';
 
+    const privateToggle = document.getElementById('profile-private-toggle');
+    if (privateToggle) {
+        privateToggle.checked = Boolean(currentProfile.isPrivateAccount);
+    }
+
     // Configuração do Tipo de Conta (Pessoal vs Empresa)
     const isBusiness = currentProfile.accountType === 'business';
     const personalRadio = document.getElementById('profile-type-personal');
@@ -30254,6 +30330,7 @@ document.getElementById('save-profile-btn')?.addEventListener('click', async () 
                 updatedAt: Date.now()
             });
 
+            const isPrivateAccount = Boolean(document.getElementById('profile-private-toggle')?.checked);
             const userUpdatePayload = {
                 name,
                 surname,
@@ -30262,6 +30339,7 @@ document.getElementById('save-profile-btn')?.addEventListener('click', async () 
                 phone,
                 pixKey,
                 accountType,
+                isPrivateAccount,
                 whatsapp,
                 facebook,
                 website1,
@@ -30305,6 +30383,8 @@ document.getElementById('save-profile-btn')?.addEventListener('click', async () 
     currentProfile.name = name;
     currentProfile.surname = surname;
     currentProfile.username = username;
+    currentProfile.isPrivateAccount = Boolean(document.getElementById('profile-private-toggle')?.checked);
+    syncPrivateAccountToggles(currentProfile.isPrivateAccount);
     currentProfile.status = bio;
     currentProfile.phone = phone;
     currentProfile.pixKey = pixKey;
@@ -30483,6 +30563,10 @@ window.updateProfileAvatar = updateProfileAvatar;
 
 document.getElementById('settings-btn')?.addEventListener('click', () => {
     playSound(clickSound);
+    const sPrivateToggle = document.getElementById('settings-private-account-toggle');
+    if (sPrivateToggle) {
+        sPrivateToggle.checked = Boolean(currentProfile?.isPrivateAccount);
+    }
     document.getElementById('settings-panel')?.classList.add('active');
     updateInstallUIVisibility();
     if (isAppInstalledPwa()) {
@@ -33859,6 +33943,11 @@ if (typeof window !== 'undefined') {
     window.rejectGroupJoinRequest = rejectGroupJoinRequest;
     window.requestToJoinGroup = requestToJoinGroup;
     window.initGroupMiniAdminControls = initGroupMiniAdminControls;
+    // Conta Privada (v1.0.203)
+    window.isUserPrivateAccount = isUserPrivateAccount;
+    window.togglePrivateAccount = togglePrivateAccount;
+    window.syncPrivateAccountToggles = syncPrivateAccountToggles;
+    window.initPrivateAccountControls = initPrivateAccountControls;
 }
 
 if (typeof window !== 'undefined') {
@@ -33877,4 +33966,5 @@ if (typeof window !== 'undefined') {
     initPostTitleAndHashtagsControls();
     initScheduleControls();
     initGroupMiniAdminControls();
+    initPrivateAccountControls();
 }

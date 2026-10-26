@@ -20236,6 +20236,59 @@ input:checked + .schedule-slider {
     font-size: 0.8rem;
 }
 
+/* ===== CONTA PRIVADA: Botão e Badge (v1.0.203) ===== */
+.profile-private-account-setting {
+    background: rgba(255, 215, 0, 0.04);
+    border: 1px solid rgba(255, 215, 0, 0.18);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-top: 8px;
+    margin-bottom: 8px;
+    transition: all 0.25s ease;
+}
+
+.profile-private-account-setting:hover {
+    background: rgba(255, 215, 0, 0.08);
+    border-color: rgba(255, 215, 0, 0.35);
+}
+
+.private-account-setting-row {
+    background: rgba(255, 215, 0, 0.04);
+    border: 1px solid rgba(255, 215, 0, 0.18);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-top: 8px;
+    margin-bottom: 8px;
+    transition: all 0.25s ease;
+}
+
+.private-account-setting-row:hover {
+    background: rgba(255, 215, 0, 0.08);
+    border-color: rgba(255, 215, 0, 0.35);
+}
+
+.private-account-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #ffd700;
+    background: rgba(255, 215, 0, 0.12);
+    border: 1px solid rgba(255, 215, 0, 0.35);
+    padding: 3px 9px;
+    border-radius: 12px;
+    margin-top: 4px;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+}
+
+.private-account-badge i,
+.private-account-badge svg {
+    width: 13px;
+    height: 13px;
+}
+
 
 
 
