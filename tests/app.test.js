@@ -13101,12 +13101,14 @@ test('Ativar Conta Privada: Ocultação do Perfil e @ nas Buscas da Vortex VIP (
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
 
-  // 1. Integridade de Versionamento (v1.0.203)
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.203', 'script.js deve ter versão 1.0.203');
-  assert.strictEqual(versionJson.version, '1.0.203', 'version.json deve ter versão 1.0.203');
-  assert.ok(html.includes('script.js?v=1.0.203'), 'index.html deve referenciar script.js?v=1.0.203');
-  assert.ok(html.includes('style.css?v=1.0.203'), 'index.html deve referenciar style.css?v=1.0.203');
-  assert.ok(swContent.includes('vortex-vip-v1.0.203'), 'sw.js deve conter cache vortex-vip-v1.0.203');
+  // 1. Integridade de Versionamento (v1.0.203+)
+  const versionNum = parseInt((win.CURRENT_APP_VERSION || '0.0.0').split('.')[2] || '0', 10);
+  assert.ok(versionNum >= 203, 'script.js deve ter versão >= 1.0.203');
+  const jsonVerNum = parseInt((versionJson.version || '0.0.0').split('.')[2] || '0', 10);
+  assert.ok(jsonVerNum >= 203, 'version.json deve ter versão >= 1.0.203');
+  assert.ok(html.includes(`script.js?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar script.js atualizado');
+  assert.ok(html.includes(`style.css?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar style.css atualizado');
+  assert.ok(swContent.includes(`vortex-vip-v${win.CURRENT_APP_VERSION}`), 'sw.js deve conter cache correspondente');
 
   // 2. Estrutura HTML do Botão / Switch de Conta Privada e Badge
   assert.ok(html.includes('id="profile-private-toggle"'), 'index.html deve conter #profile-private-toggle no editar perfil');
@@ -13205,4 +13207,56 @@ test('Ativar Conta Privada: Ocultação do Perfil e @ nas Buscas da Vortex VIP (
   await win.loadUsersForSearch('Renato');
   searchHtml = searchContainer ? (searchContainer.innerHTML || '') : '';
   assert.ok(searchHtml.includes('Renato Privado'), 'O admin da plataforma pode ver perfis privados nas buscas');
+});
+
+test('Organização do Título do Mini Painel Admin e Campo de Palavras Proibidas 100% Largo (v1.0.204)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+  const css = fs.readFileSync('public/style.css', 'utf8');
+  const html = fs.readFileSync('public/index.html', 'utf8');
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
+
+  // 1. Integridade de Versionamento (v1.0.204)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.204', 'script.js deve ter versão 1.0.204');
+  assert.strictEqual(versionJson.version, '1.0.204', 'version.json deve ter versão 1.0.204');
+  assert.ok(html.includes('script.js?v=1.0.204'), 'index.html deve referenciar script.js?v=1.0.204');
+  assert.ok(html.includes('style.css?v=1.0.204'), 'index.html deve referenciar style.css?v=1.0.204');
+  assert.ok(swContent.includes('vortex-vip-v1.0.204'), 'sw.js deve conter cache vortex-vip-v1.0.204');
+
+  // 2. Elementos no HTML
+  assert.ok(html.includes('id="group-mini-admin-section"'), 'index.html deve conter #group-mini-admin-section');
+  assert.ok(html.includes('class="group-mini-admin-header"'), 'index.html deve conter .group-mini-admin-header');
+  assert.ok(html.includes('class="group-mini-admin-title"'), 'index.html deve conter .group-mini-admin-title');
+  assert.ok(html.includes('class="group-mini-admin-tag"'), 'index.html deve conter .group-mini-admin-tag');
+  assert.ok(html.includes('id="group-banned-words-input"'), 'index.html deve conter #group-banned-words-input');
+
+  // 3. Estilos do Título Organizado em Linha Única
+  assert.ok(css.includes('.group-mini-admin-title'), 'style.css deve estilizar .group-mini-admin-title');
+  assert.ok(css.includes('.group-mini-admin-tag'), 'style.css deve estilizar .group-mini-admin-tag');
+  
+  // Verificar que .group-mini-admin-title e .group-mini-admin-tag usam white-space: nowrap
+  const titleStyleMatch = css.match(/\.group-mini-admin-title\s*\{([^}]+)\}/);
+  assert.ok(titleStyleMatch, '.group-mini-admin-title deve existir no CSS');
+  assert.ok(titleStyleMatch[1].includes('white-space: nowrap'), '.group-mini-admin-title deve ter white-space: nowrap para não quebrar');
+
+  const tagStyleMatch = css.match(/\.group-mini-admin-tag\s*\{([^}]+)\}/);
+  assert.ok(tagStyleMatch, '.group-mini-admin-tag deve existir no CSS');
+  assert.ok(tagStyleMatch[1].includes('white-space: nowrap'), '.group-mini-admin-tag deve ter white-space: nowrap para não quebrar em duas linhas');
+
+  // 4. Estilos do Campo Mais Largo (width: 100% e box-sizing: border-box)
+  const textareaMatch = css.match(/\.group-rule-textarea\s*\{([^}]+)\}/);
+  assert.ok(textareaMatch, '.group-rule-textarea deve existir no CSS');
+  assert.ok(textareaMatch[1].includes('width: 100%'), '.group-rule-textarea deve ter width: 100% para ocupar toda a largura');
+  assert.ok(textareaMatch[1].includes('box-sizing: border-box'), '.group-rule-textarea deve ter box-sizing: border-box');
+
+  const expandableMatch = css.match(/\.group-rule-expandable\s*\{([^}]+)\}/);
+  assert.ok(expandableMatch, '.group-rule-expandable deve existir no CSS');
+  assert.ok(expandableMatch[1].includes('width: 100%'), '.group-rule-expandable deve ter width: 100%');
+
+  // 5. Verificação funcional do textarea no DOM simulado
+  const textarea = env.elements['group-banned-words-input'];
+  assert.ok(textarea, 'Textarea #group-banned-words-input deve ser acessível no ambiente');
+  textarea.value = 'palavra1, palavra2, teste';
+  assert.strictEqual(textarea.value, 'palavra1, palavra2, teste');
 });
