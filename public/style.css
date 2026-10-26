@@ -2954,6 +2954,9 @@ input.input-invalid:focus {
 .attach-icon-circle.purple { background: rgba(168, 85, 247, 0.2); border: 1px solid #a855f7; color: #c084fc; }
 .attach-icon-circle.green { background: rgba(0, 255, 136, 0.18); border: 1px solid #00ff88; color: #00ff88; box-shadow: 0 0 10px rgba(0, 255, 136, 0.25); }
 .attach-icon-circle.teal, .attach-icon-circle.pix-attach-circle { background: rgba(50, 188, 173, 0.2); border: 1px solid #32bcad; color: #32bcad; box-shadow: 0 0 10px rgba(50, 188, 173, 0.25); }
+.attach-icon-circle.red, .attach-icon-circle.camera-attach-circle { background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #f87171; box-shadow: 0 0 10px rgba(239, 68, 68, 0.25); }
+.attach-icon-circle.indigo, .attach-icon-circle.form-attach-circle { background: rgba(99, 102, 241, 0.2); border: 1px solid #6366f1; color: #818cf8; box-shadow: 0 0 10px rgba(99, 102, 241, 0.25); }
+.attach-icon-circle.emerald, .attach-icon-circle.button-attach-circle { background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; color: #34d399; box-shadow: 0 0 10px rgba(16, 185, 129, 0.25); }
 .attach-item span { font-size: 0.75rem; color: var(--text-dim); }
 
 .audio-player-ui { display: inline-flex; align-items: center; gap: 8px; background: rgba(255, 255, 255, 0.06); padding: 6px 12px; border-radius: 18px; border: 1px solid rgba(255, 255, 255, 0.1); cursor: pointer; }
@@ -20327,6 +20330,567 @@ input:checked + .schedule-slider {
     width: 13px;
     height: 13px;
 }
+
+/* ==========================================================================
+   CÂMERA DENTRO DOS CONTATOS (FOTO & GRAVAR VÍDEO NA HORA) (v1.0.206)
+   ========================================================================== */
+.chat-camera-modal-overlay {
+    z-index: 3500;
+    background: rgba(0, 0, 0, 0.94);
+    backdrop-filter: blur(12px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+}
+
+.chat-camera-card {
+    position: relative;
+    width: 100%;
+    max-width: 480px;
+    height: 90vh;
+    max-height: 800px;
+    background: #090b10;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 24px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8), 0 0 25px rgba(255, 59, 48, 0.2);
+}
+
+.chat-camera-top-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 18px;
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.7) 0%, transparent 100%);
+}
+
+.chat-camera-circle-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(0, 0, 0, 0.55);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    backdrop-filter: blur(6px);
+    transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.chat-camera-circle-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: scale(1.05);
+}
+
+.chat-camera-circle-btn i,
+.chat-camera-circle-btn svg {
+    width: 20px;
+    height: 20px;
+}
+
+.chat-camera-rec-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(239, 68, 68, 0.25);
+    border: 1px solid #ef4444;
+    padding: 6px 14px;
+    border-radius: 20px;
+    color: #ffffff;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    animation: recPulse 1.5s ease-in-out infinite;
+}
+
+.chat-camera-rec-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #ef4444;
+    box-shadow: 0 0 8px #ef4444;
+}
+
+@keyframes recPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.85; transform: scale(0.97); }
+}
+
+.chat-camera-viewport-wrap {
+    flex: 1;
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background: #000000;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.chat-camera-live-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.chat-camera-captured-media {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #000000;
+}
+
+.chat-camera-controls-wrap {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 20px 24px;
+    background: linear-gradient(0deg, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.4) 70%, transparent 100%);
+}
+
+.chat-camera-mode-tabs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    padding: 4px;
+    border-radius: 24px;
+    backdrop-filter: blur(8px);
+}
+
+.chat-camera-mode-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 16px;
+    border-radius: 20px;
+    border: none;
+    background: transparent;
+    color: #cbd5e1;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.chat-camera-mode-tab i,
+.chat-camera-mode-tab svg {
+    width: 15px;
+    height: 15px;
+}
+
+.chat-camera-mode-tab.active {
+    background: var(--accent-color, #fff01f);
+    color: #000000;
+    font-weight: 700;
+    box-shadow: 0 0 12px rgba(255, 240, 31, 0.4);
+}
+
+.chat-camera-actions-row {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+}
+
+.chat-camera-mini-tool-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.chat-camera-mini-tool-btn:hover {
+    background: rgba(255, 255, 255, 0.16);
+    transform: scale(1.06);
+}
+
+.chat-camera-mini-tool-btn i,
+.chat-camera-mini-tool-btn svg {
+    width: 20px;
+    height: 20px;
+}
+
+.chat-camera-mini-tool-spacer {
+    width: 44px;
+    height: 44px;
+}
+
+.chat-camera-shutter {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    border: 4px solid #ffffff;
+    background: transparent;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.chat-camera-shutter:hover {
+    transform: scale(1.05);
+}
+
+.chat-camera-shutter-core {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: #ffffff;
+    transition: all 0.2s ease;
+}
+
+.chat-camera-shutter.video-mode .chat-camera-shutter-core {
+    background: #ef4444;
+}
+
+.chat-camera-shutter.recording {
+    border-color: #ef4444;
+}
+
+.chat-camera-shutter.recording .chat-camera-shutter-core {
+    border-radius: 8px;
+    width: 45%;
+    height: 45%;
+    background: #ef4444;
+}
+
+.chat-camera-confirm-wrap {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px 20px 24px;
+    background: linear-gradient(0deg, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.6) 80%, transparent 100%);
+}
+
+.chat-camera-caption-input-box {
+    width: 100%;
+}
+
+.chat-camera-caption-input-box input {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    padding: 10px 14px;
+    color: #ffffff;
+    font-size: 0.9rem;
+    outline: none;
+    box-sizing: border-box;
+}
+
+.chat-camera-caption-input-box input:focus {
+    border-color: var(--accent-color, #fff01f);
+}
+
+.chat-camera-confirm-btns {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+}
+
+.chat-camera-confirm-btn {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 18px;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s ease;
+}
+
+.chat-camera-confirm-btn.cancel {
+    background: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.chat-camera-confirm-btn.cancel:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.chat-camera-confirm-btn.send {
+    background: linear-gradient(135deg, #00ff88, #00cc6a);
+    color: #000000;
+    box-shadow: 0 0 15px rgba(0, 255, 136, 0.35);
+}
+
+.chat-camera-confirm-btn.send:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+}
+
+/* ==========================================================================
+   BOTÃO INTERATIVO COM LINK PARA CONTA EMPRESA (v1.0.206)
+   ========================================================================== */
+.company-button-card {
+    max-width: 480px;
+    width: 95%;
+    max-height: 90vh;
+    overflow-y: auto;
+    background: #12141a;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-radius: 18px;
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.7), 0 0 20px rgba(16, 185, 129, 0.15);
+}
+
+.company-button-form-body {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 10px 4px 6px;
+}
+
+.company-btn-input-group {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    box-sizing: border-box;
+}
+
+.company-btn-input-group input,
+.company-btn-input-group textarea {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: #ffffff;
+    font-size: 0.88rem;
+    font-family: inherit;
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease;
+}
+
+.company-btn-input-group input:focus,
+.company-btn-input-group textarea:focus {
+    border-color: #10b981;
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+}
+
+.company-btn-upload-label-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px dashed rgba(16, 185, 129, 0.4);
+    color: #34d399;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 0.84rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.company-btn-upload-label-btn:hover {
+    background: rgba(16, 185, 129, 0.2);
+    border-color: #10b981;
+}
+
+.company-btn-image-preview-wrapper {
+    position: relative;
+    width: 100%;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.company-btn-image-preview-wrapper img {
+    width: 100%;
+    max-height: 200px;
+    object-fit: cover;
+    display: block;
+}
+
+.company-btn-remove-img-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgba(239, 68, 68, 0.85);
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    backdrop-filter: blur(4px);
+}
+
+.company-button-modal-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 10px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.company-btn-submit-action {
+    background: linear-gradient(135deg, #10b981, #059669) !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    border: none !important;
+    padding: 10px 18px !important;
+    border-radius: 10px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    cursor: pointer !important;
+    box-shadow: 0 2px 10px rgba(16, 185, 129, 0.35) !important;
+    transition: all 0.2s ease !important;
+}
+
+.company-btn-submit-action:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.5) !important;
+}
+
+/* Card Renderizado na Mensagem do Chat */
+.company-btn-message-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    max-width: 320px;
+    background: rgba(16, 185, 129, 0.06);
+    border: 1px solid rgba(16, 185, 129, 0.28);
+    border-radius: 14px;
+    padding: 12px;
+    box-sizing: border-box;
+    margin: 4px 0;
+}
+
+.company-btn-card-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #34d399;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.company-btn-card-img-wrap {
+    width: 100%;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: #000000;
+}
+
+.company-btn-card-img {
+    width: 100%;
+    max-height: 200px;
+    object-fit: cover;
+    display: block;
+}
+
+.company-btn-card-desc {
+    font-size: 0.88rem;
+    color: #e2e8f0;
+    line-height: 1.45;
+    word-break: break-word;
+    margin: 0;
+}
+
+.company-interactive-cta-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 11px 16px;
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: #ffffff !important;
+    font-size: 0.9rem;
+    font-weight: 700;
+    border-radius: 10px;
+    text-decoration: none;
+    box-sizing: border-box;
+    box-shadow: 0 3px 12px rgba(16, 185, 129, 0.35);
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.company-interactive-cta-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 18px rgba(16, 185, 129, 0.5);
+    filter: brightness(1.1);
+}
+
+.company-interactive-cta-btn i,
+.company-interactive-cta-btn svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+/* ==========================================================================
+   ENCAMINHAMENTO DE MENSAGENS SELECIONADAS (v1.0.206)
+   ========================================================================== */
+#forward-selected-btn {
+    color: #38bdf8 !important;
+    transition: all 0.2s ease;
+}
+
+#forward-selected-btn:hover {
+    background: rgba(56, 189, 248, 0.18) !important;
+    transform: scale(1.08);
+}
+
 
 
 

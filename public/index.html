@@ -5,19 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
     <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.199">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.205">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.205">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.205">
-    <link rel="stylesheet" href="style.css?v=1.0.205">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.206">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.206">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.206">
+    <link rel="stylesheet" href="style.css?v=1.0.206">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.205">
+    <link rel="manifest" href="manifest.json?v=1.0.206">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.205">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.205">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.206">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.206">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -534,6 +534,9 @@
                     <span id="selection-count-text" class="selection-count-title">0 selecionada(s)</span>
                 </div>
                 <div class="header-icons">
+                    <div class="header-icon-btn" id="forward-selected-btn" title="Encaminhar Selecionadas" aria-label="Encaminhar Selecionadas">
+                        <i data-lucide="forward"></i>
+                    </div>
                     <div class="header-icon-btn danger" id="delete-selected-btn" title="Apagar Selecionadas" aria-label="Apagar Selecionadas">
                         <i data-lucide="trash-2"></i>
                     </div>
@@ -688,7 +691,7 @@
         <div id="forward-modal" class="custom-modal-overlay">
             <div class="custom-modal-card">
                 <div class="panel-top-bar">
-                    <h2>Encaminhar Mensagem</h2>
+                    <h2 id="forward-modal-title">Encaminhar Mensagem</h2>
                     <div class="header-icon-btn" id="close-forward-modal" title="Fechar" aria-label="Fechar">
                         <i data-lucide="x"></i>
                     </div>
@@ -1075,6 +1078,10 @@
                         <div class="attach-icon-circle blue"><i data-lucide="image"></i></div>
                         <span>Foto</span>
                     </label>
+                    <div class="attach-item" id="chat-attach-camera-btn" title="Câmera (Tirar Foto ou Gravar)" role="button" tabindex="0">
+                        <div class="attach-icon-circle red camera-attach-circle"><i data-lucide="camera"></i></div>
+                        <span>Câmera</span>
+                    </div>
                     <label for="chat-file-viewonce" class="attach-item" title="Enviar Foto de Visualização Única">
                         <div class="attach-icon-circle orange"><i data-lucide="eye"></i></div>
                         <span>Única</span>
@@ -1106,6 +1113,12 @@
                             <i data-lucide="clipboard-list"></i>
                         </div>
                         <span>Formulário</span>
+                    </div>
+                    <div class="attach-item company-only-attach-item" id="chat-attach-button-btn" title="Criar Botão com Link (Conta Empresa)" role="button" tabindex="0" style="display: none;">
+                        <div class="attach-icon-circle emerald button-attach-circle">
+                            <i data-lucide="mouse-pointer-click"></i>
+                        </div>
+                        <span>Botão</span>
                     </div>
                 </div>
                 <button id="close-attachment-panel" class="close-btn drawer-cancel-btn">Cancelar</button>
@@ -4279,8 +4292,143 @@
             </div>
         </div>
 
+        <!-- Modal de Câmera para Contatos (Tirar Foto ou Gravar Vídeo) -->
+        <div id="chat-camera-modal" class="custom-modal-overlay chat-camera-modal-overlay" style="display:none;" aria-hidden="true">
+            <div class="chat-camera-card">
+                <div class="chat-camera-top-bar">
+                    <button type="button" id="close-chat-camera-modal" class="chat-camera-circle-btn" title="Fechar Câmera" aria-label="Fechar Câmera">
+                        <i data-lucide="x"></i>
+                    </button>
+                    <div id="chat-camera-recording-indicator" class="chat-camera-rec-badge" style="display:none;">
+                        <span class="chat-camera-rec-dot"></span>
+                        <span id="chat-camera-rec-timer">00:00</span>
+                    </div>
+                    <button type="button" id="switch-chat-camera-btn" class="chat-camera-circle-btn" title="Alternar Câmera" aria-label="Alternar Câmera">
+                        <i data-lucide="switch-camera"></i>
+                    </button>
+                </div>
+
+                <div class="chat-camera-viewport-wrap">
+                    <video id="chat-camera-video-feed" autoplay playsinline muted class="chat-camera-live-video"></video>
+                    <canvas id="chat-camera-canvas" style="display:none;"></canvas>
+                    <img id="chat-camera-captured-preview" class="chat-camera-captured-media" style="display:none;" alt="Prévia da Foto">
+                    <video id="chat-camera-captured-video-preview" class="chat-camera-captured-media" playsinline controls style="display:none;"></video>
+                </div>
+
+                <!-- Controles de Disparo (Foto / Vídeo) -->
+                <div class="chat-camera-controls-wrap" id="chat-camera-controls-box">
+                    <div class="chat-camera-mode-tabs">
+                        <button type="button" class="chat-camera-mode-tab active" id="chat-camera-tab-photo">
+                            <i data-lucide="camera"></i> Foto
+                        </button>
+                        <button type="button" class="chat-camera-mode-tab" id="chat-camera-tab-video">
+                            <i data-lucide="video"></i> Vídeo
+                        </button>
+                    </div>
+
+                    <div class="chat-camera-actions-row">
+                        <input type="file" id="chat-camera-fallback-photo" accept="image/*" capture="environment" style="display:none;">
+                        <input type="file" id="chat-camera-fallback-video" accept="video/*" capture="environment" style="display:none;">
+                        
+                        <button type="button" id="chat-camera-fallback-trigger-btn" class="chat-camera-mini-tool-btn" title="Usar Câmera do Aparelho">
+                            <i data-lucide="smartphone"></i>
+                        </button>
+
+                        <button type="button" id="chat-camera-shutter-btn" class="chat-camera-shutter" title="Capturar">
+                            <span class="chat-camera-shutter-core" id="chat-camera-shutter-core"></span>
+                        </button>
+
+                        <div class="chat-camera-mini-tool-spacer"></div>
+                    </div>
+                </div>
+
+                <!-- Painel de Envio da Captura -->
+                <div class="chat-camera-confirm-wrap" id="chat-camera-confirm-box" style="display:none;">
+                    <div class="chat-camera-caption-input-box">
+                        <input type="text" id="chat-camera-caption-input" placeholder="Adicionar legenda..." maxlength="250">
+                    </div>
+                    <div class="chat-camera-confirm-btns">
+                        <button type="button" id="chat-camera-retake-btn" class="chat-camera-confirm-btn cancel">
+                            <i data-lucide="rotate-ccw"></i> Tirar Outra
+                        </button>
+                        <button type="button" id="chat-camera-send-btn" class="chat-camera-confirm-btn send">
+                            <i data-lucide="send"></i> Enviar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Criação de Botão Interativo com Link (Conta Empresa) -->
+        <div id="company-button-modal" class="custom-modal-overlay" style="display:none;" aria-hidden="true">
+            <div class="custom-modal-card company-button-card">
+                <div class="panel-top-bar">
+                    <h2><i data-lucide="mouse-pointer-click"></i> Botão Interativo (Empresa)</h2>
+                    <div class="header-icon-btn" id="close-company-button-modal" title="Fechar" aria-label="Fechar">
+                        <i data-lucide="x"></i>
+                    </div>
+                </div>
+                <p class="modal-instruction-text">Configure um botão com link personalizado para enviar ao cliente:</p>
+
+                <div class="company-button-form-body">
+                    <!-- 1. Título do Botão (Obrigatório) -->
+                    <div class="setting-item company-btn-input-group">
+                        <label for="company-btn-title-input" class="setting-info">
+                            <span>Título do Botão *</span>
+                            <small>Texto exibido dentro do botão (ex: Acessar Loja, Comprar Agora, Falar no WhatsApp)</small>
+                        </label>
+                        <input type="text" id="company-btn-title-input" maxlength="45" placeholder="Ex: Ver Catálogo de Produtos" required>
+                    </div>
+
+                    <!-- 2. Link do Botão (Obrigatório) -->
+                    <div class="setting-item company-btn-input-group">
+                        <label for="company-btn-link-input" class="setting-info">
+                            <span>Link do Botão *</span>
+                            <small>URL para onde o cliente será redirecionado ao clicar (ex: https://...)</small>
+                        </label>
+                        <input type="url" id="company-btn-link-input" placeholder="https://seusite.com.br/oferta" required>
+                    </div>
+
+                    <!-- 3. Imagem Opcional -->
+                    <div class="setting-item company-btn-input-group">
+                        <label class="setting-info">
+                            <span>Imagem do Card (Opcional)</span>
+                            <small>Adicione uma foto ilustrativa, banner ou logotipo do produto/serviço</small>
+                        </label>
+                        <input type="file" id="company-btn-image-input" accept="image/*" class="hidden-file-input">
+                        <div class="company-btn-image-preview-wrapper" id="company-btn-image-preview-box" style="display:none;">
+                            <img id="company-btn-image-preview" src="" alt="Prévia da imagem">
+                            <button type="button" id="company-btn-remove-image-btn" class="company-btn-remove-img-btn" title="Remover Imagem">
+                                <i data-lucide="trash-2"></i> Remover Imagem
+                            </button>
+                        </div>
+                        <label for="company-btn-image-input" id="company-btn-image-upload-label" class="company-btn-upload-label-btn">
+                            <i data-lucide="image-plus"></i> Escolher Imagem (Opcional)
+                        </label>
+                    </div>
+
+                    <!-- 4. Descrição / Mensagem (Opcional) -->
+                    <div class="setting-item company-btn-input-group">
+                        <label for="company-btn-desc-input" class="setting-info">
+                            <span>Mensagem / Descrição (Opcional)</span>
+                            <small>Texto explicativo que acompanha o botão no chat</small>
+                        </label>
+                        <textarea id="company-btn-desc-input" rows="2" maxlength="300" placeholder="Ex: Olá! Clique no botão abaixo para conhecer nossas promoções exclusivas da semana:"></textarea>
+                    </div>
+
+                    <!-- Ações do Modal -->
+                    <div class="company-button-modal-actions">
+                        <button type="button" id="company-btn-cancel-btn" class="close-btn modal-cancel-btn">Cancelar</button>
+                        <button type="button" id="company-btn-submit-btn" class="danger-btn company-btn-submit-action">
+                            <i data-lucide="send"></i> Enviar Botão
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.205" defer></script>
+    <script type="module" src="script.js?v=1.0.206" defer></script>
 </body>
 </html>

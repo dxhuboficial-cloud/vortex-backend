@@ -65,6 +65,9 @@ function createTestEnvironment() {
           const cls = sel.slice(1).split(/[\s.:>+~[]/)[0];
           const found = this.children.find(c => c.classList && c.classList.contains && c.classList.contains(cls));
           if (found) return found;
+        } else {
+          const found = this.children.find(c => c.tagName && c.tagName.toLowerCase() === sel.toLowerCase());
+          if (found) return found;
         }
         return {
           style: {},
@@ -343,6 +346,8 @@ function createTestEnvironment() {
         if (sel === '[data-lucide]') {
           return this.children.find(c => c['data-lucide'] !== undefined || (c.getAttribute && c.getAttribute('data-lucide') !== null)) || null;
         }
+        const tagMatch = this.children.find(c => c.tagName && c.tagName.toLowerCase() === sel.toLowerCase());
+        if (tagMatch) return tagMatch;
         return null;
       },
       querySelectorAll(sel) {
@@ -13271,12 +13276,10 @@ test('Ajuste Anti-Sobreposição do Título do Mini Painel Admin e Tag de Modera
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
 
-  // 1. Integridade de Versionamento (v1.0.205)
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.205', 'script.js deve ter versão 1.0.205');
-  assert.strictEqual(versionJson.version, '1.0.205', 'version.json deve ter versão 1.0.205');
-  assert.ok(html.includes('script.js?v=1.0.205'), 'index.html deve referenciar script.js?v=1.0.205');
-  assert.ok(html.includes('style.css?v=1.0.205'), 'index.html deve referenciar style.css?v=1.0.205');
-  assert.ok(swContent.includes('vortex-vip-v1.0.205'), 'sw.js deve conter cache vortex-vip-v1.0.205');
+  // 1. Integridade de Versionamento (v1.0.205 ou superior)
+  const semverCompare = (a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+  assert.ok(semverCompare(win.CURRENT_APP_VERSION, '1.0.205') >= 0, 'script.js deve ter versão 1.0.205 ou superior');
+  assert.ok(semverCompare(versionJson.version, '1.0.205') >= 0, 'version.json deve ter versão 1.0.205 ou superior');
 
   // 2. Título Conciso e Sem Redundância no HTML
   assert.ok(html.includes('<span>Mini Painel Admin</span>'), 'index.html deve conter título conciso <span>Mini Painel Admin</span>');
@@ -13297,4 +13300,160 @@ test('Ajuste Anti-Sobreposição do Título do Mini Painel Admin e Tag de Modera
 
   // 4. Media query para telas menores (<= 360px)
   assert.ok(css.includes('@media (max-width: 360px)'), 'style.css deve conter media query de proteção para telas pequenas');
+});
+
+
+test('Câmera nos Contatos, Botão Interativo para Conta Empresa e Encaminhamento de Mensagens Selecionadas (v1.0.206)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+  const css = fs.readFileSync('public/style.css', 'utf8');
+  const html = fs.readFileSync('public/index.html', 'utf8');
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
+
+  // 1. Integridade de Versionamento (v1.0.206)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.206', 'script.js deve ter versão 1.0.206');
+  assert.strictEqual(versionJson.version, '1.0.206', 'version.json deve ter versão 1.0.206');
+  assert.ok(html.includes('script.js?v=1.0.206'), 'index.html deve referenciar script.js?v=1.0.206');
+  assert.ok(html.includes('style.css?v=1.0.206'), 'index.html deve referenciar style.css?v=1.0.206');
+  assert.ok(swContent.includes('vortex-vip-v1.0.206'), 'sw.js deve conter cache vortex-vip-v1.0.206');
+
+  // 2. Elementos DOM no index.html
+  // Câmera nos Contatos
+  assert.ok(html.includes('id="chat-attach-camera-btn"'), 'index.html deve conter #chat-attach-camera-btn no drawer de anexos');
+  assert.ok(html.includes('id="chat-camera-modal"'), 'index.html deve conter modal #chat-camera-modal');
+  assert.ok(html.includes('id="chat-camera-video-feed"'), 'index.html deve conter video feed #chat-camera-video-feed');
+  assert.ok(html.includes('id="chat-camera-tab-photo"'), 'index.html deve conter aba de foto #chat-camera-tab-photo');
+  assert.ok(html.includes('id="chat-camera-tab-video"'), 'index.html deve conter aba de vídeo #chat-camera-tab-video');
+  assert.ok(html.includes('id="chat-camera-shutter-btn"'), 'index.html deve conter disparador #chat-camera-shutter-btn');
+  assert.ok(html.includes('id="chat-camera-send-btn"'), 'index.html deve conter botão de enviar #chat-camera-send-btn');
+
+  // Botão Interativo Exclusivo para Conta Empresa
+  assert.ok(html.includes('id="chat-attach-button-btn"'), 'index.html deve conter #chat-attach-button-btn');
+  assert.ok(html.includes('id="company-button-modal"'), 'index.html deve conter modal #company-button-modal');
+  assert.ok(html.includes('id="company-btn-title-input"'), 'index.html deve conter input de título #company-btn-title-input');
+  assert.ok(html.includes('id="company-btn-link-input"'), 'index.html deve conter input de link #company-btn-link-input');
+  assert.ok(html.includes('id="company-btn-image-input"'), 'index.html deve conter input de imagem opcional #company-btn-image-input');
+  assert.ok(html.includes('id="company-btn-submit-btn"'), 'index.html deve conter botão de enviar #company-btn-submit-btn');
+
+  // Encaminhar Mensagens Selecionadas
+  assert.ok(html.includes('id="forward-selected-btn"'), 'index.html deve conter #forward-selected-btn no chat-selection-header');
+
+  // 3. Estilos CSS
+  assert.ok(css.includes('.camera-attach-circle'), 'style.css deve estilizar .camera-attach-circle');
+  assert.ok(css.includes('.button-attach-circle'), 'style.css deve estilizar .button-attach-circle');
+  assert.ok(css.includes('.chat-camera-card'), 'style.css deve estilizar .chat-camera-card');
+  assert.ok(css.includes('.company-button-card'), 'style.css deve estilizar .company-button-card');
+  assert.ok(css.includes('.company-interactive-cta-btn'), 'style.css deve estilizar .company-interactive-cta-btn');
+  assert.ok(css.includes('#forward-selected-btn'), 'style.css deve estilizar #forward-selected-btn');
+
+  // 4. Funções Exportadas na Janela
+  assert.strictEqual(typeof win.openChatCamera, 'function', 'openChatCamera deve existir');
+  assert.strictEqual(typeof win.closeChatCamera, 'function', 'closeChatCamera deve existir');
+  assert.strictEqual(typeof win.openCompanyButtonModal, 'function', 'openCompanyButtonModal deve existir');
+  assert.strictEqual(typeof win.closeCompanyButtonModal, 'function', 'closeCompanyButtonModal deve existir');
+  assert.strictEqual(typeof win.sendCompanyButtonMessage, 'function', 'sendCompanyButtonMessage deve existir');
+  assert.strictEqual(typeof win.buildCompanyButtonCardHTML, 'function', 'buildCompanyButtonCardHTML deve existir');
+  assert.strictEqual(typeof win.updateCompanyAttachVisibility, 'function', 'updateCompanyAttachVisibility deve existir');
+  assert.strictEqual(typeof win.openForwardModal, 'function', 'openForwardModal deve existir');
+
+  // 5. Teste Unitário: Visibilidade do Botão Comercial (Conta Empresa vs Pessoal)
+  const btnAttach = env.elements['chat-attach-button-btn'];
+  assert.ok(btnAttach, '#chat-attach-button-btn deve existir no DOM');
+
+  // Conta Pessoal: Deve ficar oculto (display: none)
+  win.setCurrentProfile({ uid: 'user_personal_206', accountType: 'personal' });
+  win.updateCompanyAttachVisibility();
+  assert.strictEqual(btnAttach.style.display, 'none', 'Conta pessoal NÃO deve ver o botão de link/interativo no drawer');
+
+  // Conta Empresa: Deve ficar visível (display: flex)
+  win.setCurrentProfile({ uid: 'user_company_206', accountType: 'company' });
+  win.updateCompanyAttachVisibility();
+  assert.strictEqual(btnAttach.style.display, 'flex', 'Conta empresa DEVE ver o botão interativo no drawer');
+
+  // 6. Teste Unitário: buildCompanyButtonCardHTML
+  const cardHtmlWithImg = win.buildCompanyButtonCardHTML({
+    type: 'company_button',
+    buttonTitle: 'Ver Catálogo VIP',
+    buttonUrl: 'https://vortexvip.app/catalogo',
+    buttonImage: 'data:image/png;base64,mockbanner',
+    text: 'Confira nossos lançamentos exclusivos!'
+  });
+  assert.ok(cardHtmlWithImg.includes('Ver Catálogo VIP'), 'Card deve exibir o título do botão');
+  assert.ok(cardHtmlWithImg.includes('https://vortexvip.app/catalogo'), 'Card deve conter o link do botão');
+  assert.ok(cardHtmlWithImg.includes('data:image/png;base64,mockbanner'), 'Card deve exibir a imagem se fornecida');
+  assert.ok(cardHtmlWithImg.includes('Confira nossos lançamentos exclusivos!'), 'Card deve exibir o texto descritivo');
+  assert.ok(cardHtmlWithImg.includes('company-interactive-cta-btn'), 'Card deve ter classe do botão interativo');
+
+  const cardHtmlNoImg = win.buildCompanyButtonCardHTML({
+    type: 'company_button',
+    buttonTitle: 'Falar no WhatsApp',
+    buttonUrl: 'https://wa.me/5511999999999'
+  });
+  assert.ok(cardHtmlNoImg.includes('Falar no WhatsApp'), 'Card deve exibir o título');
+  assert.ok(cardHtmlNoImg.includes('https://wa.me/5511999999999'), 'Card deve conter o link');
+  assert.strictEqual(cardHtmlNoImg.includes('company-btn-card-img-wrap'), false, 'Card sem imagem não deve renderizar wrapper de imagem');
+
+  // 7. Teste Funcional: Encaminhar Mensagens Selecionadas
+  win.setCurrentUser({ uid: 'user_sender_206', displayName: 'Lucas' });
+  win.setCurrentProfile({ uid: 'user_sender_206', name: 'Lucas' });
+
+  // Criar 2 mensagens no chat ativo
+  const chatId = 'user_sender_206_contact_a';
+  env.firestoreDocs[`chats/${chatId}/messages/msg_1`] = {
+    id: 'msg_1',
+    text: 'Primeira mensagem selecionada',
+    type: 'text',
+    senderUid: 'user_sender_206',
+    createdAt: 1000
+  };
+  env.firestoreDocs[`chats/${chatId}/messages/msg_2`] = {
+    id: 'msg_2',
+    text: 'Segunda mensagem selecionada',
+    type: 'text',
+    senderUid: 'user_sender_206',
+    createdAt: 2000
+  };
+
+  const currentMap = win.getCurrentChatMessagesMap();
+  currentMap.set('msg_1', env.firestoreDocs[`chats/${chatId}/messages/msg_1`]);
+  currentMap.set('msg_2', env.firestoreDocs[`chats/${chatId}/messages/msg_2`]);
+
+  // Contato de destino
+  env.firestoreDocs['users/user_sender_206/contacts/target_contact'] = {
+    uid: 'contact_dest_206',
+    name: 'Destinatário VIP'
+  };
+
+  // Abrir forward modal com as 2 mensagens
+  const messagesToFwd = [currentMap.get('msg_1'), currentMap.get('msg_2')];
+  await win.openForwardModal(messagesToFwd);
+
+  const forwardModal = env.elements['forward-modal'];
+  assert.ok(forwardModal, 'Modal de encaminhamento deve existir');
+  const modalTitle = env.elements['forward-modal-title'] || forwardModal.querySelector('h2');
+  assert.ok(modalTitle && modalTitle.innerText.includes('2 Mensagens'), 'Título deve indicar 2 mensagens a encaminhar');
+
+  const forwardList = env.elements['forward-contacts-list'];
+  assert.ok(forwardList, 'Lista de contatos deve existir');
+  const contactItem = forwardList.querySelector('.contact-selection-item');
+  assert.ok(contactItem, 'Deve renderizar o contato na lista');
+  assert.ok((contactItem.innerText || '' + contactItem.innerHTML || '').includes('Destinatário VIP') || (contactItem._innerText || '').includes('Destinatário VIP'), 'Deve exibir o nome do destinatário');
+
+  // Simular clique no botão "Enviar"
+  const sendBtn = contactItem.querySelector('button');
+  assert.ok(sendBtn, 'Botão enviar deve existir no item de contato');
+  await sendBtn.onclick();
+
+  // Verificar se as 2 mensagens foram encaminhadas para o chat de destino com forwarded: true
+  const targetChatId = ['user_sender_206', 'contact_dest_206'].sort().join('_');
+  const forwardedKeys = Object.keys(env.firestoreDocs).filter(k => k.startsWith(`chats/${targetChatId}/messages`));
+  assert.strictEqual(forwardedKeys.length, 2, 'Deve ter encaminhado exatamente 2 mensagens para o chat de destino');
+
+  const fwd1 = env.firestoreDocs[forwardedKeys[0]];
+  const fwd2 = env.firestoreDocs[forwardedKeys[1]];
+  assert.strictEqual(fwd1.forwarded, true, 'Mensagem 1 deve ter flag forwarded: true');
+  assert.strictEqual(fwd2.forwarded, true, 'Mensagem 2 deve ter flag forwarded: true');
+  assert.ok(fwd1.text.includes('mensagem selecionada'), 'Conteúdo da mensagem 1 deve ser preservado');
+  assert.ok(fwd2.text.includes('mensagem selecionada'), 'Conteúdo da mensagem 2 deve ser preservado');
 });

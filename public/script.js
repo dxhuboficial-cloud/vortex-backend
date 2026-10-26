@@ -4240,7 +4240,7 @@ export function setupProductDigitalLinkValidation() {
 }
 
 export function isBusinessAccount(profile = currentProfile) {
-    return !!(profile && (profile.accountType === 'business' || profile.isBusiness === true));
+    return !!(profile && (profile.accountType === 'business' || profile.accountType === 'company' || profile.isBusiness === true || profile.isCompany === true));
 }
 
 // Carrinho de Compras (persistido por usuário no localStorage)
@@ -14738,13 +14738,15 @@ function loadRealtimeMessages() {
                     mediaHTML = buildOrderCardHTML(msg);
                 } else if (msg.type === 'form' || msg.form) {
                     mediaHTML = buildCompanyFormCardHTML(msg);
+                } else if (msg.type === 'company_button' || msg.buttonTitle) {
+                    mediaHTML = buildCompanyButtonCardHTML(msg);
                 } else if (msg.type === 'call' || msg.call) {
                     mediaHTML = buildCallCardHTML(msg, isMe);
                 }
             }
 
             let textHTML = '';
-            if (msg.text && !msg.deletedForEveryone && msg.type !== 'poll' && msg.type !== 'pix' && msg.type !== 'order' && msg.type !== 'form' && msg.type !== 'call') {
+            if (msg.text && !msg.deletedForEveryone && msg.type !== 'poll' && msg.type !== 'pix' && msg.type !== 'order' && msg.type !== 'form' && msg.type !== 'company_button' && msg.type !== 'call') {
                 const isSenderVip = isMe
                     ? checkIsVipUser(currentProfile)
                     : !!(msg.isVip || msg.isVerified || (msg.senderEmail && VORTEX_ADMIN_EMAILS.includes(msg.senderEmail.toLowerCase())) || (msg.senderUsername === 'dxhuboficial') || checkIsVipUser(msg));
@@ -15251,6 +15253,38 @@ document.getElementById('enable-multiselect-trigger')?.addEventListener('click',
 document.getElementById('delete-selected-btn')?.addEventListener('click', async () => {
     if (selectedMessageIds.size === 0) return;
     await openDeleteModal(true);
+});
+
+document.getElementById('forward-selected-btn')?.addEventListener('click', async () => {
+    if (selectedMessageIds.size === 0) return;
+    const chatId = getActiveChatId();
+    const msgsToFwd = [];
+
+    for (const id of selectedMessageIds) {
+        let msg = currentChatMessagesMap.get(id);
+        if (!msg && chatId) {
+            try {
+                const snap = await getDoc(doc(db, 'chats', chatId, 'messages', id));
+                if (snap.exists()) {
+                    msg = { id: snap.id, ...snap.data() };
+                    currentChatMessagesMap.set(id, msg);
+                }
+            } catch (e) {
+                console.warn('Erro ao carregar mensagem para encaminhar:', e);
+            }
+        }
+        if (msg && !msg.deletedForEveryone) {
+            msgsToFwd.push(msg);
+        }
+    }
+
+    if (msgsToFwd.length === 0) {
+        showToast('Aviso', 'Nenhuma mensagem válida selecionada para encaminhar.', 'orange');
+        return;
+    }
+
+    msgsToFwd.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+    await openForwardModal(msgsToFwd);
 });
 
 function setupSwipeToReply(el, msg) {
@@ -16064,7 +16098,13 @@ async function openForwardModal(msgToFwd) {
     messageToForward = msgToFwd;
     const modal = document.getElementById('forward-modal');
     const list = document.getElementById('forward-contacts-list');
+    const modalTitle = document.getElementById('forward-modal-title') || modal?.querySelector('h2');
     if (!modal || !list || !currentUser || !messageToForward) return;
+
+    const msgsList = Array.isArray(messageToForward) ? messageToForward : [messageToForward];
+    if (modalTitle) {
+        modalTitle.innerText = msgsList.length > 1 ? `Encaminhar ${msgsList.length} Mensagens` : 'Encaminhar Mensagem';
+    }
 
     list.innerHTML = '<p style="color:var(--text-dim); text-align:center; font-size:0.8rem; padding:15px;">Carregando contatos...</p>';
     modal.classList.add('active');
@@ -16089,8 +16129,12 @@ async function openForwardModal(msgToFwd) {
                     <div class="avatar sm" id="forward-avatar-${contactUid}" style="background-image: url('${initialAvatar}');">${!initialAvatar ? initialName.charAt(0).toUpperCase() : ''}</div>
                     <span id="forward-name-${contactUid}">${initialName}</span>
                 </div>
-                <button class="danger-btn" style="background:var(--accent-color); color:#000; font-weight:bold; border:none; padding:4px 12px; font-size:0.75rem; border-radius:8px;">Enviar</button>
             `;
+            const sendBtn = document.createElement('button');
+            sendBtn.className = 'danger-btn forward-send-btn';
+            sendBtn.style.cssText = 'background:var(--accent-color); color:#000; font-weight:bold; border:none; padding:4px 12px; font-size:0.75rem; border-radius:8px;';
+            sendBtn.innerText = 'Enviar';
+            item.appendChild(sendBtn);
 
             onSnapshot(doc(db, 'users', contactUid), (uSnap) => {
                 if (uSnap.exists()) {
@@ -16112,36 +16156,53 @@ async function openForwardModal(msgToFwd) {
                 }
             });
 
-            item.querySelector('button').onclick = async () => {
+            sendBtn.onclick = async () => {
                 if (!messageToForward) return;
                 const targetChatId = [currentUser.uid, c.uid].sort().join('_');
-                const forwardData = {
-                    senderUid: currentUser.uid,
-                    senderName: currentProfile.name,
-                    senderAvatar: currentProfile.avatar,
-                    type: messageToForward.type || 'text',
-                    text: messageToForward.text || '',
-                    fileData: messageToForward.fileData || '',
-                    fileName: messageToForward.fileName || '',
-                    fileSize: messageToForward.fileSize || '',
-                    forwarded: true,
-                    createdAt: Date.now()
-                };
+                const toForward = Array.isArray(messageToForward) ? messageToForward : [messageToForward];
+                const now = Date.now();
 
-                if (messageToForward.pix) {
-                    forwardData.pix = messageToForward.pix;
+                for (let i = 0; i < toForward.length; i++) {
+                    const m = toForward[i];
+                    const forwardData = {
+                        senderUid: currentUser.uid,
+                        senderName: currentProfile.name,
+                        senderAvatar: currentProfile.avatar,
+                        type: m.type || 'text',
+                        text: m.text || '',
+                        fileData: m.fileData || '',
+                        fileName: m.fileName || '',
+                        fileSize: m.fileSize || '',
+                        forwarded: true,
+                        createdAt: now + (i * 2)
+                    };
+
+                    if (m.pix) forwardData.pix = m.pix;
+                    if (m.buttonTitle) {
+                        forwardData.buttonTitle = m.buttonTitle;
+                        forwardData.buttonUrl = m.buttonUrl;
+                        if (m.buttonImage) forwardData.buttonImage = m.buttonImage;
+                    }
+                    if (m.duration) {
+                        forwardData.duration = m.duration;
+                        forwardData.durationSeconds = m.durationSeconds;
+                    }
+
+                    await addDoc(collection(db, 'chats', targetChatId, 'messages'), forwardData);
                 }
 
-                await addDoc(collection(db, 'chats', targetChatId, 'messages'), forwardData);
-                showToast("Encaminhado", `Mensagem encaminhada para ${c.name}!`, "green");
+                showToast('Encaminhado', `${toForward.length} mensagem(ns) encaminhada(s) para ${c.name}!`, 'green');
                 modal.classList.remove('active');
                 messageToForward = null;
+                if (typeof isMultiSelectMode !== 'undefined' && isMultiSelectMode) {
+                    exitSelectionMode();
+                }
             };
 
             list.appendChild(item);
         });
     } catch (err) {
-        console.error("Erro ao carregar contatos para encaminhar:", err);
+        console.error('Erro ao carregar contatos para encaminhar:', err);
     }
 }
 
@@ -19873,7 +19934,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.205';
+export const CURRENT_APP_VERSION = '1.0.206';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -22582,6 +22643,10 @@ export function canManageCompanyForms(profile = currentProfile, user = currentUs
 export function updateCompanyAttachVisibility() {
     const isCompany = canManageCompanyForms(currentProfile, currentUser);
     const formAttachBtn = document.getElementById('chat-attach-form-btn');
+    const btnAttachBtn = document.getElementById('chat-attach-button-btn');
+    if (btnAttachBtn) {
+        btnAttachBtn.style.display = isCompany ? 'flex' : 'none';
+    }
     if (formAttachBtn) {
         formAttachBtn.style.display = isCompany ? 'flex' : 'none';
     }
@@ -23847,6 +23912,608 @@ handleFileUpload(document.getElementById('chat-file-viewonce'), 'image', { viewO
 handleFileUpload(document.getElementById('chat-file-video'), 'video');
 handleFileUpload(document.getElementById('chat-file-audio'), 'audio');
 handleFileUpload(document.getElementById('chat-file-doc'), 'file');
+
+/* ==========================================================================
+   CÂMERA DENTRO DOS CONTATOS (FOTO & GRAVAR VÍDEO NA HORA) (v1.0.206)
+   ========================================================================== */
+
+let chatCameraStream = null;
+let chatCameraCurrentFacing = 'environment';
+let chatCameraCurrentMode = 'photo'; // 'photo' | 'video'
+let chatCameraMediaRecorder = null;
+let chatCameraRecordedChunks = [];
+let chatCameraRecInterval = null;
+let chatCameraRecSeconds = 0;
+let chatCameraCapturedBlob = null;
+let chatCameraCapturedDataUrl = null;
+let chatCameraCapturedType = null; // 'image' | 'video'
+
+export async function openChatCamera(initialMode = 'photo') {
+    const modal = document.getElementById('chat-camera-modal');
+    if (!modal) return;
+
+    // Fechar drawer de anexos se aberto
+    document.getElementById('attachment-panel')?.classList.remove('active');
+
+    chatCameraCurrentMode = initialMode;
+    chatCameraCapturedBlob = null;
+    chatCameraCapturedDataUrl = null;
+    chatCameraCapturedType = null;
+    chatCameraRecordedChunks = [];
+    chatCameraRecSeconds = 0;
+    if (chatCameraRecInterval) {
+        clearInterval(chatCameraRecInterval);
+        chatCameraRecInterval = null;
+    }
+
+    resetChatCameraUI();
+
+    modal.style.display = 'flex';
+    modal.classList.add('active');
+    modal.setAttribute('aria-hidden', 'false');
+
+    if (window.lucide) lucide.createIcons();
+
+    await startChatCameraStream();
+}
+
+export function closeChatCamera() {
+    stopChatCameraStream();
+    if (chatCameraRecInterval) {
+        clearInterval(chatCameraRecInterval);
+        chatCameraRecInterval = null;
+    }
+    if (chatCameraMediaRecorder && chatCameraMediaRecorder.state !== 'inactive') {
+        try { chatCameraMediaRecorder.stop(); } catch (_) {}
+    }
+    const modal = document.getElementById('chat-camera-modal');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.classList.remove('active');
+        modal.setAttribute('aria-hidden', 'true');
+    }
+}
+
+export async function startChatCameraStream() {
+    const videoEl = document.getElementById('chat-camera-video-feed');
+    if (!videoEl) return;
+
+    stopChatCameraStream();
+
+    if (navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') {
+        try {
+            const constraints = {
+                video: { facingMode: chatCameraCurrentFacing, width: { ideal: 1280 }, height: { ideal: 720 } },
+                audio: true
+            };
+            chatCameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+        } catch (e1) {
+            try {
+                chatCameraStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            } catch (e2) {
+                console.warn('getUserMedia da câmera não disponível, fallback nativo disponível:', e2);
+            }
+        }
+    }
+
+    if (chatCameraStream) {
+        videoEl.srcObject = chatCameraStream;
+        videoEl.style.display = 'block';
+    } else {
+        videoEl.style.display = 'none';
+    }
+}
+
+export function stopChatCameraStream() {
+    if (chatCameraStream) {
+        if (typeof chatCameraStream.getTracks === 'function') {
+            chatCameraStream.getTracks().forEach(t => {
+                if (typeof t.stop === 'function') t.stop();
+            });
+        }
+        chatCameraStream = null;
+    }
+    const videoEl = document.getElementById('chat-camera-video-feed');
+    if (videoEl) videoEl.srcObject = null;
+}
+
+export function setChatCameraMode(mode) {
+    chatCameraCurrentMode = mode;
+    const tabPhoto = document.getElementById('chat-camera-tab-photo');
+    const tabVideo = document.getElementById('chat-camera-tab-video');
+    const shutter = document.getElementById('chat-camera-shutter-btn');
+
+    if (mode === 'photo') {
+        tabPhoto?.classList.add('active');
+        tabVideo?.classList.remove('active');
+        shutter?.classList.remove('video-mode');
+    } else {
+        tabVideo?.classList.add('active');
+        tabPhoto?.classList.remove('active');
+        shutter?.classList.add('video-mode');
+    }
+}
+
+export async function switchChatCameraFacing() {
+    chatCameraCurrentFacing = (chatCameraCurrentFacing === 'environment') ? 'user' : 'environment';
+    await startChatCameraStream();
+}
+
+export function takeChatCameraPhoto() {
+    const videoEl = document.getElementById('chat-camera-video-feed');
+    const canvas = document.getElementById('chat-camera-canvas');
+    const previewImg = document.getElementById('chat-camera-captured-preview');
+    if (!videoEl || !canvas || !previewImg) return;
+
+    const width = videoEl.videoWidth || 640;
+    const height = videoEl.videoHeight || 480;
+    canvas.width = width;
+    canvas.height = height;
+
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+        ctx.drawImage(videoEl, 0, 0, width, height);
+        chatCameraCapturedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        chatCameraCapturedType = 'image';
+
+        previewImg.src = chatCameraCapturedDataUrl;
+        previewImg.style.display = 'block';
+        videoEl.style.display = 'none';
+
+        const ctrlBox = document.getElementById('chat-camera-controls-box');
+        const confBox = document.getElementById('chat-camera-confirm-box');
+        if (ctrlBox) ctrlBox.style.display = 'none';
+        if (confBox) confBox.style.display = 'flex';
+        playSound(clickSound);
+    }
+}
+
+export function startChatCameraVideoRecording() {
+    if (!chatCameraStream) {
+        document.getElementById('chat-camera-fallback-video')?.click();
+        return;
+    }
+    chatCameraRecordedChunks = [];
+    chatCameraRecSeconds = 0;
+
+    try {
+        chatCameraMediaRecorder = new MediaRecorder(chatCameraStream);
+    } catch (e) {
+        console.warn('MediaRecorder não suportado:', e);
+        document.getElementById('chat-camera-fallback-video')?.click();
+        return;
+    }
+
+    chatCameraMediaRecorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) {
+            chatCameraRecordedChunks.push(e.data);
+        }
+    };
+
+    chatCameraMediaRecorder.onstop = () => {
+        chatCameraCapturedBlob = new Blob(chatCameraRecordedChunks, { type: 'video/mp4' });
+        const videoPreview = document.getElementById('chat-camera-captured-video-preview');
+        const videoEl = document.getElementById('chat-camera-video-feed');
+        if (videoPreview) {
+            try {
+                const url = URL.createObjectURL(chatCameraCapturedBlob);
+                videoPreview.src = url;
+            } catch (_) {}
+            videoPreview.style.display = 'block';
+            if (videoEl) videoEl.style.display = 'none';
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            chatCameraCapturedDataUrl = reader.result;
+            chatCameraCapturedType = 'video';
+        };
+        reader.readAsDataURL(chatCameraCapturedBlob);
+
+        const ctrlBox = document.getElementById('chat-camera-controls-box');
+        const confBox = document.getElementById('chat-camera-confirm-box');
+        const recInd = document.getElementById('chat-camera-recording-indicator');
+        const shutter = document.getElementById('chat-camera-shutter-btn');
+        if (ctrlBox) ctrlBox.style.display = 'none';
+        if (confBox) confBox.style.display = 'flex';
+        if (recInd) recInd.style.display = 'none';
+        if (shutter) shutter.classList.remove('recording');
+    };
+
+    chatCameraMediaRecorder.start();
+
+    document.getElementById('chat-camera-shutter-btn')?.classList.add('recording');
+    const recIndicator = document.getElementById('chat-camera-recording-indicator');
+    const recTimer = document.getElementById('chat-camera-rec-timer');
+    if (recIndicator) recIndicator.style.display = 'inline-flex';
+    if (recTimer) recTimer.innerText = '00:00';
+
+    chatCameraRecInterval = setInterval(() => {
+        chatCameraRecSeconds++;
+        const mins = String(Math.floor(chatCameraRecSeconds / 60)).padStart(2, '0');
+        const secs = String(chatCameraRecSeconds % 60).padStart(2, '0');
+        if (recTimer) recTimer.innerText = `${mins}:${secs}`;
+
+        if (chatCameraRecSeconds >= 120) {
+            stopChatCameraVideoRecording();
+        }
+    }, 1000);
+}
+
+export function stopChatCameraVideoRecording() {
+    if (chatCameraRecInterval) {
+        clearInterval(chatCameraRecInterval);
+        chatCameraRecInterval = null;
+    }
+    if (chatCameraMediaRecorder && chatCameraMediaRecorder.state !== 'inactive') {
+        try {
+            chatCameraMediaRecorder.stop();
+        } catch (e) {
+            console.error('Erro ao parar gravação:', e);
+        }
+    }
+}
+
+export function retakeChatCamera() {
+    chatCameraCapturedBlob = null;
+    chatCameraCapturedDataUrl = null;
+    chatCameraCapturedType = null;
+    chatCameraRecordedChunks = [];
+    resetChatCameraUI();
+    const videoEl = document.getElementById('chat-camera-video-feed');
+    if (videoEl && chatCameraStream) {
+        videoEl.style.display = 'block';
+    }
+}
+
+function resetChatCameraUI() {
+    const videoEl = document.getElementById('chat-camera-video-feed');
+    const previewImg = document.getElementById('chat-camera-captured-preview');
+    const videoPreview = document.getElementById('chat-camera-captured-video-preview');
+    const controlsBox = document.getElementById('chat-camera-controls-box');
+    const confirmBox = document.getElementById('chat-camera-confirm-box');
+    const recIndicator = document.getElementById('chat-camera-recording-indicator');
+    const shutter = document.getElementById('chat-camera-shutter-btn');
+    const captionInput = document.getElementById('chat-camera-caption-input');
+
+    if (previewImg) { previewImg.style.display = 'none'; previewImg.src = ''; }
+    if (videoPreview) { videoPreview.style.display = 'none'; videoPreview.src = ''; }
+    if (videoEl) videoEl.style.display = 'block';
+    if (controlsBox) controlsBox.style.display = 'flex';
+    if (confirmBox) confirmBox.style.display = 'none';
+    if (recIndicator) recIndicator.style.display = 'none';
+    if (shutter) shutter.classList.remove('recording');
+    if (captionInput) captionInput.value = '';
+    setChatCameraMode(chatCameraCurrentMode);
+}
+
+export async function sendChatCameraMedia() {
+    if (!chatCameraCapturedDataUrl) {
+        showToast('Aviso', 'Nenhuma captura realizada para enviar.', 'orange');
+        return;
+    }
+
+    const captionInput = document.getElementById('chat-camera-caption-input');
+    const caption = (captionInput?.value || '').trim();
+    const type = chatCameraCapturedType || 'image';
+    const payload = chatCameraCapturedDataUrl;
+
+    closeChatCamera();
+
+    const mockFile = {
+        name: type === 'image' ? `camera_foto_${Date.now()}.jpg` : `camera_video_${Date.now()}.mp4`,
+        size: payload.length,
+        dataUrl: payload
+    };
+
+    await deliverCameraCapturedFile(type, mockFile, caption);
+}
+
+async function deliverCameraCapturedFile(type, file, caption = '') {
+    const chatId = getActiveChatId();
+    if (!chatId || !currentUser) return;
+
+    try {
+        const finalSize = formatBytesToKB(file.size);
+        const pendingMessageRef = await sendChatMessage(type, {
+            fileName: file.name,
+            fileSize: finalSize,
+            text: caption || '',
+            uploadState: 'uploading',
+            uploadPercent: 0,
+            viewOnce: false,
+            viewedBy: []
+        });
+
+        await updateMessageMediaWithChunks(chatId, pendingMessageRef.id, {
+            fileName: file.name,
+            fileSize: finalSize,
+            text: caption || '',
+            uploadState: 'sent',
+            uploadPercent: 100,
+            viewOnce: false,
+            viewedBy: []
+        }, file.dataUrl);
+
+        playSound(messageSendSound);
+        showToast(type === 'image' ? 'Foto Enviada' : 'Vídeo Enviado', 'Captura enviada com sucesso ao contato!', 'green');
+    } catch (e) {
+        console.error('Erro ao enviar captura da câmera:', e);
+        showToast('Erro', 'Não foi possível enviar a captura da câmera.', 'red');
+    }
+}
+
+// Eventos da Câmera
+document.getElementById('chat-attach-camera-btn')?.addEventListener('click', () => {
+    playSound(clickSound);
+    openChatCamera('photo');
+});
+
+document.getElementById('close-chat-camera-modal')?.addEventListener('click', () => {
+    playSound(clickSound);
+    closeChatCamera();
+});
+
+document.getElementById('switch-chat-camera-btn')?.addEventListener('click', () => {
+    playSound(clickSound);
+    switchChatCameraFacing();
+});
+
+document.getElementById('chat-camera-tab-photo')?.addEventListener('click', () => {
+    playSound(clickSound);
+    setChatCameraMode('photo');
+});
+
+document.getElementById('chat-camera-tab-video')?.addEventListener('click', () => {
+    playSound(clickSound);
+    setChatCameraMode('video');
+});
+
+document.getElementById('chat-camera-shutter-btn')?.addEventListener('click', () => {
+    if (chatCameraCurrentMode === 'photo') {
+        takeChatCameraPhoto();
+    } else {
+        if (chatCameraMediaRecorder && chatCameraMediaRecorder.state === 'recording') {
+            stopChatCameraVideoRecording();
+        } else {
+            startChatCameraVideoRecording();
+        }
+    }
+});
+
+document.getElementById('chat-camera-fallback-trigger-btn')?.addEventListener('click', () => {
+    playSound(clickSound);
+    if (chatCameraCurrentMode === 'photo') {
+        document.getElementById('chat-camera-fallback-photo')?.click();
+    } else {
+        document.getElementById('chat-camera-fallback-video')?.click();
+    }
+});
+
+document.getElementById('chat-camera-fallback-photo')?.addEventListener('change', function(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+        chatCameraCapturedDataUrl = reader.result;
+        chatCameraCapturedType = 'image';
+        const previewImg = document.getElementById('chat-camera-captured-preview');
+        const videoEl = document.getElementById('chat-camera-video-feed');
+        if (previewImg) { previewImg.src = chatCameraCapturedDataUrl; previewImg.style.display = 'block'; }
+        if (videoEl) videoEl.style.display = 'none';
+        const cBox = document.getElementById('chat-camera-controls-box');
+        const confBox = document.getElementById('chat-camera-confirm-box');
+        if (cBox) cBox.style.display = 'none';
+        if (confBox) confBox.style.display = 'flex';
+    };
+    reader.readAsDataURL(file);
+});
+
+document.getElementById('chat-camera-fallback-video')?.addEventListener('change', function(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+        chatCameraCapturedDataUrl = reader.result;
+        chatCameraCapturedType = 'video';
+        const videoPreview = document.getElementById('chat-camera-captured-video-preview');
+        const videoEl = document.getElementById('chat-camera-video-feed');
+        if (videoPreview) { videoPreview.src = chatCameraCapturedDataUrl; videoPreview.style.display = 'block'; }
+        if (videoEl) videoEl.style.display = 'none';
+        const cBox = document.getElementById('chat-camera-controls-box');
+        const confBox = document.getElementById('chat-camera-confirm-box');
+        if (cBox) cBox.style.display = 'none';
+        if (confBox) confBox.style.display = 'flex';
+    };
+    reader.readAsDataURL(file);
+});
+
+document.getElementById('chat-camera-retake-btn')?.addEventListener('click', () => {
+    playSound(clickSound);
+    retakeChatCamera();
+});
+
+document.getElementById('chat-camera-send-btn')?.addEventListener('click', () => {
+    sendChatCameraMedia();
+});
+
+/* ==========================================================================
+   BOTÃO INTERATIVO COM LINK PARA CONTA EMPRESA (v1.0.206)
+   ========================================================================== */
+
+let currentCompanyButtonImageBase64 = null;
+
+export function buildCompanyButtonCardHTML(msg) {
+    if (!msg) return '';
+    const title = msg.buttonTitle || 'Acessar Link';
+    let url = msg.buttonUrl || '#';
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = 'https://' + url;
+    }
+    const safeUrl = escapeHTML(url);
+    const safeTitle = escapeHTML(title);
+    const imgHtml = msg.buttonImage ? `
+        <div class="company-btn-card-img-wrap">
+            <img src="${escapeHTML(msg.buttonImage)}" alt="${safeTitle}" class="company-btn-card-img" />
+        </div>
+    ` : '';
+    const descHtml = msg.text ? `<p class="company-btn-card-desc">${escapeHTML(msg.text)}</p>` : '';
+
+    return `
+        <div class="company-btn-message-card">
+            <div class="company-btn-card-badge">
+                <i data-lucide="briefcase" style="width: 13px; height: 13px;"></i>
+                <span>Mensagem Comercial</span>
+            </div>
+            ${imgHtml}
+            ${descHtml}
+            <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="company-interactive-cta-btn" onclick="event.stopPropagation();">
+                <i data-lucide="external-link"></i>
+                <span>${safeTitle}</span>
+            </a>
+        </div>
+    `;
+}
+
+export function openCompanyButtonModal() {
+    const modal = document.getElementById('company-button-modal');
+    if (!modal) return;
+    document.getElementById('attachment-panel')?.classList.remove('active');
+    currentCompanyButtonImageBase64 = null;
+
+    const titleInput = document.getElementById('company-btn-title-input');
+    const linkInput = document.getElementById('company-btn-link-input');
+    const descInput = document.getElementById('company-btn-desc-input');
+    const imgInput = document.getElementById('company-btn-image-input');
+    const previewBox = document.getElementById('company-btn-image-preview-box');
+    const previewImg = document.getElementById('company-btn-image-preview');
+    const uploadLabel = document.getElementById('company-btn-image-upload-label');
+
+    if (titleInput) titleInput.value = '';
+    if (linkInput) linkInput.value = '';
+    if (descInput) descInput.value = '';
+    if (imgInput) imgInput.value = '';
+    if (previewBox) previewBox.style.display = 'none';
+    if (previewImg) previewImg.src = '';
+    if (uploadLabel) uploadLabel.style.display = 'inline-flex';
+
+    modal.style.display = 'flex';
+    modal.classList.add('active');
+    modal.setAttribute('aria-hidden', 'false');
+    if (window.lucide) lucide.createIcons();
+}
+
+export function closeCompanyButtonModal() {
+    const modal = document.getElementById('company-button-modal');
+    if (!modal) return;
+    modal.style.display = 'none';
+    modal.classList.remove('active');
+    modal.setAttribute('aria-hidden', 'true');
+    currentCompanyButtonImageBase64 = null;
+}
+
+export async function sendCompanyButtonMessage() {
+    const titleInput = document.getElementById('company-btn-title-input');
+    const linkInput = document.getElementById('company-btn-link-input');
+    const descInput = document.getElementById('company-btn-desc-input');
+
+    const title = (titleInput?.value || '').trim();
+    let url = (linkInput?.value || '').trim();
+    const text = (descInput?.value || '').trim();
+
+    if (!title) {
+        showToast('Campo Obrigatório', 'Por favor, digite o título do botão.', 'orange');
+        titleInput?.focus();
+        return;
+    }
+
+    if (!url) {
+        showToast('Campo Obrigatório', 'Por favor, insira o link do botão.', 'orange');
+        linkInput?.focus();
+        return;
+    }
+
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = 'https://' + url;
+    }
+
+    try {
+        new URL(url);
+    } catch (_) {
+        showToast('Link Inválido', 'Por favor, insira uma URL válida (ex: https://...).', 'red');
+        linkInput?.focus();
+        return;
+    }
+
+    const payload = {
+        buttonTitle: title,
+        buttonUrl: url,
+        buttonImage: currentCompanyButtonImageBase64 || null,
+        text: text
+    };
+
+    closeCompanyButtonModal();
+    playSound(messageSendSound);
+
+    try {
+        await sendChatMessage('company_button', payload);
+        showToast('Botão Enviado', 'Botão interativo enviado com sucesso ao contato!', 'green');
+    } catch (err) {
+        console.error('Erro ao enviar botão comercial:', err);
+        showToast('Erro', 'Não foi possível enviar o botão comercial.', 'red');
+    }
+}
+
+// Eventos do Botão Comercial
+document.getElementById('chat-attach-button-btn')?.addEventListener('click', () => {
+    playSound(clickSound);
+    openCompanyButtonModal();
+});
+
+document.getElementById('close-company-button-modal')?.addEventListener('click', () => {
+    playSound(clickSound);
+    closeCompanyButtonModal();
+});
+
+document.getElementById('company-btn-cancel-btn')?.addEventListener('click', () => {
+    playSound(clickSound);
+    closeCompanyButtonModal();
+});
+
+document.getElementById('company-btn-submit-btn')?.addEventListener('click', () => {
+    sendCompanyButtonMessage();
+});
+
+document.getElementById('company-btn-image-input')?.addEventListener('change', function(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+        currentCompanyButtonImageBase64 = reader.result;
+        const previewBox = document.getElementById('company-btn-image-preview-box');
+        const previewImg = document.getElementById('company-btn-image-preview');
+        const uploadLabel = document.getElementById('company-btn-image-upload-label');
+        if (previewImg) previewImg.src = currentCompanyButtonImageBase64;
+        if (previewBox) previewBox.style.display = 'block';
+        if (uploadLabel) uploadLabel.style.display = 'none';
+        if (window.lucide) lucide.createIcons();
+    };
+    reader.readAsDataURL(file);
+});
+
+document.getElementById('company-btn-remove-image-btn')?.addEventListener('click', () => {
+    playSound(clickSound);
+    currentCompanyButtonImageBase64 = null;
+    const previewBox = document.getElementById('company-btn-image-preview-box');
+    const previewImg = document.getElementById('company-btn-image-preview');
+    const uploadLabel = document.getElementById('company-btn-image-upload-label');
+    const imgInput = document.getElementById('company-btn-image-input');
+    if (imgInput) imgInput.value = '';
+    if (previewImg) previewImg.src = '';
+    if (previewBox) previewBox.style.display = 'none';
+    if (uploadLabel) uploadLabel.style.display = 'inline-flex';
+});
 
 /* ==========================================================================
    HISTÓRICO DE LIGAÇÕES DENTRO DAS CONVERSAS & CHAMADAS WEBRTC P2P (v1.0.182)
@@ -33948,6 +34615,21 @@ if (typeof window !== 'undefined') {
     window.togglePrivateAccount = togglePrivateAccount;
     window.syncPrivateAccountToggles = syncPrivateAccountToggles;
     window.initPrivateAccountControls = initPrivateAccountControls;
+    // Câmera nos Contatos e Botão Interativo Empresa (v1.0.206)
+    window.openChatCamera = openChatCamera;
+    window.closeChatCamera = closeChatCamera;
+    window.setChatCameraMode = setChatCameraMode;
+    window.switchChatCameraFacing = switchChatCameraFacing;
+    window.takeChatCameraPhoto = takeChatCameraPhoto;
+    window.startChatCameraVideoRecording = startChatCameraVideoRecording;
+    window.stopChatCameraVideoRecording = stopChatCameraVideoRecording;
+    window.retakeChatCamera = retakeChatCamera;
+    window.sendChatCameraMedia = sendChatCameraMedia;
+    window.openCompanyButtonModal = openCompanyButtonModal;
+    window.closeCompanyButtonModal = closeCompanyButtonModal;
+    window.sendCompanyButtonMessage = sendCompanyButtonMessage;
+    window.buildCompanyButtonCardHTML = buildCompanyButtonCardHTML;
+    window.openForwardModal = openForwardModal;
 }
 
 if (typeof window !== 'undefined') {
