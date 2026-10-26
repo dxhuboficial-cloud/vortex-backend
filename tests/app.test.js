@@ -12414,14 +12414,16 @@ test('Função de Avaliação de 5 Estrelas e Comentários nos Produtos Pós-Com
   const css = fs.readFileSync('public/style.css', 'utf8');
   const html = fs.readFileSync('public/index.html', 'utf8');
 
-  // 1. Integridade de Versionamento (v1.0.198)
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.198', 'script.js deve ter versão 1.0.198');
+  // 1. Integridade de Versionamento (v1.0.198+)
+  const versionNum = parseInt((win.CURRENT_APP_VERSION || '0.0.0').split('.')[2], 10);
+  assert.ok(versionNum >= 198, 'script.js deve ter versão >= 1.0.198');
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
-  assert.strictEqual(versionJson.version, '1.0.198', 'version.json deve ter versão 1.0.198');
-  assert.ok(html.includes('script.js?v=1.0.198'), 'index.html deve referenciar script.js?v=1.0.198');
-  assert.ok(html.includes('style.css?v=1.0.198'), 'index.html deve referenciar style.css?v=1.0.198');
+  const jsonVerNum = parseInt((versionJson.version || '0.0.0').split('.')[2], 10);
+  assert.ok(jsonVerNum >= 198, 'version.json deve ter versão >= 1.0.198');
+  assert.ok(html.includes('script.js?v='), 'index.html deve referenciar script.js com hash de versão');
+  assert.ok(html.includes('style.css?v='), 'index.html deve referenciar style.css com hash de versão');
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
-  assert.ok(swContent.includes('vortex-vip-v1.0.198'), 'sw.js deve conter cache vortex-vip-v1.0.198');
+  assert.ok(swContent.includes('vortex-vip-v1.0.'), 'sw.js deve conter cache vortex-vip-v1.0.x');
 
   // 2. Elementos HTML do Modal de Avaliação (#catalog-product-review-modal)
   assert.ok(html.includes('id="catalog-product-review-modal"'), 'index.html deve conter #catalog-product-review-modal');
@@ -12579,6 +12581,194 @@ test('Função de Avaliação de 5 Estrelas e Comentários nos Produtos Pós-Com
   win.closeProductReviewModal();
   assert.strictEqual(reviewModal.style.display, 'none');
   assert.ok(!reviewModal.classList.contains('active'));
+});
+
+test('Programar Story e Posts para Postar em Outro Dia (v1.0.199)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+  const css = fs.readFileSync('public/style.css', 'utf8');
+  const html = fs.readFileSync('public/index.html', 'utf8');
+
+  // 1. Integridade de Versionamento (v1.0.199)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.199', 'script.js deve ter versão 1.0.199');
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
+  assert.strictEqual(versionJson.version, '1.0.199', 'version.json deve ter versão 1.0.199');
+  assert.ok(html.includes('script.js?v=1.0.199'), 'index.html deve referenciar script.js?v=1.0.199');
+  assert.ok(html.includes('style.css?v=1.0.199'), 'index.html deve referenciar style.css?v=1.0.199');
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+  assert.ok(swContent.includes('vortex-vip-v1.0.199'), 'sw.js deve conter cache vortex-vip-v1.0.199');
+
+  // 2. Elementos HTML de Programação de Story no #post-status-overlay
+  assert.ok(html.includes('id="story-schedule-section"'), 'index.html deve conter #story-schedule-section');
+  assert.ok(html.includes('id="story-schedule-toggle"'), 'index.html deve conter #story-schedule-toggle');
+  assert.ok(html.includes('id="story-schedule-fields"'), 'index.html deve conter #story-schedule-fields');
+  assert.ok(html.includes('id="story-schedule-date"'), 'index.html deve conter #story-schedule-date');
+  assert.ok(html.includes('id="story-schedule-time"'), 'index.html deve conter #story-schedule-time');
+  assert.ok(html.includes('id="story-schedule-preview-hint"'), 'index.html deve conter #story-schedule-preview-hint');
+
+  // 3. Elementos HTML de Programação de Post no #screenshot-gallery-overlay
+  assert.ok(html.includes('id="post-schedule-section"'), 'index.html deve conter #post-schedule-section');
+  assert.ok(html.includes('id="post-schedule-toggle"'), 'index.html deve conter #post-schedule-toggle');
+  assert.ok(html.includes('id="post-schedule-fields"'), 'index.html deve conter #post-schedule-fields');
+  assert.ok(html.includes('id="post-schedule-date"'), 'index.html deve conter #post-schedule-date');
+  assert.ok(html.includes('id="post-schedule-time"'), 'index.html deve conter #post-schedule-time');
+  assert.ok(html.includes('id="post-schedule-preview-hint"'), 'index.html deve conter #post-schedule-preview-hint');
+
+  // 4. Regras CSS de Agendamento no style.css
+  assert.ok(css.includes('.story-schedule-setting-item'), 'style.css deve conter .story-schedule-setting-item');
+  assert.ok(css.includes('.post-schedule-section'), 'style.css deve conter .post-schedule-section');
+  assert.ok(css.includes('.schedule-fields-container'), 'style.css deve conter .schedule-fields-container');
+  assert.ok(css.includes('.schedule-chip'), 'style.css deve conter .schedule-chip');
+  assert.ok(css.includes('.schedule-active-btn'), 'style.css deve conter .schedule-active-btn');
+  assert.ok(css.includes('.post-scheduled-banner'), 'style.css deve conter .post-scheduled-banner');
+  assert.ok(css.includes('.post-publish-now-btn'), 'style.css deve conter .post-publish-now-btn');
+
+  // 5. Funções do Sistema de Programação em window
+  assert.strictEqual(typeof win.getFormattedScheduleDate, 'function', 'getFormattedScheduleDate deve existir');
+  assert.strictEqual(typeof win.computeQuickScheduleTimestamp, 'function', 'computeQuickScheduleTimestamp deve existir');
+  assert.strictEqual(typeof win.validateScheduleInput, 'function', 'validateScheduleInput deve existir');
+  assert.strictEqual(typeof win.updateStoryScheduleUI, 'function', 'updateStoryScheduleUI deve existir');
+  assert.strictEqual(typeof win.updatePostScheduleUI, 'function', 'updatePostScheduleUI deve existir');
+  assert.strictEqual(typeof win.applyQuickSchedule, 'function', 'applyQuickSchedule deve existir');
+  assert.strictEqual(typeof win.publishScheduledPostNow, 'function', 'publishScheduledPostNow deve existir');
+  assert.strictEqual(typeof win.publishScheduledStoryNow, 'function', 'publishScheduledStoryNow deve existir');
+  assert.strictEqual(typeof win.checkAndReleaseScheduledItems, 'function', 'checkAndReleaseScheduledItems deve existir');
+
+  // 6. Teste de Validação de Agendamento (validateScheduleInput)
+  const pastCheck = win.validateScheduleInput('2020-01-01', '10:00');
+  assert.strictEqual(pastCheck.isValid, false, 'Data no passado deve ser rejeitada');
+  assert.ok(pastCheck.error.includes('futuro'), 'Mensagem deve indicar que a data precisa estar no futuro');
+
+  const emptyCheck = win.validateScheduleInput('', '');
+  assert.strictEqual(emptyCheck.isValid, false, 'Campos vazios devem ser rejeitados');
+
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const m = String(tomorrow.getMonth() + 1).padStart(2, '0');
+  const d = String(tomorrow.getDate()).padStart(2, '0');
+  const validDateStr = `${tomorrow.getFullYear()}-${m}-${d}`;
+  const validCheck = win.validateScheduleInput(validDateStr, '15:30');
+  assert.strictEqual(validCheck.isValid, true, 'Data futura válida deve ser aceita');
+  assert.ok(validCheck.timestamp > Date.now(), 'Timestamp retornado deve ser no futuro');
+  assert.ok(validCheck.formatted.includes('15:30'), 'Data formatada deve conter o horário correto');
+
+  // 7. Teste de Interface: Programação de Story
+  const storyToggle = env.elements['story-schedule-toggle'];
+  const storyFields = env.elements['story-schedule-fields'];
+  const publishStatusBtn = env.elements['publish-status-btn'];
+
+  assert.ok(storyToggle && storyFields && publishStatusBtn);
+  storyToggle.checked = true;
+  win.updateStoryScheduleUI();
+  assert.strictEqual(storyFields.style.display, 'block', 'Campos de agendamento de story devem aparecer quando o toggle está ativo');
+  assert.ok(publishStatusBtn.classList.contains('schedule-active-btn'), 'Botão de publicar story deve receber a classe de agendamento');
+  assert.ok(publishStatusBtn.innerHTML.includes('Programar Story'), 'Texto do botão deve mudar para Programar Story');
+
+  // Testar atalho rápido do Story
+  win.applyQuickSchedule('story', 'tomorrow-09');
+  const storyTimeInp = env.elements['story-schedule-time'];
+  assert.strictEqual(storyTimeInp.value, '09:00', 'Atalho rápido tomorrow-09 deve preencher 09:00');
+
+  // 8. Teste de Interface: Programação de Post
+  const postToggle = env.elements['post-schedule-toggle'];
+  const postFields = env.elements['post-schedule-fields'];
+  const publishPostBtn = env.elements['publish-post-btn'];
+
+  assert.ok(postToggle && postFields && publishPostBtn);
+  postToggle.checked = true;
+  win.updatePostScheduleUI();
+  assert.strictEqual(postFields.style.display, 'block', 'Campos de agendamento de post devem aparecer quando o toggle está ativo');
+  assert.ok(publishPostBtn.classList.contains('schedule-active-btn'), 'Botão de publicar post deve receber a classe de agendamento');
+  assert.ok(publishPostBtn.innerHTML.includes('Programar Post'), 'Texto do botão deve mudar para Programar Post');
+
+  // Testar atalho rápido do Post
+  win.applyQuickSchedule('post', 'tomorrow-18');
+  const postTimeInp = env.elements['post-schedule-time'];
+  assert.strictEqual(postTimeInp.value, '18:00', 'Atalho rápido tomorrow-18 deve preencher 18:00');
+
+  // 9. Teste de Publicação de Post Programado e Comportamento no Feed
+  const authorUser = { uid: 'author_sched_199', name: 'Lucas Criador VIP', accountType: 'personal' };
+  win.setCurrentUser(authorUser);
+  win.setCurrentProfile(authorUser);
+
+  const futureSchedTime = Date.now() + 86400000; // Amanhã
+  const schedPostId = 'post_sched_test_199';
+  const normalPostId = 'post_normal_test_199';
+
+  env.firestoreDocs[`posts/${schedPostId}`] = {
+    id: schedPostId,
+    authorUid: authorUser.uid,
+    authorName: authorUser.name,
+    caption: 'Post programado para amanhã!',
+    scheduled: true,
+    isScheduled: true,
+    scheduledFor: futureSchedTime,
+    scheduledDateStr: win.getFormattedScheduleDate(futureSchedTime),
+    published: false,
+    createdAt: Date.now()
+  };
+
+  env.firestoreDocs[`posts/${normalPostId}`] = {
+    id: normalPostId,
+    authorUid: authorUser.uid,
+    authorName: authorUser.name,
+    caption: 'Post publicado normal!',
+    scheduled: false,
+    isScheduled: false,
+    published: true,
+    createdAt: Date.now()
+  };
+
+  // 9.1 Visão do Próprio Autor: DEVE ver o post programado com o banner especial
+  const allPosts = [env.firestoreDocs[`posts/${schedPostId}`], env.firestoreDocs[`posts/${normalPostId}`]];
+  const feedList = env.elements['feed-list'];
+  win.renderPostsFeed(allPosts);
+
+  assert.ok(feedList.innerHTML.includes('post-scheduled-banner'), 'Feed para o próprio autor deve exibir o banner post-scheduled-banner');
+  assert.ok(feedList.innerHTML.includes('Programado para'), 'Banner deve informar a programação');
+  assert.ok(feedList.innerHTML.includes('post-publish-now-btn'), 'Banner deve conter o botão post-publish-now-btn');
+
+  // 9.2 Visão de Outro Usuário (Público): NÃO DEVE ver o post programado
+  const visitorUser = { uid: 'visitor_199', name: 'Visitante Externo', accountType: 'personal' };
+  win.setCurrentUser(visitorUser);
+  win.setCurrentProfile(visitorUser);
+
+  win.renderPostsFeed(allPosts);
+  assert.ok(!feedList.innerHTML.includes(schedPostId), 'Usuários externos NÃO devem ver postagens programadas no Feed antes da data');
+  assert.ok(feedList.innerHTML.includes(normalPostId), 'Usuários externos devem ver postagens normais');
+
+  // 10. Teste de Publicar Post Programado Imediatamente (publishScheduledPostNow)
+  win.setCurrentUser(authorUser);
+  win.setCurrentProfile(authorUser);
+
+  await win.publishScheduledPostNow(schedPostId);
+  const updatedSchedPost = env.firestoreDocs[`posts/${schedPostId}`];
+  assert.strictEqual(updatedSchedPost.scheduled, false, 'Post deve ter scheduled = false após publicar agora');
+  assert.strictEqual(updatedSchedPost.published, true, 'Post deve ter published = true após publicar agora');
+
+  // Agora qualquer usuário deve ver o post liberado
+  win.setCurrentUser(visitorUser);
+  win.renderPostsFeed([updatedSchedPost]);
+  assert.ok(feedList.innerHTML.includes(schedPostId), 'Post liberado agora deve ser visível para todos os usuários');
+
+  // 11. Teste de Auto-Liberação de Story e Post pelo checkAndReleaseScheduledItems
+  win.setCurrentUser(authorUser);
+  const overduePostId = 'post_overdue_199';
+  env.firestoreDocs[`posts/${overduePostId}`] = {
+    id: overduePostId,
+    authorUid: authorUser.uid,
+    caption: 'Post cujo horário agendado já passou',
+    scheduled: true,
+    isScheduled: true,
+    scheduledFor: Date.now() - 5000, // 5 segundos no passado
+    published: false,
+    createdAt: Date.now() - 3600000
+  };
+
+  await win.checkAndReleaseScheduledItems();
+  const releasedPost = env.firestoreDocs[`posts/${overduePostId}`];
+  assert.strictEqual(releasedPost.scheduled, false, 'Post vencido deve ser automaticamente liberado');
+  assert.strictEqual(releasedPost.published, true, 'Post vencido deve ter published = true');
 });
 
 

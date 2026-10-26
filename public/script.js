@@ -8710,11 +8710,23 @@ function listenToStories() {
         dynamicContainer.innerHTML = '';
 
         const userStoriesMap = {};
+        const now = Date.now();
         snapshot.forEach(d => {
             const data = { id: d.id, ...d.data() };
+            const isScheduledFuture = Boolean((data.scheduled || data.isScheduled) && data.scheduledFor && data.scheduledFor > now);
+            if (isScheduledFuture) {
+                // Stories agendados para o futuro só aparecem para o próprio autor
+                if (currentUser && data.authorUid === currentUser.uid) {
+                    if (!userStoriesMap[data.authorUid]) userStoriesMap[data.authorUid] = [];
+                    userStoriesMap[data.authorUid].push(data);
+                }
+                return;
+            }
             if (!userStoriesMap[data.authorUid]) userStoriesMap[data.authorUid] = [];
             userStoriesMap[data.authorUid].push(data);
         });
+
+        checkAndReleaseScheduledItems();
 
         // Configuração do próprio status (o usuário SEMPRE vê os seus próprios stories)
         const myStoryList = currentUser ? userStoriesMap[currentUser.uid] : null;
@@ -9960,6 +9972,335 @@ export function initStoryCaptionAndLinkControls() {
     updateStoryPersonalCategoryVisibility(currentProfile);
 }
 
+// ===== PROGRAMAÇÃO DE STORIES E POSTS PARA OUTRO DIA (v1.0.199) =====
+export function getFormattedScheduleDate(timestamp) {
+    if (!timestamp) return '';
+    const d = new Date(timestamp);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    return `${day}/${month}/${year} às ${hours}:${minutes}`;
+}
+
+export function computeQuickScheduleTimestamp(quickKey) {
+    const now = new Date();
+    const target = new Date(now.getTime());
+
+    switch (quickKey) {
+        case 'tomorrow-09':
+            target.setDate(now.getDate() + 1);
+            target.setHours(9, 0, 0, 0);
+            break;
+        case 'tomorrow-18':
+            target.setDate(now.getDate() + 1);
+            target.setHours(18, 0, 0, 0);
+            break;
+        case 'day2-12':
+            target.setDate(now.getDate() + 2);
+            target.setHours(12, 0, 0, 0);
+            break;
+        case 'weekend': {
+            const currentDay = now.getDay();
+            const daysUntilSaturday = ((6 - currentDay + 7) % 7) || 7;
+            target.setDate(now.getDate() + daysUntilSaturday);
+            target.setHours(10, 0, 0, 0);
+            break;
+        }
+        default:
+            target.setDate(now.getDate() + 1);
+            target.setHours(9, 0, 0, 0);
+    }
+    return target;
+}
+
+export function validateScheduleInput(dateVal, timeVal) {
+    if (!dateVal) {
+        return { isValid: false, error: 'Selecione a data para programar a publicação.' };
+    }
+    if (!timeVal) {
+        return { isValid: false, error: 'Selecione o horário para programar a publicação.' };
+    }
+
+    const [year, month, day] = dateVal.split('-').map(Number);
+    const [hours, minutes] = timeVal.split(':').map(Number);
+    const schedDate = new Date(year, month - 1, day, hours, minutes, 0, 0);
+    const schedTime = schedDate.getTime();
+    const now = Date.now();
+
+    if (isNaN(schedTime)) {
+        return { isValid: false, error: 'Data ou horário informados são inválidos.' };
+    }
+
+    if (schedTime <= now + 60000) {
+        return { isValid: false, error: 'Escolha uma data e horário no futuro para programar.' };
+    }
+
+    return {
+        isValid: true,
+        timestamp: schedTime,
+        formatted: getFormattedScheduleDate(schedTime)
+    };
+}
+
+export function updateStoryScheduleUI() {
+    const toggle = document.getElementById('story-schedule-toggle');
+    const fields = document.getElementById('story-schedule-fields');
+    const dateInp = document.getElementById('story-schedule-date');
+    const timeInp = document.getElementById('story-schedule-time');
+    const hint = document.getElementById('story-schedule-preview-hint');
+    const hintText = document.getElementById('story-schedule-preview-text');
+    const publishBtn = document.getElementById('publish-status-btn');
+
+    const isEnabled = Boolean(toggle && toggle.checked);
+    if (fields) fields.style.display = isEnabled ? 'block' : 'none';
+
+    if (isEnabled) {
+        const todayStr = new Date().toISOString().split('T')[0];
+        if (dateInp && !dateInp.min) dateInp.min = todayStr;
+
+        if (dateInp && !dateInp.value) {
+            const tom = new Date();
+            tom.setDate(tom.getDate() + 1);
+            const m = String(tom.getMonth() + 1).padStart(2, '0');
+            const d = String(tom.getDate()).padStart(2, '0');
+            dateInp.value = `${tom.getFullYear()}-${m}-${d}`;
+        }
+        if (timeInp && !timeInp.value) {
+            timeInp.value = '09:00';
+        }
+
+        const check = validateScheduleInput(dateInp?.value, timeInp?.value);
+        if (hint && hintText) {
+            if (check.isValid) {
+                hint.style.display = 'flex';
+                hintText.innerHTML = `Story agendado para: <strong>${escapeHTML(check.formatted)}</strong>`;
+            } else {
+                hint.style.display = 'none';
+            }
+        }
+
+        if (publishBtn) {
+            publishBtn.classList.add('schedule-active-btn');
+            publishBtn.innerHTML = '<i data-lucide="calendar-clock"></i> <span>Programar Story</span>';
+            if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+        }
+    } else {
+        if (hint) hint.style.display = 'none';
+        if (publishBtn) {
+            publishBtn.classList.remove('schedule-active-btn');
+            publishBtn.innerHTML = '<i data-lucide="send"></i> <span>Publicar Status</span>';
+            if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+        }
+    }
+}
+
+export function updatePostScheduleUI() {
+    const toggle = document.getElementById('post-schedule-toggle');
+    const fields = document.getElementById('post-schedule-fields');
+    const dateInp = document.getElementById('post-schedule-date');
+    const timeInp = document.getElementById('post-schedule-time');
+    const hint = document.getElementById('post-schedule-preview-hint');
+    const hintText = document.getElementById('post-schedule-preview-text');
+    const publishBtn = document.getElementById('publish-post-btn');
+
+    const isEnabled = Boolean(toggle && toggle.checked);
+    if (fields) fields.style.display = isEnabled ? 'block' : 'none';
+
+    if (isEnabled) {
+        const todayStr = new Date().toISOString().split('T')[0];
+        if (dateInp && !dateInp.min) dateInp.min = todayStr;
+
+        if (dateInp && !dateInp.value) {
+            const tom = new Date();
+            tom.setDate(tom.getDate() + 1);
+            const m = String(tom.getMonth() + 1).padStart(2, '0');
+            const d = String(tom.getDate()).padStart(2, '0');
+            dateInp.value = `${tom.getFullYear()}-${m}-${d}`;
+        }
+        if (timeInp && !timeInp.value) {
+            timeInp.value = '09:00';
+        }
+
+        const check = validateScheduleInput(dateInp?.value, timeInp?.value);
+        if (hint && hintText) {
+            if (check.isValid) {
+                hint.style.display = 'flex';
+                hintText.innerHTML = `Post agendado para: <strong>${escapeHTML(check.formatted)}</strong>`;
+            } else {
+                hint.style.display = 'none';
+            }
+        }
+
+        if (publishBtn) {
+            publishBtn.classList.add('schedule-active-btn');
+            publishBtn.innerHTML = '<i data-lucide="calendar-clock"></i> <span>Programar Post</span>';
+            if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+        }
+    } else {
+        if (hint) hint.style.display = 'none';
+        if (publishBtn) {
+            publishBtn.classList.remove('schedule-active-btn');
+            publishBtn.innerHTML = '<i data-lucide="send"></i> <span>Publicar</span>';
+            if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+        }
+    }
+}
+
+export function applyQuickSchedule(target, quickKey) {
+    const dt = computeQuickScheduleTimestamp(quickKey);
+    const m = String(dt.getMonth() + 1).padStart(2, '0');
+    const d = String(dt.getDate()).padStart(2, '0');
+    const dateStr = `${dt.getFullYear()}-${m}-${d}`;
+    const hours = String(dt.getHours()).padStart(2, '0');
+    const minutes = String(dt.getMinutes()).padStart(2, '0');
+    const timeStr = `${hours}:${minutes}`;
+
+    if (target === 'story') {
+        const dateInp = document.getElementById('story-schedule-date');
+        const timeInp = document.getElementById('story-schedule-time');
+        if (dateInp) dateInp.value = dateStr;
+        if (timeInp) timeInp.value = timeStr;
+        updateStoryScheduleUI();
+    } else if (target === 'post') {
+        const dateInp = document.getElementById('post-schedule-date');
+        const timeInp = document.getElementById('post-schedule-time');
+        if (dateInp) dateInp.value = dateStr;
+        if (timeInp) timeInp.value = timeStr;
+        updatePostScheduleUI();
+    }
+}
+
+export function initScheduleControls() {
+    const storyToggle = document.getElementById('story-schedule-toggle');
+    if (storyToggle) {
+        storyToggle.addEventListener('change', () => {
+            playSound(clickSound);
+            updateStoryScheduleUI();
+        });
+    }
+
+    const storyDate = document.getElementById('story-schedule-date');
+    const storyTime = document.getElementById('story-schedule-time');
+    storyDate?.addEventListener('change', () => updateStoryScheduleUI());
+    storyTime?.addEventListener('change', () => updateStoryScheduleUI());
+    storyDate?.addEventListener('input', () => updateStoryScheduleUI());
+    storyTime?.addEventListener('input', () => updateStoryScheduleUI());
+
+    const postToggle = document.getElementById('post-schedule-toggle');
+    if (postToggle) {
+        postToggle.addEventListener('change', () => {
+            playSound(clickSound);
+            updatePostScheduleUI();
+        });
+    }
+
+    const postDate = document.getElementById('post-schedule-date');
+    const postTime = document.getElementById('post-schedule-time');
+    postDate?.addEventListener('change', () => updatePostScheduleUI());
+    postTime?.addEventListener('change', () => updatePostScheduleUI());
+    postDate?.addEventListener('input', () => updatePostScheduleUI());
+    postTime?.addEventListener('input', () => updatePostScheduleUI());
+
+    document.querySelectorAll('.schedule-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            playSound(clickSound);
+            const target = chip.dataset.target || 'post';
+            const quick = chip.dataset.quick || 'tomorrow-09';
+            applyQuickSchedule(target, quick);
+        });
+    });
+}
+
+export async function publishScheduledPostNow(postId) {
+    if (!postId || !currentUser) return;
+    try {
+        await updateDoc(doc(db, 'posts', postId), {
+            scheduled: false,
+            isScheduled: false,
+            published: true,
+            createdAt: Date.now(),
+            updatedAt: Date.now()
+        });
+        showToast('Post Publicado! 🎉', 'Sua postagem programada foi colocada no ar no Feed agora.', 'green');
+    } catch (e) {
+        console.error('Erro ao publicar post agendado:', e);
+        showToast('Erro', 'Não foi possível publicar a postagem agora.', 'red');
+    }
+}
+
+export async function publishScheduledStoryNow(storyId) {
+    if (!storyId || !currentUser) return;
+    try {
+        await updateDoc(doc(db, 'stories', storyId), {
+            scheduled: false,
+            isScheduled: false,
+            published: true,
+            createdAt: Date.now(),
+            updatedAt: Date.now()
+        });
+        showToast('Story Publicado! 🌟', 'Seu story programado já está visível para seus contatos.', 'green');
+    } catch (e) {
+        console.error('Erro ao publicar story agendado:', e);
+        showToast('Erro', 'Não foi possível publicar o story agora.', 'red');
+    }
+}
+
+export async function checkAndReleaseScheduledItems() {
+    if (!currentUser) return;
+    const now = Date.now();
+    try {
+        const postsQ = query(
+            collection(db, 'posts'),
+            where('authorUid', '==', currentUser.uid),
+            where('scheduled', '==', true)
+        );
+        const pSnap = await getDocs(postsQ);
+        pSnap.forEach(async (d) => {
+            const data = d.data();
+            if (data.scheduledFor && data.scheduledFor <= now) {
+                try {
+                    await updateDoc(doc(db, 'posts', d.id), {
+                        scheduled: false,
+                        isScheduled: false,
+                        published: true,
+                        createdAt: now,
+                        updatedAt: now
+                    });
+                } catch (err) {
+                    console.warn('Erro ao auto-liberar post agendado:', err);
+                }
+            }
+        });
+
+        const storiesQ = query(
+            collection(db, 'stories'),
+            where('authorUid', '==', currentUser.uid),
+            where('scheduled', '==', true)
+        );
+        const sSnap = await getDocs(storiesQ);
+        sSnap.forEach(async (d) => {
+            const data = d.data();
+            if (data.scheduledFor && data.scheduledFor <= now) {
+                try {
+                    await updateDoc(doc(db, 'stories', d.id), {
+                        scheduled: false,
+                        isScheduled: false,
+                        published: true,
+                        createdAt: now,
+                        updatedAt: now
+                    });
+                } catch (err) {
+                    console.warn('Erro ao auto-liberar story agendado:', err);
+                }
+            }
+        });
+    } catch (e) {
+        // Ignorar em caso de mock/rede
+    }
+}
+
 // Abertura do Painel de Postar Status
 function openStatusCreator() {
     playSound(clickSound);
@@ -11083,6 +11424,24 @@ document.getElementById('publish-status-btn')?.addEventListener('click', async (
             const anonymousPromptInput = document.getElementById('story-anonymous-prompt');
             const anonymousPrompt = hasAnonymous ? (anonymousPromptInput?.value?.trim() || 'Mande uma mensagem anônima...') : '';
 
+            // Validação de Programação de Story (v1.0.199)
+            const storySchedToggle = document.getElementById('story-schedule-toggle');
+            const isStoryScheduled = Boolean(storySchedToggle && storySchedToggle.checked);
+            let storyScheduleResult = null;
+            if (isStoryScheduled) {
+                const sDate = document.getElementById('story-schedule-date')?.value;
+                const sTime = document.getElementById('story-schedule-time')?.value;
+                storyScheduleResult = validateScheduleInput(sDate, sTime);
+                if (!storyScheduleResult.isValid) {
+                    showToast('Agendamento Inválido 📅', storyScheduleResult.error, 'yellow');
+                    if (publishBtn) {
+                        publishBtn.disabled = false;
+                        updateStoryScheduleUI();
+                    }
+                    return;
+                }
+            }
+
             const storyData = {
                 authorUid: currentUser.uid,
                 authorName: currentProfile.name,
@@ -11104,6 +11463,11 @@ document.getElementById('publish-status-btn')?.addEventListener('click', async (
                 linkUrl: storyLinkPayload ? storyLinkPayload.url : '',
                 linkText: storyLinkPayload ? storyLinkPayload.text : '',
                 linkIcon: storyLinkPayload ? storyLinkPayload.icon : '',
+                scheduled: isStoryScheduled,
+                isScheduled: isStoryScheduled,
+                scheduledFor: isStoryScheduled ? storyScheduleResult.timestamp : null,
+                scheduledDateStr: isStoryScheduled ? storyScheduleResult.formatted : null,
+                published: !isStoryScheduled,
                 views: {},
                 reactions: {},
                 replies: [],
@@ -11130,7 +11494,9 @@ document.getElementById('publish-status-btn')?.addEventListener('click', async (
                 mediaChunkCache.set(`story_audio_${storyDocRef.id}`, localAudioPayload);
             }
 
-            if (isAdStory) {
+            if (isStoryScheduled) {
+                showToast("Story Programado! 📅", `Seu story foi agendado para ${storyScheduleResult.formatted}.`, "green");
+            } else if (isAdStory) {
                 showToast("Status Publicado", "Seu status de Anúncio está visível para todos os usuários da plataforma!", "green");
             } else {
                 showToast("Status Publicado", "Seu status de 24 horas está visível para seus contatos aceitos!", "green");
@@ -19177,7 +19543,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.198';
+export const CURRENT_APP_VERSION = '1.0.199';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -24356,6 +24722,19 @@ function resetPostComposer() {
         try { composerPreviewAudio.pause(); } catch(e) {}
         composerPreviewAudio = null;
     }
+
+    // Reset agendamento de post (v1.0.199)
+    const postSchedToggle = document.getElementById('post-schedule-toggle');
+    if (postSchedToggle) postSchedToggle.checked = false;
+    const postSchedFields = document.getElementById('post-schedule-fields');
+    if (postSchedFields) postSchedFields.style.display = 'none';
+    const postSchedDate = document.getElementById('post-schedule-date');
+    if (postSchedDate) postSchedDate.value = '';
+    const postSchedTime = document.getElementById('post-schedule-time');
+    if (postSchedTime) postSchedTime.value = '';
+    const postSchedHint = document.getElementById('post-schedule-preview-hint');
+    if (postSchedHint) postSchedHint.style.display = 'none';
+    updatePostScheduleUI();
 }
 
 const openPostCommentCards = new Set();
@@ -25802,9 +26181,19 @@ function renderPostsFeed(posts = []) {
     const previewFeed = document.getElementById('posts-feed-list');
 
     const isAdmin = isUserAdmin(currentUser, currentProfile) || checkIsAdminUser(currentUser, currentProfile);
+    const now = Date.now();
     const sorted = [...posts]
-        .filter(p => !isUserAccountDeleted(p.authorUid) && !p.isDeleted && !p.deleted && !isPostExpired(p) && (!p.hiddenByAi || isAdmin))
+        .filter(p => {
+            if (isUserAccountDeleted(p.authorUid) || p.isDeleted || p.deleted || isPostExpired(p)) return false;
+            if (p.hiddenByAi && !isAdmin) return false;
+            const isScheduledFuture = Boolean((p.scheduled || p.isScheduled) && p.scheduledFor && p.scheduledFor > now);
+            if (isScheduledFuture) {
+                return Boolean(currentUser && p.authorUid === currentUser.uid);
+            }
+            return true;
+        })
         .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    checkAndReleaseScheduledItems();
     if (countLabel) countLabel.innerText = `${sorted.length} ${sorted.length === 1 ? 'postagem' : 'postagens'}`;
 
     updateFeedFavoritesBadge(sorted);
@@ -25850,6 +26239,20 @@ function renderPostsFeed(posts = []) {
 
                 const isThisMusicPlaying = currentFeedMusicAudio && !currentFeedMusicAudio.paused && currentFeedMusicPostId === post.id;
 
+                const isPostScheduled = Boolean((post.scheduled || post.isScheduled) && post.scheduledFor && post.scheduledFor > Date.now());
+                const scheduledBannerHTML = isPostScheduled ? `
+                    <div class="post-scheduled-banner">
+                        <div class="post-scheduled-info">
+                            <i data-lucide="calendar-clock"></i>
+                            <span>Programado para <strong>${getFormattedScheduleDate(post.scheduledFor)}</strong></span>
+                        </div>
+                        <button type="button" class="post-publish-now-btn" data-action="publish-scheduled-post-now" data-post-id="${post.id}" title="Publicar agora no Feed">
+                            <i data-lucide="send"></i>
+                            <span>Publicar Agora</span>
+                        </button>
+                    </div>
+                ` : '';
+
                 return `
                     <article class="post-card" id="preview-post-card-${post.id}" data-post-id="${post.id}">
                         <div class="post-head">
@@ -25876,6 +26279,7 @@ function renderPostsFeed(posts = []) {
                                 </button>
                             `}
                         </div>
+                        ${scheduledBannerHTML}
                         <div class="post-media">
                             ${mediaTag}
                             <div class="feed-media-views-badge" data-action="post-views" data-post-id="${post.id}" title="Ver visualizações da publicação">
@@ -26063,6 +26467,20 @@ function renderPostsFeed(posts = []) {
         const formattedViews = formatPostViewsCount(viewsCount);
         const userViewed = hasUserViewedPost(post);
 
+        const isPostScheduled = Boolean((post.scheduled || post.isScheduled) && post.scheduledFor && post.scheduledFor > Date.now());
+        const scheduledBannerHTML = isPostScheduled ? `
+            <div class="post-scheduled-banner">
+                <div class="post-scheduled-info">
+                    <i data-lucide="calendar-clock"></i>
+                    <span>Programado para <strong>${getFormattedScheduleDate(post.scheduledFor)}</strong></span>
+                </div>
+                <button type="button" class="post-publish-now-btn" data-action="publish-scheduled-post-now" data-post-id="${post.id}" title="Publicar agora no Feed">
+                    <i data-lucide="send"></i>
+                    <span>Publicar Agora</span>
+                </button>
+            </div>
+        ` : '';
+
         return `
             <article class="feed-card" id="post-card-${post.id}" data-post-id="${post.id}">
                 <div class="feed-header">
@@ -26089,6 +26507,7 @@ function renderPostsFeed(posts = []) {
                         </button>
                     `}
                 </div>
+                ${scheduledBannerHTML}
                 <div class="feed-media">
                     ${mediaTag}
                     <div class="feed-media-views-badge" data-action="post-views" data-post-id="${post.id}" title="Ver visualizações do post">
@@ -26442,6 +26861,17 @@ function renderPostsFeed(posts = []) {
             const postId = btn.dataset.postId;
             if (postId) {
                 deletePost(postId);
+            }
+        });
+    });
+
+    // Publicar post agendado imediatamente
+    document.querySelectorAll('[data-action="publish-scheduled-post-now"]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const postId = btn.dataset.postId;
+            if (postId) {
+                publishScheduledPostNow(postId);
             }
         });
     });
@@ -27427,6 +27857,24 @@ document.getElementById('publish-post-btn')?.addEventListener('click', async () 
                 };
             }
 
+            // Validação de Programação de Post (v1.0.199)
+            const postSchedToggle = document.getElementById('post-schedule-toggle');
+            const isPostScheduled = Boolean(postSchedToggle && postSchedToggle.checked);
+            let postScheduleResult = null;
+            if (isPostScheduled) {
+                const pDate = document.getElementById('post-schedule-date')?.value;
+                const pTime = document.getElementById('post-schedule-time')?.value;
+                postScheduleResult = validateScheduleInput(pDate, pTime);
+                if (!postScheduleResult.isValid) {
+                    showToast('Agendamento Inválido 📅', postScheduleResult.error, 'yellow');
+                    if (publishPostBtn) {
+                        publishPostBtn.disabled = false;
+                        updatePostScheduleUI();
+                    }
+                    return;
+                }
+            }
+
             const postDoc = {
                 authorUid: currentUser.uid,
                 authorName: currentProfile.name,
@@ -27451,6 +27899,11 @@ document.getElementById('publish-post-btn')?.addEventListener('click', async () 
                 expiresAt: postExpiresAt,
                 temporaryDurationHours: isTemporaryCategory ? 24 : null,
                 actionButton: actionButtonPayload,
+                scheduled: isPostScheduled,
+                isScheduled: isPostScheduled,
+                scheduledFor: isPostScheduled ? postScheduleResult.timestamp : null,
+                scheduledDateStr: isPostScheduled ? postScheduleResult.formatted : null,
+                published: !isPostScheduled,
                 createdAt: now,
                 likes: [],
                 comments: [],
@@ -27478,7 +27931,11 @@ document.getElementById('publish-post-btn')?.addEventListener('click', async () 
                 mediaChunkCache.set(`post_audio_${postDocRef.id}`, localPostAudioPayload);
             }
 
-            showToast('Post publicado', 'Sua foto ou vídeo foi enviado com sucesso.', 'green');
+            if (isPostScheduled) {
+                showToast('Post Programado! 📅', `Sua postagem foi agendada para ${postScheduleResult.formatted}.`, 'green');
+            } else {
+                showToast('Post publicado', 'Sua foto ou vídeo foi enviado com sucesso.', 'green');
+            }
             resetPostComposer();
             document.getElementById('screenshot-gallery-overlay')?.classList.remove('active');
         } catch (error) {
@@ -32501,6 +32958,17 @@ if (typeof window !== 'undefined') {
     window.getCurrentReviewRating = () => currentReviewRating;
     window.getCurrentReviewProductId = () => currentReviewProductId;
     window.getCurrentReviewSellerUid = () => currentReviewSellerUid;
+    // Programação de Stories e Posts para outro dia (v1.0.199)
+    window.getFormattedScheduleDate = getFormattedScheduleDate;
+    window.computeQuickScheduleTimestamp = computeQuickScheduleTimestamp;
+    window.validateScheduleInput = validateScheduleInput;
+    window.updateStoryScheduleUI = updateStoryScheduleUI;
+    window.updatePostScheduleUI = updatePostScheduleUI;
+    window.applyQuickSchedule = applyQuickSchedule;
+    window.initScheduleControls = initScheduleControls;
+    window.publishScheduledPostNow = publishScheduledPostNow;
+    window.publishScheduledStoryNow = publishScheduledStoryNow;
+    window.checkAndReleaseScheduledItems = checkAndReleaseScheduledItems;
 }
 
 if (typeof window !== 'undefined') {
@@ -32517,4 +32985,5 @@ if (typeof window !== 'undefined') {
     initStoryCaptionAndLinkControls();
     initBusinessPostControls();
     initPostTitleAndHashtagsControls();
+    initScheduleControls();
 }
