@@ -12329,14 +12329,16 @@ test('Correção da Mensagem Já Pronta dos Produtos do Catálogo (v1.0.197)', a
   const css = fs.readFileSync('public/style.css', 'utf8');
   const html = fs.readFileSync('public/index.html', 'utf8');
 
-  // 1. Integridade de Versionamento (v1.0.197)
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.197', 'script.js deve ter versão 1.0.197');
+  // 1. Integridade de Versionamento (v1.0.197+)
+  const versionNum = parseInt((win.CURRENT_APP_VERSION || '0.0.0').split('.')[2], 10);
+  assert.ok(versionNum >= 197, 'script.js deve ter versão >= 1.0.197');
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
-  assert.strictEqual(versionJson.version, '1.0.197', 'version.json deve ter versão 1.0.197');
-  assert.ok(html.includes('script.js?v=1.0.197'), 'index.html deve referenciar script.js?v=1.0.197');
-  assert.ok(html.includes('style.css?v=1.0.197'), 'index.html deve referenciar style.css?v=1.0.197');
+  const jsonVerNum = parseInt((versionJson.version || '0.0.0').split('.')[2], 10);
+  assert.ok(jsonVerNum >= 197, 'version.json deve ter versão >= 1.0.197');
+  assert.ok(html.includes(`script.js?v=`), 'index.html deve referenciar script.js com hash de versão');
+  assert.ok(html.includes(`style.css?v=`), 'index.html deve referenciar style.css com hash de versão');
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
-  assert.ok(swContent.includes('vortex-vip-v1.0.197'), 'sw.js deve conter cache vortex-vip-v1.0.197');
+  assert.ok(swContent.includes('vortex-vip-v1.0.'), 'sw.js deve conter cache vortex-vip-v1.0.x');
 
   // 2. Regras CSS das Mensagens Prontas do Produto
   assert.ok(css.includes('.catalog-ready-messages-box'), 'style.css deve conter .catalog-ready-messages-box');
@@ -12404,6 +12406,179 @@ test('Correção da Mensagem Já Pronta dos Produtos do Catálogo (v1.0.197)', a
     customMessage: 'Olá! O produto "Headset Gamer VORTEX Pro" ainda está disponível?'
   });
   assert.strictEqual(chatInputMain.value, 'Olá! O produto "Headset Gamer VORTEX Pro" ainda está disponível?', '#chat-input-main deve receber a mensagem pronta clicada');
+});
+
+test('Função de Avaliação de 5 Estrelas e Comentários nos Produtos Pós-Compra (v1.0.198)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+  const css = fs.readFileSync('public/style.css', 'utf8');
+  const html = fs.readFileSync('public/index.html', 'utf8');
+
+  // 1. Integridade de Versionamento (v1.0.198)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.198', 'script.js deve ter versão 1.0.198');
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
+  assert.strictEqual(versionJson.version, '1.0.198', 'version.json deve ter versão 1.0.198');
+  assert.ok(html.includes('script.js?v=1.0.198'), 'index.html deve referenciar script.js?v=1.0.198');
+  assert.ok(html.includes('style.css?v=1.0.198'), 'index.html deve referenciar style.css?v=1.0.198');
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+  assert.ok(swContent.includes('vortex-vip-v1.0.198'), 'sw.js deve conter cache vortex-vip-v1.0.198');
+
+  // 2. Elementos HTML do Modal de Avaliação (#catalog-product-review-modal)
+  assert.ok(html.includes('id="catalog-product-review-modal"'), 'index.html deve conter #catalog-product-review-modal');
+  assert.ok(html.includes('id="catalog-review-stars-picker"'), 'index.html deve conter #catalog-review-stars-picker');
+  assert.ok(html.includes('id="catalog-review-comment-input"'), 'index.html deve conter #catalog-review-comment-input');
+  assert.ok(html.includes('id="catalog-review-char-count"'), 'index.html deve conter #catalog-review-char-count');
+  assert.ok(html.includes('id="catalog-review-submit-btn"'), 'index.html deve conter #catalog-review-submit-btn');
+
+  // 3. Regras CSS de Avaliação no style.css
+  assert.ok(css.includes('.catalog-review-sheet'), 'style.css deve conter .catalog-review-sheet');
+  assert.ok(css.includes('.catalog-stars-picker'), 'style.css deve conter .catalog-stars-picker');
+  assert.ok(css.includes('.catalog-star-btn'), 'style.css deve conter .catalog-star-btn');
+  assert.ok(css.includes('.catalog-product-reviews-section'), 'style.css deve conter .catalog-product-reviews-section');
+  assert.ok(css.includes('.catalog-reviews-overview-card'), 'style.css deve conter .catalog-reviews-overview-card');
+  assert.ok(css.includes('.catalog-review-card'), 'style.css deve conter .catalog-review-card');
+  assert.ok(css.includes('.catalog-review-locked-banner'), 'style.css deve conter .catalog-review-locked-banner');
+  assert.ok(css.includes('.cat-review-item-btn'), 'style.css deve conter .cat-review-item-btn');
+  assert.ok(css.includes('.catalog-card-rating'), 'style.css deve conter .catalog-card-rating');
+
+  // 4. Exportação das funções do sistema de avaliação
+  assert.strictEqual(typeof win.setReviewModalRating, 'function', 'setReviewModalRating deve existir');
+  assert.strictEqual(typeof win.renderStarsHTML, 'function', 'renderStarsHTML deve existir');
+  assert.strictEqual(typeof win.checkUserPurchasedProduct, 'function', 'checkUserPurchasedProduct deve existir');
+  assert.strictEqual(typeof win.loadProductReviews, 'function', 'loadProductReviews deve existir');
+  assert.strictEqual(typeof win.openProductReviewModal, 'function', 'openProductReviewModal deve existir');
+  assert.strictEqual(typeof win.closeProductReviewModal, 'function', 'closeProductReviewModal deve existir');
+  assert.strictEqual(typeof win.submitProductReview, 'function', 'submitProductReview deve existir');
+
+  // 5. Teste de setReviewModalRating e renderStarsHTML
+  assert.strictEqual(win.setReviewModalRating(5), 5);
+  assert.strictEqual(win.getCurrentReviewRating(), 5);
+  const textEl = env.elements['catalog-review-rating-text'];
+  assert.ok(textEl && textEl.innerText.includes('5/5'), 'Texto descritivo deve refletir 5 estrelas');
+
+  win.setReviewModalRating(4);
+  assert.strictEqual(win.getCurrentReviewRating(), 4);
+  assert.ok(textEl.innerText.includes('4/5'), 'Texto descritivo deve refletir 4 estrelas');
+
+  const starsHtml = win.renderStarsHTML(5);
+  assert.ok(starsHtml.includes('★★★★★'), 'renderStarsHTML(5) deve renderizar 5 estrelas cheias');
+  const starsHtml4 = win.renderStarsHTML(4);
+  assert.ok(starsHtml4.includes('★★★★☆'), 'renderStarsHTML(4) deve renderizar 4 estrelas cheias e 1 vazia');
+
+  // 6. Teste de Bloqueio Pós-Compra: Usuário sem compra não pode avaliar
+  const nonBuyer = { uid: 'user_sem_compra_198', name: 'Visitante Curioso', accountType: 'personal' };
+  win.setCurrentUser(nonBuyer);
+  win.setCurrentProfile(nonBuyer);
+
+  const prodId = 'prod_review_test_198';
+  const sellerUid = 'seller_review_test_198';
+  env.firestoreDocs[`users/${sellerUid}/catalog/${prodId}`] = {
+    id: prodId,
+    name: 'Teclado Mecânico RGB VORTEX',
+    price: 350.00,
+    sellerUid: sellerUid,
+    stock: 10
+  };
+
+  const purchaseCheckNonBuyer = await win.checkUserPurchasedProduct(prodId, nonBuyer.uid);
+  assert.strictEqual(purchaseCheckNonBuyer.purchased, false, 'Usuário sem pedido não deve constar como comprador');
+
+  const reviewModal = env.elements['catalog-product-review-modal'];
+  if (reviewModal) reviewModal.style.display = 'none';
+
+  // Tentativa de abrir modal sem compra deve ser bloqueada
+  await win.openProductReviewModal(prodId, sellerUid);
+  assert.notStrictEqual(reviewModal.style.display, 'flex', 'Modal de avaliação NÃO deve abrir para quem não comprou');
+
+  // Detalhe do produto para quem não comprou deve exibir o banner explicativo de bloqueio pós-compra
+  await win.openProductDetail(prodId, sellerUid);
+  const detailContent = env.elements['catalog-detail-content'];
+  assert.ok(detailContent.innerHTML.includes('catalog-review-locked-banner'), 'Deve exibir banner de avaliação exclusiva pós-compra');
+  assert.ok(!detailContent.innerHTML.includes('catalog-detail-open-review-btn'), 'Não deve exibir botão de avaliar para quem não comprou');
+
+  // 7. Teste de Cliente com Compra Finalizada (Pós-compra)
+  const buyerUser = { uid: 'buyer_vip_198', name: 'Ana Compradora VIP', accountType: 'personal', photoURL: 'https://img.teste/ana.jpg' };
+  win.setCurrentUser(buyerUser);
+  win.setCurrentProfile(buyerUser);
+
+  // Criar pedido finalizado contendo o produto
+  const orderId = 'order_rev_198';
+  env.firestoreDocs[`orders/${orderId}`] = {
+    id: orderId,
+    orderNumber: '#100198',
+    buyerUid: buyerUser.uid,
+    buyerName: buyerUser.name,
+    buyerAvatar: buyerUser.photoURL,
+    sellerUid: sellerUid,
+    items: [
+      {
+        productId: prodId,
+        name: 'Teclado Mecânico RGB VORTEX',
+        price: 350.00,
+        quantity: 1,
+        cover: 'https://img.teste/teclado.jpg'
+      }
+    ],
+    status: 'paid',
+    createdAt: Date.now() - 3600000
+  };
+
+  const purchaseCheckBuyer = await win.checkUserPurchasedProduct(prodId, buyerUser.uid);
+  assert.strictEqual(purchaseCheckBuyer.purchased, true, 'Usuário com pedido pago deve ser identificado como comprador verificado');
+  assert.strictEqual(purchaseCheckBuyer.orderId, orderId);
+
+  // Detalhes do Pedido (#catalog-order-modal) exibe o botão Avaliar Produto para o comprador
+  await win.openOrderDetail(orderId);
+  const orderContent = env.elements['catalog-order-content'];
+  assert.ok(orderContent.innerHTML.includes('cat-review-item-btn'), 'Detalhe do pedido deve exibir o botão cat-review-item-btn para o comprador');
+
+  // Detalhes do Produto (#catalog-product-detail-modal) exibe o botão Avaliar Produto ⭐ para o comprador
+  await win.openProductDetail(prodId, sellerUid);
+  assert.ok(detailContent.innerHTML.includes('catalog-detail-open-review-btn'), 'Detalhe do produto deve exibir o botão #catalog-detail-open-review-btn para o comprador');
+  assert.ok(!detailContent.innerHTML.includes('catalog-review-locked-banner'), 'Não deve exibir banner de bloqueio para o comprador verificado');
+
+  // 8. Abrir Modal de Avaliação, selecionar 5 estrelas e comentar
+  await win.openProductReviewModal(prodId, sellerUid, { orderId });
+  assert.strictEqual(reviewModal.style.display, 'flex', 'Modal de avaliação DEVE abrir com display: flex');
+  assert.ok(reviewModal.classList.contains('active'), 'Modal deve receber a classe active');
+
+  win.setReviewModalRating(5);
+  const commentInput = env.elements['catalog-review-comment-input'];
+  commentInput.value = 'Produto impecável! Teclas macias, acabamento de altíssima qualidade. Recomendo demais! 🌟';
+
+  // 9. Submeter a avaliação (submitProductReview)
+  await win.submitProductReview();
+
+  // Verificar persistência no Firestore: users/{sellerUid}/catalog/{prodId}/reviews/{buyerUid}
+  const savedReviewDoc = env.firestoreDocs[`users/${sellerUid}/catalog/${prodId}/reviews/${buyerUser.uid}`];
+  assert.ok(savedReviewDoc, 'Avaliação deve ser salva no Firestore');
+  assert.strictEqual(savedReviewDoc.rating, 5, 'Nota da avaliação deve ser 5 estrelas');
+  assert.strictEqual(savedReviewDoc.comment, 'Produto impecável! Teclas macias, acabamento de altíssima qualidade. Recomendo demais! 🌟');
+  assert.strictEqual(savedReviewDoc.buyerUid, buyerUser.uid);
+  assert.strictEqual(savedReviewDoc.isVerifiedPurchase, true, 'Avaliação deve conter flag de Compra Verificada');
+
+  // 10. Atualização e Recálculo da Média de Estrelas no documento do Produto
+  const updatedProd = env.firestoreDocs[`users/${sellerUid}/catalog/${prodId}`];
+  assert.strictEqual(updatedProd.ratingAverage, 5.0, 'Produto deve ter ratingAverage = 5.0');
+  assert.strictEqual(updatedProd.ratingCount, 1, 'Produto deve ter ratingCount = 1');
+
+  // 11. Carregamento de Avaliações (loadProductReviews)
+  const reviewsData = await win.loadProductReviews(prodId, sellerUid);
+  assert.strictEqual(reviewsData.totalReviews, 1);
+  assert.strictEqual(reviewsData.ratingAverage, 5.0);
+  assert.strictEqual(reviewsData.ratingCounts[5], 1);
+  assert.strictEqual(reviewsData.reviews[0].comment, 'Produto impecável! Teclas macias, acabamento de altíssima qualidade. Recomendo demais! 🌟');
+
+  // 12. Renderização das Estrelas nos Cards da Vitrine (renderCatalogGrid)
+  const gridContainer = { innerHTML: '', querySelectorAll: () => [] };
+  win.renderCatalogGrid(gridContainer, [updatedProd], false);
+  assert.ok(gridContainer.innerHTML.includes('catalog-card-rating'), 'Vitrine de produtos deve exibir a nota de estrelas no card');
+  assert.ok(gridContainer.innerHTML.includes('5.0 (1)'), 'Vitrine deve exibir 5.0 (1)');
+
+  // 13. Fechar modal de avaliação
+  win.closeProductReviewModal();
+  assert.strictEqual(reviewModal.style.display, 'none');
+  assert.ok(!reviewModal.classList.contains('active'));
 });
 
 

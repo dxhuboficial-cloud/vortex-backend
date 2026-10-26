@@ -4,20 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.197">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.197">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.197">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.197">
-    <link rel="stylesheet" href="style.css?v=1.0.197">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.198">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.198">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.198">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.198">
+    <link rel="stylesheet" href="style.css?v=1.0.198">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.197">
+    <link rel="manifest" href="manifest.json?v=1.0.198">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.197">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.197">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.198">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.198">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -3556,6 +3556,47 @@
             </div>
         </div>
 
+        <!-- Modal de Avaliação de Produto (5 Estrelas e Comentários pós-compra - v1.0.198) -->
+        <div id="catalog-product-review-modal" class="catalog-sheet-overlay" aria-hidden="true" style="display:none;">
+            <div class="catalog-sheet catalog-review-sheet">
+                <div class="catalog-sheet-header">
+                    <h4 id="catalog-review-modal-title"><i data-lucide="star" style="color:#f59e0b;"></i> Avaliar Produto</h4>
+                    <button type="button" id="catalog-review-close-btn" class="catalog-sheet-close" aria-label="Fechar"><i data-lucide="x"></i></button>
+                </div>
+                <div class="catalog-sheet-body">
+                    <div id="catalog-review-product-preview" class="catalog-review-product-preview"></div>
+
+                    <div class="catalog-review-rating-box">
+                        <label class="catalog-field-label">Sua nota de 1 a 5 estrelas *</label>
+                        <div id="catalog-review-stars-picker" class="catalog-stars-picker" role="radiogroup" aria-label="Avaliação de 1 a 5 estrelas">
+                            <button type="button" class="catalog-star-btn active" data-star="1" title="1 estrela" aria-label="1 estrela">★</button>
+                            <button type="button" class="catalog-star-btn active" data-star="2" title="2 estrelas" aria-label="2 estrelas">★</button>
+                            <button type="button" class="catalog-star-btn active" data-star="3" title="3 estrelas" aria-label="3 estrelas">★</button>
+                            <button type="button" class="catalog-star-btn active" data-star="4" title="4 estrelas" aria-label="4 estrelas">★</button>
+                            <button type="button" class="catalog-star-btn active" data-star="5" title="5 estrelas" aria-label="5 estrelas">★</button>
+                        </div>
+                        <div id="catalog-review-rating-text" class="catalog-review-rating-desc">⭐⭐⭐⭐⭐ 5/5 - Excelente / Incrível! 🌟</div>
+                    </div>
+
+                    <div class="catalog-field-group">
+                        <div class="post-field-header-row">
+                            <label for="catalog-review-comment-input" class="catalog-field-label">Comentário sobre o produto</label>
+                            <span id="catalog-review-char-count" class="post-char-counter">0/500</span>
+                        </div>
+                        <textarea id="catalog-review-comment-input" rows="4" maxlength="500" placeholder="Conte o que achou da qualidade, envio, se atendeu às expectativas..."></textarea>
+                    </div>
+
+                    <div class="catalog-review-footer-actions">
+                        <button type="button" id="catalog-review-cancel-btn" class="catalog-secondary-btn">Cancelar</button>
+                        <button type="button" id="catalog-review-submit-btn" class="catalog-primary-btn catalog-grow">
+                            <i data-lucide="check"></i>
+                            <span id="catalog-review-submit-label">Publicar Avaliação</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Modal de Enviar Chave Pix no Chat -->
         <div id="pix-send-modal" class="custom-modal-overlay pix-send-overlay" aria-hidden="true" style="display: none;">
             <div class="custom-modal-card pix-send-card">
@@ -3993,6 +4034,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.197" defer></script>
+    <script type="module" src="script.js?v=1.0.198" defer></script>
 </body>
 </html>

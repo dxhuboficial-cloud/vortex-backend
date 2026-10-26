@@ -6014,6 +6014,12 @@ export function renderCatalogGrid(container, products, isOwner) {
                 `
             );
 
+        const ratingAvg = Number(prod.ratingAverage || 0);
+        const ratingCount = Number(prod.ratingCount || prod.reviewsCount || 0);
+        const ratingBadge = (ratingCount > 0)
+            ? `<div class="catalog-card-rating"><i data-lucide="star"></i> <span>${ratingAvg.toFixed(1)} (${ratingCount})</span></div>`
+            : '';
+
         return `
             <div class="catalog-card ${isOutOfStock ? 'out-of-stock' : ''}" data-id="${prod.id}">
                 <div class="catalog-card-media-wrap">
@@ -6027,6 +6033,7 @@ export function renderCatalogGrid(container, products, isOwner) {
                 <div class="catalog-card-info">
                     ${prod.category ? `<span class="catalog-card-category">${escapeHTML(prod.category)}</span>` : ''}
                     <h4 class="catalog-card-title">${escapeHTML(prod.name)}</h4>
+                    ${ratingBadge}
                     ${priceHTML}
                     ${actionButtons}
                 </div>
@@ -6930,6 +6937,303 @@ export async function talkToSellerAboutProduct(prod, sellerUid, sellerData = {},
     return readyMessage;
 }
 
+// ===== CATÁLOGO: Avaliação de 5 Estrelas e Comentários nos Produtos Pós-Compra (v1.0.198) =====
+let currentReviewProductId = null;
+let currentReviewSellerUid = null;
+let currentReviewOrderId = null;
+let currentReviewRating = 5;
+
+export function setReviewModalRating(rating) {
+    const starVal = Math.max(1, Math.min(5, parseInt(rating, 10) || 5));
+    currentReviewRating = starVal;
+
+    const modal = document.getElementById('catalog-product-review-modal');
+    if (modal) {
+        modal.querySelectorAll('.catalog-star-btn').forEach(btn => {
+            const btnStar = parseInt(btn.dataset.star, 10) || 0;
+            if (btnStar <= starVal) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+
+        const descEl = document.getElementById('catalog-review-rating-text');
+        if (descEl) {
+            const ratingDescriptions = {
+                5: '⭐⭐⭐⭐⭐ 5/5 - Excelente / Incrível! 🌟',
+                4: '⭐⭐⭐⭐ 4/5 - Muito bom! Vale a pena 👍',
+                3: '⭐⭐⭐ 3/5 - Bom / Atendeu o esperado 🙂',
+                2: '⭐⭐ 2/5 - Regular / Poderia ser melhor 😐',
+                1: '⭐ 1/5 - Ruim / Não recomendo 🙁'
+            };
+            descEl.innerText = ratingDescriptions[starVal] || `${starVal}/5 estrelas`;
+        }
+    }
+    return starVal;
+}
+
+export function renderStarsHTML(rating) {
+    const num = Math.max(0, Math.min(5, Number(rating) || 0));
+    const fullStars = Math.round(num);
+    let html = '';
+    for (let i = 1; i <= 5; i++) {
+        html += (i <= fullStars) ? '★' : '☆';
+    }
+    return `<span class="cat-reviews-stars-static" title="${num.toFixed(1)} de 5 estrelas" aria-label="${num.toFixed(1)} de 5 estrelas">${html}</span>`;
+}
+
+export async function checkUserPurchasedProduct(productId, buyerUid) {
+    if (!productId || !buyerUid) return { purchased: false, orderId: null };
+    try {
+        const q = query(collection(db, 'orders'), where('buyerUid', '==', buyerUid), limit(100));
+        const snap = await getDocs(q);
+        let foundOrderId = null;
+        snap.forEach(d => {
+            const ord = d.data();
+            if (ord.status !== 'canceled' && Array.isArray(ord.items)) {
+                const hasProd = ord.items.some(item => (item.productId === productId || item.id === productId));
+                if (hasProd && !foundOrderId) {
+                    foundOrderId = d.id;
+                }
+            }
+        });
+        return {
+            purchased: !!foundOrderId,
+            orderId: foundOrderId
+        };
+    } catch (e) {
+        console.error('Erro ao verificar compra do produto:', e);
+        return { purchased: false, orderId: null };
+    }
+}
+
+export async function loadProductReviews(productId, sellerUid) {
+    if (!productId || !sellerUid) {
+        return {
+            reviews: [],
+            totalReviews: 0,
+            ratingAverage: 0,
+            ratingCounts: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 }
+        };
+    }
+    try {
+        const colRef = collection(db, 'users', sellerUid, 'catalog', productId, 'reviews');
+        const snap = await getDocs(colRef);
+        const reviews = [];
+        const ratingCounts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+        let sum = 0;
+
+        snap.forEach(d => {
+            const r = { id: d.id, ...d.data() };
+            reviews.push(r);
+            const score = Math.max(1, Math.min(5, parseInt(r.rating, 10) || 5));
+            ratingCounts[score] = (ratingCounts[score] || 0) + 1;
+            sum += score;
+        });
+
+        reviews.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+        const totalReviews = reviews.length;
+        const ratingAverage = totalReviews > 0 ? (sum / totalReviews) : 0;
+
+        return {
+            reviews,
+            totalReviews,
+            ratingAverage: Number(ratingAverage.toFixed(1)),
+            ratingCounts
+        };
+    } catch (e) {
+        console.error('Erro ao carregar avaliações do produto:', e);
+        return {
+            reviews: [],
+            totalReviews: 0,
+            ratingAverage: 0,
+            ratingCounts: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 }
+        };
+    }
+}
+
+export async function openProductReviewModal(productId, sellerUid, options = {}) {
+    if (!currentUser) {
+        showToast('Login Necessário', 'Você precisa estar conectado para avaliar um produto.', 'yellow');
+        return;
+    }
+    if (!productId || !sellerUid) return;
+
+    // Verificar se o usuário comprou o produto antes de abrir o modal
+    let purchaseInfo = { purchased: true, orderId: options.orderId || null };
+    if (!options.orderId) {
+        purchaseInfo = await checkUserPurchasedProduct(productId, currentUser.uid);
+    }
+
+    if (!purchaseInfo.purchased) {
+        showToast('Avaliação Exclusiva', 'Apenas clientes que finalizaram a compra deste produto podem avaliá-lo com 5 estrelas e comentar.', 'orange');
+        return;
+    }
+
+    currentReviewProductId = productId;
+    currentReviewSellerUid = sellerUid;
+    currentReviewOrderId = purchaseInfo.orderId || options.orderId || null;
+
+    const modal = document.getElementById('catalog-product-review-modal');
+    if (!modal) return;
+
+    // Carregar preview do produto
+    const previewEl = document.getElementById('catalog-review-product-preview');
+    const pName = options.productName || '';
+    const pCover = options.productCover || '';
+    if (previewEl) {
+        previewEl.innerHTML = `
+            ${pCover ? `<img src="${pCover}" alt="${escapeHTML(pName)}">` : `<div style="width:48px;height:48px;border-radius:10px;background:#1e293b;display:flex;align-items:center;justify-content:center;color:#64748b;"><i data-lucide="package"></i></div>`}
+            <div class="catalog-review-prod-meta">
+                <span class="catalog-review-prod-name">${escapeHTML(pName || 'Produto')}</span>
+                <span class="catalog-review-prod-sub">Compra Verificada ✅ • Deixe sua avaliação</span>
+            </div>
+        `;
+        if (window.lucide) lucide.createIcons();
+    }
+
+    // Verificar se o cliente já enviou uma avaliação anterior para preencher
+    let existingRating = 5;
+    let existingComment = '';
+    try {
+        const existingSnap = await getDoc(doc(db, 'users', sellerUid, 'catalog', productId, 'reviews', currentUser.uid));
+        if (existingSnap.exists()) {
+            const data = existingSnap.data();
+            existingRating = data.rating || 5;
+            existingComment = data.comment || '';
+        }
+    } catch (e) {
+        console.warn('Erro ao verificar avaliação existente:', e);
+    }
+
+    setReviewModalRating(existingRating);
+
+    const commentInp = document.getElementById('catalog-review-comment-input');
+    const countEl = document.getElementById('catalog-review-char-count');
+    if (commentInp) {
+        commentInp.value = existingComment;
+        if (countEl) countEl.innerText = `${existingComment.length}/500`;
+    }
+
+    const titleEl = document.getElementById('catalog-review-modal-title');
+    if (titleEl) {
+        titleEl.innerHTML = `<i data-lucide="star" style="color:#f59e0b;"></i> ${existingComment || existingRating ? 'Editar Avaliação' : 'Avaliar Produto'}`;
+    }
+
+    modal.style.display = 'flex';
+    modal.classList.add('active');
+    if (window.lucide) lucide.createIcons();
+}
+
+export function closeProductReviewModal() {
+    const modal = document.getElementById('catalog-product-review-modal');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.classList.remove('active');
+    }
+    currentReviewProductId = null;
+    currentReviewSellerUid = null;
+    currentReviewOrderId = null;
+}
+
+export async function submitProductReview() {
+    if (!currentUser) {
+        showToast('Erro', 'Você precisa estar logado para avaliar.', 'red');
+        return;
+    }
+    if (!currentReviewProductId || !currentReviewSellerUid) {
+        showToast('Erro', 'Produto inválido para avaliação.', 'red');
+        return;
+    }
+
+    const commentInp = document.getElementById('catalog-review-comment-input');
+    const comment = commentInp ? commentInp.value.trim().slice(0, 500) : '';
+    const rating = Math.max(1, Math.min(5, currentReviewRating || 5));
+
+    const submitBtn = document.getElementById('catalog-review-submit-btn');
+    const submitLabel = document.getElementById('catalog-review-submit-label');
+    if (submitBtn) submitBtn.disabled = true;
+    if (submitLabel) submitLabel.innerText = 'Publicando...';
+
+    const productId = currentReviewProductId;
+    const sellerUid = currentReviewSellerUid;
+    const orderId = currentReviewOrderId;
+
+    try {
+        const reviewRef = doc(db, 'users', sellerUid, 'catalog', productId, 'reviews', currentUser.uid);
+        const existingSnap = await getDoc(reviewRef);
+
+        const buyerName = currentUser.displayName || (currentProfile && currentProfile.name) || 'Cliente';
+        const buyerAvatar = currentUser.photoURL || (currentProfile && currentProfile.avatar) || '';
+
+        const reviewData = {
+            productId,
+            sellerUid,
+            buyerUid: currentUser.uid,
+            buyerName,
+            buyerAvatar,
+            rating,
+            comment,
+            orderId: orderId || null,
+            isVerifiedPurchase: true,
+            createdAt: existingSnap.exists() ? (existingSnap.data().createdAt || Date.now()) : Date.now(),
+            updatedAt: Date.now()
+        };
+
+        await setDoc(reviewRef, reviewData, { merge: true });
+
+        // Recalcular métricas de avaliação no documento do produto
+        const allReviewsSnap = await getDocs(collection(db, 'users', sellerUid, 'catalog', productId, 'reviews'));
+        let totalSum = 0;
+        let count = 0;
+        allReviewsSnap.forEach(d => {
+            const r = d.data();
+            totalSum += Math.max(1, Math.min(5, Number(r.rating) || 5));
+            count++;
+        });
+
+        const newAvg = count > 0 ? Number((totalSum / count).toFixed(1)) : 0;
+
+        try {
+            await updateDoc(doc(db, 'users', sellerUid, 'catalog', productId), {
+                ratingAverage: newAvg,
+                ratingCount: count,
+                reviewsCount: count,
+                updatedAt: Date.now()
+            });
+        } catch (upErr) {
+            console.warn('Aviso ao atualizar métricas no produto:', upErr);
+        }
+
+        // Atualizar no cache local se existir
+        if (Array.isArray(catalogSellerProductsCache)) {
+            const cached = catalogSellerProductsCache.find(p => p.id === productId);
+            if (cached) {
+                cached.ratingAverage = newAvg;
+                cached.ratingCount = count;
+                cached.reviewsCount = count;
+            }
+        }
+
+        closeProductReviewModal();
+        showToast('Avaliação Publicada! 🌟', 'Obrigado por avaliar este produto.', 'green');
+
+        // Se o modal de detalhes estiver aberto, recarrega
+        const detailModal = document.getElementById('catalog-product-detail-modal');
+        if (detailModal && detailModal.classList.contains('active')) {
+            openProductDetail(productId, sellerUid);
+        }
+    } catch (err) {
+        console.error('Erro ao enviar avaliação:', err);
+        showToast('Erro ao Avaliar', err.message || 'Não foi possível salvar a sua avaliação.', 'red');
+    } finally {
+        if (submitBtn) submitBtn.disabled = false;
+        if (submitLabel) submitLabel.innerText = 'Publicar Avaliação';
+    }
+}
+
 // Modal de Detalhe do Produto
 export async function openProductDetail(productId, sellerUid) {
     const modal = document.getElementById('catalog-product-detail-modal');
@@ -6957,6 +7261,15 @@ export async function openProductDetail(productId, sellerUid) {
             content.innerHTML = `<div class="catalog-empty"><p>Produto não encontrado.</p></div>`;
             return;
         }
+
+        // Carregar avaliações e checar se o usuário atual finalizou a compra do produto (v1.0.198)
+        const [reviewsData, purchaseCheck] = await Promise.all([
+            loadProductReviews(productId, sellerUid),
+            currentUser ? checkUserPurchasedProduct(productId, currentUser.uid) : Promise.resolve({ purchased: false, orderId: null })
+        ]);
+        const hasUserPurchased = !!purchaseCheck.purchased;
+        const userReview = currentUser ? (reviewsData.reviews || []).find(r => r.buyerUid === currentUser.uid) : null;
+        const hasUserReviewed = !!userReview;
 
         const isOwner = !!(currentUser && currentUser.uid === sellerUid);
         const photos = Array.isArray(prod.photos) && prod.photos.length > 0 ? prod.photos : (prod.cover ? [prod.cover] : []);
@@ -7120,12 +7433,115 @@ export async function openProductDetail(productId, sellerUid) {
             `
             : '';
 
+        const ratingPillHTML = (reviewsData.totalReviews > 0)
+            ? `
+                <div class="catalog-detail-rating-pill" id="catalog-detail-stars-pill" title="Ver avaliações">
+                    ${renderStarsHTML(reviewsData.ratingAverage)}
+                    <strong>${reviewsData.ratingAverage.toFixed(1)}</strong>
+                    <span>(${reviewsData.totalReviews} ${reviewsData.totalReviews === 1 ? 'avaliação' : 'avaliações'})</span>
+                </div>
+            `
+            : `
+                <div class="catalog-detail-rating-pill" id="catalog-detail-stars-pill" style="opacity:0.8;">
+                    ${renderStarsHTML(5)}
+                    <span>Sem avaliações ainda</span>
+                </div>
+            `;
+
+        // Seção de Avaliações e Comentários (v1.0.198)
+        let reviewsSectionHTML = `
+            <div class="catalog-product-reviews-section" id="catalog-product-reviews-section">
+                <div class="catalog-reviews-header">
+                    <h4 class="catalog-reviews-title">
+                        <i data-lucide="star" style="color:#f59e0b;"></i>
+                        <span>Avaliações dos Clientes</span>
+                    </h4>
+                    ${hasUserPurchased ? `
+                        <button type="button" class="catalog-write-review-btn" id="catalog-detail-open-review-btn">
+                            <i data-lucide="star"></i>
+                            <span>${hasUserReviewed ? 'Editar Minha Avaliação' : 'Avaliar Produto ⭐'}</span>
+                        </button>
+                    ` : ''}
+                </div>
+        `;
+
+        if (!isOwner && !hasUserPurchased) {
+            reviewsSectionHTML += `
+                <div class="catalog-review-locked-banner">
+                    <i data-lucide="lock"></i>
+                    <div>
+                        <strong>Avaliação exclusiva pós-compra 🌟:</strong> Apenas clientes que finalizaram a compra deste produto podem avaliá-lo com 5 estrelas e comentar o que acharam.
+                    </div>
+                </div>
+            `;
+        }
+
+        if (reviewsData.totalReviews > 0) {
+            const total = reviewsData.totalReviews;
+            reviewsSectionHTML += `
+                <div class="catalog-reviews-overview-card">
+                    <div class="cat-reviews-score-col">
+                        <span class="cat-reviews-score-big">${reviewsData.ratingAverage.toFixed(1)}</span>
+                        ${renderStarsHTML(reviewsData.ratingAverage)}
+                        <span class="cat-reviews-count-sub">${total} ${total === 1 ? 'avaliação' : 'avaliações'}</span>
+                    </div>
+                    <div class="cat-reviews-breakdown">
+                        ${[5, 4, 3, 2, 1].map(starNum => {
+                            const c = reviewsData.ratingCounts[starNum] || 0;
+                            const pct = total > 0 ? Math.round((c / total) * 100) : 0;
+                            return `
+                                <div class="cat-breakdown-row">
+                                    <span>${starNum}★</span>
+                                    <div class="cat-breakdown-bar-bg"><div class="cat-breakdown-bar-fill" style="width: ${pct}%"></div></div>
+                                    <span>${c}</span>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+
+                <div class="catalog-reviews-list">
+                    ${reviewsData.reviews.map(rev => {
+                        const dateStr = rev.createdAt ? new Date(rev.createdAt).toLocaleDateString('pt-BR') : '';
+                        return `
+                            <div class="catalog-review-card">
+                                <div class="cat-review-author-row">
+                                    <div class="cat-review-author-info">
+                                        ${rev.buyerAvatar ? `<img src="${rev.buyerAvatar}" alt="${escapeHTML(rev.buyerName || 'Cliente')}" class="cat-review-avatar">` : `<div class="cat-review-avatar" style="display:flex;align-items:center;justify-content:center;background:#1e293b;color:#94a3b8;font-size:0.75rem;font-weight:700;">${(rev.buyerName || 'C')[0].toUpperCase()}</div>`}
+                                        <div>
+                                            <div class="cat-review-author-name">
+                                                <span>${escapeHTML(rev.buyerName || 'Cliente')}</span>
+                                                ${rev.isVerifiedPurchase ? `<span class="cat-review-verified-badge"><i data-lucide="check-circle-2"></i> Compra Verificada</span>` : ''}
+                                            </div>
+                                            ${dateStr ? `<span class="cat-review-date">${dateStr}</span>` : ''}
+                                        </div>
+                                    </div>
+                                    <div class="cat-review-stars">${renderStarsHTML(rev.rating)}</div>
+                                </div>
+                                ${rev.comment ? `<p class="cat-review-comment">${escapeHTML(rev.comment)}</p>` : ''}
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        } else {
+            reviewsSectionHTML += `
+                <div class="catalog-empty" style="padding:16px 0;">
+                    <p>Ainda não há avaliações para este produto.</p>
+                    <small>Clientes que finalizaram a compra podem avaliar com até 5 estrelas e comentar aqui!</small>
+                </div>
+            `;
+        }
+
+        reviewsSectionHTML += `</div>`;
+
         content.innerHTML = `
             ${galleryHTML}
             <div class="catalog-detail-body">
                 ${noticeBannerHTML}
                 ${prod.category ? `<span class="catalog-card-category">${escapeHTML(prod.category)}</span>` : ''}
                 <h3 class="catalog-detail-title">${escapeHTML(prod.name)}</h3>
+                ${ratingPillHTML}
                 ${prod.sku ? `<small class="catalog-detail-sku">SKU: ${escapeHTML(prod.sku)}</small>` : ''}
                 ${priceHTML}
 
@@ -7153,6 +7569,8 @@ export async function openProductDetail(productId, sellerUid) {
                 ` : ''}
 
                 ${digitalCtaBtnHTML}
+
+                ${reviewsSectionHTML}
 
                 ${!isOwner ? `
                     <div class="catalog-ready-messages-box" id="catalog-detail-ready-messages">
@@ -7303,6 +7721,19 @@ export async function openProductDetail(productId, sellerUid) {
         document.getElementById('catalog-detail-edit-btn')?.addEventListener('click', () => {
             closeProductDetail();
             openProductEditor(productId);
+        });
+
+        document.getElementById('catalog-detail-stars-pill')?.addEventListener('click', () => {
+            const revSec = document.getElementById('catalog-product-reviews-section');
+            if (revSec) revSec.scrollIntoView({ behavior: 'smooth' });
+        });
+
+        document.getElementById('catalog-detail-open-review-btn')?.addEventListener('click', () => {
+            openProductReviewModal(productId, sellerUid, {
+                productName: prod.name,
+                productCover: mainPhoto,
+                orderId: purchaseCheck.orderId
+            });
         });
     } catch (e) {
         console.error('Erro ao abrir detalhes:', e);
@@ -7557,6 +7988,14 @@ export async function openOrderDetail(orderId) {
                             <strong>${formatBRL(unitPrice)}</strong>
                         </div>
                     </div>
+                    ${isBuyer ? `
+                        <div style="margin-top:8px;">
+                            <button type="button" class="cat-review-item-btn" data-prod-id="${escapeHTML(item.productId || item.id || '')}" data-seller-uid="${escapeHTML(ord.sellerUid || '')}" data-prod-name="${escapeHTML(item.name || '')}" data-prod-cover="${escapeHTML(item.cover || '')}" data-order-id="${escapeHTML(ord.id || '')}">
+                                <i data-lucide="star"></i>
+                                <span>Avaliar produto ⭐</span>
+                            </button>
+                        </div>
+                    ` : ''}
                 </div>
             `;
         }).join('');
@@ -7670,6 +8109,17 @@ export async function openOrderDetail(orderId) {
                 const nextStatus = btn.dataset.status;
                 updateOrderStatus(orderId, nextStatus);
             };
+        });
+
+        content.querySelectorAll('.cat-review-item-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                openProductReviewModal(btn.dataset.prodId, btn.dataset.sellerUid, {
+                    orderId: btn.dataset.orderId,
+                    productName: btn.dataset.prodName,
+                    productCover: btn.dataset.prodCover
+                });
+            });
         });
     } catch (e) {
         console.error('Erro ao abrir pedido:', e);
@@ -8201,6 +8651,46 @@ export function initCatalog() {
         } catch (err) {
             showToast('Erro no Frete', err.message || 'Não foi possível salvar o frete.', 'red');
         }
+    });
+
+    // Modal de Avaliação de Produto (v1.0.198)
+    document.getElementById('catalog-review-close-btn')?.addEventListener('click', () => {
+        playSound(clickSound);
+        closeProductReviewModal();
+    });
+    document.getElementById('catalog-review-cancel-btn')?.addEventListener('click', () => {
+        playSound(clickSound);
+        closeProductReviewModal();
+    });
+    document.getElementById('catalog-product-review-modal')?.addEventListener('click', (e) => {
+        if (e.target && e.target.id === 'catalog-product-review-modal') {
+            closeProductReviewModal();
+        }
+    });
+
+    // Seleção interativa de 1 a 5 estrelas
+    document.querySelectorAll('#catalog-review-stars-picker .catalog-star-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            playSound(clickSound);
+            const star = parseInt(btn.dataset.star, 10) || 5;
+            setReviewModalRating(star);
+        });
+    });
+
+    // Contador de caracteres do comentário
+    const reviewCommentInput = document.getElementById('catalog-review-comment-input');
+    const reviewCharCount = document.getElementById('catalog-review-char-count');
+    if (reviewCommentInput && reviewCharCount) {
+        reviewCommentInput.addEventListener('input', () => {
+            const len = reviewCommentInput.value.length;
+            reviewCharCount.innerText = `${len}/500`;
+        });
+    }
+
+    // Botão de submissão da avaliação
+    document.getElementById('catalog-review-submit-btn')?.addEventListener('click', () => {
+        playSound(clickSound);
+        submitProductReview();
     });
 }
 
@@ -18687,7 +19177,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.197';
+export const CURRENT_APP_VERSION = '1.0.198';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -32000,6 +32490,17 @@ if (typeof window !== 'undefined') {
     window.selectStoryPersonalCategory = selectStoryPersonalCategory;
     window.resetStoryPersonalCategory = resetStoryPersonalCategory;
     window.getSelectedStoryPersonalCategory = () => selectedStoryPersonalCategory;
+    // Avaliação de 5 Estrelas e Comentários nos Produtos Pós-Compra (v1.0.198)
+    window.setReviewModalRating = setReviewModalRating;
+    window.renderStarsHTML = renderStarsHTML;
+    window.checkUserPurchasedProduct = checkUserPurchasedProduct;
+    window.loadProductReviews = loadProductReviews;
+    window.openProductReviewModal = openProductReviewModal;
+    window.closeProductReviewModal = closeProductReviewModal;
+    window.submitProductReview = submitProductReview;
+    window.getCurrentReviewRating = () => currentReviewRating;
+    window.getCurrentReviewProductId = () => currentReviewProductId;
+    window.getCurrentReviewSellerUid = () => currentReviewSellerUid;
 }
 
 if (typeof window !== 'undefined') {
