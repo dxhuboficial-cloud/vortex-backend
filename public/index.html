@@ -5,19 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
     <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.199">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.209">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.209">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.209">
-    <link rel="stylesheet" href="style.css?v=1.0.209">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.210">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.210">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.210">
+    <link rel="stylesheet" href="style.css?v=1.0.210">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.209">
+    <link rel="manifest" href="manifest.json?v=1.0.210">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.209">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.209">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.210">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.210">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -1245,6 +1245,21 @@
                         <input type="checkbox" id="profile-private-toggle" aria-label="Ativar conta privada">
                         <span class="slider schedule-slider"></span>
                     </label>
+                </div>
+
+                <!-- Botão / Switch de Ativar e Desativar a Loja no Catálogo (v1.0.210) -->
+                <div class="setting-item profile-store-toggle-setting" id="profile-store-toggle-setting">
+                    <label for="profile-store-enabled-toggle" class="setting-info">
+                        <span class="profile-field-title"><i data-lucide="store" class="profile-field-icon"></i> Loja no Catálogo</span>
+                        <small id="profile-store-toggle-desc">Ativa ou desativa sua loja no catálogo público para outros usuários</small>
+                    </label>
+                    <div class="profile-store-toggle-wrapper">
+                        <span id="profile-store-status-badge" class="profile-store-status-badge active">Loja Ativa</span>
+                        <label class="switch schedule-switch" for="profile-store-enabled-toggle" title="Ativar ou desativar loja no catálogo">
+                            <input type="checkbox" id="profile-store-enabled-toggle" checked aria-label="Ativar ou desativar loja no catálogo">
+                            <span class="slider schedule-slider"></span>
+                        </label>
+                    </div>
                 </div>
 
                 <div class="profile-edit-section-header">
@@ -3361,6 +3376,21 @@
                         <button type="button" id="catalog-manage-shipping-btn" class="catalog-secondary-btn"><i data-lucide="truck"></i><span>Frete</span></button>
                     </div>
 
+                    <!-- Controle de Visibilidade da Loja no Catálogo (v1.0.210) -->
+                    <div id="catalog-store-visibility-control" class="catalog-store-control-card">
+                        <div class="catalog-store-control-left">
+                            <div class="catalog-store-control-title">
+                                <i data-lucide="store"></i>
+                                <span>Visibilidade da Loja no Catálogo</span>
+                            </div>
+                            <small id="catalog-store-visibility-desc" class="catalog-store-control-desc">Quando desativada, sua loja fica oculta e não aparece para ninguém.</small>
+                        </div>
+                        <button type="button" id="catalog-store-visibility-toggle-btn" class="catalog-store-buy-toggle active" title="Clique para alternar a visibilidade da loja">
+                            <i data-lucide="check-circle-2"></i>
+                            <span id="catalog-store-visibility-toggle-label">Loja Ativa</span>
+                        </button>
+                    </div>
+
                     <!-- Controle de Ativação do Botão de Compra da Loja -->
                     <div id="catalog-store-buy-control" class="catalog-store-control-card">
                         <div class="catalog-store-control-left">
@@ -4442,6 +4472,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.209" defer></script>
+    <script type="module" src="script.js?v=1.0.210" defer></script>
 </body>
 </html>

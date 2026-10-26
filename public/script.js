@@ -1124,7 +1124,14 @@ function playSound(snd) {
     }
 }
 
-function showToast(title, message, type = 'blue') {
+export function showToast(title, message, type = 'blue') {
+    if (typeof window !== 'undefined' && typeof window.showToast === 'function' && window.showToast !== showToast) {
+        try {
+            window.showToast(title, message, type);
+        } catch (e) {
+            console.warn('[VORTEX] Custom showToast error:', e);
+        }
+    }
     let container = document.getElementById('toast-container');
     if (!container) return;
     const toast = document.createElement('div');
@@ -5658,7 +5665,12 @@ export async function loadBusinessStores() {
             const data = d.data();
             // Apenas incluir se for documento de usuário raiz e tiver nome
             if (data.name) {
-                stores.push({ uid: d.id, ...data });
+                const isStoreActive = (data.isStoreEnabled !== false && data.storeEnabled !== false);
+                const isMe = currentUser && currentUser.uid === d.id;
+                // Se a loja estiver desativada, não aparece para ninguém (exceto para o próprio dono)
+                if (isStoreActive || isMe) {
+                    stores.push({ uid: d.id, ...data, isStoreEnabled: isStoreActive });
+                }
             }
         });
 
@@ -5676,6 +5688,13 @@ export function renderBusinessStores() {
     if (!container) return;
 
     let stores = allBusinessStoresCache || [];
+
+    // Se desativada, não aparece para ninguém (exceto para o próprio dono)
+    stores = stores.filter(s => {
+        const isStoreActive = (s.isStoreEnabled !== false && s.storeEnabled !== false);
+        const isMe = currentUser && currentUser.uid === s.uid;
+        return isStoreActive || isMe;
+    });
 
     if (activeStoresSearchQuery) {
         const q = activeStoresSearchQuery.toLowerCase();
@@ -5725,6 +5744,7 @@ export function renderBusinessStores() {
                     <div class="catalog-store-info-col">
                         <div class="catalog-store-name-row">
                             <strong class="catalog-store-name" title="${escapeHTML(store.name)}">${escapeHTML(store.name)}</strong>
+                            ${(!store.isStoreEnabled && isMe) ? `<span class="catalog-store-badge-disabled"><i data-lucide="eye-off"></i> Desativada</span>` : ''}
                         </div>
                         <div class="catalog-store-meta-row">
                             <span class="catalog-business-badge"><i data-lucide="badge-check"></i> Empresa</span>
@@ -5765,6 +5785,41 @@ export function renderBusinessStores() {
 export async function openStorefront(sellerUid, sellerData = {}) {
     activeCatalogSellerUid = sellerUid;
     activeCatalogSellerData = sellerData;
+
+    const isOwner = currentUser && currentUser.uid === sellerUid;
+    let isStoreActive = (sellerData.isStoreEnabled !== false && sellerData.storeEnabled !== false);
+
+    // Se sellerData não tiver isStoreEnabled explicitamente definido, verificar perfil/cache/firestore
+    if (sellerData.isStoreEnabled === undefined && sellerUid) {
+        if (isOwner && currentProfile && currentProfile.isStoreEnabled !== undefined) {
+            isStoreActive = (currentProfile.isStoreEnabled !== false && currentProfile.storeEnabled !== false);
+            sellerData.isStoreEnabled = isStoreActive;
+        } else {
+            const cached = (allBusinessStoresCache || []).find(s => s.uid === sellerUid);
+            if (cached && cached.isStoreEnabled !== undefined) {
+                isStoreActive = cached.isStoreEnabled !== false;
+                sellerData.isStoreEnabled = isStoreActive;
+            } else {
+                try {
+                    const sDoc = await getDoc(doc(db, 'users', sellerUid));
+                    if (sDoc.exists()) {
+                        const sData = sDoc.data() || {};
+                        isStoreActive = (sData.isStoreEnabled !== false && sData.storeEnabled !== false);
+                        sellerData.isStoreEnabled = isStoreActive;
+                    }
+                } catch (err) {
+                    console.warn('[VORTEX CATALOG] Falha ao verificar isStoreEnabled:', err);
+                }
+            }
+        }
+    }
+
+    // Se a loja estiver desativada e quem estiver acessando NÃO for o dono, bloqueia
+    if (!isStoreActive && !isOwner) {
+        showToast('Loja Desativada', 'Esta loja foi desativada pelo proprietário e não está disponível no catálogo.', 'orange');
+        switchCatalogTab('stores');
+        return;
+    }
 
     // Se storeBuyEnabled não estiver explicitamente definido no objeto sellerData, verificar usuário
     if (sellerData.storeBuyEnabled === undefined && sellerUid) {
@@ -6159,6 +6214,104 @@ export async function toggleStoreBuyButton() {
     }
 }
 
+// Controle de Ativação e Desativação da Loja no Catálogo (v1.0.210)
+export function syncStoreEnabledUI(isEnabled) {
+    const isStoreActive = (isEnabled !== false);
+    const toggle = document.getElementById('profile-store-enabled-toggle');
+    const badge = document.getElementById('profile-store-status-badge');
+    const desc = document.getElementById('profile-store-toggle-desc');
+
+    if (toggle) toggle.checked = isStoreActive;
+    if (badge) {
+        if (isStoreActive) {
+            badge.innerText = 'Loja Ativa';
+            badge.className = 'profile-store-status-badge active';
+        } else {
+            badge.innerText = 'Loja Desativada';
+            badge.className = 'profile-store-status-badge disabled';
+        }
+    }
+    if (desc) {
+        desc.innerText = isStoreActive
+            ? 'Sua loja está ativa e aparece normalmente para todos no catálogo.'
+            : 'Sua loja está desativada e não aparece para ninguém no catálogo.';
+    }
+
+    // Sincroniza o controle dentro da aba Minha Loja do catálogo se presente
+    const catBtn = document.getElementById('catalog-store-visibility-toggle-btn');
+    const catLabel = document.getElementById('catalog-store-visibility-toggle-label');
+    const catDesc = document.getElementById('catalog-store-visibility-desc');
+    if (catBtn) {
+        if (isStoreActive) {
+            catBtn.classList.add('active');
+            catBtn.classList.remove('disabled');
+            catBtn.innerHTML = `<i data-lucide="check-circle-2"></i><span id="catalog-store-visibility-toggle-label">Loja Ativa</span>`;
+            if (catDesc) catDesc.innerText = 'Sua loja está ativa e aparece normalmente para todos no catálogo.';
+        } else {
+            catBtn.classList.remove('active');
+            catBtn.classList.add('disabled');
+            catBtn.innerHTML = `<i data-lucide="eye-off"></i><span id="catalog-store-visibility-toggle-label">Loja Desativada</span>`;
+            if (catDesc) catDesc.innerText = 'Quando desativada, sua loja fica oculta e não aparece para ninguém.';
+        }
+        if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+    }
+}
+
+export async function toggleStoreVisibility(forceValue = null) {
+    if (!currentUser) return false;
+    const currentVal = (currentProfile?.isStoreEnabled !== false && currentProfile?.storeEnabled !== false);
+    const newVal = forceValue !== null ? Boolean(forceValue) : !currentVal;
+
+    if (!currentProfile) currentProfile = {};
+    currentProfile.isStoreEnabled = newVal;
+    currentProfile.storeEnabled = newVal;
+    syncStoreEnabledUI(newVal);
+
+    try {
+        const userRef = doc(db, 'users', currentUser.uid);
+        await updateDoc(userRef, {
+            isStoreEnabled: newVal,
+            storeEnabled: newVal,
+            updatedAt: Date.now()
+        });
+
+        const cachedStore = (allBusinessStoresCache || []).find(s => s.uid === currentUser.uid);
+        if (cachedStore) {
+            cachedStore.isStoreEnabled = newVal;
+            cachedStore.storeEnabled = newVal;
+        }
+
+        showToast(
+            newVal ? 'Loja no Catálogo Ativada ✅' : 'Loja no Catálogo Desativada ⏸️',
+            newVal ? 'Sua loja agora está visível e aparece normalmente para todos no catálogo!' : 'Sua loja foi desativada e não aparecerá para ninguém no catálogo.',
+            newVal ? 'green' : 'orange'
+        );
+        return newVal;
+    } catch (err) {
+        console.error('[VORTEX CATALOG] Erro ao alternar visibilidade da loja:', err);
+        if (currentProfile) {
+            currentProfile.isStoreEnabled = currentVal;
+            currentProfile.storeEnabled = currentVal;
+        }
+        syncStoreEnabledUI(currentVal);
+        showToast('Erro', 'Não foi possível atualizar a visibilidade da loja.', 'red');
+        return currentVal;
+    }
+}
+
+export function initStoreEnabledControls() {
+    const pToggle = document.getElementById('profile-store-enabled-toggle');
+    const cBtn = document.getElementById('catalog-store-visibility-toggle-btn');
+
+    pToggle?.addEventListener('change', function() {
+        toggleStoreVisibility(this.checked);
+    });
+
+    cBtn?.addEventListener('click', function() {
+        toggleStoreVisibility();
+    });
+}
+
 // Meus Produtos (Painel do Vendedor)
 export async function loadMyCatalog() {
     if (!currentUser) return;
@@ -6166,6 +6319,10 @@ export async function loadMyCatalog() {
     // Atualizar estado visual do botão de compra da loja do vendedor
     const isStoreBuyEnabled = (currentProfile?.storeBuyEnabled !== false);
     updateStoreBuyButtonUI(isStoreBuyEnabled);
+
+    // Atualizar estado visual da visibilidade da loja no catálogo (v1.0.210)
+    const isStoreActive = (currentProfile?.isStoreEnabled !== false && currentProfile?.storeEnabled !== false);
+    syncStoreEnabledUI(isStoreActive);
 
     const gridContainer = document.getElementById('catalog-mine-grid');
     const summaryContainer = document.getElementById('catalog-mine-summary');
@@ -12482,7 +12639,8 @@ export function updateContactProfileSocialUI(data) {
 
     const catalogBtn = document.getElementById('contact-profile-catalog-btn');
     if (catalogBtn) {
-        catalogBtn.style.display = isBusiness ? 'flex' : 'none';
+        const isStoreActive = (data?.isStoreEnabled !== false && data?.storeEnabled !== false);
+        catalogBtn.style.display = (isBusiness && isStoreActive) ? 'flex' : 'none';
     }
 
     const phone = data?.phone || '';
@@ -19943,7 +20101,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.209';
+export const CURRENT_APP_VERSION = '1.0.210';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -29875,6 +30033,10 @@ document.getElementById('profile-btn')?.addEventListener('click', () => {
         privateToggle.checked = Boolean(currentProfile.isPrivateAccount);
     }
 
+    // Visibilidade da Loja no Catálogo (v1.0.210)
+    const isStoreEnabled = (currentProfile.isStoreEnabled !== false && currentProfile.storeEnabled !== false);
+    syncStoreEnabledUI(isStoreEnabled);
+
     // Configuração do Tipo de Conta (Pessoal vs Empresa)
     const isBusiness = currentProfile.accountType === 'business';
     const personalRadio = document.getElementById('profile-type-personal');
@@ -31030,6 +31192,9 @@ document.getElementById('save-profile-btn')?.addEventListener('click', async () 
 
     const isBusiness = document.getElementById('profile-type-business')?.checked || false;
     const accountType = isBusiness ? 'business' : 'personal';
+    const isStoreEnabled = document.getElementById('profile-store-enabled-toggle')
+        ? Boolean(document.getElementById('profile-store-enabled-toggle').checked)
+        : (currentProfile.isStoreEnabled !== false && currentProfile.storeEnabled !== false);
 
     const rawWhatsapp = document.getElementById('profile-whatsapp-input')?.value.trim() || '';
     const rawFacebook = document.getElementById('profile-facebook-input')?.value.trim() || '';
@@ -31133,6 +31298,8 @@ document.getElementById('save-profile-btn')?.addEventListener('click', async () 
                 pixKey,
                 accountType,
                 isPrivateAccount,
+                isStoreEnabled,
+                storeEnabled: isStoreEnabled,
                 whatsapp,
                 facebook,
                 website1,
@@ -31178,6 +31345,9 @@ document.getElementById('save-profile-btn')?.addEventListener('click', async () 
     currentProfile.username = username;
     currentProfile.isPrivateAccount = Boolean(document.getElementById('profile-private-toggle')?.checked);
     syncPrivateAccountToggles(currentProfile.isPrivateAccount);
+    currentProfile.isStoreEnabled = isStoreEnabled;
+    currentProfile.storeEnabled = isStoreEnabled;
+    syncStoreEnabledUI(isStoreEnabled);
     currentProfile.status = bio;
     currentProfile.phone = phone;
     currentProfile.pixKey = pixKey;
@@ -34482,6 +34652,7 @@ if (typeof window !== 'undefined') {
     window.setBusinessStoresCache = (stores) => { allBusinessStoresCache = stores; };
     window.setStoresSearchQuery = (q) => { activeStoresSearchQuery = q; };
     window.getAllBusinessStoresCache = () => allBusinessStoresCache;
+    window.showToast = showToast;
     window.openStorefront = openStorefront;
     window.loadSellerProducts = loadSellerProducts;
     window.loadSellerCategories = loadSellerCategories;
@@ -34741,6 +34912,10 @@ if (typeof window !== 'undefined') {
     window.togglePrivateAccount = togglePrivateAccount;
     window.syncPrivateAccountToggles = syncPrivateAccountToggles;
     window.initPrivateAccountControls = initPrivateAccountControls;
+    // Ativação e Desativação da Loja no Catálogo (v1.0.210)
+    window.syncStoreEnabledUI = syncStoreEnabledUI;
+    window.toggleStoreVisibility = toggleStoreVisibility;
+    window.initStoreEnabledControls = initStoreEnabledControls;
     // Câmera nos Contatos e Botão Interativo Empresa (v1.0.206)
     window.openChatCamera = openChatCamera;
     window.closeChatCamera = closeChatCamera;
@@ -34776,4 +34951,5 @@ if (typeof window !== 'undefined') {
     initScheduleControls();
     initGroupMiniAdminControls();
     initPrivateAccountControls();
+    initStoreEnabledControls();
 }

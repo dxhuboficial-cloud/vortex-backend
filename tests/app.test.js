@@ -13543,11 +13543,11 @@ test('Correção do Fluxo de Envio do Botão Comercial: Persistência de Dados, 
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
 
   // 1. Integridade de Versionamento (v1.0.208+)
-  assert.ok(['1.0.208', '1.0.209'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão compatível');
-  assert.ok(['1.0.208', '1.0.209'].includes(versionJson.version), 'version.json deve ter versão compatível');
-  assert.ok(html.includes('script.js?v=1.0.208') || html.includes('script.js?v=1.0.209'), 'index.html deve referenciar script.js');
-  assert.ok(html.includes('style.css?v=1.0.208') || html.includes('style.css?v=1.0.209'), 'index.html deve referenciar style.css');
-  assert.ok(swContent.includes('vortex-vip-v1.0.208') || swContent.includes('vortex-vip-v1.0.209'), 'sw.js deve conter cache');
+  assert.ok(['1.0.208', '1.0.209', '1.0.210'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão compatível');
+  assert.ok(['1.0.208', '1.0.209', '1.0.210'].includes(versionJson.version), 'version.json deve ter versão compatível');
+  assert.ok(html.includes('script.js?v=1.0.208') || html.includes('script.js?v=1.0.209') || html.includes('script.js?v=1.0.210'), 'index.html deve referenciar script.js');
+  assert.ok(html.includes('style.css?v=1.0.208') || html.includes('style.css?v=1.0.209') || html.includes('style.css?v=1.0.210'), 'index.html deve referenciar style.css');
+  assert.ok(swContent.includes('vortex-vip-v1.0.208') || swContent.includes('vortex-vip-v1.0.209') || swContent.includes('vortex-vip-v1.0.210'), 'sw.js deve conter cache');
 
   // 2. Correção de z-index do toast para sobrepor o modal (z-index: 99999 !important)
   assert.ok(css.includes('#toast-container { position: absolute; top: 15px; left: 15px; right: 15px; z-index: 99999 !important;'), 'toast-container deve ter z-index 99999 para nunca ficar escondido sob modais');
@@ -13624,12 +13624,12 @@ test('Centralização do Título (Texto) com o Ícone no Botão de Publicação 
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
 
-  // 1. Integridade de Versionamento (v1.0.209)
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.209', 'script.js deve ter versão 1.0.209');
-  assert.strictEqual(versionJson.version, '1.0.209', 'version.json deve ter versão 1.0.209');
-  assert.ok(html.includes('script.js?v=1.0.209'), 'index.html deve referenciar script.js?v=1.0.209');
-  assert.ok(html.includes('style.css?v=1.0.209'), 'index.html deve referenciar style.css?v=1.0.209');
-  assert.ok(swContent.includes('vortex-vip-v1.0.209'), 'sw.js deve conter cache vortex-vip-v1.0.209');
+  // 1. Integridade de Versionamento (v1.0.209+)
+  assert.ok(['1.0.209', '1.0.210'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão compatível');
+  assert.ok(['1.0.209', '1.0.210'].includes(versionJson.version), 'version.json deve ter versão compatível');
+  assert.ok(html.includes('script.js?v=1.0.209') || html.includes('script.js?v=1.0.210'), 'index.html deve referenciar script.js');
+  assert.ok(html.includes('style.css?v=1.0.209') || html.includes('style.css?v=1.0.210'), 'index.html deve referenciar style.css');
+  assert.ok(swContent.includes('vortex-vip-v1.0.209') || swContent.includes('vortex-vip-v1.0.210'), 'sw.js deve conter cache');
 
   // 2. Estrutura HTML do Botão de Publicar com Ícone e Título Centralizados
   assert.ok(html.includes('id="publish-post-btn"'), 'Deve existir o botão #publish-post-btn');
@@ -13647,4 +13647,110 @@ test('Centralização do Título (Texto) com o Ícone no Botão de Publicação 
   const publishBtn = env.elements['publish-post-btn'];
   assert.ok(publishBtn, 'Elemento publish-post-btn deve existir no DOM');
   assert.ok(publishBtn.classList.contains('post-publish-btn'), 'Elemento deve ter a classe post-publish-btn');
+});
+
+
+test('Botão para Ativar e Desativar a Loja no Catálogo e no Editar Perfil (v1.0.210)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+  const css = fs.readFileSync('public/style.css', 'utf8');
+  const html = fs.readFileSync('public/index.html', 'utf8');
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
+
+  // 1. Integridade de Versionamento (v1.0.210)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.210', 'script.js deve ter versão 1.0.210');
+  assert.strictEqual(versionJson.version, '1.0.210', 'version.json deve ter versão 1.0.210');
+  assert.ok(html.includes('script.js?v=1.0.210'), 'index.html deve referenciar script.js?v=1.0.210');
+  assert.ok(html.includes('style.css?v=1.0.210'), 'index.html deve referenciar style.css?v=1.0.210');
+  assert.ok(swContent.includes('vortex-vip-v1.0.210'), 'sw.js deve conter cache vortex-vip-v1.0.210');
+
+  // 2. Elementos no DOM em index.html
+  assert.ok(html.includes('id="profile-store-toggle-setting"'), 'Deve existir o container #profile-store-toggle-setting no Editar Perfil');
+  assert.ok(html.includes('id="profile-store-enabled-toggle"'), 'Deve existir o switch #profile-store-enabled-toggle no Editar Perfil');
+  assert.ok(html.includes('id="profile-store-status-badge"'), 'Deve existir o badge #profile-store-status-badge');
+  assert.ok(html.includes('id="catalog-store-visibility-control"'), 'Deve existir o controle de visibilidade no Catálogo');
+  assert.ok(html.includes('id="catalog-store-visibility-toggle-btn"'), 'Deve existir o botão #catalog-store-visibility-toggle-btn');
+
+  // 3. Estilos CSS
+  assert.ok(css.includes('.profile-store-toggle-setting'), 'style.css deve conter estilos para .profile-store-toggle-setting');
+  assert.ok(css.includes('.profile-store-status-badge.active'), 'style.css deve estilizar o badge ativo');
+  assert.ok(css.includes('.profile-store-status-badge.disabled'), 'style.css deve estilizar o badge desativado');
+  assert.ok(css.includes('.catalog-store-badge-disabled'), 'style.css deve estilizar o badge de loja desativada');
+
+  // 4. Sincronização visual da UI (syncStoreEnabledUI)
+  const storeToggle = env.elements['profile-store-enabled-toggle'];
+  const storeBadge = env.elements['profile-store-status-badge'];
+  const storeDesc = env.elements['profile-store-toggle-desc'];
+
+  win.syncStoreEnabledUI(true);
+  assert.strictEqual(storeToggle.checked, true, 'Toggle deve estar marcado quando ativado');
+  assert.strictEqual(storeBadge.innerText, 'Loja Ativa', 'Badge deve exibir Loja Ativa');
+  assert.ok(storeDesc.innerText.includes('ativa e aparece normalmente'), 'Descrição deve indicar loja ativa');
+
+  win.syncStoreEnabledUI(false);
+  assert.strictEqual(storeToggle.checked, false, 'Toggle deve estar desmarcado quando desativado');
+  assert.strictEqual(storeBadge.innerText, 'Loja Desativada', 'Badge deve exibir Loja Desativada');
+  assert.ok(storeDesc.innerText.includes('desativada e não aparece para ninguém'), 'Descrição deve indicar loja desativada');
+
+  // 5. Testar salvar perfil com loja desativada
+  const sellerUser = { uid: 'seller_user_210', email: 'seller@empresa.com' };
+  await env.triggerAuthStateChange(sellerUser);
+  await new Promise(r => setTimeout(r, 20));
+  const profileNameInp = env.elements['profile-name-input'];
+  const profileUsernameInp = env.elements['profile-username-input'];
+  const profileTypeBusiness = env.elements['profile-type-business'];
+  const saveProfileBtn = env.elements['save-profile-btn'];
+
+  profileNameInp.value = 'Loja VIP 210';
+  profileUsernameInp.value = 'loja210';
+  profileTypeBusiness.checked = true;
+  storeToggle.checked = false; // desativa a loja
+
+  await saveProfileBtn.click();
+  await new Promise(r => setTimeout(r, 40));
+
+  const savedUserDoc = env.firestoreDocs['users/seller_user_210'];
+  assert.ok(savedUserDoc, 'Documento do usuário deve ter sido salvo no Firestore');
+  assert.strictEqual(savedUserDoc.isStoreEnabled, false, 'isStoreEnabled deve ser false no Firestore');
+  assert.strictEqual(savedUserDoc.storeEnabled, false, 'storeEnabled deve ser false no Firestore');
+
+  // 6. Testar que quando a loja está desativada, o botão "Ver catálogo" NÃO aparece no perfil do contato
+  const deactivatedContact = {
+    uid: 'seller_user_210',
+    name: 'Loja VIP 210',
+    username: 'loja210',
+    accountType: 'business',
+    isStoreEnabled: false,
+    storeEnabled: false
+  };
+
+  win.openContactProfile(deactivatedContact);
+  const contactCatalogBtn = env.elements['contact-profile-catalog-btn'];
+  assert.strictEqual(contactCatalogBtn.style.display, 'none', 'Botão Ver catálogo DEVE estar oculto quando loja está desativada');
+
+  // 7. Testar que quando a loja está ativada, o botão "Ver catálogo" aparece normalmente
+  const activatedContact = {
+    uid: 'active_seller_210',
+    name: 'Loja Ativa 210',
+    username: 'lojaativa210',
+    accountType: 'business',
+    isStoreEnabled: true,
+    storeEnabled: true
+  };
+
+  win.openContactProfile(activatedContact);
+  assert.strictEqual(contactCatalogBtn.style.display, 'flex', 'Botão Ver catálogo DEVE aparecer quando loja está ativada');
+
+  // 8. Testar openStorefront bloqueando visitante quando loja desativada
+  win.setCurrentUser({ uid: 'visitor_user_210', email: 'visitor@cliente.com' });
+  let toastTriggered = false;
+  win.showToast = (title, msg) => {
+    if (title.includes('Loja Desativada')) toastTriggered = true;
+  };
+
+  await win.openStorefront('seller_user_210', deactivatedContact);
+  assert.ok(toastTriggered, 'Deve exibir toast de Loja Desativada ao tentar visitar loja desativada');
+  const storefrontView = env.elements['catalog-view-storefront'];
+  assert.strictEqual(storefrontView.style.display, 'none', 'Vitrine não deve ser exibida para visitante se loja estiver desativada');
 });
