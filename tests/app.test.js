@@ -13311,12 +13311,10 @@ test('Câmera nos Contatos, Botão Interativo para Conta Empresa e Encaminhament
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
 
-  // 1. Integridade de Versionamento (v1.0.206)
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.206', 'script.js deve ter versão 1.0.206');
-  assert.strictEqual(versionJson.version, '1.0.206', 'version.json deve ter versão 1.0.206');
-  assert.ok(html.includes('script.js?v=1.0.206'), 'index.html deve referenciar script.js?v=1.0.206');
-  assert.ok(html.includes('style.css?v=1.0.206'), 'index.html deve referenciar style.css?v=1.0.206');
-  assert.ok(swContent.includes('vortex-vip-v1.0.206'), 'sw.js deve conter cache vortex-vip-v1.0.206');
+  // 1. Integridade de Versionamento (v1.0.206 ou superior)
+  const semverCompare = (a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+  assert.ok(semverCompare(win.CURRENT_APP_VERSION, '1.0.206') >= 0, 'script.js deve ter versão 1.0.206 ou superior');
+  assert.ok(semverCompare(versionJson.version, '1.0.206') >= 0, 'version.json deve ter versão 1.0.206 ou superior');
 
   // 2. Elementos DOM no index.html
   // Câmera nos Contatos
@@ -13456,4 +13454,84 @@ test('Câmera nos Contatos, Botão Interativo para Conta Empresa e Encaminhament
   assert.strictEqual(fwd2.forwarded, true, 'Mensagem 2 deve ter flag forwarded: true');
   assert.ok(fwd1.text.includes('mensagem selecionada'), 'Conteúdo da mensagem 1 deve ser preservado');
   assert.ok(fwd2.text.includes('mensagem selecionada'), 'Conteúdo da mensagem 2 deve ser preservado');
+});
+test('Organização Visual do Modal de Botão Interativo (Empresa) - Título, Inputs Largos e Botões Proporcionais (v1.0.207)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+  const css = fs.readFileSync('public/style.css', 'utf8');
+  const html = fs.readFileSync('public/index.html', 'utf8');
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
+
+  // 1. Integridade de Versionamento (v1.0.207)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.207', 'script.js deve ter versão 1.0.207');
+  assert.strictEqual(versionJson.version, '1.0.207', 'version.json deve ter versão 1.0.207');
+  assert.ok(html.includes('script.js?v=1.0.207'), 'index.html deve referenciar script.js?v=1.0.207');
+  assert.ok(html.includes('style.css?v=1.0.207'), 'index.html deve referenciar style.css?v=1.0.207');
+  assert.ok(swContent.includes('vortex-vip-v1.0.207'), 'sw.js deve conter cache vortex-vip-v1.0.207');
+
+  // 2. Barra Superior Organizada (Sem Quebra Feia do Título e Fechar Alinhado)
+  assert.ok(html.includes('class="panel-top-bar company-btn-modal-top-bar"'), 'index.html deve conter barra superior .company-btn-modal-top-bar');
+  assert.ok(html.includes('class="company-btn-header-icon-badge"'), 'index.html deve conter badge de ícone no cabeçalho');
+  assert.ok(html.includes('id="company-button-modal-title"'), 'index.html deve conter #company-button-modal-title');
+  assert.ok(html.includes('class="company-btn-header-tag"'), 'index.html deve conter tag Empresa no cabeçalho');
+  assert.ok(html.includes('class="company-btn-header-subtitle"'), 'index.html deve conter subtítulo organizado');
+
+  // Estilos da Barra Superior
+  assert.ok(css.includes('.company-btn-modal-top-bar'), 'style.css deve estilizar .company-btn-modal-top-bar');
+  assert.ok(css.includes('.company-btn-header-title-row h2'), 'style.css deve ter regra específica para título h2');
+  const h2StyleMatch = css.match(/\.company-btn-header-title-row\s+h2\s*\{([^}]+)\}/);
+  assert.ok(h2StyleMatch, 'Regra de estilo de h2 deve existir');
+  assert.ok(h2StyleMatch[1].includes('white-space: nowrap'), 'Título deve ter white-space: nowrap para não quebrar em duas linhas');
+  assert.ok(h2StyleMatch[1].includes('overflow: hidden'), 'Título deve ter overflow: hidden');
+  assert.ok(h2StyleMatch[1].includes('text-overflow: ellipsis'), 'Título deve ter text-overflow: ellipsis');
+
+  // 3. Inputs de Título e Link Largos (100% de Largura e Alinhados à Esquerda)
+  assert.ok(!html.includes('class="setting-item company-btn-input-group"'), 'Grupos de input não devem ter a classe setting-item que encolhe para 170px');
+  assert.ok(html.includes('class="company-btn-text-input"'), 'Inputs devem ter a classe .company-btn-text-input');
+  
+  const inputStyleMatch = css.match(/\.company-btn-input-group\s+input\[type="text"\][^\{]*\{([^}]+)\}/);
+  assert.ok(inputStyleMatch, 'Regra de inputs de texto deve existir');
+  assert.ok(inputStyleMatch[1].includes('width: 100% !important'), 'Inputs de texto devem ter width: 100% !important');
+  assert.ok(inputStyleMatch[1].includes('text-align: left !important'), 'Inputs de texto devem ter text-align: left !important');
+
+  // 4. Barra de Ações do Rodapé: Cancelar e Enviar Botão Proporcionais
+  assert.ok(html.includes('class="close-btn modal-cancel-btn company-btn-modal-cancel"'), 'Botão Cancelar deve ter classe .company-btn-modal-cancel');
+  assert.ok(html.includes('class="danger-btn company-btn-submit-action"'), 'Botão Enviar deve ter classe .company-btn-submit-action');
+  assert.ok(html.includes('<span>Enviar Botão</span>'), 'Botão Enviar deve ter texto envolto em span');
+
+  const submitBtnStyleMatch = css.match(/\.company-btn-submit-action\s*\{([^}]+)\}/);
+  assert.ok(submitBtnStyleMatch, 'Regra de botão enviar deve existir');
+  assert.ok(submitBtnStyleMatch[1].includes('white-space: nowrap !important'), 'Botão Enviar deve ter white-space: nowrap !important para não quebrar em 2 linhas');
+
+  const cancelBtnStyleMatch = css.match(/\.company-btn-modal-cancel\s*\{([^}]+)\}/);
+  assert.ok(cancelBtnStyleMatch, 'Regra de botão cancelar deve existir');
+  assert.ok(cancelBtnStyleMatch[1].includes('white-space: nowrap !important'), 'Botão Cancelar deve ter white-space: nowrap !important');
+
+  // 5. Funcionamento dos Modais e Elementos
+  const modal = env.elements['company-button-modal'];
+  const titleInput = env.elements['company-btn-title-input'];
+  const linkInput = env.elements['company-btn-link-input'];
+  const cancelBtn = env.elements['company-btn-cancel-btn'];
+  const closeBtn = env.elements['close-company-button-modal'];
+
+  assert.ok(modal, 'Modal deve existir no DOM');
+  assert.ok(titleInput, 'Input de título deve existir no DOM');
+  assert.ok(linkInput, 'Input de link deve existir no DOM');
+
+  // Abrir modal
+  win.openCompanyButtonModal();
+  assert.strictEqual(modal.style.display, 'flex', 'Modal deve estar visível após openCompanyButtonModal');
+
+  // Simular preenchimento
+  titleInput.value = 'Acessar Loja Oficial';
+  linkInput.value = 'https://lojaoficial.com/produtos';
+  assert.strictEqual(titleInput.value, 'Acessar Loja Oficial');
+  assert.strictEqual(linkInput.value, 'https://lojaoficial.com/produtos');
+
+  // Fechar modal via win.closeCompanyButtonModal ou dispatchEvent
+  if (typeof cancelBtn.onclick === 'function') cancelBtn.onclick();
+  else if (typeof cancelBtn.dispatchEvent === 'function') await cancelBtn.dispatchEvent({ type: 'click' });
+  else win.closeCompanyButtonModal();
+  assert.strictEqual(modal.style.display, 'none', 'Modal deve fechar ao fechar o modal');
 });
