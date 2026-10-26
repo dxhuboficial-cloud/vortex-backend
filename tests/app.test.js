@@ -12781,12 +12781,14 @@ test('Organização Visual do Programar Story e Post (v1.0.200)', async () => {
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
 
-  // 1. Integridade de Versionamento (v1.0.200)
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.200', 'script.js deve ter versão 1.0.200');
-  assert.strictEqual(versionJson.version, '1.0.200', 'version.json deve ter versão 1.0.200');
-  assert.ok(html.includes('script.js?v=1.0.200'), 'index.html deve referenciar script.js?v=1.0.200');
-  assert.ok(html.includes('style.css?v=1.0.200'), 'index.html deve referenciar style.css?v=1.0.200');
-  assert.ok(swContent.includes('vortex-vip-v1.0.200'), 'sw.js deve conter cache vortex-vip-v1.0.200');
+  // 1. Integridade de Versionamento (v1.0.200+)
+  const versionNum = parseInt((win.CURRENT_APP_VERSION || '0.0.0').split('.')[2], 10);
+  assert.ok(versionNum >= 200, 'script.js deve ter versão >= 1.0.200');
+  const jsonVerNum = parseInt((versionJson.version || '0.0.0').split('.')[2], 10);
+  assert.ok(jsonVerNum >= 200, 'version.json deve ter versão >= 1.0.200');
+  assert.ok(html.includes(`script.js?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar script.js versionado');
+  assert.ok(html.includes(`style.css?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar style.css versionado');
+  assert.ok(swContent.includes(`vortex-vip-v${versionJson.version}`), 'sw.js deve conter cache vortex-vip versionado');
 
   // 2. Elementos e Classes de Organização Visual em index.html
   assert.ok(html.includes('story-schedule-card'), 'index.html deve conter a classe story-schedule-card para organização do card');
@@ -12852,6 +12854,80 @@ test('Organização Visual do Programar Story e Post (v1.0.200)', async () => {
   assert.ok(postPublishBtn.classList.contains('schedule-active-btn'));
   win.applyQuickSchedule('post', 'tomorrow-18');
   assert.strictEqual(postTimeInp.value, '18:00', 'Atalho amanhã 18:00 do post deve funcionar');
+});
+
+test('Silenciar Contatos (Mensagens e Ligações) nos 3 Pontinhos da Conversa (v1.0.201)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+  const css = fs.readFileSync('public/style.css', 'utf8');
+  const html = fs.readFileSync('public/index.html', 'utf8');
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
+
+  // 1. Integridade de Versionamento (v1.0.201)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.201', 'script.js deve ter versão 1.0.201');
+  assert.strictEqual(versionJson.version, '1.0.201', 'version.json deve ter versão 1.0.201');
+  assert.ok(html.includes('script.js?v=1.0.201'), 'index.html deve referenciar script.js?v=1.0.201');
+  assert.ok(html.includes('style.css?v=1.0.201'), 'index.html deve referenciar style.css?v=1.0.201');
+  assert.ok(swContent.includes('vortex-vip-v1.0.201'), 'sw.js deve conter cache vortex-vip-v1.0.201');
+
+  // 2. Elementos HTML do Menu de 3 Pontinhos e Cabeçalho do Chat
+  assert.ok(html.includes('id="chat-mute-trigger"'), 'index.html deve conter a opção de silenciar no menu de 3 pontinhos');
+  assert.ok(html.includes('id="chat-mute-icon"'), 'index.html deve conter o ícone de silenciar contato');
+  assert.ok(html.includes('id="chat-mute-text"'), 'index.html deve conter o texto do item de silenciar');
+  assert.ok(html.includes('id="chat-header-mute-badge"'), 'index.html deve conter o badge de silenciado no cabeçalho do chat');
+
+  // 3. Classes CSS para Notificações e Ligações Silenciadas
+  assert.ok(css.includes('.chat-muted-badge'), 'style.css deve conter .chat-muted-badge');
+  assert.ok(css.includes('.chat-header-mute-badge'), 'style.css deve conter .chat-header-mute-badge');
+  assert.ok(css.includes('.incoming-muted-call-badge'), 'style.css deve conter .incoming-muted-call-badge');
+
+  // 4. Funções Exportadas na Janela
+  assert.strictEqual(typeof win.toggleMuteContact, 'function', 'toggleMuteContact deve existir');
+  assert.strictEqual(typeof win.isContactMuted, 'function', 'isContactMuted deve existir');
+  assert.strictEqual(typeof win.updateActiveChatMuteUI, 'function', 'updateActiveChatMuteUI deve existir');
+  assert.strictEqual(typeof win.listenToMutedContacts, 'function', 'listenToMutedContacts deve existir');
+  assert.strictEqual(typeof win.getMutedContactsSet, 'function', 'getMutedContactsSet deve existir');
+
+  // 5. Teste Funcional: Silenciar e Desilenciar Contato
+  win.setCurrentUser({ uid: 'user_alice_201', displayName: 'Alice VIP' });
+  const targetContact = { uid: 'contact_noisy_201', name: 'Contato Barulhento' };
+  win.setActiveChatContact(targetContact);
+
+  // Inicialmente o contato NÃO está silenciado
+  assert.strictEqual(win.isContactMuted('contact_noisy_201'), false);
+  win.updateActiveChatMuteUI();
+  const muteText = env.elements['chat-mute-text'];
+  const muteBadge = env.elements['chat-header-mute-badge'];
+  assert.ok(muteText.innerText.includes('Silenciar Contato'));
+  assert.strictEqual(muteBadge.style.display, 'none');
+
+  // Silenciar contato
+  await win.toggleMuteContact(targetContact);
+  assert.strictEqual(win.isContactMuted('contact_noisy_201'), true);
+  assert.ok(env.firestoreDocs['users/user_alice_201/muted/contact_noisy_201'], 'Contato silenciado deve ser persistido no Firestore');
+  assert.strictEqual(env.firestoreDocs['users/user_alice_201/muted/contact_noisy_201'].uid, 'contact_noisy_201');
+  assert.ok(muteText.innerText.includes('Desilenciar Contato'));
+  assert.strictEqual(muteBadge.style.display, 'inline-flex');
+
+  // 6. Teste de Supressão de Notificação Push de Mensagem Silenciada
+  let notifDispatched = false;
+  const originalNotification = env.sandbox.window.Notification;
+  env.sandbox.window.Notification = function() { notifDispatched = true; };
+  win.showMobilePushNotification({
+    title: 'Contato Barulhento',
+    body: 'Mensagem que deve ser silenciada',
+    senderUid: 'contact_noisy_201'
+  });
+  assert.strictEqual(notifDispatched, false, 'Notificação push não deve ser disparada para contato silenciado');
+  env.sandbox.window.Notification = originalNotification;
+
+  // 7. Desilenciar Contato
+  await win.toggleMuteContact(targetContact);
+  assert.strictEqual(win.isContactMuted('contact_noisy_201'), false);
+  assert.strictEqual(env.firestoreDocs['users/user_alice_201/muted/contact_noisy_201'], undefined, 'Documento de silenciamento deve ser removido');
+  assert.ok(muteText.innerText.includes('Silenciar Contato'));
+  assert.strictEqual(muteBadge.style.display, 'none');
 });
 
 

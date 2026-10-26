@@ -19916,6 +19916,59 @@ input:checked + .schedule-slider {
     height: 12px;
 }
 
+/* ===== SISTEMA DE SILENCIAR CONTATOS (MENSAGENS E LIGAÇÕES) (v1.0.201) ===== */
+.chat-muted-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #94a3b8;
+    margin-left: 5px;
+    vertical-align: middle;
+}
+
+.chat-muted-badge i,
+.chat-muted-badge svg {
+    width: 13px !important;
+    height: 13px !important;
+    color: #94a3b8 !important;
+}
+
+.chat-header-mute-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: rgba(168, 85, 247, 0.15);
+    border: 1px solid rgba(168, 85, 247, 0.35);
+    margin-left: 6px;
+    vertical-align: middle;
+}
+
+.chat-header-mute-badge i,
+.chat-header-mute-badge svg {
+    width: 12px !important;
+    height: 12px !important;
+    color: #c084fc !important;
+}
+
+.incoming-muted-call-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #fbbf24;
+    font-weight: 600;
+    font-size: 0.88rem;
+}
+
+.incoming-muted-call-badge i,
+.incoming-muted-call-badge svg {
+    width: 15px !important;
+    height: 15px !important;
+    color: #fbbf24 !important;
+}
+
 
 
 

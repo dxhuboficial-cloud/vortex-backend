@@ -165,6 +165,8 @@ let calleeCandidatesUnsubscribe = null;
 let userContactsSet = new Set();
 let blockedContactsSet = new Set();
 let blockedUnsubscribe = null;
+let mutedContactsSet = new Set();
+let mutedUnsubscribe = null;
 let blockedByContactUnsubscribe = null;
 let isBlockedByActiveContact = false;
 
@@ -943,6 +945,9 @@ export function updatePushSettingsUI(permission) {
 }
 
 export function showMobilePushNotification({ title, body, icon, chatId, senderUid, avatar }) {
+    if ((senderUid && isContactMuted(senderUid)) || (chatId && isContactMuted(chatId))) {
+        return; // Silenciado: sem som, sem vibração, sem notificação push
+    }
     if (typeof currentProfile !== 'undefined' && currentProfile && currentProfile.soundEnabled === false) {
         // Respeita modo silencioso
     } else {
@@ -1300,6 +1305,7 @@ onAuthStateChanged(auth, async (user) => {
         applyUserTheme();
         updateProfileDOM();
         if (typeof updateChatPinUI === 'function') updateChatPinUI();
+    if (typeof updateActiveChatMuteUI === 'function') updateActiveChatMuteUI();
         if (typeof applyPinnedSortToChatList === 'function') applyPinnedSortToChatList();
 
         ensureUsernameReservation(currentProfile).catch((error) => {
@@ -1317,6 +1323,7 @@ onAuthStateChanged(auth, async (user) => {
                 checkBannedAccountState();
                 updateAdminUIVisibility();
                 if (typeof updateChatPinUI === 'function') updateChatPinUI();
+    if (typeof updateActiveChatMuteUI === 'function') updateActiveChatMuteUI();
                 if (typeof applyPinnedSortToChatList === 'function') applyPinnedSortToChatList();
             }
         });
@@ -1327,6 +1334,7 @@ onAuthStateChanged(auth, async (user) => {
 
         listenToContacts();
         listenToBlockedContacts();
+        listenToMutedContacts();
         listenToRequests();
         listenToStories();
         listenToIncomingCalls();
@@ -3130,6 +3138,11 @@ function detachListeners() {
     if (currentStoryDocUnsubscribe) currentStoryDocUnsubscribe();
     if (managedGroupUnsubscribe) managedGroupUnsubscribe();
     if (blockedUnsubscribe) blockedUnsubscribe();
+    if (mutedUnsubscribe) {
+        mutedUnsubscribe();
+        mutedUnsubscribe = null;
+    }
+    mutedContactsSet.clear();
     if (adminReportsUnsubscribe) adminReportsUnsubscribe();
     if (adminVipRequestsUnsubscribe) adminVipRequestsUnsubscribe();
     if (deletedUsersUnsubscribe) deletedUsersUnsubscribe();
@@ -11743,6 +11756,9 @@ function listenToContacts() {
                             <span class="pinned-chat-badge" id="pinned-badge-${contactUid}" style="display:${isPinned ? 'inline-flex' : 'none'};" title="Conversa fixada">
                                 <i data-lucide="pin"></i>
                             </span>
+                            <span class="chat-muted-badge" id="muted-badge-${contactUid}" style="display:${mutedContactsSet.has(contactUid) ? 'inline-flex' : 'none'};" title="Notificações e chamadas silenciadas">
+                                <i data-lucide="bell-off"></i>
+                            </span>
                         </span>
                         <div class="chat-meta">
                             <span class="time" id="time-${chatId}">Recente</span>
@@ -12089,6 +12105,9 @@ function listenToContacts() {
                             <span class="name-text">${group.name || 'Grupo VIP'}</span>
                             <span class="pinned-chat-badge" id="pinned-badge-group-${groupId}" style="display:${isGrpPinned ? 'inline-flex' : 'none'};" title="Conversa fixada">
                                 <i data-lucide="pin"></i>
+                            </span>
+                            <span class="chat-muted-badge" id="muted-badge-group-${groupId}" style="display:${mutedContactsSet.has(groupId) ? 'inline-flex' : 'none'};" title="Notificações silenciadas">
+                                <i data-lucide="bell-off"></i>
                             </span>
                         </span>
                         <div class="chat-meta">
@@ -13376,6 +13395,7 @@ function openGroupChat(group) {
     const chatDot = document.getElementById('chat-window-online-dot');
     if (chatDot) chatDot.style.display = 'none';
     if (typeof updateChatPinUI === 'function') updateChatPinUI();
+    if (typeof updateActiveChatMuteUI === 'function') updateActiveChatMuteUI();
 
     currentGroupOnlineCount = 1; // O próprio usuário está com a aba aberta
     updateGroupChatHeaderStatus();
@@ -13757,6 +13777,7 @@ export function openDirectChat(contact) {
         openChatDot.style.display = initOnline ? 'block' : 'none';
     }
     if (typeof updateChatPinUI === 'function') updateChatPinUI();
+    if (typeof updateActiveChatMuteUI === 'function') updateActiveChatMuteUI();
     startBioBubbleTimer();
     refreshDirectChatStatus();
 
@@ -14273,8 +14294,11 @@ function loadRealtimeMessages() {
             const isFromOther = sender ? sender !== currentUser.uid : true;
             const isRead = (Array.isArray(message.readBy) && message.readBy.includes(currentUser.uid)) || (message.readByMap && !!message.readByMap[currentUser.uid]);
             if (isFromOther && !message.deletedForEveryone && !isRead) {
+                const isMuted = activeChatContact && (isContactMuted(activeChatContact.uid) || isContactMuted(sender));
                 if (message.createdAt && (Date.now() - Number(message.createdAt) < 30000)) {
-                    playSound(notificationSound);
+                    if (!isMuted) {
+                        playSound(notificationSound);
+                    }
                 }
                 updateDoc(docSnap.ref, { 
                     readBy: arrayUnion(currentUser.uid),
@@ -16178,7 +16202,9 @@ document.getElementById('cancel-delete-modal-btn')?.addEventListener('click', ()
 document.getElementById('chat-options-menu-btn')?.addEventListener('click', (e) => {
     e.stopPropagation();
     if (typeof updateChatPinUI === 'function') updateChatPinUI();
+    if (typeof updateActiveChatMuteUI === 'function') updateActiveChatMuteUI();
     if (typeof updateCompanyAttachVisibility === 'function') updateCompanyAttachVisibility();
+    if (typeof updateActiveChatMuteUI === 'function') updateActiveChatMuteUI();
     document.getElementById('chat-dropdown-menu')?.classList.toggle('active');
 });
 
@@ -16192,6 +16218,13 @@ document.getElementById('chat-pin-trigger')?.addEventListener('click', () => {
     document.getElementById('chat-dropdown-menu')?.classList.remove('active');
     if (activeChatContact) {
         togglePinChat(activeChatContact.uid);
+    }
+});
+
+document.getElementById('chat-mute-trigger')?.addEventListener('click', () => {
+    document.getElementById('chat-dropdown-menu')?.classList.remove('active');
+    if (activeChatContact) {
+        toggleMuteContact(activeChatContact);
     }
 });
 
@@ -16301,6 +16334,144 @@ document.getElementById('confirm-clear-chat-btn')?.addEventListener('click', asy
 document.getElementById('cancel-clear-chat-btn')?.addEventListener('click', () => {
     document.getElementById('clear-chat-modal')?.classList.remove('active');
 });
+
+/* ==========================================================================
+   SISTEMA DE SILENCIAR CONTATOS (MENSAGENS E LIGAÇÕES) (v1.0.201)
+   ========================================================================== */
+export function isContactMuted(uid) {
+    if (!uid) return false;
+    return mutedContactsSet.has(uid);
+}
+
+export function listenToMutedContacts() {
+    if (!currentUser) return;
+    if (mutedUnsubscribe) mutedUnsubscribe();
+
+    // Carregar cache local imediato
+    if (typeof localStorage !== 'undefined') {
+        try {
+            const cached = localStorage.getItem(`vortex_muted_${currentUser.uid}`);
+            if (cached) {
+                const arr = JSON.parse(cached);
+                if (Array.isArray(arr)) {
+                    mutedContactsSet = new Set(arr);
+                    updateActiveChatMuteUI();
+                    updateAllChatMuteBadges();
+                }
+            }
+        } catch (_) {}
+    }
+
+    const mutedRef = collection(db, 'users', currentUser.uid, 'muted');
+    mutedUnsubscribe = onSnapshot(mutedRef, (snapshot) => {
+        mutedContactsSet = new Set(snapshot.docs.map(d => d.id));
+        if (typeof localStorage !== 'undefined') {
+            try {
+                localStorage.setItem(`vortex_muted_${currentUser.uid}`, JSON.stringify([...mutedContactsSet]));
+            } catch (_) {}
+        }
+        updateActiveChatMuteUI();
+        updateAllChatMuteBadges();
+    }, err => console.warn('Erro ao carregar contatos silenciados:', err));
+}
+
+export function updateActiveChatMuteUI() {
+    if (!activeChatContact) return;
+    const targetUid = activeChatContact.uid || activeChatContact.id;
+    const isMuted = isContactMuted(targetUid);
+    const isGroup = !!activeChatContact.isGroup;
+
+    const muteTrigger = document.getElementById('chat-mute-trigger');
+    const muteText = document.getElementById('chat-mute-text');
+    const muteIcon = document.getElementById('chat-mute-icon');
+    const headerMuteBadge = document.getElementById('chat-header-mute-badge');
+
+    if (muteTrigger) {
+        muteTrigger.style.display = 'flex';
+        muteTrigger.title = isMuted ? 'Reativar notificações e chamadas' : 'Silenciar notificações e chamadas';
+    }
+    if (muteText) {
+        muteText.innerText = isMuted 
+            ? (isGroup ? 'Desilenciar Grupo' : 'Desilenciar Contato') 
+            : (isGroup ? 'Silenciar Grupo' : 'Silenciar Contato');
+    }
+    if (muteIcon) {
+        muteIcon.setAttribute('data-lucide', isMuted ? 'bell' : 'bell-off');
+        muteIcon.style.color = isMuted ? '#22c55e' : '#c084fc';
+    }
+    if (headerMuteBadge) {
+        headerMuteBadge.style.display = isMuted ? 'inline-flex' : 'none';
+    }
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+    }
+}
+
+export function updateAllChatMuteBadges() {
+    if (typeof document === 'undefined') return;
+    document.querySelectorAll('.chat-card[data-uid]').forEach(card => {
+        const uid = card.dataset.uid;
+        const isGroup = card.dataset.isGroup === 'true';
+        const prefix = isGroup ? 'group-' : '';
+        const badge = document.getElementById(`muted-badge-${prefix}${uid}`);
+        if (badge) {
+            badge.style.display = mutedContactsSet.has(uid) ? 'inline-flex' : 'none';
+        }
+    });
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+    }
+}
+
+export async function toggleMuteContact(targetContact = null) {
+    const contact = targetContact || activeChatContact;
+    if (!currentUser || !contact) return;
+    const targetUid = contact.uid || contact.id;
+    const targetName = contact.name || (contact.isGroup ? 'Grupo' : 'Contato');
+    const isGroup = !!contact.isGroup;
+    const isMuted = mutedContactsSet.has(targetUid);
+
+    if (isMuted) {
+        try {
+            await deleteDoc(doc(db, 'users', currentUser.uid, 'muted', targetUid));
+            mutedContactsSet.delete(targetUid);
+            if (typeof localStorage !== 'undefined') {
+                try {
+                    localStorage.setItem(`vortex_muted_${currentUser.uid}`, JSON.stringify([...mutedContactsSet]));
+                } catch (_) {}
+            }
+            updateActiveChatMuteUI();
+            updateAllChatMuteBadges();
+            showToast("Notificações Ativadas 🔔", `As notificações e chamadas de ${targetName} foram reativadas.`, "green");
+            playSound(clickSound);
+        } catch (err) {
+            console.error('Erro ao desilenciar contato:', err);
+            showToast("Erro", "Não foi possível desilenciar as notificações.", "red");
+        }
+    } else {
+        try {
+            await setDoc(doc(db, 'users', currentUser.uid, 'muted', targetUid), {
+                uid: targetUid,
+                name: targetName,
+                isGroup: isGroup,
+                mutedAt: Date.now()
+            });
+            mutedContactsSet.add(targetUid);
+            if (typeof localStorage !== 'undefined') {
+                try {
+                    localStorage.setItem(`vortex_muted_${currentUser.uid}`, JSON.stringify([...mutedContactsSet]));
+                } catch (_) {}
+            }
+            updateActiveChatMuteUI();
+            updateAllChatMuteBadges();
+            showToast("Contato Silenciado 🔕", `Notificações de mensagens e ligações de ${targetName} foram silenciadas.`, "yellow");
+            playSound(clickSound);
+        } catch (err) {
+            console.error('Erro ao silenciar contato:', err);
+            showToast("Erro", "Não foi possível silenciar as notificações.", "red");
+        }
+    }
+}
 
 /* ==========================================================================
    SISTEMA DE BLOQUEIO E DENÚNCIA DE CONTATOS
@@ -19543,7 +19714,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.200';
+export const CURRENT_APP_VERSION = '1.0.201';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -23617,11 +23788,16 @@ function listenToIncomingCalls() {
             if (avatarEl) avatarEl.style.backgroundImage = callData.callerAvatar ? `url('${callData.callerAvatar}')` : '';
 
             const isVideoCall = callData.type !== 'audio';
+            const isCallerMuted = Boolean(callData.callerUid && isContactMuted(callData.callerUid));
             const descEl = document.getElementById('incoming-caller-desc');
             if (descEl) {
-                descEl.innerText = isVideoCall 
-                    ? 'Chamada de Vídeo e Áudio P2P Criptografada'
-                    : 'Chamada de Áudio P2P Criptografada';
+                if (isCallerMuted) {
+                    descEl.innerHTML = `<span class="incoming-muted-call-badge"><i data-lucide="bell-off"></i> Chamada Silenciosa (Contato Silenciado)</span>`;
+                } else {
+                    descEl.innerText = isVideoCall 
+                        ? 'Chamada de Vídeo e Áudio P2P Criptografada'
+                        : 'Chamada de Áudio P2P Criptografada';
+                }
             }
             const acceptBtn = document.getElementById('accept-call-btn');
             if (acceptBtn) {
@@ -23632,8 +23808,10 @@ function listenToIncomingCalls() {
 
             if (incomingOverlay) incomingOverlay.classList.add('active');
             
-            ringtoneSound.play().catch(() => {});
-            startPhoneVibration();
+            if (!isCallerMuted) {
+                ringtoneSound.play().catch(() => {});
+                startPhoneVibration();
+            }
 
             if (activeCallDocUnsubscribe) activeCallDocUnsubscribe();
             activeCallDocUnsubscribe = onSnapshot(doc(db, 'calls', currentCallId), (docSnap) => {
@@ -32547,6 +32725,12 @@ if (typeof window !== 'undefined') {
     window.getEditingMessage = () => editingMessage;
     window.isBlockedByActiveContact = () => isBlockedByActiveContact;
     window.getBlockedContactsSet = () => blockedContactsSet;
+    window.isContactMuted = isContactMuted;
+    window.listenToMutedContacts = listenToMutedContacts;
+    window.updateActiveChatMuteUI = updateActiveChatMuteUI;
+    window.updateAllChatMuteBadges = updateAllChatMuteBadges;
+    window.toggleMuteContact = toggleMuteContact;
+    window.getMutedContactsSet = () => mutedContactsSet;
     window.sendChatMessage = sendChatMessage;
     window.openDeleteModal = openDeleteModal;
     window.enterSelectionMode = enterSelectionMode;

@@ -7,17 +7,17 @@
     <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.199">
     <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.199">
     <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.199">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.200">
-    <link rel="stylesheet" href="style.css?v=1.0.200">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.201">
+    <link rel="stylesheet" href="style.css?v=1.0.201">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.200">
+    <link rel="manifest" href="manifest.json?v=1.0.201">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.200">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.200">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.201">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.201">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -436,6 +436,9 @@
                                     <i data-lucide="clock"></i>
                                     <span id="chat-ephemeral-badge-text">24h</span>
                                 </span>
+                                <span id="chat-header-mute-badge" class="chat-header-mute-badge" style="display: none;" title="Notificações e ligações deste contato silenciadas">
+                                    <i data-lucide="bell-off"></i>
+                                </span>
                             </div>
                             <div class="chat-subinfo-row">
                                 <span id="chat-window-status" class="status-animated">Online</span>
@@ -474,6 +477,10 @@
                     <div class="dropdown-item" id="chat-pin-trigger">
                         <i data-lucide="pin" id="chat-pin-icon"></i>
                         <span id="chat-pin-text">Fixar Conversa</span>
+                    </div>
+                    <div class="dropdown-item" id="chat-mute-trigger">
+                        <i data-lucide="bell-off" id="chat-mute-icon" style="color: #c084fc;"></i>
+                        <span id="chat-mute-text">Silenciar Contato</span>
                     </div>
                     <div class="dropdown-item" id="chat-ephemeral-trigger">
                         <i data-lucide="clock"></i>
@@ -4156,6 +4163,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.200" defer></script>
+    <script type="module" src="script.js?v=1.0.201" defer></script>
 </body>
 </html>
