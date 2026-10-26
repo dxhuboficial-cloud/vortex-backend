@@ -13217,12 +13217,14 @@ test('Organização do Título do Mini Painel Admin e Campo de Palavras Proibida
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
 
-  // 1. Integridade de Versionamento (v1.0.204)
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.204', 'script.js deve ter versão 1.0.204');
-  assert.strictEqual(versionJson.version, '1.0.204', 'version.json deve ter versão 1.0.204');
-  assert.ok(html.includes('script.js?v=1.0.204'), 'index.html deve referenciar script.js?v=1.0.204');
-  assert.ok(html.includes('style.css?v=1.0.204'), 'index.html deve referenciar style.css?v=1.0.204');
-  assert.ok(swContent.includes('vortex-vip-v1.0.204'), 'sw.js deve conter cache vortex-vip-v1.0.204');
+  // 1. Integridade de Versionamento (v1.0.204+)
+  const versionNum = parseInt((win.CURRENT_APP_VERSION || '0.0.0').split('.')[2] || '0', 10);
+  assert.ok(versionNum >= 204, 'script.js deve ter versão >= 1.0.204');
+  const jsonVerNum = parseInt((versionJson.version || '0.0.0').split('.')[2] || '0', 10);
+  assert.ok(jsonVerNum >= 204, 'version.json deve ter versão >= 1.0.204');
+  assert.ok(html.includes(`script.js?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar script.js atualizado');
+  assert.ok(html.includes(`style.css?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar style.css atualizado');
+  assert.ok(swContent.includes(`vortex-vip-v${win.CURRENT_APP_VERSION}`), 'sw.js deve conter cache correspondente');
 
   // 2. Elementos no HTML
   assert.ok(html.includes('id="group-mini-admin-section"'), 'index.html deve conter #group-mini-admin-section');
@@ -13259,4 +13261,40 @@ test('Organização do Título do Mini Painel Admin e Campo de Palavras Proibida
   assert.ok(textarea, 'Textarea #group-banned-words-input deve ser acessível no ambiente');
   textarea.value = 'palavra1, palavra2, teste';
   assert.strictEqual(textarea.value, 'palavra1, palavra2, teste');
+});
+
+test('Ajuste Anti-Sobreposição do Título do Mini Painel Admin e Tag de Moderação (v1.0.205)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+  const css = fs.readFileSync('public/style.css', 'utf8');
+  const html = fs.readFileSync('public/index.html', 'utf8');
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
+
+  // 1. Integridade de Versionamento (v1.0.205)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.205', 'script.js deve ter versão 1.0.205');
+  assert.strictEqual(versionJson.version, '1.0.205', 'version.json deve ter versão 1.0.205');
+  assert.ok(html.includes('script.js?v=1.0.205'), 'index.html deve referenciar script.js?v=1.0.205');
+  assert.ok(html.includes('style.css?v=1.0.205'), 'index.html deve referenciar style.css?v=1.0.205');
+  assert.ok(swContent.includes('vortex-vip-v1.0.205'), 'sw.js deve conter cache vortex-vip-v1.0.205');
+
+  // 2. Título Conciso e Sem Redundância no HTML
+  assert.ok(html.includes('<span>Mini Painel Admin</span>'), 'index.html deve conter título conciso <span>Mini Painel Admin</span>');
+  assert.ok(!html.includes('<span>Mini Painel Admin do Grupo</span>'), 'Não deve ter a repetição "do Grupo" para evitar sobreposição');
+
+  // 3. Estilos Anti-Colisão e Truncamento Seguro no CSS
+  const titleSpanMatch = css.match(/\.group-mini-admin-title\s+span\s*\{([^}]+)\}/);
+  assert.ok(titleSpanMatch, '.group-mini-admin-title span deve ter regra no CSS');
+  assert.ok(titleSpanMatch[1].includes('overflow: hidden'), 'Deve ter overflow: hidden para nunca invadir a tag');
+  assert.ok(titleSpanMatch[1].includes('text-overflow: ellipsis'), 'Deve ter text-overflow: ellipsis');
+
+  const titleMatch = css.match(/\.group-mini-admin-title\s*\{([^}]+)\}/);
+  assert.ok(titleMatch[1].includes('flex-shrink: 1'), 'Título deve ter flex-shrink: 1 para flexibilidade');
+
+  const tagMatch = css.match(/\.group-mini-admin-tag\s*\{([^}]+)\}/);
+  assert.ok(tagMatch[1].includes('flex-shrink: 0'), 'Tag deve ter flex-shrink: 0 para manter o formato de pill');
+  assert.ok(tagMatch[1].includes('font-size: 0.62rem'), 'Tag deve ter tamanho calibrado 0.62rem');
+
+  // 4. Media query para telas menores (<= 360px)
+  assert.ok(css.includes('@media (max-width: 360px)'), 'style.css deve conter media query de proteção para telas pequenas');
 });

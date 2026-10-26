@@ -19998,27 +19998,30 @@ input:checked + .schedule-slider {
     display: inline-flex;
     align-items: center;
     gap: 7px;
-    font-size: 0.88rem;
+    font-size: 0.86rem;
     font-weight: 700;
     color: var(--accent-color, #fff01f);
     white-space: nowrap;
     min-width: 0;
+    flex-shrink: 1;
 }
 
 .group-mini-admin-title span {
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .group-mini-admin-title i,
 .group-mini-admin-title svg {
-    width: 17px;
-    height: 17px;
+    width: 16px;
+    height: 16px;
     color: var(--accent-color, #fff01f);
     flex-shrink: 0;
 }
 
 .group-mini-admin-tag {
-    font-size: 0.65rem;
+    font-size: 0.62rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.4px;
@@ -20029,6 +20032,17 @@ input:checked + .schedule-slider {
     color: var(--accent-color, #fff01f);
     white-space: nowrap;
     flex-shrink: 0;
+}
+
+@media (max-width: 360px) {
+    .group-mini-admin-title {
+        font-size: 0.80rem;
+        gap: 5px;
+    }
+    .group-mini-admin-tag {
+        font-size: 0.58rem;
+        padding: 2px 6px;
+    }
 }
 
 .group-rule-card {
