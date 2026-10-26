@@ -12589,14 +12589,16 @@ test('Programar Story e Posts para Postar em Outro Dia (v1.0.199)', async () => 
   const css = fs.readFileSync('public/style.css', 'utf8');
   const html = fs.readFileSync('public/index.html', 'utf8');
 
-  // 1. Integridade de Versionamento (v1.0.199)
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.199', 'script.js deve ter versão 1.0.199');
+  // 1. Integridade de Versionamento (v1.0.199+)
+  const versionNum = parseInt((win.CURRENT_APP_VERSION || '0.0.0').split('.')[2], 10);
+  assert.ok(versionNum >= 199, 'script.js deve ter versão >= 1.0.199');
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
-  assert.strictEqual(versionJson.version, '1.0.199', 'version.json deve ter versão 1.0.199');
-  assert.ok(html.includes('script.js?v=1.0.199'), 'index.html deve referenciar script.js?v=1.0.199');
-  assert.ok(html.includes('style.css?v=1.0.199'), 'index.html deve referenciar style.css?v=1.0.199');
+  const jsonVerNum = parseInt((versionJson.version || '0.0.0').split('.')[2], 10);
+  assert.ok(jsonVerNum >= 199, 'version.json deve ter versão >= 1.0.199');
+  assert.ok(html.includes(`script.js?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar script.js versionado');
+  assert.ok(html.includes(`style.css?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar style.css versionado');
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
-  assert.ok(swContent.includes('vortex-vip-v1.0.199'), 'sw.js deve conter cache vortex-vip-v1.0.199');
+  assert.ok(swContent.includes(`vortex-vip-v${versionJson.version}`), 'sw.js deve conter cache vortex-vip versionado');
 
   // 2. Elementos HTML de Programação de Story no #post-status-overlay
   assert.ok(html.includes('id="story-schedule-section"'), 'index.html deve conter #story-schedule-section');
@@ -12769,6 +12771,87 @@ test('Programar Story e Posts para Postar em Outro Dia (v1.0.199)', async () => 
   const releasedPost = env.firestoreDocs[`posts/${overduePostId}`];
   assert.strictEqual(releasedPost.scheduled, false, 'Post vencido deve ser automaticamente liberado');
   assert.strictEqual(releasedPost.published, true, 'Post vencido deve ter published = true');
+});
+
+test('Organização Visual do Programar Story e Post (v1.0.200)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+  const css = fs.readFileSync('public/style.css', 'utf8');
+  const html = fs.readFileSync('public/index.html', 'utf8');
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
+
+  // 1. Integridade de Versionamento (v1.0.200)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.200', 'script.js deve ter versão 1.0.200');
+  assert.strictEqual(versionJson.version, '1.0.200', 'version.json deve ter versão 1.0.200');
+  assert.ok(html.includes('script.js?v=1.0.200'), 'index.html deve referenciar script.js?v=1.0.200');
+  assert.ok(html.includes('style.css?v=1.0.200'), 'index.html deve referenciar style.css?v=1.0.200');
+  assert.ok(swContent.includes('vortex-vip-v1.0.200'), 'sw.js deve conter cache vortex-vip-v1.0.200');
+
+  // 2. Elementos e Classes de Organização Visual em index.html
+  assert.ok(html.includes('story-schedule-card'), 'index.html deve conter a classe story-schedule-card para organização do card');
+  assert.ok(html.includes('schedule-switch'), 'index.html deve conter a classe schedule-switch para o toggle estilizado');
+  assert.ok(html.includes('schedule-slider'), 'index.html deve conter o slider do switch de agendamento');
+  assert.ok(html.includes('schedule-icon-badge'), 'index.html deve conter o badge de ícone do agendamento');
+  assert.ok(html.includes('schedule-badge-pill'), 'index.html deve conter a pill Novo no agendamento');
+  assert.ok(html.includes('schedule-input-wrapper'), 'index.html deve conter schedule-input-wrapper para alinhamento dos inputs');
+
+  // 3. Validação das Regras CSS de Layout e Responsividade em style.css
+  assert.ok(css.includes('.story-schedule-card'), 'style.css deve conter .story-schedule-card');
+  assert.ok(css.includes('.schedule-switch'), 'style.css deve conter .schedule-switch');
+  assert.ok(css.includes('.schedule-slider'), 'style.css deve conter .schedule-slider');
+  assert.ok(css.includes('.schedule-icon-badge'), 'style.css deve conter .schedule-icon-badge');
+  assert.ok(css.includes('.schedule-badge-pill'), 'style.css deve conter .schedule-badge-pill');
+  assert.ok(css.includes('grid-template-columns: repeat(2, 1fr)'), 'style.css deve ter grid 2x2 para os atalhos rápidos');
+  assert.ok(css.includes('grid-template-columns: 1fr 1fr'), 'style.css deve ter grid 1fr 1fr para data e horário lado a lado');
+
+  // 4. Teste Funcional do Componente de Story Organizado
+  const storyToggle = env.elements['story-schedule-toggle'];
+  const storyFields = env.elements['story-schedule-fields'];
+  const dateInp = env.elements['story-schedule-date'];
+  const timeInp = env.elements['story-schedule-time'];
+  const hint = env.elements['story-schedule-preview-hint'];
+  const hintText = env.elements['story-schedule-preview-text'];
+  const publishStatusBtn = env.elements['publish-status-btn'];
+
+  assert.ok(storyToggle && storyFields && dateInp && timeInp && hint && hintText && publishStatusBtn);
+
+  // Inicialmente desmarcado
+  storyToggle.checked = false;
+  win.updateStoryScheduleUI();
+  assert.strictEqual(storyFields.style.display, 'none', 'Campos de agendamento devem ficar ocultos quando o switch estiver desativado');
+  assert.strictEqual(publishStatusBtn.classList.contains('schedule-active-btn'), false);
+
+  // Ativando switch
+  storyToggle.checked = true;
+  win.updateStoryScheduleUI();
+  assert.strictEqual(storyFields.style.display, 'block', 'Campos de agendamento devem ser exibidos quando o switch for ativado');
+  assert.ok(dateInp.value, 'Data padrão deve ser preenchida automaticamente');
+  assert.ok(timeInp.value, 'Horário padrão deve ser preenchido automaticamente');
+  assert.strictEqual(hint.style.display, 'flex', 'Banner de confirmação do agendamento deve ser exibido com display flex');
+  assert.ok(hintText.innerHTML.includes('Story agendado para:'), 'Texto de confirmação deve indicar o agendamento');
+  assert.ok(publishStatusBtn.classList.contains('schedule-active-btn'), 'Botão de publicar deve receber estilo de agendamento');
+
+  // Testando atalhos rápidos organizados
+  win.applyQuickSchedule('story', 'weekend');
+  assert.strictEqual(timeInp.value, '10:00', 'Atalho de sábado deve configurar horário para 10:00');
+  win.applyQuickSchedule('story', 'day2-12');
+  assert.strictEqual(timeInp.value, '12:00', 'Atalho de 2 dias deve configurar horário para 12:00');
+
+  // 5. Teste Funcional do Componente de Post Organizado
+  const postToggle = env.elements['post-schedule-toggle'];
+  const postFields = env.elements['post-schedule-fields'];
+  const postDateInp = env.elements['post-schedule-date'];
+  const postTimeInp = env.elements['post-schedule-time'];
+  const postPublishBtn = env.elements['publish-post-btn'];
+
+  assert.ok(postToggle && postFields && postDateInp && postTimeInp && postPublishBtn);
+  postToggle.checked = true;
+  win.updatePostScheduleUI();
+  assert.strictEqual(postFields.style.display, 'block', 'Campos de post devem aparecer com display block');
+  assert.ok(postPublishBtn.classList.contains('schedule-active-btn'));
+  win.applyQuickSchedule('post', 'tomorrow-18');
+  assert.strictEqual(postTimeInp.value, '18:00', 'Atalho amanhã 18:00 do post deve funcionar');
 });
 
 

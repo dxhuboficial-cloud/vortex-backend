@@ -7,17 +7,17 @@
     <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.199">
     <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.199">
     <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.199">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.199">
-    <link rel="stylesheet" href="style.css?v=1.0.199">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.200">
+    <link rel="stylesheet" href="style.css?v=1.0.200">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.199">
+    <link rel="manifest" href="manifest.json?v=1.0.200">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.199">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.199">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.200">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.200">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -1536,17 +1536,22 @@
                     </div>
                 </div>
 
-                <!-- Opção: Programar Story para se postado em outro dia (v1.0.199) -->
-                <div class="setting-item story-schedule-setting-item" id="story-schedule-section">
+                <!-- Opção: Programar Story para se postado em outro dia (v1.0.200) -->
+                <div class="story-schedule-setting-item story-schedule-card" id="story-schedule-section">
                     <div class="schedule-header-row">
                         <label for="story-schedule-toggle" class="schedule-header-label">
-                            <i data-lucide="calendar-clock" class="schedule-header-icon"></i>
+                            <span class="schedule-icon-badge">
+                                <i data-lucide="calendar-clock" class="schedule-header-icon"></i>
+                            </span>
                             <div class="schedule-header-text">
-                                <span class="schedule-title">Programar Story</span>
+                                <span class="schedule-title">Programar Story <span class="schedule-badge-pill">Novo</span></span>
                                 <small class="schedule-subtitle">Agende para ser postado automaticamente em outro dia</small>
                             </div>
                         </label>
-                        <input type="checkbox" id="story-schedule-toggle" class="custom-toggle" aria-label="Ativar programação do Story">
+                        <label class="switch schedule-switch" for="story-schedule-toggle" title="Ativar agendamento do Story">
+                            <input type="checkbox" id="story-schedule-toggle" aria-label="Ativar programação do Story">
+                            <span class="slider schedule-slider"></span>
+                        </label>
                     </div>
 
                     <div id="story-schedule-fields" class="schedule-fields-container" style="display: none;">
@@ -1556,19 +1561,23 @@
                                     <i data-lucide="calendar"></i>
                                     <span>Data</span>
                                 </label>
-                                <input type="date" id="story-schedule-date" class="schedule-date-input" aria-label="Data da programação do Story">
+                                <div class="schedule-input-wrapper">
+                                    <input type="date" id="story-schedule-date" class="schedule-date-input" aria-label="Data da programação do Story">
+                                </div>
                             </div>
                             <div class="schedule-input-group">
                                 <label for="story-schedule-time" class="schedule-input-label">
                                     <i data-lucide="clock"></i>
                                     <span>Horário</span>
                                 </label>
-                                <input type="time" id="story-schedule-time" class="schedule-time-input" aria-label="Horário da programação do Story">
+                                <div class="schedule-input-wrapper">
+                                    <input type="time" id="story-schedule-time" class="schedule-time-input" aria-label="Horário da programação do Story">
+                                </div>
                             </div>
                         </div>
 
                         <div class="schedule-quick-chips">
-                            <span class="schedule-quick-label">Atalhos rápidos:</span>
+                            <span class="schedule-quick-label"><i data-lucide="zap"></i> Atalhos rápidos:</span>
                             <div class="schedule-chips-list">
                                 <button type="button" class="schedule-chip" data-target="story" data-quick="tomorrow-09">Amanhã 09:00</button>
                                 <button type="button" class="schedule-chip" data-target="story" data-quick="tomorrow-18">Amanhã 18:00</button>
@@ -1578,8 +1587,12 @@
                         </div>
 
                         <div id="story-schedule-preview-hint" class="schedule-preview-hint" style="display: none;">
-                            <i data-lucide="calendar-check"></i>
-                            <span id="story-schedule-preview-text"></span>
+                            <div class="schedule-preview-hint-icon">
+                                <i data-lucide="calendar-check"></i>
+                            </div>
+                            <div class="schedule-preview-hint-content">
+                                <span id="story-schedule-preview-text"></span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2587,17 +2600,22 @@
                     </div>
                 </div>
 
-                <!-- Opção: Programar Posts para se postado em outro dia (v1.0.199) -->
+                <!-- Opção: Programar Posts para se postado em outro dia (v1.0.200) -->
                 <div class="post-schedule-section" id="post-schedule-section">
                     <div class="schedule-header-row">
                         <label for="post-schedule-toggle" class="schedule-header-label">
-                            <i data-lucide="calendar-clock" class="schedule-header-icon"></i>
+                            <span class="schedule-icon-badge">
+                                <i data-lucide="calendar-clock" class="schedule-header-icon"></i>
+                            </span>
                             <div class="schedule-header-text">
-                                <span class="schedule-title">Programar Post</span>
+                                <span class="schedule-title">Programar Post <span class="schedule-badge-pill">Novo</span></span>
                                 <small class="schedule-subtitle">Agende para ser postado automaticamente em outro dia no Feed</small>
                             </div>
                         </label>
-                        <input type="checkbox" id="post-schedule-toggle" class="custom-toggle" aria-label="Ativar programação do Post">
+                        <label class="switch schedule-switch" for="post-schedule-toggle" title="Ativar agendamento do Post">
+                            <input type="checkbox" id="post-schedule-toggle" aria-label="Ativar programação do Post">
+                            <span class="slider schedule-slider"></span>
+                        </label>
                     </div>
 
                     <div id="post-schedule-fields" class="schedule-fields-container" style="display: none;">
@@ -2607,19 +2625,23 @@
                                     <i data-lucide="calendar"></i>
                                     <span>Data</span>
                                 </label>
-                                <input type="date" id="post-schedule-date" class="schedule-date-input" aria-label="Data da programação do Post">
+                                <div class="schedule-input-wrapper">
+                                    <input type="date" id="post-schedule-date" class="schedule-date-input" aria-label="Data da programação do Post">
+                                </div>
                             </div>
                             <div class="schedule-input-group">
                                 <label for="post-schedule-time" class="schedule-input-label">
                                     <i data-lucide="clock"></i>
                                     <span>Horário</span>
                                 </label>
-                                <input type="time" id="post-schedule-time" class="schedule-time-input" aria-label="Horário da programação do Post">
+                                <div class="schedule-input-wrapper">
+                                    <input type="time" id="post-schedule-time" class="schedule-time-input" aria-label="Horário da programação do Post">
+                                </div>
                             </div>
                         </div>
 
                         <div class="schedule-quick-chips">
-                            <span class="schedule-quick-label">Atalhos rápidos:</span>
+                            <span class="schedule-quick-label"><i data-lucide="zap"></i> Atalhos rápidos:</span>
                             <div class="schedule-chips-list">
                                 <button type="button" class="schedule-chip" data-target="post" data-quick="tomorrow-09">Amanhã 09:00</button>
                                 <button type="button" class="schedule-chip" data-target="post" data-quick="tomorrow-18">Amanhã 18:00</button>
@@ -2629,8 +2651,12 @@
                         </div>
 
                         <div id="post-schedule-preview-hint" class="schedule-preview-hint" style="display: none;">
-                            <i data-lucide="calendar-check"></i>
-                            <span id="post-schedule-preview-text"></span>
+                            <div class="schedule-preview-hint-icon">
+                                <i data-lucide="calendar-check"></i>
+                            </div>
+                            <div class="schedule-preview-hint-content">
+                                <span id="post-schedule-preview-text"></span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -4130,6 +4156,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.199" defer></script>
+    <script type="module" src="script.js?v=1.0.200" defer></script>
 </body>
 </html>
