@@ -766,6 +766,14 @@ const notificationSound = createAudioTonePlayer('notification');
 const unlockSound = createAudioTonePlayer('unlock');
 const replySendSound = createAudioTonePlayer('reply');
 const messageSendSound = replySendSound;
+if (typeof window !== 'undefined') {
+    window.messageSendSound = replySendSound;
+    window.replySendSound = replySendSound;
+}
+if (typeof globalThis !== 'undefined') {
+    globalThis.messageSendSound = replySendSound;
+    globalThis.replySendSound = replySendSound;
+}
 const ringtoneSound = createRingtonePlayer();
 
 // ===== SISTEMA DE NOTIFICAÇÕES PUSH NO CELULAR (PWA & NATIVO) =====
