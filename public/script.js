@@ -765,6 +765,7 @@ const clickSound = createAudioTonePlayer('click');
 const notificationSound = createAudioTonePlayer('notification');
 const unlockSound = createAudioTonePlayer('unlock');
 const replySendSound = createAudioTonePlayer('reply');
+const messageSendSound = replySendSound;
 const ringtoneSound = createRingtonePlayer();
 
 // ===== SISTEMA DE NOTIFICAÇÕES PUSH NO CELULAR (PWA & NATIVO) =====
@@ -19934,7 +19935,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.207';
+export const CURRENT_APP_VERSION = '1.0.208';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -21741,6 +21742,23 @@ async function sendChatMessage(type = 'text', payload = {}) {
         }
         if (payload.form) {
             msgData.form = payload.form;
+        }
+
+        // Suporte a Botão Interativo / Comercial (v1.0.208)
+        if (payload.buttonTitle !== undefined) {
+            msgData.buttonTitle = payload.buttonTitle;
+        }
+        if (payload.buttonUrl !== undefined) {
+            msgData.buttonUrl = payload.buttonUrl;
+        }
+        if (payload.buttonImage !== undefined) {
+            msgData.buttonImage = payload.buttonImage;
+        }
+        if (payload.companyButton) {
+            msgData.companyButton = payload.companyButton;
+            if (!msgData.buttonTitle && payload.companyButton.title) msgData.buttonTitle = payload.companyButton.title;
+            if (!msgData.buttonUrl && payload.companyButton.url) msgData.buttonUrl = payload.companyButton.url;
+            if (!msgData.buttonImage && payload.companyButton.image) msgData.buttonImage = payload.companyButton.image;
         }
 
         const isSenderVip = checkIsVipUser(currentProfile);
@@ -24235,7 +24253,7 @@ async function deliverCameraCapturedFile(type, file, caption = '') {
             viewedBy: []
         }, file.dataUrl);
 
-        playSound(messageSendSound);
+        playSound(replySendSound);
         showToast(type === 'image' ? 'Foto Enviada' : 'Vídeo Enviado', 'Captura enviada com sucesso ao contato!', 'green');
     } catch (e) {
         console.error('Erro ao enviar captura da câmera:', e);
@@ -24403,6 +24421,19 @@ export function openCompanyButtonModal() {
     if (window.lucide) lucide.createIcons();
 }
 
+export function removeCompanyButtonImage() {
+    playSound(replySendSound);
+    currentCompanyButtonImageBase64 = null;
+    const previewBox = document.getElementById('company-btn-image-preview-box');
+    const previewImg = document.getElementById('company-btn-image-preview');
+    const uploadLabel = document.getElementById('company-btn-image-upload-label');
+    const imgInput = document.getElementById('company-btn-image-input');
+    if (imgInput) imgInput.value = '';
+    if (previewImg) previewImg.src = '';
+    if (previewBox) previewBox.style.display = 'none';
+    if (uploadLabel) uploadLabel.style.display = 'inline-flex';
+}
+
 export function closeCompanyButtonModal() {
     const modal = document.getElementById('company-button-modal');
     if (!modal) return;
@@ -24410,57 +24441,139 @@ export function closeCompanyButtonModal() {
     modal.classList.remove('active');
     modal.setAttribute('aria-hidden', 'true');
     currentCompanyButtonImageBase64 = null;
+
+    const errorBox = document.getElementById('company-btn-error-msg');
+    if (errorBox) {
+        errorBox.style.display = 'none';
+        errorBox.innerText = '';
+    }
+    document.getElementById('company-btn-title-input')?.classList.remove('input-field-error');
+    document.getElementById('company-btn-link-input')?.classList.remove('input-field-error');
 }
 
 export async function sendCompanyButtonMessage() {
+    const submitBtn = document.getElementById('company-btn-submit-btn');
     const titleInput = document.getElementById('company-btn-title-input');
     const linkInput = document.getElementById('company-btn-link-input');
     const descInput = document.getElementById('company-btn-desc-input');
+    const errorBox = document.getElementById('company-btn-error-msg');
+
+    const clearError = () => {
+        if (errorBox) {
+            errorBox.style.display = 'none';
+            errorBox.innerText = '';
+        }
+        titleInput?.classList.remove('input-field-error');
+        linkInput?.classList.remove('input-field-error');
+    };
+
+    const showError = (msg, inputToFocus) => {
+        if (errorBox) {
+            errorBox.innerText = msg;
+            errorBox.style.display = 'block';
+        }
+        showToast('Atenção', msg, 'orange');
+        if (inputToFocus) {
+            inputToFocus.classList.add('input-field-error');
+            inputToFocus.focus();
+        }
+    };
+
+    clearError();
+
+    if (!currentUser || !activeChatContact) {
+        showError('Abra uma conversa com um contato antes de enviar o botão comercial.', null);
+        return;
+    }
 
     const title = (titleInput?.value || '').trim();
     let url = (linkInput?.value || '').trim();
     const text = (descInput?.value || '').trim();
 
     if (!title) {
-        showToast('Campo Obrigatório', 'Por favor, digite o título do botão.', 'orange');
-        titleInput?.focus();
+        showError('Por favor, digite o título do botão.', titleInput);
         return;
     }
 
     if (!url) {
-        showToast('Campo Obrigatório', 'Por favor, insira o link do botão.', 'orange');
-        linkInput?.focus();
+        showError('Por favor, insira o link (URL) do botão.', linkInput);
         return;
     }
 
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    // Sanitizar prefixos duplicados ou espaços de teclado mobile
+    url = url.trim().replace(/^https?:\/\/https?:\/\//i, 'https://');
+    if (url.includes(' ')) {
+        url = url.replace(/\s+/g, '%20');
+    }
+    if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(url)) {
         url = 'https://' + url;
     }
 
-    try {
-        new URL(url);
-    } catch (_) {
-        showToast('Link Inválido', 'Por favor, insira uma URL válida (ex: https://...).', 'red');
-        linkInput?.focus();
-        return;
+    const UrlClass = (typeof window !== 'undefined' && typeof window.URL === 'function')
+        ? window.URL
+        : (typeof globalThis !== 'undefined' && typeof globalThis.URL === 'function')
+            ? globalThis.URL
+            : (typeof URL === 'function' ? URL : null);
+
+    if (UrlClass) {
+        try {
+            new UrlClass(url);
+        } catch (_) {
+            try {
+                url = encodeURI(url);
+                new UrlClass(url);
+            } catch (e) {
+                showError('Por favor, insira um link válido (ex: https://seusite.com.br).', linkInput);
+                return;
+            }
+        }
+    }
+
+    // Se houver imagem Base64 muito grande, comprimir com segurança
+    let finalImage = currentCompanyButtonImageBase64 || null;
+    if (finalImage && typeof finalImage === 'string' && finalImage.length > 200000) {
+        try {
+            const compressed = await compressImage(finalImage, 640, 0.75);
+            if (compressed) finalImage = compressed;
+        } catch (e) {
+            console.warn('Erro ao otimizar imagem do botão:', e);
+        }
     }
 
     const payload = {
         buttonTitle: title,
         buttonUrl: url,
-        buttonImage: currentCompanyButtonImageBase64 || null,
-        text: text
+        buttonImage: finalImage,
+        text: text,
+        companyButton: {
+            title: title,
+            url: url,
+            image: finalImage,
+            text: text
+        }
     };
 
-    closeCompanyButtonModal();
-    playSound(messageSendSound);
+    const originalBtnHTML = submitBtn ? submitBtn.innerHTML : '';
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i data-lucide="loader-2" class="spin"></i> <span>Enviando...</span>';
+        if (window.lucide) lucide.createIcons();
+    }
 
     try {
         await sendChatMessage('company_button', payload);
-        showToast('Botão Enviado', 'Botão interativo enviado com sucesso ao contato!', 'green');
+        closeCompanyButtonModal();
+        playSound(replySendSound);
+        showToast('Botão Enviado!', 'O botão interativo foi compartilhado na conversa.', 'green');
     } catch (err) {
         console.error('Erro ao enviar botão comercial:', err);
-        showToast('Erro', 'Não foi possível enviar o botão comercial.', 'red');
+        showError('Não foi possível enviar o botão. Verifique sua conexão e tente novamente.', null);
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalBtnHTML;
+            if (window.lucide) lucide.createIcons();
+        }
     }
 }
 
@@ -24484,13 +24597,17 @@ document.getElementById('company-btn-submit-btn')?.addEventListener('click', () 
     sendCompanyButtonMessage();
 });
 
-document.getElementById('company-btn-image-input')?.addEventListener('change', function(e) {
+document.getElementById('company-btn-image-input')?.addEventListener('change', async function(e) {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = () => {
-        currentCompanyButtonImageBase64 = reader.result;
+    try {
+        let compressed = await compressImage(file, 640, 0.75);
+        if (!compressed) {
+            const res = await compressImageFileToKB(file, { targetMaxKB: 200, maxDimension: 640 });
+            compressed = res?.dataUrl || '';
+        }
+        currentCompanyButtonImageBase64 = compressed || '';
         const previewBox = document.getElementById('company-btn-image-preview-box');
         const previewImg = document.getElementById('company-btn-image-preview');
         const uploadLabel = document.getElementById('company-btn-image-upload-label');
@@ -24498,8 +24615,9 @@ document.getElementById('company-btn-image-input')?.addEventListener('change', f
         if (previewBox) previewBox.style.display = 'block';
         if (uploadLabel) uploadLabel.style.display = 'none';
         if (window.lucide) lucide.createIcons();
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+        console.warn('Erro ao carregar imagem:', err);
+    }
 });
 
 document.getElementById('company-btn-remove-image-btn')?.addEventListener('click', () => {
@@ -34628,6 +34746,7 @@ if (typeof window !== 'undefined') {
     window.openCompanyButtonModal = openCompanyButtonModal;
     window.closeCompanyButtonModal = closeCompanyButtonModal;
     window.sendCompanyButtonMessage = sendCompanyButtonMessage;
+    window.removeCompanyButtonImage = removeCompanyButtonImage;
     window.buildCompanyButtonCardHTML = buildCompanyButtonCardHTML;
     window.openForwardModal = openForwardModal;
 }

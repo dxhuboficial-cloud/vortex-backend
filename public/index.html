@@ -5,19 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
     <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.199">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.207">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.207">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.207">
-    <link rel="stylesheet" href="style.css?v=1.0.207">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.208">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.208">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.208">
+    <link rel="stylesheet" href="style.css?v=1.0.208">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.207">
+    <link rel="manifest" href="manifest.json?v=1.0.208">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.207">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.207">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.208">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.208">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -4375,7 +4375,7 @@
                             <span class="company-btn-header-subtitle">Envie um botão com link ao cliente</span>
                         </div>
                     </div>
-                    <div class="header-icon-btn" id="close-company-button-modal" title="Fechar" aria-label="Fechar">
+                    <div class="header-icon-btn" id="close-company-button-modal" title="Fechar" aria-label="Fechar" onclick="closeCompanyButtonModal()">
                         <i data-lucide="x"></i>
                     </div>
                 </div>
@@ -4408,7 +4408,7 @@
                         <input type="file" id="company-btn-image-input" accept="image/*" class="hidden-file-input">
                         <div class="company-btn-image-preview-wrapper" id="company-btn-image-preview-box" style="display:none;">
                             <img id="company-btn-image-preview" src="" alt="Prévia da imagem">
-                            <button type="button" id="company-btn-remove-image-btn" class="company-btn-remove-img-btn" title="Remover Imagem">
+                            <button type="button" id="company-btn-remove-image-btn" class="company-btn-remove-img-btn" title="Remover Imagem" onclick="removeCompanyButtonImage()">
                                 <i data-lucide="trash-2"></i> Remover Imagem
                             </button>
                         </div>
@@ -4427,9 +4427,10 @@
                     </div>
 
                     <!-- Ações do Modal -->
+                    <div id="company-btn-error-msg" class="company-btn-error-banner" style="display:none;"></div>
                     <div class="company-button-modal-actions">
-                        <button type="button" id="company-btn-cancel-btn" class="close-btn modal-cancel-btn company-btn-modal-cancel">Cancelar</button>
-                        <button type="button" id="company-btn-submit-btn" class="danger-btn company-btn-submit-action">
+                        <button type="button" id="company-btn-cancel-btn" class="close-btn modal-cancel-btn company-btn-modal-cancel" onclick="closeCompanyButtonModal()">Cancelar</button>
+                        <button type="button" id="company-btn-submit-btn" class="danger-btn company-btn-submit-action" onclick="sendCompanyButtonMessage()">
                             <i data-lucide="send"></i> <span>Enviar Botão</span>
                         </button>
                     </div>
@@ -4439,6 +4440,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.207" defer></script>
+    <script type="module" src="script.js?v=1.0.208" defer></script>
 </body>
 </html>

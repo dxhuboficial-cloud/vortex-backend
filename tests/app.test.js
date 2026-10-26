@@ -13463,12 +13463,10 @@ test('Organização Visual do Modal de Botão Interativo (Empresa) - Título, In
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
 
-  // 1. Integridade de Versionamento (v1.0.207)
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.207', 'script.js deve ter versão 1.0.207');
-  assert.strictEqual(versionJson.version, '1.0.207', 'version.json deve ter versão 1.0.207');
-  assert.ok(html.includes('script.js?v=1.0.207'), 'index.html deve referenciar script.js?v=1.0.207');
-  assert.ok(html.includes('style.css?v=1.0.207'), 'index.html deve referenciar style.css?v=1.0.207');
-  assert.ok(swContent.includes('vortex-vip-v1.0.207'), 'sw.js deve conter cache vortex-vip-v1.0.207');
+  // 1. Integridade de Versionamento (v1.0.207 ou superior)
+  const semverCompare = (a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+  assert.ok(semverCompare(win.CURRENT_APP_VERSION, '1.0.207') >= 0, 'script.js deve ter versão 1.0.207 ou superior');
+  assert.ok(semverCompare(versionJson.version, '1.0.207') >= 0, 'version.json deve ter versão 1.0.207 ou superior');
 
   // 2. Barra Superior Organizada (Sem Quebra Feia do Título e Fechar Alinhado)
   assert.ok(html.includes('class="panel-top-bar company-btn-modal-top-bar"'), 'index.html deve conter barra superior .company-btn-modal-top-bar');
@@ -13534,4 +13532,86 @@ test('Organização Visual do Modal de Botão Interativo (Empresa) - Título, In
   else if (typeof cancelBtn.dispatchEvent === 'function') await cancelBtn.dispatchEvent({ type: 'click' });
   else win.closeCompanyButtonModal();
   assert.strictEqual(modal.style.display, 'none', 'Modal deve fechar ao fechar o modal');
+});
+
+test('Correção do Fluxo de Envio do Botão Comercial: Persistência de Dados, Sanitização de Link e Feedback Visual (v1.0.208)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+  const css = fs.readFileSync('public/style.css', 'utf8');
+  const html = fs.readFileSync('public/index.html', 'utf8');
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
+
+  // 1. Integridade de Versionamento (v1.0.208)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.208', 'script.js deve ter versão 1.0.208');
+  assert.strictEqual(versionJson.version, '1.0.208', 'version.json deve ter versão 1.0.208');
+  assert.ok(html.includes('script.js?v=1.0.208'), 'index.html deve referenciar script.js?v=1.0.208');
+  assert.ok(html.includes('style.css?v=1.0.208'), 'index.html deve referenciar style.css?v=1.0.208');
+  assert.ok(swContent.includes('vortex-vip-v1.0.208'), 'sw.js deve conter cache vortex-vip-v1.0.208');
+
+  // 2. Correção de z-index do toast para sobrepor o modal (z-index: 99999 !important)
+  assert.ok(css.includes('#toast-container { position: absolute; top: 15px; left: 15px; right: 15px; z-index: 99999 !important;'), 'toast-container deve ter z-index 99999 para nunca ficar escondido sob modais');
+
+  // 3. Banner de Erro Inline e Botão com onclick direto
+  assert.ok(html.includes('id="company-btn-error-msg"'), 'index.html deve conter banner #company-btn-error-msg');
+  assert.ok(html.includes('onclick="sendCompanyButtonMessage()"'), 'botão de envio deve ter onclick="sendCompanyButtonMessage()"');
+  assert.ok(html.includes('onclick="closeCompanyButtonModal()"'), 'botão de fechar deve ter onclick="closeCompanyButtonModal()"');
+  assert.ok(css.includes('.company-btn-error-banner'), 'style.css deve estilizar .company-btn-error-banner');
+
+  // 4. Configurar Usuário e Conversa Ativa
+  const bizUser = { uid: 'biz_user_208', email: 'empresa@vortex.vip' };
+  win.setCurrentUser(bizUser);
+  win.setCurrentProfile({
+    name: 'Loja Vortex Tech',
+    accountType: 'business'
+  });
+
+  const targetContact = {
+    uid: 'client_user_208',
+    name: 'Cliente VIP'
+  };
+  win.setActiveChatContact(targetContact);
+
+  // 5. Teste de Validação: campos vazios não enviam e exibem erro
+  win.openCompanyButtonModal();
+  const modal = env.elements['company-button-modal'];
+  const titleInput = env.elements['company-btn-title-input'];
+  const linkInput = env.elements['company-btn-link-input'];
+  const descInput = env.elements['company-btn-desc-input'];
+  const errorBox = env.elements['company-btn-error-msg'];
+
+  titleInput.value = '';
+  linkInput.value = '';
+  await win.sendCompanyButtonMessage();
+  assert.strictEqual(modal.style.display, 'flex', 'Modal não deve fechar se houver campos obrigatórios vazios');
+  assert.ok(errorBox.style.display !== 'none', 'Banner de erro deve ficar visível ao tentar enviar sem título');
+
+  // 6. Teste de Envio com Sucesso: dados preenchidos com sanitização de URL
+  titleInput.value = 'Ver Produtos Exclusivos';
+  linkInput.value = 'minhaloja.com.br/produtos promo'; // sem https e com espaço que será sanitizado para %20
+  descInput.value = 'Olá! Aproveite nossas ofertas desta semana.';
+
+  await win.sendCompanyButtonMessage();
+
+  // Modal deve fechar após envio
+  assert.strictEqual(modal.style.display, 'none', 'Modal deve fechar após envio com sucesso');
+
+  // 7. Verificar se a mensagem foi gravada corretamente no Firestore com buttonTitle, buttonUrl e text
+  const chatId = ['biz_user_208', 'client_user_208'].sort().join('_');
+  const msgKeys = Object.keys(env.firestoreDocs).filter(k => k.startsWith(`chats/${chatId}/messages`));
+  assert.ok(msgKeys.length > 0, 'Deve ter gravado a mensagem no Firestore');
+
+  const savedMsg = env.firestoreDocs[msgKeys[msgKeys.length - 1]];
+  assert.strictEqual(savedMsg.type, 'company_button', 'Tipo da mensagem deve ser company_button');
+  assert.strictEqual(savedMsg.buttonTitle, 'Ver Produtos Exclusivos', 'buttonTitle deve ser persistido');
+  assert.strictEqual(savedMsg.buttonUrl, 'https://minhaloja.com.br/produtos%20promo', 'buttonUrl deve ser sanitizado com https:// e encode');
+  assert.strictEqual(savedMsg.text, 'Olá! Aproveite nossas ofertas desta semana.', 'text da mensagem deve ser persistido');
+  assert.ok(savedMsg.companyButton, 'Objeto companyButton deve ser persistido');
+
+  // 8. Renderização do Card do Botão Comercial no Chat
+  const cardHTML = win.buildCompanyButtonCardHTML(savedMsg);
+  assert.ok(cardHTML.includes('Mensagem Comercial'), 'Card deve exibir selo Mensagem Comercial');
+  assert.ok(cardHTML.includes('Ver Produtos Exclusivos'), 'Card deve exibir título do botão');
+  assert.ok(cardHTML.includes('https://minhaloja.com.br/produtos%20promo'), 'Card deve conter o link sanitizado');
+  assert.ok(cardHTML.includes('target="_blank"'), 'Link deve abrir em nova aba');
 });
