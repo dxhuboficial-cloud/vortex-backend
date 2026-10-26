@@ -2840,6 +2840,10 @@ input.input-invalid:focus {
 .publish-status-action-btn {
     width: 100%;
     margin-top: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
     background: rgba(255, 59, 48, 0.18);
     border: 1.5px solid #ff3b30;
     color: #ff3b30;
@@ -2848,6 +2852,24 @@ input.input-invalid:focus {
     border-radius: 12px;
     cursor: pointer;
     transition: all 0.2s ease;
+    box-sizing: border-box;
+    line-height: 1;
+}
+
+.publish-status-action-btn i,
+.publish-status-action-btn svg {
+    width: 16px;
+    height: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.publish-status-action-btn span {
+    display: inline-flex;
+    align-items: center;
+    line-height: 1;
 }
 
 .publish-status-action-btn:hover {
@@ -3166,7 +3188,53 @@ input:checked + .slider:before { transform: translateX(22px); }
 .gallery-empty-icon { width: 60px; height: 60px; color: var(--text-dim); }
 
 .post-creator-title { margin: 0; font-size: 1rem; }
-.post-publish-btn { background: var(--accent-color); color: #000; border: none; border-radius: 999px; padding: 8px 14px; font-weight: 700; cursor: pointer; }
+.post-publish-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: var(--accent-color);
+    color: #000;
+    border: none;
+    border-radius: 999px;
+    padding: 7px 16px;
+    font-size: 0.88rem;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    vertical-align: middle;
+    white-space: nowrap;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    box-sizing: border-box;
+}
+.post-publish-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+.post-publish-btn:active {
+    transform: translateY(0);
+}
+.post-publish-btn i,
+.post-publish-btn svg {
+    width: 15px;
+    height: 15px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    vertical-align: middle;
+    margin: 0;
+    padding: 0;
+}
+.post-publish-btn span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    font-weight: 700;
+    margin: 0;
+    padding: 0;
+}
 .post-composer { flex: 1; padding: 18px 16px 20px; display: flex; flex-direction: column; gap: 18px; }
 .post-media-box { display: flex; flex-direction: column; gap: 12px; }
 .post-media-trigger { display: flex; align-items: center; justify-content: center; gap: 10px; border: 1px dashed rgba(255,255,255,0.2); border-radius: 16px; background: rgba(255,255,255,0.03); min-height: 120px; cursor: pointer; color: var(--text-main); font-weight: 600; }
@@ -8659,10 +8727,19 @@ body.theme-hacker .feed-action-btn.liked {
     text-shadow: 0 0 10px rgba(0, 255, 102, 0.6);
 }
 body.theme-hacker .post-publish-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
     background: #00ff66 !important;
     color: #020603 !important;
     font-weight: 700 !important;
     box-shadow: 0 0 12px rgba(0, 255, 102, 0.4) !important;
+}
+body.theme-hacker .post-publish-btn i,
+body.theme-hacker .post-publish-btn svg {
+    color: #020603 !important;
+    stroke: #020603 !important;
 }
 body.theme-hacker .post-comment-card {
     background: rgba(3, 12, 5, 0.96) !important;

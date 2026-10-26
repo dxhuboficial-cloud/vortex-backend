@@ -13542,12 +13542,12 @@ test('Correção do Fluxo de Envio do Botão Comercial: Persistência de Dados, 
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
 
-  // 1. Integridade de Versionamento (v1.0.208)
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.208', 'script.js deve ter versão 1.0.208');
-  assert.strictEqual(versionJson.version, '1.0.208', 'version.json deve ter versão 1.0.208');
-  assert.ok(html.includes('script.js?v=1.0.208'), 'index.html deve referenciar script.js?v=1.0.208');
-  assert.ok(html.includes('style.css?v=1.0.208'), 'index.html deve referenciar style.css?v=1.0.208');
-  assert.ok(swContent.includes('vortex-vip-v1.0.208'), 'sw.js deve conter cache vortex-vip-v1.0.208');
+  // 1. Integridade de Versionamento (v1.0.208+)
+  assert.ok(['1.0.208', '1.0.209'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão compatível');
+  assert.ok(['1.0.208', '1.0.209'].includes(versionJson.version), 'version.json deve ter versão compatível');
+  assert.ok(html.includes('script.js?v=1.0.208') || html.includes('script.js?v=1.0.209'), 'index.html deve referenciar script.js');
+  assert.ok(html.includes('style.css?v=1.0.208') || html.includes('style.css?v=1.0.209'), 'index.html deve referenciar style.css');
+  assert.ok(swContent.includes('vortex-vip-v1.0.208') || swContent.includes('vortex-vip-v1.0.209'), 'sw.js deve conter cache');
 
   // 2. Correção de z-index do toast para sobrepor o modal (z-index: 99999 !important)
   assert.ok(css.includes('#toast-container { position: absolute; top: 15px; left: 15px; right: 15px; z-index: 99999 !important;'), 'toast-container deve ter z-index 99999 para nunca ficar escondido sob modais');
@@ -13614,4 +13614,37 @@ test('Correção do Fluxo de Envio do Botão Comercial: Persistência de Dados, 
   assert.ok(cardHTML.includes('Ver Produtos Exclusivos'), 'Card deve exibir título do botão');
   assert.ok(cardHTML.includes('https://minhaloja.com.br/produtos%20promo'), 'Card deve conter o link sanitizado');
   assert.ok(cardHTML.includes('target="_blank"'), 'Link deve abrir em nova aba');
+});
+
+test('Centralização do Título (Texto) com o Ícone no Botão de Publicação (v1.0.209)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+  const css = fs.readFileSync('public/style.css', 'utf8');
+  const html = fs.readFileSync('public/index.html', 'utf8');
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
+
+  // 1. Integridade de Versionamento (v1.0.209)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.209', 'script.js deve ter versão 1.0.209');
+  assert.strictEqual(versionJson.version, '1.0.209', 'version.json deve ter versão 1.0.209');
+  assert.ok(html.includes('script.js?v=1.0.209'), 'index.html deve referenciar script.js?v=1.0.209');
+  assert.ok(html.includes('style.css?v=1.0.209'), 'index.html deve referenciar style.css?v=1.0.209');
+  assert.ok(swContent.includes('vortex-vip-v1.0.209'), 'sw.js deve conter cache vortex-vip-v1.0.209');
+
+  // 2. Estrutura HTML do Botão de Publicar com Ícone e Título Centralizados
+  assert.ok(html.includes('id="publish-post-btn"'), 'Deve existir o botão #publish-post-btn');
+  assert.ok(html.includes('<i data-lucide="send"></i> <span>Publicar</span>'), 'Botão de publicar deve ter o ícone send e o span com o texto Publicar');
+
+  // 3. Estilos CSS de Alinhamento e Centralização (.post-publish-btn)
+  assert.ok(css.includes('.post-publish-btn {') && css.includes('display: inline-flex;') && css.includes('align-items: center;') && css.includes('justify-content: center;') && css.includes('gap: 6px;'), 'post-publish-btn deve ter display flex alinhado e centralizado com gap');
+  assert.ok(css.includes('.post-publish-btn i,') && css.includes('.post-publish-btn svg {'), 'style.css deve estilizar o ícone e svg do post-publish-btn');
+  assert.ok(css.includes('.post-publish-btn span {') && css.includes('display: inline-flex;') && css.includes('align-items: center;'), 'style.css deve alinhar verticalmente o span do título com o ícone');
+
+  // 4. Tema Hacker também garante centralização flex
+  assert.ok(css.includes('body.theme-hacker .post-publish-btn {') && css.includes('display: inline-flex !important;') && css.includes('align-items: center !important;'), 'theme-hacker deve garantir display flex e alinhamento centrado no botão de publicar');
+
+  // 5. Verificação no DOM da instância de teste
+  const publishBtn = env.elements['publish-post-btn'];
+  assert.ok(publishBtn, 'Elemento publish-post-btn deve existir no DOM');
+  assert.ok(publishBtn.classList.contains('post-publish-btn'), 'Elemento deve ter a classe post-publish-btn');
 });
