@@ -49,8 +49,8 @@ if (window.lucide) {
 /* ==========================================================================
    ESTADO GLOBAL & VARIÁVEIS
    ========================================================================== */
-let currentUser = null;
-let currentProfile = {
+export let currentUser = null;
+export let currentProfile = {
     uid: '',
     name: 'Usuário',
     surname: '',
@@ -3647,6 +3647,9 @@ function applyUserTheme() {
         }
     }
     checkVipSubscriptionLifecycle();
+    if (typeof updateDailyChestUI === 'function') {
+        updateDailyChestUI();
+    }
 }
 
 function updateProfileDOM() {
@@ -18779,6 +18782,9 @@ export function switchAdminTab(tabName) {
         loadAdminUsers().then(() => populateBroadcastRecipients());
         loadAdminBroadcastHistory();
     }
+    if (tabName === 'withdrawals') {
+        loadAdminWithdrawals().then(() => renderAdminWithdrawals());
+    }
     if (window.lucide) lucide.createIcons();
 }
 
@@ -20673,7 +20679,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.213';
+export const CURRENT_APP_VERSION = '1.0.214';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -35517,6 +35523,21 @@ if (typeof window !== 'undefined') {
     window.removeCompanyButtonImage = removeCompanyButtonImage;
     window.buildCompanyButtonCardHTML = buildCompanyButtonCardHTML;
     window.openForwardModal = openForwardModal;
+
+    // Baú Diário e Saque Pix (v1.0.214)
+    window.openDailyChestModal = openDailyChestModal;
+    window.closeDailyChestModal = closeDailyChestModal;
+    window.claimDailyChestReward = claimDailyChestReward;
+    window.openDailyChestWithdrawModal = openDailyChestWithdrawModal;
+    window.closeDailyChestWithdrawModal = closeDailyChestWithdrawModal;
+    window.submitChestWithdrawal = submitChestWithdrawal;
+    window.updateDailyChestUI = updateDailyChestUI;
+    window.canClaimDailyChest = canClaimDailyChest;
+    window.canWithdrawDailyChest = canWithdrawDailyChest;
+    window.adminMarkWithdrawalPaid = adminMarkWithdrawalPaid;
+    window.loadAdminWithdrawals = loadAdminWithdrawals;
+    window.renderAdminWithdrawals = renderAdminWithdrawals;
+    window.initDailyChestControls = initDailyChestControls;
 }
 
 if (typeof window !== 'undefined') {
@@ -35539,4 +35560,591 @@ if (typeof window !== 'undefined') {
     initStoreEnabledControls();
     initMediaProtection();
     initVortexVideoPlayers();
+    initDailyChestControls();
 }
+
+
+/* ==========================================================================
+   VORTEX VIP ⚡ - BAÚ DIÁRIO & SAQUE PIX (v1.0.214)
+   ========================================================================== */
+
+export function getTodayDateString() {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
+export function formatBRLCurrency(val) {
+    const num = Number(val) || 0;
+    return 'R$ ' + num.toFixed(2).replace('.', ',');
+}
+
+export function playCoinRewardSound() {
+    try {
+        if (typeof window === 'undefined') return;
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = window.__vortexAudioCtx || new AudioCtx();
+        window.__vortexAudioCtx = ctx;
+        if (ctx.state === 'suspended') ctx.resume();
+
+        const now = ctx.currentTime;
+        // Tom 1 brilhante
+        const osc1 = ctx.createOscillator();
+        const gain1 = ctx.createGain();
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(987.77, now); // B5
+        gain1.gain.setValueAtTime(0.2, now);
+        gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+        osc1.connect(gain1);
+        gain1.connect(ctx.destination);
+        osc1.start(now);
+        osc1.stop(now + 0.18);
+
+        // Tom 2 agudo alegre
+        const osc2 = ctx.createOscillator();
+        const gain2 = ctx.createGain();
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(1318.51, now + 0.09); // E6
+        gain2.gain.setValueAtTime(0.25, now + 0.09);
+        gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+        osc2.connect(gain2);
+        gain2.connect(ctx.destination);
+        osc2.start(now + 0.09);
+        osc2.stop(now + 0.35);
+    } catch (_) {}
+}
+
+export function canClaimDailyChest() {
+    if (!currentUser || !currentProfile) return false;
+    const today = getTodayDateString();
+    return currentProfile.lastChestClaimDate !== today;
+}
+
+export function canWithdrawDailyChest() {
+    if (!currentUser || !currentProfile) return false;
+    const balance = Number(currentProfile.rewardCoinsBalance) || 0;
+    const today = getTodayDateString();
+    return balance >= 1.00 && currentProfile.lastWithdrawalDate !== today;
+}
+
+export function updateDailyChestUI() {
+    if (!currentProfile) return;
+    const balance = Math.round((Number(currentProfile.rewardCoinsBalance) || 0) * 100) / 100;
+    const today = getTodayDateString();
+    const isClaimedToday = currentProfile.lastChestClaimDate === today;
+    const isWithdrawnToday = currentProfile.lastWithdrawalDate === today;
+
+    // 1. Ponto indicador no cabeçalho
+    const readyDot = document.getElementById('daily-chest-ready-dot');
+    if (readyDot) {
+        readyDot.style.display = (!isClaimedToday || balance >= 1.00) ? 'block' : 'none';
+    }
+
+    // 2. Card de Configurações
+    const balanceValEl = document.getElementById('daily-chest-balance-val');
+    if (balanceValEl) {
+        balanceValEl.textContent = formatBRLCurrency(balance);
+    }
+    const statusPill = document.getElementById('daily-chest-status-pill');
+    if (statusPill) {
+        if (isClaimedToday) {
+            statusPill.className = 'daily-chest-status-pill claimed';
+            statusPill.textContent = 'Coletado Hoje ⏳';
+        } else {
+            statusPill.className = 'daily-chest-status-pill ready';
+            statusPill.textContent = 'Disponível Hoje ⚡';
+        }
+    }
+    const settingWithdrawBtn = document.getElementById('open-chest-withdraw-btn');
+    if (settingWithdrawBtn) {
+        if (balance >= 1.00) {
+            settingWithdrawBtn.style.display = 'inline-flex';
+            if (isWithdrawnToday) {
+                settingWithdrawBtn.disabled = true;
+                settingWithdrawBtn.title = 'Limite diário de 1 saque atingido hoje.';
+                settingWithdrawBtn.innerHTML = '<i data-lucide="clock"></i> <span>Saque Realizado (1/dia)</span>';
+            } else {
+                settingWithdrawBtn.disabled = false;
+                settingWithdrawBtn.title = 'Solicitar saque Pix de R$ 1,00';
+                settingWithdrawBtn.innerHTML = '<i data-lucide="banknote"></i> <span>Sacar R$ 1,00</span>';
+            }
+        } else {
+            settingWithdrawBtn.style.display = 'inline-flex';
+            settingWithdrawBtn.disabled = true;
+            const diff = Math.max(0, 1.00 - balance);
+            settingWithdrawBtn.title = `Faltam ${formatBRLCurrency(diff)} para atingir a meta de R$ 1,00.`;
+            settingWithdrawBtn.innerHTML = '<i data-lucide="lock"></i> <span>Meta: R$ 1,00</span>';
+        }
+    }
+
+    // 3. Modal do Baú Diário
+    const chestBox = document.getElementById('daily-chest-box');
+    const claimBtn = document.getElementById('daily-chest-claim-btn');
+    const claimBtnText = document.getElementById('daily-chest-claim-btn-text');
+    const rewardTitle = document.getElementById('daily-chest-reward-title');
+    const rewardVal = document.getElementById('daily-chest-reward-val');
+    const goalCounter = document.getElementById('daily-chest-goal-counter');
+    const progressFill = document.getElementById('daily-chest-progress-fill');
+    const goalHint = document.getElementById('daily-chest-goal-hint');
+    const modalWithdrawBtn = document.getElementById('daily-chest-to-withdraw-btn');
+
+    if (goalCounter) {
+        goalCounter.textContent = `${formatBRLCurrency(balance)} / R$ 1,00`;
+    }
+    if (progressFill) {
+        const pct = Math.min(100, Math.round((balance / 1.00) * 100));
+        progressFill.style.width = `${pct}%`;
+    }
+
+    if (chestBox) {
+        if (isClaimedToday) {
+            chestBox.classList.remove('ready');
+            chestBox.classList.add('opened', 'claimed');
+        } else {
+            chestBox.classList.remove('opened', 'claimed');
+            chestBox.classList.add('ready');
+        }
+    }
+
+    if (claimBtn) {
+        if (isClaimedToday) {
+            claimBtn.disabled = true;
+            if (claimBtnText) claimBtnText.textContent = 'Coletado Hoje! Volte amanhã ⏳';
+            if (rewardTitle) rewardTitle.textContent = 'Recompensa de hoje já coletada!';
+            if (rewardVal) rewardVal.textContent = 'Próximo baú disponível amanhã ⚡';
+        } else {
+            claimBtn.disabled = false;
+            if (claimBtnText) claimBtnText.textContent = 'Coletar R$ 0,10 Hoje 🎁';
+            if (rewardTitle) rewardTitle.textContent = 'Toque no baú para coletar!';
+            if (rewardVal) rewardVal.textContent = '+R$ 0,10 por dia';
+        }
+    }
+
+    if (balance >= 1.00) {
+        if (goalHint) {
+            goalHint.innerHTML = '🎉 <strong style="color:#34c759;">Meta alcançada!</strong> Você já pode solicitar o saque de R$ 1,00 via Pix!';
+        }
+        if (modalWithdrawBtn) {
+            modalWithdrawBtn.style.display = 'inline-flex';
+            if (isWithdrawnToday) {
+                modalWithdrawBtn.disabled = true;
+                modalWithdrawBtn.innerHTML = '<i data-lucide="clock"></i> <span>Limite de 1 Saque por dia Atingido</span>';
+            } else {
+                modalWithdrawBtn.disabled = false;
+                modalWithdrawBtn.innerHTML = '<i data-lucide="banknote"></i> <span>Solicitar Saque de R$ 1,00 Pix 💸</span>';
+            }
+        }
+    } else {
+        const remainingDays = Math.ceil((1.00 - balance) / 0.10);
+        if (goalHint) {
+            goalHint.textContent = `Faltam ${formatBRLCurrency(1.00 - balance)} (${remainingDays} dia(s) de baú) para liberar o saque Pix de R$ 1,00!`;
+        }
+        if (modalWithdrawBtn) {
+            modalWithdrawBtn.style.display = 'none';
+        }
+    }
+
+    // 4. Modal de Saque Pix
+    const withdrawModalBal = document.getElementById('withdraw-modal-balance');
+    if (withdrawModalBal) {
+        withdrawModalBal.textContent = formatBRLCurrency(balance);
+    }
+
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+    }
+}
+
+export function openDailyChestModal() {
+    updateDailyChestUI();
+    const modal = document.getElementById('daily-chest-modal');
+    if (modal) {
+        modal.style.display = 'flex';
+        modal.setAttribute('aria-hidden', 'false');
+    }
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+    }
+}
+
+export function closeDailyChestModal() {
+    const modal = document.getElementById('daily-chest-modal');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.setAttribute('aria-hidden', 'true');
+    }
+    const burst = document.getElementById('daily-chest-burst');
+    if (burst) burst.style.display = 'none';
+}
+
+export function openDailyChestWithdrawModal() {
+    if (!currentUser || !currentProfile) {
+        showToast('Aviso', 'Faça login para solicitar saques.', 'orange');
+        return;
+    }
+    const balance = Number(currentProfile.rewardCoinsBalance) || 0;
+    if (balance < 1.00) {
+        showToast('Meta não atingida', `Você precisa de R$ 1,00 para sacar. Saldo atual: ${formatBRLCurrency(balance)}.`, 'orange');
+        return;
+    }
+    if (currentProfile.lastWithdrawalDate === getTodayDateString()) {
+        showToast('Limite Atingido', 'Você já realizou 1 saque hoje. O limite é de 1 saque por dia.', 'orange');
+        return;
+    }
+
+    const pixInput = document.getElementById('chest-pix-key-input');
+    if (pixInput && !pixInput.value && currentProfile.pixKey) {
+        pixInput.value = currentProfile.pixKey;
+    }
+    const errorMsg = document.getElementById('chest-withdraw-error-msg');
+    if (errorMsg) errorMsg.style.display = 'none';
+
+    updateDailyChestUI();
+    const modal = document.getElementById('daily-chest-withdraw-modal');
+    if (modal) {
+        modal.style.display = 'flex';
+        modal.setAttribute('aria-hidden', 'false');
+    }
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+    }
+}
+
+export function closeDailyChestWithdrawModal() {
+    const modal = document.getElementById('daily-chest-withdraw-modal');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.setAttribute('aria-hidden', 'true');
+    }
+}
+
+export async function claimDailyChestReward() {
+    if (!currentUser || !currentProfile) {
+        showToast('Aviso', 'Faça login para coletar a recompensa.', 'orange');
+        return;
+    }
+    if (!canClaimDailyChest()) {
+        showToast('Já Coletado', 'Você já coletou a recompensa diária hoje. Volte amanhã!', 'orange');
+        return;
+    }
+
+    playCoinRewardSound();
+    const chestBox = document.getElementById('daily-chest-box');
+    const burst = document.getElementById('daily-chest-burst');
+    if (chestBox) chestBox.classList.add('opened');
+    if (burst) {
+        burst.style.display = 'block';
+        setTimeout(() => { if (burst) burst.style.display = 'none'; }, 1000);
+    }
+
+    const today = getTodayDateString();
+    const oldBalance = Number(currentProfile.rewardCoinsBalance) || 0;
+    const newBalance = Math.round((oldBalance + 0.10) * 100) / 100;
+
+    currentProfile.rewardCoinsBalance = newBalance;
+    currentProfile.lastChestClaimDate = today;
+    currentProfile.lastChestClaimTimestamp = Date.now();
+
+    updateDailyChestUI();
+
+    try {
+        await updateDoc(doc(db, 'users', currentUser.uid), {
+            rewardCoinsBalance: newBalance,
+            lastChestClaimDate: today,
+            lastChestClaimTimestamp: Date.now()
+        });
+    } catch (err) {
+        console.warn('[VORTEX] Erro ao sincronizar recompensa diária no Firestore:', err);
+    }
+
+    showToast('Recompensa Coletada! 🎁', '+R$ 0,10 adicionado ao seu saldo!', 'green');
+}
+
+export async function submitChestWithdrawal() {
+    if (!currentUser || !currentProfile) return;
+    const balance = Number(currentProfile.rewardCoinsBalance) || 0;
+    const errorBanner = document.getElementById('chest-withdraw-error-msg');
+
+    if (balance < 1.00) {
+        if (errorBanner) {
+            errorBanner.textContent = `Saldo insuficiente. A meta mínima para saque é de R$ 1,00 (Saldo atual: ${formatBRLCurrency(balance)}).`;
+            errorBanner.style.display = 'block';
+        }
+        showToast('Meta não atingida', 'A meta mínima para saque é de R$ 1,00.', 'orange');
+        return;
+    }
+
+    const today = getTodayDateString();
+    if (currentProfile.lastWithdrawalDate === today) {
+        if (errorBanner) {
+            errorBanner.textContent = 'Você já realizou 1 saque hoje. O limite é de 1 saque por dia.';
+            errorBanner.style.display = 'block';
+        }
+        showToast('Limite Diário', 'Você já realizou 1 saque hoje. Limite: 1 saque por dia.', 'orange');
+        return;
+    }
+
+    const pixKeyInput = document.getElementById('chest-pix-key-input');
+    const pixTypeSelect = document.getElementById('chest-pix-key-type');
+    const pixKey = (pixKeyInput?.value || '').trim();
+    const pixKeyType = pixTypeSelect?.value || 'cpf';
+
+    if (!pixKey || pixKey.length < 3) {
+        if (errorBanner) {
+            errorBanner.textContent = 'Por favor, informe uma chave Pix válida.';
+            errorBanner.style.display = 'block';
+        }
+        return;
+    }
+
+    const submitBtn = document.getElementById('confirm-chest-withdraw-btn');
+    if (submitBtn) submitBtn.disabled = true;
+
+    try {
+        const withdrawalData = {
+            uid: currentUser.uid,
+            name: `${currentProfile.name || ''} ${currentProfile.surname || ''}`.trim() || 'Membro',
+            username: currentProfile.username || '',
+            pixKey: pixKey,
+            pixKeyType: pixKeyType,
+            amount: 1.00,
+            previousBalance: balance,
+            status: 'pendente',
+            createdAt: Date.now(),
+            createdDate: today
+        };
+
+        await addDoc(collection(db, 'withdrawals'), withdrawalData);
+
+        // Conforme a regra do usuário: o saldo vem zerando ele junta com o baú diário
+        currentProfile.rewardCoinsBalance = 0;
+        currentProfile.lastWithdrawalDate = today;
+        currentProfile.lastWithdrawalTimestamp = Date.now();
+
+        await updateDoc(doc(db, 'users', currentUser.uid), {
+            rewardCoinsBalance: 0,
+            lastWithdrawalDate: today,
+            lastWithdrawalTimestamp: Date.now()
+        });
+
+        updateDailyChestUI();
+        closeDailyChestWithdrawModal();
+        closeDailyChestModal();
+
+        showToast('Saque Solicitado! 💸', 'Seu saque de R$ 1,00 foi enviado ao ADM e será processado via Pix.', 'green');
+    } catch (err) {
+        console.error('Erro ao registrar saque:', err);
+        if (errorBanner) {
+            errorBanner.textContent = 'Erro ao registrar solicitação de saque. Tente novamente.';
+            errorBanner.style.display = 'block';
+        }
+    } finally {
+        if (submitBtn) submitBtn.disabled = false;
+    }
+}
+
+// --------------------------------------------------------------------------
+// ADMIN: Gestão de Saques do Baú Diário
+// --------------------------------------------------------------------------
+export let adminWithdrawalsList = [];
+
+export async function loadAdminWithdrawals() {
+    try {
+        const q = query(collection(db, 'withdrawals'), limit(50));
+        const snap = await getDocs(q);
+        adminWithdrawalsList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        adminWithdrawalsList.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        updateAdminWithdrawalsBadge();
+        return adminWithdrawalsList;
+    } catch (e) {
+        console.warn('Erro ao carregar saques:', e);
+        return [];
+    }
+}
+
+export function updateAdminWithdrawalsBadge() {
+    const badge = document.getElementById('admin-withdrawals-badge');
+    if (!badge) return;
+    const pendingCount = adminWithdrawalsList.filter(w => w.status === 'pendente').length;
+    if (pendingCount > 0) {
+        badge.textContent = String(pendingCount);
+        badge.style.display = 'inline-block';
+    } else {
+        badge.style.display = 'none';
+    }
+}
+
+export function renderAdminWithdrawals(filter = 'all', searchQuery = '') {
+    const container = document.getElementById('admin-withdrawals-list');
+    if (!container) return;
+
+    let list = [...adminWithdrawalsList];
+    if (filter === 'pending') list = list.filter(w => w.status === 'pendente');
+    if (filter === 'paid') list = list.filter(w => w.status === 'concluido');
+
+    if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        list = list.filter(w =>
+            (w.name && w.name.toLowerCase().includes(q)) ||
+            (w.username && w.username.toLowerCase().includes(q)) ||
+            (w.pixKey && w.pixKey.toLowerCase().includes(q))
+        );
+    }
+
+    if (list.length === 0) {
+        container.innerHTML = `
+            <div class="admin-empty-state">
+                <i data-lucide="wallet" class="empty-state-icon"></i>
+                <p>Nenhuma solicitação de saque encontrada.</p>
+                <small>As solicitações de saque Pix de R$ 1,00 aparecerão aqui.</small>
+            </div>
+        `;
+        if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+        return;
+    }
+
+    container.innerHTML = list.map(item => {
+        const isPaid = item.status === 'concluido';
+        const statusBadge = isPaid
+            ? '<span class="admin-badge-resolved">Pago ✅</span>'
+            : '<span class="admin-badge-pending">Pendente ⏳</span>';
+        const dateStr = item.createdAt ? new Date(item.createdAt).toLocaleString('pt-BR') : '';
+
+        return `
+            <div class="admin-withdrawal-card" data-id="${item.id}">
+                <div class="admin-withdrawal-header">
+                    <div class="admin-withdrawal-user-info">
+                        <div>
+                            <div class="admin-withdrawal-name">${escapeHTML(item.name || 'Membro')} <span style="color:var(--text-dim,#888); font-size:0.82rem;">${escapeHTML(item.username || '')}</span></div>
+                            <div class="admin-withdrawal-username">${dateStr}</div>
+                        </div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span class="admin-withdrawal-amount-badge">R$ 1,00</span>
+                        ${statusBadge}
+                    </div>
+                </div>
+
+                <div class="admin-withdrawal-pix-row">
+                    <span><strong>Chave Pix (${escapeHTML(item.pixKeyType || 'pix')}):</strong> <span class="admin-withdrawal-pix-key">${escapeHTML(item.pixKey || '')}</span></span>
+                    <button type="button" class="admin-copy-pix-btn" data-key="${escapeHTML(item.pixKey || '')}">
+                        <i data-lucide="copy"></i> Copiar Pix
+                    </button>
+                </div>
+
+                ${!isPaid ? `
+                    <div class="admin-withdrawal-actions">
+                        <button type="button" class="admin-mark-paid-btn" data-id="${item.id}" data-uid="${item.uid || ''}">
+                            <i data-lucide="check"></i> Marcar como Pago (R$ 1,00)
+                        </button>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }).join('');
+
+    container.querySelectorAll('.admin-copy-pix-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const key = btn.dataset.key;
+            if (key && navigator.clipboard) {
+                navigator.clipboard.writeText(key).then(() => {
+                    showToast('Chave Copiada', 'Chave Pix copiada para a área de transferência!', 'green');
+                });
+            }
+        });
+    });
+
+    container.querySelectorAll('.admin-mark-paid-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const id = btn.dataset.id;
+            const uid = btn.dataset.uid;
+            await adminMarkWithdrawalPaid(id, uid);
+        });
+    });
+
+    if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+}
+
+export async function adminMarkWithdrawalPaid(withdrawalId, userUid) {
+    if (!withdrawalId) return;
+    try {
+        await updateDoc(doc(db, 'withdrawals', withdrawalId), {
+            status: 'concluido',
+            paidAt: Date.now()
+        });
+
+        if (userUid) {
+            await addDoc(collection(db, 'notifications'), {
+                toUid: userUid,
+                type: 'withdrawal_paid',
+                title: 'Saque Pix Pago! 💸',
+                message: 'Seu saque de R$ 1,00 do Baú Diário foi pago com sucesso pela administração da VORTEX VIP!',
+                read: false,
+                createdAt: Date.now(),
+                author: 'Administração VORTEX VIP'
+            }).catch(e => console.warn('Erro ao notificar saque pago:', e));
+        }
+
+        const found = adminWithdrawalsList.find(w => w.id === withdrawalId);
+        if (found) {
+            found.status = 'concluido';
+            found.paidAt = Date.now();
+        }
+        updateAdminWithdrawalsBadge();
+        renderAdminWithdrawals();
+        showToast('Saque Pago! ✅', 'Saque marcado como concluído e notificação enviada ao membro!', 'green');
+    } catch (err) {
+        console.error('Erro ao pagar saque:', err);
+        showToast('Erro', 'Não foi possível marcar o saque como pago.', 'red');
+    }
+}
+
+let currentAdminWithdrawalsFilter = 'all';
+
+export function initDailyChestControls() {
+    document.getElementById('daily-chest-header-btn')?.addEventListener('click', openDailyChestModal);
+    document.getElementById('open-daily-chest-btn')?.addEventListener('click', openDailyChestModal);
+    document.getElementById('open-chest-withdraw-btn')?.addEventListener('click', openDailyChestWithdrawModal);
+    document.getElementById('close-daily-chest-modal')?.addEventListener('click', closeDailyChestModal);
+    document.getElementById('daily-chest-modal')?.addEventListener('click', (e) => {
+        if (e.target && e.target.id === 'daily-chest-modal') closeDailyChestModal();
+    });
+    document.getElementById('daily-chest-box')?.addEventListener('click', claimDailyChestReward);
+    document.getElementById('daily-chest-claim-btn')?.addEventListener('click', claimDailyChestReward);
+    document.getElementById('daily-chest-to-withdraw-btn')?.addEventListener('click', () => {
+        closeDailyChestModal();
+        openDailyChestWithdrawModal();
+    });
+
+    document.getElementById('close-daily-chest-withdraw-modal')?.addEventListener('click', closeDailyChestWithdrawModal);
+    document.getElementById('cancel-chest-withdraw-btn')?.addEventListener('click', closeDailyChestWithdrawModal);
+    document.getElementById('daily-chest-withdraw-modal')?.addEventListener('click', (e) => {
+        if (e.target && e.target.id === 'daily-chest-withdraw-modal') closeDailyChestWithdrawModal();
+    });
+    document.getElementById('confirm-chest-withdraw-btn')?.addEventListener('click', submitChestWithdrawal);
+
+    // Admin Withdrawals listeners
+    document.getElementById('admin-tab-withdrawals-btn')?.addEventListener('click', () => {
+        switchAdminTab('withdrawals');
+    });
+    document.querySelectorAll('#admin-view-withdrawals .admin-pill').forEach(pill => {
+        pill.addEventListener('click', () => {
+            document.querySelectorAll('#admin-view-withdrawals .admin-pill').forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+            currentAdminWithdrawalsFilter = pill.dataset.filter || 'all';
+            const searchVal = document.getElementById('admin-withdrawals-search-input')?.value || '';
+            renderAdminWithdrawals(currentAdminWithdrawalsFilter, searchVal);
+        });
+    });
+    document.getElementById('admin-withdrawals-search-input')?.addEventListener('input', (e) => {
+        renderAdminWithdrawals(currentAdminWithdrawalsFilter, e.target.value);
+    });
+
+    updateDailyChestUI();
+}
+

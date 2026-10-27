@@ -5,19 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
     <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.199">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.213">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.213">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.213">
-    <link rel="stylesheet" href="style.css?v=1.0.213">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.214">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.214">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.214">
+    <link rel="stylesheet" href="style.css?v=1.0.214">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.213">
+    <link rel="manifest" href="manifest.json?v=1.0.214">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.213">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.213">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.214">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.214">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -144,6 +144,10 @@
                     </div>
                     <div class="header-icon-btn install-header-btn" id="install-app-header-btn" title="Instalar VORTEX VIP no Dispositivo" aria-label="Instalar Aplicativo" style="display: none;">
                         <i data-lucide="download"></i>
+                    </div>
+                    <div class="header-icon-btn daily-chest-header-btn" id="daily-chest-header-btn" title="Baú Diário de Moedas 🎁" aria-label="Baú Diário">
+                        <i data-lucide="gift"></i>
+                        <span id="daily-chest-ready-dot" class="daily-chest-ready-dot" style="display: none;"></span>
                     </div>
                     <div class="header-icon-btn" id="settings-btn" title="Configurações VIP" aria-label="Configurações VIP">
                         <i data-lucide="settings"></i>
@@ -1999,6 +2003,27 @@
                     <button id="subscribe-btn" class="danger-btn vip-action-btn">Assinar</button>
                 </div>
 
+                <!-- Card de Baú Diário e Moedas VIP (v1.0.214) -->
+                <div class="setting-item daily-chest-card-highlight" id="daily-chest-setting-item">
+                    <div class="setting-info">
+                        <span class="daily-chest-highlight-text"><i data-lucide="gift"></i> Baú Diário &amp; Moedas 🪙</span>
+                        <small id="daily-chest-setting-desc">Colete R$ 0,10 todo dia abrindo o baú • Saque Pix disponível na meta de R$ 1,00!</small>
+                        <div class="daily-chest-balance-pill" id="daily-chest-balance-pill">
+                            <span class="daily-chest-balance-label">Saldo Acumulado:</span>
+                            <span class="daily-chest-balance-val" id="daily-chest-balance-val">R$ 0,00</span>
+                            <span class="daily-chest-status-pill ready" id="daily-chest-status-pill">Disponível Hoje ⚡</span>
+                        </div>
+                    </div>
+                    <div class="daily-chest-setting-actions">
+                        <button id="open-daily-chest-btn" type="button" class="danger-btn daily-chest-open-action-btn">
+                            <i data-lucide="gift"></i> <span>Abrir Baú</span>
+                        </button>
+                        <button id="open-chest-withdraw-btn" type="button" class="secondary-btn daily-chest-withdraw-btn">
+                            <i data-lucide="banknote"></i> <span>Sacar R$ 1,00</span>
+                        </button>
+                    </div>
+                </div>
+
                 <div class="setting-item admin-setting-row" id="admin-settings-item" style="display: none;">
                     <div class="setting-info">
                         <span class="admin-setting-label"><i data-lucide="shield-alert" class="admin-inline-shield"></i> Painel de Administração ADM</span>
@@ -2285,6 +2310,11 @@
                     <i data-lucide="megaphone" class="admin-tab-icon"></i>
                     <span>Enviar Alertas</span>
                 </button>
+                <button type="button" class="admin-tab-btn" data-tab="withdrawals" id="admin-tab-withdrawals-btn">
+                    <i data-lucide="wallet" class="admin-tab-icon"></i>
+                    <span>Saques Baú</span>
+                    <span id="admin-withdrawals-badge" class="admin-tab-badge" style="display: none;">0</span>
+                </button>
             </div>
 
             <!-- Conteúdo das Abas -->
@@ -2445,6 +2475,28 @@
                                     <p>Nenhum comunicado enviado recentemente.</p>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Aba de Saques do Baú Diário (v1.0.214) -->
+                <div id="admin-view-withdrawals" class="admin-view">
+                    <div class="admin-filter-bar">
+                        <div class="admin-search-wrapper">
+                            <i data-lucide="search"></i>
+                            <input type="text" id="admin-withdrawals-search-input" placeholder="Buscar saques por nome, @ ou chave Pix..." aria-label="Buscar saques">
+                        </div>
+                        <div class="admin-status-filters">
+                            <button type="button" class="admin-pill active" data-filter="all">Todos</button>
+                            <button type="button" class="admin-pill" data-filter="pending">Pendentes</button>
+                            <button type="button" class="admin-pill" data-filter="paid">Pagos</button>
+                        </div>
+                    </div>
+                    <div id="admin-withdrawals-list" class="admin-cards-list">
+                        <div class="admin-empty-state">
+                            <i data-lucide="wallet" class="empty-state-icon"></i>
+                            <p>Nenhuma solicitação de saque no momento.</p>
+                            <small>Quando os membros atingirem a meta de R$ 1,00 e solicitarem o saque, aparecerão aqui.</small>
                         </div>
                     </div>
                 </div>
@@ -4471,8 +4523,143 @@
             </div>
         </div>
 
+        <!-- Modal do Baú Diário (Recompensa Diária - v1.0.214) -->
+        <div id="daily-chest-modal" class="custom-modal-overlay" style="display:none;" aria-hidden="true">
+            <div class="custom-modal-card daily-chest-modal-card">
+                <div class="panel-top-bar" style="padding:14px 18px;">
+                    <h3 class="modal-title" style="font-size:1.05rem;"><i data-lucide="gift"></i> Baú Diário VORTEX VIP</h3>
+                    <div class="header-icon-btn" id="close-daily-chest-modal" title="Fechar" aria-label="Fechar">
+                        <i data-lucide="x"></i>
+                    </div>
+                </div>
+                <div class="daily-chest-modal-body">
+                    <div class="daily-chest-stage" id="daily-chest-stage">
+                        <div class="daily-chest-glow"></div>
+                        <div class="daily-chest-box ready" id="daily-chest-box" role="button" tabindex="0" title="Toque no baú para abrir!">
+                            <div class="daily-chest-lid" id="daily-chest-lid">
+                                <span class="daily-chest-lid-lock">⚡</span>
+                            </div>
+                            <div class="daily-chest-base" id="daily-chest-base">
+                                <span class="daily-chest-emblem">VIP</span>
+                            </div>
+                        </div>
+                        <div class="daily-chest-burst" id="daily-chest-burst" style="display:none;">
+                            <span class="chest-burst-coin c1">🪙</span>
+                            <span class="chest-burst-coin c2">✨</span>
+                            <span class="chest-burst-coin c3">🪙</span>
+                            <span class="chest-burst-coin c4">⚡</span>
+                            <span class="chest-burst-coin c5">🪙</span>
+                        </div>
+                    </div>
+
+                    <div class="daily-chest-reward-banner" id="daily-chest-reward-banner">
+                        <div class="daily-chest-reward-title" id="daily-chest-reward-title">Toque no baú para coletar!</div>
+                        <div class="daily-chest-reward-val" id="daily-chest-reward-val">+R$ 0,10 por dia</div>
+                    </div>
+
+                    <!-- Progresso do Saldo até a Meta de Saque -->
+                    <div class="daily-chest-goal-card">
+                        <div class="daily-chest-goal-header">
+                            <span class="daily-chest-goal-label">Progresso para Saque Pix</span>
+                            <span class="daily-chest-goal-counter" id="daily-chest-goal-counter">R$ 0,00 / R$ 1,00</span>
+                        </div>
+                        <div class="daily-chest-progress-bar">
+                            <div class="daily-chest-progress-fill" id="daily-chest-progress-fill" style="width: 0%;"></div>
+                        </div>
+                        <div class="daily-chest-goal-hint" id="daily-chest-goal-hint">
+                            Abra o baú por 10 dias para acumular R$ 1,00 e liberar seu saque Pix!
+                        </div>
+                    </div>
+
+                    <!-- Regras resumidas -->
+                    <div class="daily-chest-rules-box">
+                        <div class="daily-chest-rule-item">
+                            <i data-lucide="sparkles"></i>
+                            <span>Recompensa diária: <strong>R$ 0,10</strong> a cada 24 horas.</span>
+                        </div>
+                        <div class="daily-chest-rule-item">
+                            <i data-lucide="target"></i>
+                            <span>Meta para saque: <strong>R$ 1,00</strong> (limite de 1 saque por dia).</span>
+                        </div>
+                        <div class="daily-chest-rule-item">
+                            <i data-lucide="refresh-cw"></i>
+                            <span>Valor do saque: <strong>R$ 1,00</strong>. Ao sacar, o saldo zera para começar a juntar de novo!</span>
+                        </div>
+                    </div>
+
+                    <div class="daily-chest-modal-actions">
+                        <button type="button" id="daily-chest-claim-btn" class="danger-btn daily-chest-claim-action">
+                            <i data-lucide="gift"></i> <span id="daily-chest-claim-btn-text">Coletar R$ 0,10 Hoje</span>
+                        </button>
+                        <button type="button" id="daily-chest-to-withdraw-btn" class="secondary-btn daily-chest-to-withdraw-action" style="display:none;">
+                            <i data-lucide="banknote"></i> <span>Solicitar Saque de R$ 1,00</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Saque Pix (Baú Diário - v1.0.214) -->
+        <div id="daily-chest-withdraw-modal" class="custom-modal-overlay" style="display:none;" aria-hidden="true">
+            <div class="custom-modal-card daily-chest-withdraw-card">
+                <div class="panel-top-bar" style="padding:14px 18px;">
+                    <h3 class="modal-title" style="font-size:1.05rem;"><i data-lucide="banknote"></i> Saque Pix - Baú Diário</h3>
+                    <div class="header-icon-btn" id="close-daily-chest-withdraw-modal" title="Fechar" aria-label="Fechar">
+                        <i data-lucide="x"></i>
+                    </div>
+                </div>
+                <div class="daily-chest-withdraw-content">
+                    <div class="daily-chest-withdraw-summary">
+                        <div class="withdraw-summary-item">
+                            <span class="withdraw-summary-label">Valor do Saque:</span>
+                            <span class="withdraw-summary-val" id="withdraw-modal-amount">R$ 1,00</span>
+                        </div>
+                        <div class="withdraw-summary-item">
+                            <span class="withdraw-summary-label">Saldo Atual:</span>
+                            <span class="withdraw-summary-val secondary" id="withdraw-modal-balance">R$ 0,00</span>
+                        </div>
+                    </div>
+
+                    <div class="daily-chest-withdraw-notice">
+                        <i data-lucide="alert-circle"></i>
+                        <span><strong>Regra de Saque:</strong> É permitido sacar exatamente <strong>R$ 1,00</strong> por dia (limite de 1 saque por dia). Ao confirmar, seu saldo acumulado será zerado para você voltar a juntar moedas no baú diário!</span>
+                    </div>
+
+                    <div class="company-btn-input-group">
+                        <label for="chest-pix-key-type" class="company-btn-field-label">
+                            <span class="company-btn-label-title">Tipo de Chave Pix</span>
+                        </label>
+                        <select id="chest-pix-key-type" class="company-btn-text-input">
+                            <option value="cpf" selected>CPF</option>
+                            <option value="telefone">Telefone (com DDD)</option>
+                            <option value="email">E-mail</option>
+                            <option value="aleatoria">Chave Aleatória</option>
+                            <option value="cnpj">CNPJ</option>
+                        </select>
+                    </div>
+
+                    <div class="company-btn-input-group">
+                        <label for="chest-pix-key-input" class="company-btn-field-label">
+                            <span class="company-btn-label-title">Sua Chave Pix</span>
+                            <small class="company-btn-label-hint">Informe a chave correta para receber os R$ 1,00</small>
+                        </label>
+                        <input type="text" id="chest-pix-key-input" class="company-btn-text-input" placeholder="Digite sua chave Pix..." maxlength="100">
+                    </div>
+
+                    <div id="chest-withdraw-error-msg" class="company-btn-error-banner" style="display:none;"></div>
+
+                    <div class="company-button-modal-actions" style="margin-top:12px;">
+                        <button type="button" id="cancel-chest-withdraw-btn" class="close-btn modal-cancel-btn">Cancelar</button>
+                        <button type="button" id="confirm-chest-withdraw-btn" class="danger-btn" style="flex:1;">
+                            <i data-lucide="check-circle-2"></i> <span>Confirmar Saque (R$ 1,00)</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.213" defer></script>
+    <script type="module" src="script.js?v=1.0.214" defer></script>
 </body>
 </html>
