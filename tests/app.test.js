@@ -151,6 +151,7 @@ function createTestEnvironment() {
       setAttribute(k, v) { this[k] = v; },
       getAttribute(k) { return this[k] || null; },
       removeAttribute(k) { delete this[k]; },
+      async click() { if (this.onclick) await this.onclick({ target: this, stopPropagation: () => {} }); },
       focus() { this._focused = true; },
       blur() { this._focused = false; },
       async click() {
@@ -302,6 +303,8 @@ function createTestEnvironment() {
       removeEventListener: () => {},
       setAttribute(k, v) { this[k] = v; },
       getAttribute(k) { return this[k] !== undefined ? this[k] : null; },
+      removeAttribute(k) { delete this[k]; },
+      async click() { if (this.onclick) await this.onclick({ target: this, stopPropagation: () => {} }); },
       appendChild(child) {
         const idx = this.children.indexOf(child);
         if (idx !== -1) this.children.splice(idx, 1);
@@ -339,6 +342,8 @@ function createTestEnvironment() {
         }
       },
       querySelector(sel) {
+        const all = this.querySelectorAll(sel);
+        if (all && all.length > 0) return all[0];
         if (sel.startsWith('.')) {
           const cls = sel.slice(1);
           return this.children.find(c => c.classList && c.classList.contains && c.classList.contains(cls)) || null;
@@ -13543,11 +13548,11 @@ test('Correção do Fluxo de Envio do Botão Comercial: Persistência de Dados, 
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
 
   // 1. Integridade de Versionamento (v1.0.208+)
-  assert.ok(['1.0.208', '1.0.209', '1.0.210', '1.0.211'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão compatível');
-  assert.ok(['1.0.208', '1.0.209', '1.0.210', '1.0.211'].includes(versionJson.version), 'version.json deve ter versão compatível');
-  assert.ok(html.includes('script.js?v=1.0.208') || html.includes('script.js?v=1.0.209') || html.includes('script.js?v=1.0.210') || html.includes('script.js?v=1.0.211'), 'index.html deve referenciar script.js');
-  assert.ok(html.includes('style.css?v=1.0.208') || html.includes('style.css?v=1.0.209') || html.includes('style.css?v=1.0.210') || html.includes('style.css?v=1.0.211'), 'index.html deve referenciar style.css');
-  assert.ok(swContent.includes('vortex-vip-v1.0.208') || swContent.includes('vortex-vip-v1.0.209') || swContent.includes('vortex-vip-v1.0.210') || swContent.includes('vortex-vip-v1.0.211'), 'sw.js deve conter cache');
+  assert.ok(['1.0.208', '1.0.209', '1.0.210', '1.0.211', '1.0.212'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão compatível');
+  assert.ok(['1.0.208', '1.0.209', '1.0.210', '1.0.211', '1.0.212'].includes(versionJson.version), 'version.json deve ter versão compatível');
+  assert.ok(html.includes('script.js?v=1.0.208') || html.includes('script.js?v=1.0.209') || html.includes('script.js?v=1.0.210') || html.includes('script.js?v=1.0.211') || html.includes('script.js?v=1.0.212') || html.includes('script.js?v=1.0.212') || html.includes('script.js?v=1.0.212'), 'index.html deve referenciar script.js');
+  assert.ok(html.includes('style.css?v=1.0.208') || html.includes('style.css?v=1.0.209') || html.includes('style.css?v=1.0.210') || html.includes('style.css?v=1.0.211') || html.includes('style.css?v=1.0.212') || html.includes('style.css?v=1.0.212') || html.includes('style.css?v=1.0.212'), 'index.html deve referenciar style.css');
+  assert.ok(swContent.includes('vortex-vip-v1.0.208') || swContent.includes('vortex-vip-v1.0.209') || swContent.includes('vortex-vip-v1.0.210') || swContent.includes('vortex-vip-v1.0.211') || swContent.includes('vortex-vip-v1.0.212') || swContent.includes('vortex-vip-v1.0.212') || swContent.includes('vortex-vip-v1.0.212'), 'sw.js deve conter cache');
 
   // 2. Correção de z-index do toast para sobrepor o modal (z-index: 99999 !important)
   assert.ok(css.includes('#toast-container { position: absolute; top: 15px; left: 15px; right: 15px; z-index: 99999 !important;'), 'toast-container deve ter z-index 99999 para nunca ficar escondido sob modais');
@@ -13625,11 +13630,11 @@ test('Centralização do Título (Texto) com o Ícone no Botão de Publicação 
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
 
   // 1. Integridade de Versionamento (v1.0.209+)
-  assert.ok(['1.0.209', '1.0.210', '1.0.211'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão compatível');
-  assert.ok(['1.0.209', '1.0.210', '1.0.211'].includes(versionJson.version), 'version.json deve ter versão compatível');
-  assert.ok(html.includes('script.js?v=1.0.209') || html.includes('script.js?v=1.0.210') || html.includes('script.js?v=1.0.211'), 'index.html deve referenciar script.js');
-  assert.ok(html.includes('style.css?v=1.0.209') || html.includes('style.css?v=1.0.210') || html.includes('style.css?v=1.0.211'), 'index.html deve referenciar style.css');
-  assert.ok(swContent.includes('vortex-vip-v1.0.209') || swContent.includes('vortex-vip-v1.0.210') || swContent.includes('vortex-vip-v1.0.211'), 'sw.js deve conter cache');
+  assert.ok(['1.0.209', '1.0.210', '1.0.211', '1.0.212'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão compatível');
+  assert.ok(['1.0.209', '1.0.210', '1.0.211', '1.0.212'].includes(versionJson.version), 'version.json deve ter versão compatível');
+  assert.ok(html.includes('script.js?v=1.0.209') || html.includes('script.js?v=1.0.210') || html.includes('script.js?v=1.0.211') || html.includes('script.js?v=1.0.212'), 'index.html deve referenciar script.js');
+  assert.ok(html.includes('style.css?v=1.0.209') || html.includes('style.css?v=1.0.210') || html.includes('style.css?v=1.0.211') || html.includes('style.css?v=1.0.212'), 'index.html deve referenciar style.css');
+  assert.ok(swContent.includes('vortex-vip-v1.0.209') || swContent.includes('vortex-vip-v1.0.210') || swContent.includes('vortex-vip-v1.0.211') || swContent.includes('vortex-vip-v1.0.212'), 'sw.js deve conter cache');
 
   // 2. Estrutura HTML do Botão de Publicar com Ícone e Título Centralizados
   assert.ok(html.includes('id="publish-post-btn"'), 'Deve existir o botão #publish-post-btn');
@@ -13659,11 +13664,11 @@ test('Botão para Ativar e Desativar a Loja no Catálogo e no Editar Perfil (v1.
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
 
   // 1. Integridade de Versionamento (v1.0.210)
-  assert.ok(['1.0.210', '1.0.211'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão compatível');
-  assert.ok(['1.0.210', '1.0.211'].includes(versionJson.version), 'version.json deve ter versão compatível');
-  assert.ok(html.includes('script.js?v=1.0.210') || html.includes('script.js?v=1.0.211'), 'index.html deve referenciar script.js compatível');
-  assert.ok(html.includes('style.css?v=1.0.210') || html.includes('style.css?v=1.0.211'), 'index.html deve referenciar style.css compatível');
-  assert.ok(swContent.includes('vortex-vip-v1.0.210') || swContent.includes('vortex-vip-v1.0.211'), 'sw.js deve conter cache compatível');
+  assert.ok(['1.0.210', '1.0.211', '1.0.212'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão compatível');
+  assert.ok(['1.0.210', '1.0.211', '1.0.212'].includes(versionJson.version), 'version.json deve ter versão compatível');
+  assert.ok(html.includes('script.js?v=1.0.210') || html.includes('script.js?v=1.0.211') || html.includes('script.js?v=1.0.212'), 'index.html deve referenciar script.js compatível');
+  assert.ok(html.includes('style.css?v=1.0.210') || html.includes('style.css?v=1.0.211') || html.includes('style.css?v=1.0.212'), 'index.html deve referenciar style.css compatível');
+  assert.ok(swContent.includes('vortex-vip-v1.0.210') || swContent.includes('vortex-vip-v1.0.211') || swContent.includes('vortex-vip-v1.0.212'), 'sw.js deve conter cache compatível');
 
   // 2. Elementos no DOM em index.html
   assert.ok(html.includes('id="profile-store-toggle-setting"'), 'Deve existir o container #profile-store-toggle-setting no Editar Perfil');
@@ -13765,11 +13770,11 @@ test('Bloqueio Anti-Roubo de Imagens e Vídeos nos Posts e Contatos (v1.0.211)',
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
 
   // 1. Integridade de Versionamento (v1.0.211)
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.211', 'script.js deve ter versão 1.0.211');
-  assert.strictEqual(versionJson.version, '1.0.211', 'version.json deve ter versão 1.0.211');
-  assert.ok(html.includes('script.js?v=1.0.211'), 'index.html deve referenciar script.js?v=1.0.211');
-  assert.ok(html.includes('style.css?v=1.0.211'), 'index.html deve referenciar style.css?v=1.0.211');
-  assert.ok(swContent.includes('vortex-vip-v1.0.211'), 'sw.js deve conter cache vortex-vip-v1.0.211');
+  assert.ok(['1.0.211', '1.0.212'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão compatível');
+  assert.ok(['1.0.211', '1.0.212'].includes(versionJson.version), 'version.json deve ter versão compatível');
+  assert.ok(html.includes('script.js?v=1.0.211') || html.includes('script.js?v=1.0.212'), 'index.html deve referenciar script.js compatível');
+  assert.ok(html.includes('style.css?v=1.0.211') || html.includes('style.css?v=1.0.212'), 'index.html deve referenciar style.css compatível');
+  assert.ok(swContent.includes('vortex-vip-v1.0.211') || swContent.includes('vortex-vip-v1.0.212'), 'sw.js deve conter cache compatível');
 
   // 2. Proteção CSS contra cópia, drag & drop e touch callout móvel
   assert.ok(css.includes('-webkit-touch-callout: none !important'), 'CSS deve desativar touch callout móvel');
@@ -13867,4 +13872,99 @@ test('Bloqueio Anti-Roubo de Imagens e Vídeos nos Posts e Contatos (v1.0.211)',
   const downloadStoryBtn = win.document.getElementById('download-story-btn') || env.elements['download-story-btn'];
   assert.ok(downloadStoryBtn, 'downloadStoryBtn deve existir');
   assert.strictEqual(downloadStoryBtn.style.display, 'none', 'Botão de download de story DEVE estar oculto para outros usuários');
+});
+
+
+test('Reprodutor de Vídeo e Menu de Velocidade no Tema VORTEX VIP (v1.0.212)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+  const css = fs.readFileSync('public/style.css', 'utf8');
+  const html = fs.readFileSync('public/index.html', 'utf8');
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
+
+  // 1. Integridade de Versionamento (v1.0.212)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.212', 'script.js deve ter versão 1.0.212');
+  assert.strictEqual(versionJson.version, '1.0.212', 'version.json deve ter versão 1.0.212');
+  assert.ok(html.includes('script.js?v=1.0.212'), 'index.html deve referenciar script.js?v=1.0.212');
+  assert.ok(html.includes('style.css?v=1.0.212'), 'index.html deve referenciar style.css?v=1.0.212');
+  assert.ok(swContent.includes('vortex-vip-v1.0.212'), 'sw.js deve conter cache vortex-vip-v1.0.212');
+
+  // 2. Estilos do Player de Vídeo e Menu de Velocidade VIP no style.css
+  assert.ok(css.includes('.vortex-video-player'), 'style.css deve conter estilos para .vortex-video-player');
+  assert.ok(css.includes('.vortex-video-controls'), 'style.css deve conter barra de controles .vortex-video-controls');
+  assert.ok(css.includes('.vortex-video-timeline'), 'style.css deve conter barra de progresso .vortex-video-timeline');
+  assert.ok(css.includes('.vortex-video-speed-menu'), 'style.css deve conter menu de velocidade VIP .vortex-video-speed-menu');
+  assert.ok(css.includes('.vortex-video-speed-opt.active'), 'style.css deve estilizar a opção de velocidade ativa');
+  assert.ok(css.includes('.vortex-video-center-btn'), 'style.css deve conter botão central de play');
+
+  // 3. Funções Utilitárias do Player de Vídeo
+  assert.ok(typeof win.formatVideoTime === 'function', 'formatVideoTime deve ser uma função');
+  assert.strictEqual(win.formatVideoTime(0), '0:00', '0 segundos deve formatar para 0:00');
+  assert.strictEqual(win.formatVideoTime(4), '0:04', '4 segundos deve formatar para 0:04 (conforme imagem do usuário)');
+  assert.strictEqual(win.formatVideoTime(19), '0:19', '19 segundos deve formatar para 0:19 (conforme imagem do usuário)');
+  assert.strictEqual(win.formatVideoTime(75), '1:15', '75 segundos deve formatar para 1:15');
+
+  // 4. Criação e Inicialização do Player de Vídeo VIP no DOM
+  const container = win.document.createElement('div');
+  container.className = 'chat-video-wrapper';
+  const video = win.document.createElement('video');
+  video.src = 'https://vortex.app/sample.mp4';
+  container.appendChild(video);
+  win.document.body.appendChild(container);
+
+  assert.ok(typeof win.attachVortexVideoPlayer === 'function', 'attachVortexVideoPlayer deve ser uma função');
+  win.attachVortexVideoPlayer(video);
+
+  // Verificar que controles VIP foram inseridos e controles nativos removidos
+  assert.strictEqual(video.controls, false, 'Controles nativos do navegador devem ser desativados');
+  const controlsEl = container.querySelector('.vortex-video-controls');
+  assert.ok(controlsEl, 'Barra de controles VIP deve ser inserida no elemento');
+
+  const centerBtn = container.querySelector('.vortex-video-center-btn');
+  assert.ok(centerBtn, 'Botão central de play deve ser inserido');
+
+  const timelineEl = container.querySelector('.vortex-video-timeline');
+  assert.ok(timelineEl, 'Timeline do vídeo deve existir');
+
+  const timeDisplay = container.querySelector('.vortex-video-time-display');
+  assert.ok(timeDisplay, 'Contador de tempo 0:00 / 0:00 deve existir');
+
+  // 5. Menu de Velocidade de Reprodução no Tema Vortex VIP (Baseado na Imagem 2)
+  const speedBtn = container.querySelector('.vortex-video-speed-btn');
+  const speedMenu = container.querySelector('.vortex-video-speed-menu');
+  assert.ok(speedBtn, 'Botão de velocidade deve existir');
+  assert.ok(speedMenu, 'Menu de velocidade deve existir');
+
+  const speedOpts = Array.from(container.querySelectorAll('.vortex-video-speed-opt'));
+  const speeds = speedOpts.map(o => o.dataset.speed);
+  assert.ok(speeds.includes('0.5'), 'Opção 0.5x deve estar presente no menu de velocidade');
+  assert.ok(speeds.includes('0.75'), 'Opção 0.75x deve estar presente no menu de velocidade');
+  assert.ok(speeds.includes('1.0'), 'Opção Normal (1.0x) deve estar presente no menu de velocidade');
+  assert.ok(speeds.includes('1.25'), 'Opção 1.25x deve estar presente no menu de velocidade');
+  assert.ok(speeds.includes('1.5'), 'Opção 1.5x deve estar presente no menu de velocidade');
+  assert.ok(speeds.includes('2.0'), 'Opção 2.0x deve estar presente no menu de velocidade');
+
+  // 6. Testar Abertura do Menu e Seleção de Velocidade
+  assert.strictEqual(speedMenu.style.display, 'none', 'Menu de velocidade deve iniciar fechado');
+  speedBtn.click();
+  assert.strictEqual(speedMenu.style.display, 'block', 'Clicar no botão de velocidade deve abrir o menu');
+
+  // Clicar em 1.5x
+  const opt15 = speedOpts.find(o => o.dataset.speed === '1.5');
+  assert.ok(opt15, 'Opção 1.5 deve existir');
+  opt15.click();
+
+  assert.strictEqual(video.playbackRate, 1.5, 'Taxa de reprodução do vídeo deve ser alterada para 1.5');
+  assert.strictEqual(opt15.classList.contains('active'), true, 'Opção selecionada deve receber classe active');
+  assert.strictEqual(speedMenu.style.display, 'none', 'Menu deve fechar após selecionar a velocidade');
+  const speedLabel = container.querySelector('.vortex-video-speed-label');
+  assert.strictEqual(speedLabel.innerText, '1.5x', 'Label do botão deve refletir a velocidade selecionada');
+
+  // Voltar para Normal
+  speedBtn.click();
+  const optNormal = speedOpts.find(o => o.dataset.speed === '1.0');
+  optNormal.click();
+  assert.strictEqual(video.playbackRate, 1.0, 'Taxa de reprodução deve voltar para 1.0');
+  assert.strictEqual(speedLabel.innerText, 'Normal', 'Label do botão deve voltar para Normal');
 });

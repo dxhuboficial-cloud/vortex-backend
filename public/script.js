@@ -794,6 +794,421 @@ export function isProtectedMediaTarget(el) {
     return false;
 }
 
+
+/* ==========================================================================
+   VORTEX VIP VIDEO PLAYER & SPEED MENU - TEMA NEON CYBERPUNK (v1.0.212)
+   ========================================================================== */
+export function formatVideoTime(seconds) {
+    if (isNaN(seconds) || !isFinite(seconds) || seconds < 0) return '0:00';
+    const s = Math.floor(seconds);
+    const mins = Math.floor(s / 60);
+    const secs = s % 60;
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+}
+
+export function attachVortexVideoPlayer(video) {
+    if (!video || typeof document === 'undefined') return;
+    if (video._hasVortexPlayer) return;
+    if (video.id === 'chat-camera-video-feed' || video.id === 'local-webcam-feed' || video.id === 'remote-webcam-feed') {
+        return;
+    }
+    video._hasVortexPlayer = true;
+
+    // Remover controles nativos e aplicar proteções anti-roubo (v1.0.211/v1.0.212)
+    if (typeof video.removeAttribute === 'function') video.removeAttribute('controls');
+    video.controls = false;
+    video.setAttribute('playsinline', 'true');
+    video.setAttribute('controlsList', 'nodownload');
+    video.setAttribute('oncontextmenu', 'return false;');
+    video.disablePictureInPicture = true;
+
+    // Verificar se elemento pai já possui a classe ou envolver em .vortex-video-player
+    let wrapper = video.parentElement;
+    if (!wrapper || !wrapper.classList.contains('vortex-video-player')) {
+        if (wrapper && (wrapper.classList.contains('chat-video-wrapper') || wrapper.classList.contains('feed-media'))) {
+            wrapper.classList.add('vortex-video-player');
+        } else if (wrapper && video.parentNode) {
+            const newWrapper = document.createElement('div');
+            newWrapper.className = 'vortex-video-player';
+            video.parentNode.insertBefore(newWrapper, video);
+            newWrapper.appendChild(video);
+            wrapper = newWrapper;
+        }
+    }
+
+    if (!wrapper) return;
+
+    // Construir os controles VIP se ainda não existirem no wrapper
+    let controls = wrapper.querySelector('.vortex-video-controls');
+    let centerBtn = wrapper.querySelector('.vortex-video-center-btn');
+
+    if (!controls) {
+        centerBtn = document.createElement('div');
+        centerBtn.className = 'vortex-video-center-btn';
+        centerBtn.title = 'Reproduzir vídeo';
+        centerBtn.innerHTML = '<i data-lucide="play" class="vortex-video-center-icon"></i>';
+        wrapper.appendChild(centerBtn);
+
+        controls = document.createElement('div');
+        controls.className = 'vortex-video-controls';
+
+        // Timeline
+        const timeline = document.createElement('div');
+        timeline.className = 'vortex-video-timeline';
+        timeline.setAttribute('role', 'slider');
+        timeline.setAttribute('aria-label', 'Progresso do vídeo');
+        timeline.setAttribute('tabindex', '0');
+        timeline.innerHTML = `
+            <div class="vortex-video-progress-bg"></div>
+            <div class="vortex-video-progress-buffered"></div>
+            <div class="vortex-video-progress-fill"></div>
+            <div class="vortex-video-progress-thumb"></div>
+            <div class="vortex-video-time-tooltip">0:00</div>
+        `;
+        controls.appendChild(timeline);
+
+        // Controls Row
+        const controlsRow = document.createElement('div');
+        controlsRow.className = 'vortex-video-controls-row';
+
+        // Play / Pause button
+        const playBtn = document.createElement('button');
+        playBtn.type = 'button';
+        playBtn.className = 'vortex-video-ctrl-btn vortex-video-play-btn';
+        playBtn.title = 'Reproduzir';
+        playBtn.setAttribute('aria-label', 'Reproduzir');
+        playBtn.innerHTML = `
+            <i data-lucide="play" class="vortex-video-btn-icon-play"></i>
+            <i data-lucide="pause" class="vortex-video-btn-icon-pause" style="display:none;"></i>
+        `;
+        controlsRow.appendChild(playBtn);
+
+        // Time display
+        const timeDisplay = document.createElement('div');
+        timeDisplay.className = 'vortex-video-time-display';
+        const timeCurrent = document.createElement('span');
+        timeCurrent.className = 'vortex-video-time-current';
+        timeCurrent.innerText = '0:00';
+        const timeSep = document.createElement('span');
+        timeSep.className = 'vortex-video-time-sep';
+        timeSep.innerText = '/';
+        const timeTotal = document.createElement('span');
+        timeTotal.className = 'vortex-video-time-total';
+        timeTotal.innerText = '0:00';
+        timeDisplay.appendChild(timeCurrent);
+        timeDisplay.appendChild(timeSep);
+        timeDisplay.appendChild(timeTotal);
+        controlsRow.appendChild(timeDisplay);
+
+        // Spacer
+        const spacer = document.createElement('div');
+        spacer.className = 'vortex-video-spacer';
+        controlsRow.appendChild(spacer);
+
+        // Volume Group
+        const volGroup = document.createElement('div');
+        volGroup.className = 'vortex-video-volume-group';
+        volGroup.innerHTML = `
+            <button type="button" class="vortex-video-ctrl-btn vortex-video-mute-btn" title="Silenciar" aria-label="Volume">
+                <i data-lucide="volume-2" class="vortex-video-vol-icon-on"></i>
+                <i data-lucide="volume-x" class="vortex-video-vol-icon-off" style="display:none;"></i>
+            </button>
+            <div class="vortex-video-volume-slider-wrap">
+                <input type="range" class="vortex-video-volume-slider" min="0" max="1" step="0.05" value="1" title="Volume">
+            </div>
+        `;
+        controlsRow.appendChild(volGroup);
+
+        // Speed Group (Replacing Image 1 & Image 2 with Vortex VIP theme)
+        const speedGroup = document.createElement('div');
+        speedGroup.className = 'vortex-video-speed-group';
+
+        const speedBtn = document.createElement('button');
+        speedBtn.type = 'button';
+        speedBtn.className = 'vortex-video-ctrl-btn vortex-video-speed-btn';
+        speedBtn.title = 'Velocidade de reprodução';
+        speedBtn.setAttribute('aria-label', 'Velocidade');
+        const speedLabel = document.createElement('span');
+        speedLabel.className = 'vortex-video-speed-label';
+        speedLabel.innerText = 'Normal';
+        speedBtn.appendChild(speedLabel);
+        speedGroup.appendChild(speedBtn);
+
+        const speedMenu = document.createElement('div');
+        speedMenu.className = 'vortex-video-speed-menu';
+        speedMenu.style.display = 'none';
+        speedMenu.setAttribute('role', 'menu');
+
+        const speedMenuHeader = document.createElement('div');
+        speedMenuHeader.className = 'vortex-video-speed-menu-header';
+        speedMenuHeader.innerHTML = '<i data-lucide="gauge"></i><span>Velocidade</span>';
+        speedMenu.appendChild(speedMenuHeader);
+
+        const speedList = document.createElement('div');
+        speedList.className = 'vortex-video-speed-options-list';
+
+        const speedOptions = [
+            { speed: '0.5', label: '0.5' },
+            { speed: '0.75', label: '0.75' },
+            { speed: '1.0', label: 'Normal', active: true },
+            { speed: '1.25', label: '1.25' },
+            { speed: '1.5', label: '1.5' },
+            { speed: '2.0', label: '2.0' }
+        ];
+
+        speedOptions.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = `vortex-video-speed-opt${opt.active ? ' active' : ''}`;
+            btn.dataset.speed = opt.speed;
+            const valSpan = document.createElement('span');
+            valSpan.className = 'vortex-speed-val';
+            valSpan.innerText = opt.label;
+            btn.appendChild(valSpan);
+            const checkIcon = document.createElement('i');
+            checkIcon.className = 'vortex-speed-check';
+            checkIcon.setAttribute('data-lucide', 'check');
+            if (!opt.active) checkIcon.style.display = 'none';
+            btn.appendChild(checkIcon);
+            speedList.appendChild(btn);
+        });
+
+        speedMenu.appendChild(speedList);
+        speedGroup.appendChild(speedMenu);
+        controlsRow.appendChild(speedGroup);
+
+        // Fullscreen button
+        const fsBtn = document.createElement('button');
+        fsBtn.type = 'button';
+        fsBtn.className = 'vortex-video-ctrl-btn vortex-video-fullscreen-btn';
+        fsBtn.title = 'Tela Cheia';
+        fsBtn.setAttribute('aria-label', 'Tela cheia');
+        fsBtn.innerHTML = `
+            <i data-lucide="maximize" class="vortex-video-icon-fs-enter"></i>
+            <i data-lucide="minimize" class="vortex-video-icon-fs-exit" style="display:none;"></i>
+        `;
+        controlsRow.appendChild(fsBtn);
+
+        controls.appendChild(controlsRow);
+        wrapper.appendChild(controls);
+
+        if (window.lucide && typeof window.lucide.createIcons === 'function') {
+            window.lucide.createIcons();
+        }
+    }
+
+    // Elementos internos
+    const playBtn = controls.querySelector('.vortex-video-play-btn');
+    const playIcon = controls.querySelector('.vortex-video-btn-icon-play');
+    const pauseIcon = controls.querySelector('.vortex-video-btn-icon-pause');
+    const timeCurrent = controls.querySelector('.vortex-video-time-current');
+    const timeTotal = controls.querySelector('.vortex-video-time-total');
+    const timeline = controls.querySelector('.vortex-video-timeline');
+    const progressFill = controls.querySelector('.vortex-video-progress-fill');
+    const progressThumb = controls.querySelector('.vortex-video-progress-thumb');
+    const progressBuffered = controls.querySelector('.vortex-video-progress-buffered');
+    const muteBtn = controls.querySelector('.vortex-video-mute-btn');
+    const volIconOn = controls.querySelector('.vortex-video-vol-icon-on');
+    const volIconOff = controls.querySelector('.vortex-video-vol-icon-off');
+    const volSlider = controls.querySelector('.vortex-video-volume-slider');
+    const speedBtn = controls.querySelector('.vortex-video-speed-btn');
+    const speedLabel = controls.querySelector('.vortex-video-speed-label');
+    const speedMenu = controls.querySelector('.vortex-video-speed-menu');
+    const speedOpts = controls.querySelectorAll('.vortex-video-speed-opt');
+    const fsBtn = controls.querySelector('.vortex-video-fullscreen-btn');
+    const fsEnterIcon = controls.querySelector('.vortex-video-icon-fs-enter');
+    const fsExitIcon = controls.querySelector('.vortex-video-icon-fs-exit');
+
+    const updatePlayState = (isPlaying) => {
+        wrapper.classList.toggle('playing', isPlaying);
+        if (playIcon) playIcon.style.display = isPlaying ? 'none' : 'inline-block';
+        if (pauseIcon) pauseIcon.style.display = isPlaying ? 'inline-block' : 'none';
+        if (!isPlaying) {
+            wrapper.classList.remove('controls-hidden');
+        }
+    };
+
+    const togglePlay = () => {
+        if (video.paused || video.ended) {
+            video.play().catch(() => {});
+        } else {
+            video.pause();
+        }
+    };
+
+    if (playBtn) playBtn.onclick = (e) => { e.stopPropagation(); togglePlay(); };
+    if (centerBtn) centerBtn.onclick = (e) => { e.stopPropagation(); togglePlay(); };
+    video.onclick = (e) => { e.stopPropagation(); togglePlay(); };
+
+    video.onplay = () => updatePlayState(true);
+    video.onpause = () => updatePlayState(false);
+    video.onended = () => {
+        updatePlayState(false);
+        if (progressFill) progressFill.style.width = '0%';
+        if (progressThumb) progressThumb.style.left = '0%';
+    };
+
+    const updateTime = () => {
+        const cur = video.currentTime || 0;
+        const dur = video.duration || 0;
+        if (timeCurrent) timeCurrent.innerText = formatVideoTime(cur);
+        if (timeTotal && dur > 0) timeTotal.innerText = formatVideoTime(dur);
+        if (dur > 0) {
+            const pct = Math.min(100, Math.max(0, (cur / dur) * 100));
+            if (progressFill) progressFill.style.width = `${pct}%`;
+            if (progressThumb) progressThumb.style.left = `${pct}%`;
+        }
+    };
+
+    video.ontimeupdate = updateTime;
+    video.onloadedmetadata = () => {
+        if (video.duration && timeTotal) {
+            timeTotal.innerText = formatVideoTime(video.duration);
+        }
+        updateTime();
+    };
+
+    video.onprogress = () => {
+        if (video.buffered && video.buffered.length > 0 && video.duration > 0) {
+            const buffEnd = video.buffered.end(video.buffered.length - 1);
+            const pct = Math.min(100, (buffEnd / video.duration) * 100);
+            if (progressBuffered) progressBuffered.style.width = `${pct}%`;
+        }
+    };
+
+    if (timeline) {
+        const handleSeek = (e) => {
+            const rect = timeline.getBoundingClientRect();
+            if (!rect.width) return;
+            const clickX = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
+            const pct = clickX / rect.width;
+            if (video.duration && !isNaN(video.duration)) {
+                video.currentTime = pct * video.duration;
+                updateTime();
+            }
+        };
+
+        let isScrubbing = false;
+        timeline.onmousedown = (e) => {
+            e.stopPropagation();
+            isScrubbing = true;
+            handleSeek(e);
+            const onMouseMove = (moveEvent) => {
+                if (isScrubbing) handleSeek(moveEvent);
+            };
+            const onMouseUp = () => {
+                isScrubbing = false;
+                window.removeEventListener('mousemove', onMouseMove);
+                window.removeEventListener('mouseup', onMouseUp);
+            };
+            window.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('mouseup', onMouseUp);
+        };
+    }
+
+    if (muteBtn) {
+        muteBtn.onclick = (e) => {
+            e.stopPropagation();
+            video.muted = !video.muted;
+            if (volIconOn) volIconOn.style.display = video.muted ? 'none' : 'inline-block';
+            if (volIconOff) volIconOff.style.display = video.muted ? 'inline-block' : 'none';
+            if (volSlider) volSlider.value = video.muted ? 0 : video.volume;
+        };
+    }
+
+    if (volSlider) {
+        volSlider.oninput = (e) => {
+            e.stopPropagation();
+            const val = parseFloat(volSlider.value);
+            video.volume = val;
+            video.muted = val === 0;
+            if (volIconOn) volIconOn.style.display = video.muted ? 'none' : 'inline-block';
+            if (volIconOff) volIconOff.style.display = video.muted ? 'inline-block' : 'none';
+        };
+    }
+
+    // Configuração do Menu de Velocidade VIP (Substituindo Image 2 pelo Tema Vortex VIP)
+    if (speedBtn && speedMenu) {
+        speedBtn.onclick = (e) => {
+            e.stopPropagation();
+            const isShown = speedMenu.style.display === 'block';
+            document.querySelectorAll('.vortex-video-speed-menu').forEach(m => { m.style.display = 'none'; });
+            speedMenu.style.display = isShown ? 'none' : 'block';
+        };
+
+        speedOpts.forEach(opt => {
+            opt.onclick = (e) => {
+                e.stopPropagation();
+                const speed = parseFloat(opt.dataset.speed || '1.0');
+                video.playbackRate = speed;
+
+                if (speedLabel) speedLabel.innerText = speed === 1.0 ? 'Normal' : `${speed}x`;
+
+                speedOpts.forEach(o => {
+                    const isActive = o === opt;
+                    o.classList.toggle('active', isActive);
+                    const check = o.querySelector('.vortex-speed-check');
+                    if (check) check.style.display = isActive ? 'inline-block' : 'none';
+                });
+
+                speedMenu.style.display = 'none';
+            };
+        });
+    }
+
+    if (fsBtn) {
+        fsBtn.onclick = (e) => {
+            e.stopPropagation();
+            if (!document.fullscreenElement) {
+                if (wrapper.requestFullscreen) {
+                    wrapper.requestFullscreen().catch(() => {});
+                } else if (wrapper.webkitRequestFullscreen) {
+                    wrapper.webkitRequestFullscreen();
+                }
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen().catch(() => {});
+                }
+            }
+        };
+
+        const onFsChange = () => {
+            const isFs = !!document.fullscreenElement;
+            if (fsEnterIcon) fsEnterIcon.style.display = isFs ? 'none' : 'inline-block';
+            if (fsExitIcon) fsExitIcon.style.display = isFs ? 'inline-block' : 'none';
+        };
+        document.addEventListener('fullscreenchange', onFsChange);
+    }
+
+    let hideTimer = null;
+    const resetHideTimer = () => {
+        wrapper.classList.remove('controls-hidden');
+        clearTimeout(hideTimer);
+        if (!video.paused && !video.ended) {
+            hideTimer = setTimeout(() => {
+                if (!video.paused && speedMenu?.style.display !== 'block') {
+                    wrapper.classList.add('controls-hidden');
+                }
+            }, 2500);
+        }
+    };
+
+    wrapper.onmousemove = resetHideTimer;
+    wrapper.ontouchstart = resetHideTimer;
+    controls.onmouseenter = () => {
+        clearTimeout(hideTimer);
+        wrapper.classList.remove('controls-hidden');
+    };
+}
+
+export function initVortexVideoPlayers(root = document) {
+    if (!root || typeof root.querySelectorAll !== 'function') return;
+    const videos = root.querySelectorAll('video');
+    videos.forEach(v => {
+        attachVortexVideoPlayer(v);
+    });
+}
+
 export function initMediaProtection() {
     if (typeof document === 'undefined') return;
 
@@ -858,13 +1273,20 @@ export function initMediaProtection() {
     };
 
     protectMediaElements(document.body);
+    initVortexVideoPlayers(document.body);
+    document.addEventListener('click', (e) => {
+        if (!e.target || typeof e.target.closest !== 'function' || !e.target.closest('.vortex-video-speed-group')) {
+            document.querySelectorAll('.vortex-video-speed-menu').forEach(m => { m.style.display = 'none'; });
+        }
+    });
+
 
     if (typeof MutationObserver !== 'undefined' && document.body) {
         const observer = new MutationObserver((mutations) => {
             for (const mutation of mutations) {
                 if (mutation.addedNodes) {
                     mutation.addedNodes.forEach(node => {
-                        if (node.nodeType === 1) protectMediaElements(node);
+                        if (node.nodeType === 1) { protectMediaElements(node); initVortexVideoPlayers(node); }
                     });
                 }
             }
@@ -15139,6 +15561,7 @@ function loadRealtimeMessages() {
             }
 
             setupSwipeToReply(msgDiv, msg);
+            initVortexVideoPlayers(msgDiv);
 
             msgDiv.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
@@ -20212,7 +20635,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.211';
+export const CURRENT_APP_VERSION = '1.0.212';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -27170,6 +27593,8 @@ export function setFeedFilterMode(mode = 'all') {
     if (allBtn) allBtn.classList.toggle('active', currentFeedFilterMode === 'all');
     if (favBtn) favBtn.classList.toggle('active', currentFeedFilterMode === 'favorites');
     renderPostsFeed(cachedFeedPosts);
+    const fList = document.getElementById('feed-list');
+    if (fList) initVortexVideoPlayers(fList);
 }
 
 export async function toggleSaveFeedPost(postId) {
@@ -35031,6 +35456,10 @@ if (typeof window !== 'undefined') {
     window.showMediaProtectionToast = showMediaProtectionToast;
     window.isProtectedMediaTarget = isProtectedMediaTarget;
     window.initMediaProtection = initMediaProtection;
+    // Reprodutor de Vídeo e Menu de Velocidade VIP (v1.0.212)
+    window.formatVideoTime = formatVideoTime;
+    window.attachVortexVideoPlayer = attachVortexVideoPlayer;
+    window.initVortexVideoPlayers = initVortexVideoPlayers;
     // Câmera nos Contatos e Botão Interativo Empresa (v1.0.206)
     window.openChatCamera = openChatCamera;
     window.closeChatCamera = closeChatCamera;
@@ -35068,4 +35497,5 @@ if (typeof window !== 'undefined') {
     initPrivateAccountControls();
     initStoreEnabledControls();
     initMediaProtection();
+    initVortexVideoPlayers();
 }

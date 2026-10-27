@@ -21343,3 +21343,386 @@ video::-internal-media-controls-download-button {
     pointer-events: none;
     z-index: 4;
 }
+
+
+/* ==========================================================================
+   VORTEX VIP VIDEO PLAYER & SPEED MENU - TEMA NEON CYBERPUNK (v1.0.212)
+   ========================================================================== */
+
+.vortex-video-player {
+    position: relative;
+    max-width: 100%;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #000000;
+    user-select: none;
+    -webkit-user-select: none;
+    line-height: 0;
+}
+
+.vortex-video-player video {
+    display: block;
+    width: 100%;
+    max-height: 560px;
+    object-fit: contain;
+    background: #000000;
+    border-radius: inherit;
+    cursor: pointer;
+}
+
+/* Botão Central de Play com Glow VIP */
+.vortex-video-center-btn {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: rgba(10, 10, 20, 0.75);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 2px solid var(--accent-color, #fff01f);
+    box-shadow: 0 0 20px rgba(255, 240, 31, 0.4), inset 0 0 10px rgba(255, 240, 31, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 6;
+    transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    opacity: 1;
+}
+
+.vortex-video-player.playing .vortex-video-center-btn {
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, -50%) scale(0.85);
+}
+
+.vortex-video-center-btn:hover {
+    transform: translate(-50%, -50%) scale(1.1);
+    box-shadow: 0 0 30px rgba(255, 240, 31, 0.7), inset 0 0 15px rgba(255, 240, 31, 0.4);
+}
+
+.vortex-video-center-icon {
+    width: 26px;
+    height: 26px;
+    color: var(--accent-color, #fff01f);
+    margin-left: 3px;
+    filter: drop-shadow(0 0 6px var(--accent-color, #fff01f));
+}
+
+/* Barra de Controles Inferior (Vortex VIP Theme) */
+.vortex-video-controls {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(to top, rgba(5, 5, 12, 0.95) 0%, rgba(10, 10, 20, 0.8) 60%, transparent 100%);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 10px 14px 8px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 7;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    opacity: 1;
+    transform: translateY(0);
+    line-height: normal;
+}
+
+.vortex-video-player.playing.controls-hidden .vortex-video-controls {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(10px);
+}
+
+/* Barra de Progresso / Timeline Scrubber */
+.vortex-video-timeline {
+    position: relative;
+    width: 100%;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.18);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: height 0.15s ease;
+}
+
+.vortex-video-timeline:hover {
+    height: 8px;
+}
+
+.vortex-video-progress-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: inherit;
+}
+
+.vortex-video-progress-buffered {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 0%;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: inherit;
+    pointer-events: none;
+}
+
+.vortex-video-progress-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #fff01f 0%, #ffdd57 100%);
+    box-shadow: 0 0 10px rgba(255, 240, 31, 0.6);
+    border-radius: inherit;
+    pointer-events: none;
+}
+
+.vortex-video-progress-thumb {
+    position: absolute;
+    top: 50%;
+    left: 0%;
+    transform: translate(-50%, -50%) scale(0);
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 2px solid var(--accent-color, #fff01f);
+    box-shadow: 0 0 10px var(--accent-color, #fff01f);
+    pointer-events: none;
+    transition: transform 0.15s ease;
+}
+
+.vortex-video-timeline:hover .vortex-video-progress-thumb {
+    transform: translate(-50%, -50%) scale(1);
+}
+
+.vortex-video-time-tooltip {
+    position: absolute;
+    bottom: 14px;
+    transform: translateX(-50%);
+    padding: 2px 6px;
+    background: rgba(10, 10, 20, 0.9);
+    border: 1px solid rgba(255, 240, 31, 0.4);
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #ffffff;
+    pointer-events: none;
+    display: none;
+    white-space: nowrap;
+}
+
+/* Linha de Controles Inferiores */
+.vortex-video-controls-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+
+.vortex-video-ctrl-btn {
+    background: transparent;
+    border: none;
+    color: #ffffff;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.vortex-video-ctrl-btn:hover {
+    color: var(--accent-color, #fff01f);
+    filter: drop-shadow(0 0 8px var(--accent-color, #fff01f));
+}
+
+.vortex-video-ctrl-btn i {
+    width: 18px;
+    height: 18px;
+}
+
+/* Contador de Tempo */
+.vortex-video-time-display {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.78rem;
+    font-variant-numeric: tabular-nums;
+    color: #ffffff;
+    font-family: inherit;
+    font-weight: 500;
+}
+
+.vortex-video-time-sep {
+    color: var(--text-dim, #8e8e93);
+    margin: 0 1px;
+}
+
+.vortex-video-time-total {
+    color: var(--text-dim, #8e8e93);
+}
+
+.vortex-video-spacer {
+    flex: 1;
+}
+
+/* Grupo de Volume */
+.vortex-video-volume-group {
+    display: inline-flex;
+    align-items: center;
+    position: relative;
+}
+
+.vortex-video-volume-slider-wrap {
+    width: 0;
+    overflow: hidden;
+    transition: width 0.25s ease;
+    display: flex;
+    align-items: center;
+}
+
+.vortex-video-volume-group:hover .vortex-video-volume-slider-wrap,
+.vortex-video-volume-group:focus-within .vortex-video-volume-slider-wrap {
+    width: 60px;
+    margin-left: 4px;
+}
+
+.vortex-video-volume-slider {
+    width: 55px;
+    height: 4px;
+    accent-color: var(--accent-color, #fff01f);
+    cursor: pointer;
+}
+
+/* Grupo do Botão de Velocidade (Substituindo Image 1 e Image 2) */
+.vortex-video-speed-group {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.vortex-video-speed-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 240, 31, 0.3);
+    border-radius: 12px;
+    padding: 3px 9px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #ffffff;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.vortex-video-speed-btn:hover,
+.vortex-video-speed-group.active .vortex-video-speed-btn {
+    background: rgba(255, 240, 31, 0.2);
+    border-color: var(--accent-color, #fff01f);
+    color: var(--accent-color, #fff01f);
+    box-shadow: 0 0 10px rgba(255, 240, 31, 0.4);
+}
+
+/* MENU DE VELOCIDADE VORTEX VIP (Completamente Re-estilizado em vez do menu branco da Image 2) */
+.vortex-video-speed-menu {
+    position: absolute;
+    bottom: 36px;
+    right: 0;
+    min-width: 140px;
+    background: #141414;
+    border: 1px solid rgba(255, 240, 31, 0.35);
+    border-radius: 14px;
+    padding: 6px;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.9), 0 0 15px rgba(255, 240, 31, 0.2);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    z-index: 100;
+    animation: vortexSpeedMenuIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes vortexSpeedMenuIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.vortex-video-speed-menu-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px 6px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    margin-bottom: 4px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--accent-color, #fff01f);
+}
+
+.vortex-video-speed-menu-header i {
+    width: 13px;
+    height: 13px;
+}
+
+.vortex-video-speed-options-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-height: 180px;
+    overflow-y: auto;
+}
+
+.vortex-video-speed-opt {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: var(--text-main, #ffffff);
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-align: left;
+}
+
+.vortex-video-speed-opt:hover {
+    background: rgba(255, 240, 31, 0.12);
+    color: var(--accent-color, #fff01f);
+}
+
+.vortex-video-speed-opt.active {
+    background: rgba(255, 240, 31, 0.2);
+    color: var(--accent-color, #fff01f);
+    font-weight: 700;
+    border: 1px solid rgba(255, 240, 31, 0.4);
+    box-shadow: inset 0 0 8px rgba(255, 240, 31, 0.15);
+}
+
+.vortex-speed-check {
+    width: 14px;
+    height: 14px;
+    color: var(--accent-color, #fff01f);
+    filter: drop-shadow(0 0 4px var(--accent-color, #fff01f));
+}
