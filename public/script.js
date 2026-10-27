@@ -766,6 +766,113 @@ const notificationSound = createAudioTonePlayer('notification');
 const unlockSound = createAudioTonePlayer('unlock');
 const replySendSound = createAudioTonePlayer('reply');
 const messageSendSound = replySendSound;
+
+/* ==========================================================================
+   PROTEÇÃO ANTI-ROUBO DE MÍDIAS (IMAGENS E VÍDEOS) - VORTEX VIP (v1.0.211)
+   ========================================================================== */
+let lastMediaProtectionToastTime = 0;
+
+export function showMediaProtectionToast() {
+    const now = Date.now();
+    if (now - lastMediaProtectionToastTime > 3000) {
+        lastMediaProtectionToastTime = now;
+        if (typeof showToast === 'function') {
+            showToast('Proteção Vortex VIP', 'Downloads e cópias de imagens e vídeos estão bloqueados para segurança dos membros.', 'orange');
+        }
+    }
+}
+
+export function isProtectedMediaTarget(el) {
+    if (!el) return false;
+    const tag = (el.tagName || '').toUpperCase();
+    if (tag === 'IMG' || tag === 'VIDEO') return true;
+    if (typeof el.closest === 'function') {
+        if (el.closest('.post-media, .feed-media, .chat-clickable-image, .chat-video-wrapper, .view-once-screen, #view-once-overlay, .story-viewer, .story-content, .story-cube, #status-preview-container, .chat-camera-modal, .user-avatar, .feed-avatar, .contact-profile-avatar, .protected-media')) {
+            return true;
+        }
+    }
+    return false;
+}
+
+export function initMediaProtection() {
+    if (typeof document === 'undefined') return;
+
+    // 1. Bloquear clique com o botão direito (contextmenu) em qualquer mídia
+    document.addEventListener('contextmenu', (e) => {
+        if (isProtectedMediaTarget(e.target)) {
+            e.preventDefault();
+            if (typeof e.stopPropagation === 'function') e.stopPropagation();
+            showMediaProtectionToast();
+            return false;
+        }
+    }, { capture: true });
+
+    // 2. Bloquear arrastar e soltar (dragstart) de mídias para fora do app
+    document.addEventListener('dragstart', (e) => {
+        if (isProtectedMediaTarget(e.target)) {
+            e.preventDefault();
+            if (typeof e.stopPropagation === 'function') e.stopPropagation();
+            return false;
+        }
+    }, { capture: true });
+
+    // 3. Bloquear atalhos de salvar página/mídia (Ctrl+S / Cmd+S)
+    document.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
+            if (isProtectedMediaTarget(e.target) || document.getElementById('view-once-overlay')?.style.display === 'flex' || document.getElementById('story-viewer')?.classList.contains('active')) {
+                e.preventDefault();
+                showMediaProtectionToast();
+                return false;
+            }
+        }
+    }, { capture: true });
+
+    // 4. Aplicar restrições anti-download e sem PiP em vídeos e imagens
+    const protectMediaElements = (root) => {
+        if (!root) return;
+        const videos = [];
+        if ((root.tagName || '').toUpperCase() === 'VIDEO') videos.push(root);
+        if (root.querySelectorAll) {
+            root.querySelectorAll('video').forEach(v => videos.push(v));
+        }
+        videos.forEach(v => {
+            if (v && v.setAttribute) {
+                v.setAttribute('controlsList', 'nodownload');
+                v.setAttribute('disablePictureInPicture', 'true');
+                v.setAttribute('oncontextmenu', 'return false;');
+                v.disablePictureInPicture = true;
+            }
+        });
+
+        const imgs = [];
+        if ((root.tagName || '').toUpperCase() === 'IMG') imgs.push(root);
+        if (root.querySelectorAll) {
+            root.querySelectorAll('img').forEach(img => imgs.push(img));
+        }
+        imgs.forEach(img => {
+            if (img && img.setAttribute) {
+                img.setAttribute('draggable', 'false');
+                img.setAttribute('oncontextmenu', 'return false;');
+            }
+        });
+    };
+
+    protectMediaElements(document.body);
+
+    if (typeof MutationObserver !== 'undefined' && document.body) {
+        const observer = new MutationObserver((mutations) => {
+            for (const mutation of mutations) {
+                if (mutation.addedNodes) {
+                    mutation.addedNodes.forEach(node => {
+                        if (node.nodeType === 1) protectMediaElements(node);
+                    });
+                }
+            }
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+    }
+}
+
 if (typeof window !== 'undefined') {
     window.messageSendSound = replySendSound;
     window.replySendSound = replySendSound;
@@ -9036,7 +9143,7 @@ function openStoryViewer(stories, author, options = {}) {
         if (previewFooter) previewFooter.style.display = 'none';
         if (deleteBtn) deleteBtn.style.display = isMyStory ? 'flex' : 'none';
         if (reportStoryBtn) reportStoryBtn.style.display = isMyStory ? 'none' : 'flex';
-        if (downloadStoryBtn) downloadStoryBtn.style.display = 'flex';
+        if (downloadStoryBtn) downloadStoryBtn.style.display = isMyStory ? 'flex' : 'none';
         if (ownFooter) ownFooter.style.display = isMyStory ? 'flex' : 'none';
         if (otherFooter) otherFooter.style.display = isMyStory ? 'none' : 'flex';
     }
@@ -9275,7 +9382,7 @@ async function displayCurrentStory() {
     }
 
     if (story.type === 'video') {
-        contentDiv.innerHTML = `<video src="${mediaSrc}" autoplay playsinline style="width:100%;height:100%;object-fit:contain;"></video>`;
+        contentDiv.innerHTML = `<video src="${mediaSrc}" autoplay playsinline controlsList="nodownload" disablePictureInPicture oncontextmenu="return false;" style="width:100%;height:100%;object-fit:contain;"></video>`;
         const video = contentDiv.querySelector('video');
         video.onloadedmetadata = () => {
             const rawDur = (video.duration && !isNaN(video.duration)) ? video.duration * 1000 : storyDuration;
@@ -9616,6 +9723,10 @@ document.getElementById('story-viewer')?.addEventListener('contextmenu', (e) => 
 
 document.getElementById('download-story-btn')?.addEventListener('click', (e) => {
     e.stopPropagation();
+    if (!isMyStory) {
+        showToast('Protegido', 'Você não pode baixar mídias de outros membros no Vortex VIP.', 'orange');
+        return;
+    }
     const story = activeStoryList[currentStoryIndex];
     if (!story || !story.src) return;
 
@@ -14786,7 +14897,7 @@ function loadRealtimeMessages() {
                         }
                     } else {
                         mediaHTML = `
-                            <img src="${msg.fileData || ''}" alt="Imagem" class="chat-clickable-image" data-msg-id="${msg.id}" data-chat-id="${chatId}" data-has-chunks="${msg.hasChunks ? 'true' : 'false'}" style="max-width:100%; border-radius:10px; margin-bottom:4px; cursor:pointer;">
+                            <img src="${msg.fileData || ''}" alt="Imagem" class="chat-clickable-image protected-media" draggable="false" oncontextmenu="return false;" data-msg-id="${msg.id}" data-chat-id="${chatId}" data-has-chunks="${msg.hasChunks ? 'true' : 'false'}" style="max-width:100%; border-radius:10px; margin-bottom:4px; cursor:pointer;">
                             ${sizeBadgeHTML}
                         `;
                     }
@@ -14809,7 +14920,7 @@ function loadRealtimeMessages() {
                                     <span>Carregando vídeo...</span>
                                 </div>
                             ` : ''}
-                            <video src="${initialSrc}" controls playsinline preload="metadata" data-msg-id="${msg.id}" data-chat-id="${chatId}" data-has-chunks="${hasChunks ? 'true' : 'false'}" data-is-trimmed="${isTrimmed ? 'true' : 'false'}" data-max-duration="${isTrimmed ? '120' : ''}" style="max-width:100%; border-radius:10px; margin-bottom:4px; ${hasChunks ? 'display:none;' : ''}"></video>
+                            <video src="${initialSrc}" controls controlsList="nodownload" disablePictureInPicture oncontextmenu="return false;" playsinline preload="metadata" data-msg-id="${msg.id}" data-chat-id="${chatId}" data-has-chunks="${hasChunks ? 'true' : 'false'}" data-is-trimmed="${isTrimmed ? 'true' : 'false'}" data-max-duration="${isTrimmed ? '120' : ''}" style="max-width:100%; border-radius:10px; margin-bottom:4px; ${hasChunks ? 'display:none;' : ''}"></video>
                         </div>
                     `;
                 } else if (msg.type === 'file') {
@@ -19629,7 +19740,7 @@ export async function adminOpenPostPreview(postId) {
                 : mediaSrc;
 
             mediaSlot.innerHTML = isVideo
-                ? `<video class="admin-post-preview-media-video" controls playsinline src="${mediaSrcFinal}"></video>`
+                ? `<video class="admin-post-preview-media-video protected-media" controls controlsList="nodownload" disablePictureInPicture oncontextmenu="return false;" playsinline src="${mediaSrcFinal}"></video>`
                 : `<img class="admin-post-preview-media" src="${mediaSrcFinal}" alt="Mídia do post">`;
         } else {
             mediaSlot.innerHTML = '<p style="color:var(--text-dim); font-size:0.8rem; padding:8px 0;">📷 Post sem mídia</p>';
@@ -19698,7 +19809,7 @@ export async function adminAnalyzeReport(report) {
 
                 const mediaHtml = mediaSrc
                     ? (isVideo
-                        ? `<video class="admin-post-preview-media-video" controls playsinline src="${mediaSrcFinal}"></video>`
+                        ? `<video class="admin-post-preview-media-video protected-media" controls controlsList="nodownload" disablePictureInPicture oncontextmenu="return false;" playsinline src="${mediaSrcFinal}"></video>`
                         : `<img class="admin-post-preview-media" src="${mediaSrcFinal}" alt="Mídia do post">`)
                     : '<p style="color:var(--text-dim); font-size:0.8rem;">📷 Post sem mídia</p>';
 
@@ -19763,7 +19874,7 @@ export async function adminAnalyzeReport(report) {
                 const mediaSrc = story.src || story.mediaData || '';
                 const mediaHtml = mediaSrc
                     ? (isVideo
-                        ? `<video class="admin-post-preview-media-video" controls playsinline src="${mediaSrc}"></video>`
+                        ? `<video class="admin-post-preview-media-video protected-media" controls controlsList="nodownload" disablePictureInPicture oncontextmenu="return false;" playsinline src="${mediaSrc}"></video>`
                         : `<img class="admin-post-preview-media" src="${mediaSrc}" alt="Story">`)
                     : '<p style="color:var(--text-dim); font-size:0.8rem;">📷 Story sem mídia</p>';
                 html = `
@@ -20101,7 +20212,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.210';
+export const CURRENT_APP_VERSION = '1.0.211';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -28118,8 +28229,8 @@ function renderPostsFeed(posts = []) {
                     })()
                     : (rawMedia || '');
                 const mediaTag = post.type === 'video'
-                    ? `<video src="${postMediaSrc}" ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="video" data-chunk-trimmed="${post.isTrimmed ? 'true' : 'false'}" data-chunk-duration="${post.videoDuration || 120}"` : ''} controls playsinline></video>`
-                    : `<img src="${postMediaSrc}" ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="image"` : ''} alt="Postagem" />`;
+                    ? `<video src="${postMediaSrc}" ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="video" data-chunk-trimmed="${post.isTrimmed ? 'true' : 'false'}" data-chunk-duration="${post.videoDuration || 120}"` : ''} controls controlsList="nodownload" disablePictureInPicture oncontextmenu="return false;" playsinline class="protected-media"></video>`
+                    : `<img src="${postMediaSrc}" ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="image"` : ''} alt="Postagem" draggable="false" oncontextmenu="return false;" class="protected-media" />`;
                 const createdAt = new Date(post.createdAt || Date.now());
                 const timeLabel = createdAt.toLocaleString([], { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
                 const canDeletePost = isPostOwner(post, currentUser, currentProfile);
@@ -28345,8 +28456,8 @@ function renderPostsFeed(posts = []) {
             })()
             : (rawMedia || '');
         const mediaTag = post.type === 'video'
-            ? `<video src="${postMediaSrc}" ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="video" data-chunk-trimmed="${post.isTrimmed ? 'true' : 'false'}" data-chunk-duration="${post.videoDuration || 120}"` : ''} controls playsinline></video>`
-            : `<img src="${postMediaSrc}" ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="image"` : ''} alt="Postagem" />`;
+            ? `<video src="${postMediaSrc}" ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="video" data-chunk-trimmed="${post.isTrimmed ? 'true' : 'false'}" data-chunk-duration="${post.videoDuration || 120}"` : ''} controls controlsList="nodownload" disablePictureInPicture oncontextmenu="return false;" playsinline class="protected-media"></video>`
+            : `<img src="${postMediaSrc}" ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="image"` : ''} alt="Postagem" draggable="false" oncontextmenu="return false;" class="protected-media" />`;
         const createdAt = new Date(post.createdAt || Date.now());
         const timeLabel = createdAt.toLocaleString([], { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
         const liked = currentUser && Array.isArray(post.likes) && post.likes.includes(currentUser.uid);
@@ -29530,7 +29641,7 @@ export function handlePostMediaSelection(file) {
     if (postPreview) {
         if (isVideo) {
             const videoSrc = isTrimmedInitial && objectUrl && !objectUrl.includes('#t=') ? `${objectUrl}#t=0,120` : objectUrl;
-            postPreview.innerHTML = `<video src="${videoSrc}" controls playsinline autoplay muted></video>`;
+            postPreview.innerHTML = `<video src="${videoSrc}" controls controlsList="nodownload" disablePictureInPicture oncontextmenu="return false;" playsinline autoplay muted class="protected-media"></video>`;
             const vEl = postPreview.querySelector('video');
             if (vEl) {
                 vEl.onloadedmetadata = () => {
@@ -34916,6 +35027,10 @@ if (typeof window !== 'undefined') {
     window.syncStoreEnabledUI = syncStoreEnabledUI;
     window.toggleStoreVisibility = toggleStoreVisibility;
     window.initStoreEnabledControls = initStoreEnabledControls;
+    // Proteção Anti-Roubo de Mídias (v1.0.211)
+    window.showMediaProtectionToast = showMediaProtectionToast;
+    window.isProtectedMediaTarget = isProtectedMediaTarget;
+    window.initMediaProtection = initMediaProtection;
     // Câmera nos Contatos e Botão Interativo Empresa (v1.0.206)
     window.openChatCamera = openChatCamera;
     window.closeChatCamera = closeChatCamera;
@@ -34952,4 +35067,5 @@ if (typeof window !== 'undefined') {
     initGroupMiniAdminControls();
     initPrivateAccountControls();
     initStoreEnabledControls();
+    initMediaProtection();
 }

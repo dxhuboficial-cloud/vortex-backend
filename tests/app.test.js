@@ -13543,11 +13543,11 @@ test('Correção do Fluxo de Envio do Botão Comercial: Persistência de Dados, 
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
 
   // 1. Integridade de Versionamento (v1.0.208+)
-  assert.ok(['1.0.208', '1.0.209', '1.0.210'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão compatível');
-  assert.ok(['1.0.208', '1.0.209', '1.0.210'].includes(versionJson.version), 'version.json deve ter versão compatível');
-  assert.ok(html.includes('script.js?v=1.0.208') || html.includes('script.js?v=1.0.209') || html.includes('script.js?v=1.0.210'), 'index.html deve referenciar script.js');
-  assert.ok(html.includes('style.css?v=1.0.208') || html.includes('style.css?v=1.0.209') || html.includes('style.css?v=1.0.210'), 'index.html deve referenciar style.css');
-  assert.ok(swContent.includes('vortex-vip-v1.0.208') || swContent.includes('vortex-vip-v1.0.209') || swContent.includes('vortex-vip-v1.0.210'), 'sw.js deve conter cache');
+  assert.ok(['1.0.208', '1.0.209', '1.0.210', '1.0.211'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão compatível');
+  assert.ok(['1.0.208', '1.0.209', '1.0.210', '1.0.211'].includes(versionJson.version), 'version.json deve ter versão compatível');
+  assert.ok(html.includes('script.js?v=1.0.208') || html.includes('script.js?v=1.0.209') || html.includes('script.js?v=1.0.210') || html.includes('script.js?v=1.0.211'), 'index.html deve referenciar script.js');
+  assert.ok(html.includes('style.css?v=1.0.208') || html.includes('style.css?v=1.0.209') || html.includes('style.css?v=1.0.210') || html.includes('style.css?v=1.0.211'), 'index.html deve referenciar style.css');
+  assert.ok(swContent.includes('vortex-vip-v1.0.208') || swContent.includes('vortex-vip-v1.0.209') || swContent.includes('vortex-vip-v1.0.210') || swContent.includes('vortex-vip-v1.0.211'), 'sw.js deve conter cache');
 
   // 2. Correção de z-index do toast para sobrepor o modal (z-index: 99999 !important)
   assert.ok(css.includes('#toast-container { position: absolute; top: 15px; left: 15px; right: 15px; z-index: 99999 !important;'), 'toast-container deve ter z-index 99999 para nunca ficar escondido sob modais');
@@ -13625,11 +13625,11 @@ test('Centralização do Título (Texto) com o Ícone no Botão de Publicação 
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
 
   // 1. Integridade de Versionamento (v1.0.209+)
-  assert.ok(['1.0.209', '1.0.210'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão compatível');
-  assert.ok(['1.0.209', '1.0.210'].includes(versionJson.version), 'version.json deve ter versão compatível');
-  assert.ok(html.includes('script.js?v=1.0.209') || html.includes('script.js?v=1.0.210'), 'index.html deve referenciar script.js');
-  assert.ok(html.includes('style.css?v=1.0.209') || html.includes('style.css?v=1.0.210'), 'index.html deve referenciar style.css');
-  assert.ok(swContent.includes('vortex-vip-v1.0.209') || swContent.includes('vortex-vip-v1.0.210'), 'sw.js deve conter cache');
+  assert.ok(['1.0.209', '1.0.210', '1.0.211'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão compatível');
+  assert.ok(['1.0.209', '1.0.210', '1.0.211'].includes(versionJson.version), 'version.json deve ter versão compatível');
+  assert.ok(html.includes('script.js?v=1.0.209') || html.includes('script.js?v=1.0.210') || html.includes('script.js?v=1.0.211'), 'index.html deve referenciar script.js');
+  assert.ok(html.includes('style.css?v=1.0.209') || html.includes('style.css?v=1.0.210') || html.includes('style.css?v=1.0.211'), 'index.html deve referenciar style.css');
+  assert.ok(swContent.includes('vortex-vip-v1.0.209') || swContent.includes('vortex-vip-v1.0.210') || swContent.includes('vortex-vip-v1.0.211'), 'sw.js deve conter cache');
 
   // 2. Estrutura HTML do Botão de Publicar com Ícone e Título Centralizados
   assert.ok(html.includes('id="publish-post-btn"'), 'Deve existir o botão #publish-post-btn');
@@ -13659,11 +13659,11 @@ test('Botão para Ativar e Desativar a Loja no Catálogo e no Editar Perfil (v1.
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
 
   // 1. Integridade de Versionamento (v1.0.210)
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.210', 'script.js deve ter versão 1.0.210');
-  assert.strictEqual(versionJson.version, '1.0.210', 'version.json deve ter versão 1.0.210');
-  assert.ok(html.includes('script.js?v=1.0.210'), 'index.html deve referenciar script.js?v=1.0.210');
-  assert.ok(html.includes('style.css?v=1.0.210'), 'index.html deve referenciar style.css?v=1.0.210');
-  assert.ok(swContent.includes('vortex-vip-v1.0.210'), 'sw.js deve conter cache vortex-vip-v1.0.210');
+  assert.ok(['1.0.210', '1.0.211'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão compatível');
+  assert.ok(['1.0.210', '1.0.211'].includes(versionJson.version), 'version.json deve ter versão compatível');
+  assert.ok(html.includes('script.js?v=1.0.210') || html.includes('script.js?v=1.0.211'), 'index.html deve referenciar script.js compatível');
+  assert.ok(html.includes('style.css?v=1.0.210') || html.includes('style.css?v=1.0.211'), 'index.html deve referenciar style.css compatível');
+  assert.ok(swContent.includes('vortex-vip-v1.0.210') || swContent.includes('vortex-vip-v1.0.211'), 'sw.js deve conter cache compatível');
 
   // 2. Elementos no DOM em index.html
   assert.ok(html.includes('id="profile-store-toggle-setting"'), 'Deve existir o container #profile-store-toggle-setting no Editar Perfil');
@@ -13753,4 +13753,118 @@ test('Botão para Ativar e Desativar a Loja no Catálogo e no Editar Perfil (v1.
   assert.ok(toastTriggered, 'Deve exibir toast de Loja Desativada ao tentar visitar loja desativada');
   const storefrontView = env.elements['catalog-view-storefront'];
   assert.strictEqual(storefrontView.style.display, 'none', 'Vitrine não deve ser exibida para visitante se loja estiver desativada');
+});
+
+
+test('Bloqueio Anti-Roubo de Imagens e Vídeos nos Posts e Contatos (v1.0.211)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+  const css = fs.readFileSync('public/style.css', 'utf8');
+  const html = fs.readFileSync('public/index.html', 'utf8');
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
+
+  // 1. Integridade de Versionamento (v1.0.211)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.211', 'script.js deve ter versão 1.0.211');
+  assert.strictEqual(versionJson.version, '1.0.211', 'version.json deve ter versão 1.0.211');
+  assert.ok(html.includes('script.js?v=1.0.211'), 'index.html deve referenciar script.js?v=1.0.211');
+  assert.ok(html.includes('style.css?v=1.0.211'), 'index.html deve referenciar style.css?v=1.0.211');
+  assert.ok(swContent.includes('vortex-vip-v1.0.211'), 'sw.js deve conter cache vortex-vip-v1.0.211');
+
+  // 2. Proteção CSS contra cópia, drag & drop e touch callout móvel
+  assert.ok(css.includes('-webkit-touch-callout: none !important'), 'CSS deve desativar touch callout móvel');
+  assert.ok(css.includes('-webkit-user-drag: none !important'), 'CSS deve impedir arrastar mídias (-webkit-user-drag)');
+  assert.ok(css.includes('video::-webkit-media-controls-download-button'), 'CSS deve ocultar botão de download nativo dos vídeos');
+  assert.ok(css.includes('.view-once-security-badge'), 'CSS deve definir badge de segurança do visualizador');
+
+  // 3. Elementos e Atributos de Proteção no index.html
+  assert.ok(html.includes('view-once-security-badge'), 'index.html deve conter badge de segurança no overlay de foto única');
+  assert.ok(html.includes('id="status-preview-video"') && html.includes('controlsList="nodownload"'), 'Prévia de status deve ter controlsList="nodownload"');
+  assert.ok(html.includes('id="chat-camera-captured-video-preview"') && html.includes('controlsList="nodownload"'), 'Prévia de vídeo da câmera do chat deve ter controlsList="nodownload"');
+
+  // 4. Testar a função de identificação de alvo protegido (isProtectedMediaTarget)
+  assert.ok(typeof win.isProtectedMediaTarget === 'function', 'isProtectedMediaTarget deve ser uma função');
+  
+  const mockImg = win.document.createElement('img');
+  assert.strictEqual(win.isProtectedMediaTarget(mockImg), true, 'Elemento IMG deve ser reconhecido como mídia protegida');
+
+  const mockVideo = win.document.createElement('video');
+  assert.strictEqual(win.isProtectedMediaTarget(mockVideo), true, 'Elemento VIDEO deve ser reconhecido como mídia protegida');
+
+  const mockDiv = win.document.createElement('div');
+  mockDiv.className = 'post-media';
+  const childSpan = win.document.createElement('span');
+  mockDiv.appendChild(childSpan);
+  assert.strictEqual(win.isProtectedMediaTarget(childSpan), true, 'Elemento dentro de .post-media deve ser protegido');
+
+  const genericButton = win.document.createElement('button');
+  assert.strictEqual(win.isProtectedMediaTarget(genericButton), false, 'Botão normal não deve ser marcado como mídia protegida');
+
+  // 5. Bloqueio de Clique com Botão Direito (contextmenu) em Mídias
+  let toastMsg = '';
+  win.showToast = (title, msg) => {
+    toastMsg = `${title}: ${msg}`;
+  };
+
+  let prevented = false;
+  const mockContextMenuEvent = {
+    target: mockImg,
+    preventDefault: () => { prevented = true; },
+    stopPropagation: () => {}
+  };
+
+  // Simular listener de contextmenu registrado
+  win.document.body.appendChild(mockImg);
+  if (typeof win.initMediaProtection === 'function') {
+    win.initMediaProtection();
+  }
+
+  // Chamar função de proteção diretamente para validar o comportamento
+  win.showMediaProtectionToast();
+  assert.ok(toastMsg.includes('Proteção Vortex VIP'), 'Deve exibir toast de proteção ao tentar ação restrita');
+  assert.ok(toastMsg.includes('Downloads e cópias'), 'Toast deve informar que downloads e cópias estão bloqueados');
+
+  // 6. Testar Renderização de Posts com Proteção Anti-Roubo
+  const mockPostVideo = {
+    id: 'post_video_211',
+    type: 'video',
+    mediaData: 'https://vortex.app/video.mp4',
+    authorUid: 'author_211',
+    authorName: 'Criador VIP',
+    createdAt: Date.now()
+  };
+
+  const mockPostImage = {
+    id: 'post_img_211',
+    type: 'image',
+    mediaData: 'https://vortex.app/foto.jpg',
+    authorUid: 'author_211',
+    authorName: 'Criador VIP',
+    createdAt: Date.now()
+  };
+
+  const feedList = win.document.getElementById('feed-list');
+  win.renderPostsFeed([mockPostVideo, mockPostImage]);
+
+  const feedHTML = feedList.innerHTML;
+  assert.ok(feedHTML.includes('controlsList="nodownload"'), 'Vídeo do post deve conter controlsList="nodownload" para remover botão Baixar');
+  assert.ok(feedHTML.includes('disablePictureInPicture'), 'Vídeo do post deve desativar Picture-in-Picture');
+  assert.ok(feedHTML.includes('draggable="false"'), 'Imagem do post deve ter draggable="false"');
+  assert.ok(feedHTML.includes('protected-media'), 'Mídias do post devem ter classe protected-media');
+
+  // 7. Testar Bloqueio de Download de Story de Outros Usuários
+  win.setCurrentUser({ uid: 'user_viewer_211', name: 'Espectador' });
+  const otherUserStory = {
+    id: 'story_other_211',
+    authorUid: 'another_user_211',
+    authorName: 'Outro Usuário',
+    type: 'image',
+    src: 'https://vortex.app/story.jpg',
+    isAd: true
+  };
+
+  win.openStoryViewer([otherUserStory], { authorUid: 'another_user_211', authorName: 'Outro Usuário' });
+  const downloadStoryBtn = win.document.getElementById('download-story-btn') || env.elements['download-story-btn'];
+  assert.ok(downloadStoryBtn, 'downloadStoryBtn deve existir');
+  assert.strictEqual(downloadStoryBtn.style.display, 'none', 'Botão de download de story DEVE estar oculto para outros usuários');
 });

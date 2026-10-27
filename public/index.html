@@ -5,19 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
     <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.199">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.210">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.210">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.210">
-    <link rel="stylesheet" href="style.css?v=1.0.210">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.211">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.211">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.211">
+    <link rel="stylesheet" href="style.css?v=1.0.211">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.210">
+    <link rel="manifest" href="manifest.json?v=1.0.211">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.210">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.210">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.211">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.211">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -113,7 +113,8 @@
 
         <!-- Overlay de Visualização Única -->
         <div id="view-once-overlay" class="lock-screen view-once-screen unlocked" style="display: none;">
-            <img id="view-once-img" class="view-once-img-el" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E" alt="Foto de Visualização Única">
+            <div class="view-once-security-badge"><i data-lucide="shield-check"></i> Proteção Vortex VIP • Cópia Bloqueada</div>
+            <img id="view-once-img" class="view-once-img-el protected-media" draggable="false" oncontextmenu="return false;" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E" alt="Foto de Visualização Única">
             <div class="view-once-hint">Toque em qualquer lugar para fechar</div>
         </div>
 
@@ -1399,7 +1400,7 @@
                     <div id="status-media-preview-box" class="status-media-preview-box" style="display: none;">
                         <div class="status-preview-media-wrapper" id="status-preview-media-trigger" title="Pré-visualizar Story">
                             <img id="status-preview-img" class="status-preview-media" alt="Prévia da foto" style="display: none;">
-                            <video id="status-preview-video" class="status-preview-media" playsinline muted loop style="display: none;"></video>
+                            <video id="status-preview-video" class="status-preview-media protected-media" playsinline muted loop controlsList="nodownload" disablePictureInPicture oncontextmenu="return false;" style="display: none;"></video>
                             <div class="status-preview-play-trigger">
                                 <i data-lucide="eye"></i>
                             </div>
@@ -4343,8 +4344,8 @@
                 <div class="chat-camera-viewport-wrap">
                     <video id="chat-camera-video-feed" autoplay playsinline muted class="chat-camera-live-video"></video>
                     <canvas id="chat-camera-canvas" style="display:none;"></canvas>
-                    <img id="chat-camera-captured-preview" class="chat-camera-captured-media" style="display:none;" alt="Prévia da Foto">
-                    <video id="chat-camera-captured-video-preview" class="chat-camera-captured-media" playsinline controls style="display:none;"></video>
+                    <img id="chat-camera-captured-preview" class="chat-camera-captured-media protected-media" draggable="false" oncontextmenu="return false;" style="display:none;" alt="Prévia da Foto">
+                    <video id="chat-camera-captured-video-preview" class="chat-camera-captured-media protected-media" playsinline controls controlsList="nodownload" disablePictureInPicture oncontextmenu="return false;" style="display:none;"></video>
                 </div>
 
                 <!-- Controles de Disparo (Foto / Vídeo) -->
@@ -4472,6 +4473,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.210" defer></script>
+    <script type="module" src="script.js?v=1.0.211" defer></script>
 </body>
 </html>

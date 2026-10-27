@@ -21273,3 +21273,73 @@ input:checked + .schedule-slider {
     gap: 8px;
     margin-bottom: 12px;
 }
+
+
+/* ==========================================================================
+   PROTEÇÃO ANTI-ROUBO DE MÍDIAS (IMAGENS E VÍDEOS) - VORTEX VIP (v1.0.211)
+   ========================================================================== */
+img, video,
+.protected-media,
+.post-media, .feed-media, .feed-card img, .feed-card video,
+.chat-clickable-image, .chat-video-wrapper, .chat-video-wrapper video,
+.view-once-screen img, #view-once-img,
+.story-viewer img, .story-viewer video, .story-content img, .story-content video,
+.status-preview-media, .chat-camera-captured-media,
+.catalog-product-img, .catalog-product-detail-img, .storefront-product-img,
+.contact-profile-avatar, .user-avatar, .feed-avatar, .header-avatar, .chat-item-avatar {
+    -webkit-touch-callout: none !important;
+    -webkit-user-select: none !important;
+    user-select: none !important;
+    -webkit-user-drag: none !important;
+    user-drag: none !important;
+}
+
+/* Ocultar botão de download nativo dos players de vídeo */
+video::-webkit-media-controls-download-button,
+video::-internal-media-controls-download-button {
+    display: none !important;
+}
+
+/* Badge de proteção de mídia no visualizador de foto de visualização única */
+.view-once-security-badge {
+    position: absolute;
+    top: 24px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    background: rgba(10, 10, 20, 0.75);
+    border: 1px solid rgba(255, 215, 0, 0.35);
+    border-radius: 20px;
+    color: #ffdd57;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    pointer-events: none;
+    z-index: 10;
+}
+
+.view-once-security-badge i {
+    width: 14px;
+    height: 14px;
+}
+
+/* Selo de proteção discreto nas mídias */
+.media-protected-watermark {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 7px;
+    background: rgba(0, 0, 0, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.65rem;
+    font-weight: 600;
+    pointer-events: none;
+    z-index: 4;
+}
