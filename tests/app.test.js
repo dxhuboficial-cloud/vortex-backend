@@ -13561,11 +13561,11 @@ test('Correção do Fluxo de Envio do Botão Comercial: Persistência de Dados, 
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
 
   // 1. Integridade de Versionamento (v1.0.208+)
-  assert.ok(['1.0.208', '1.0.209', '1.0.210', '1.0.211', '1.0.212', '1.0.213', '1.0.214'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão compatível');
-  assert.ok(['1.0.208', '1.0.209', '1.0.210', '1.0.211', '1.0.212', '1.0.213', '1.0.214'].includes(versionJson.version), 'version.json deve ter versão compatível');
-  assert.ok(html.includes('script.js?v=1.0.208') || html.includes('script.js?v=1.0.209') || html.includes('script.js?v=1.0.210') || html.includes('script.js?v=1.0.211') || html.includes('script.js?v=1.0.212') || html.includes('script.js?v=1.0.213') || html.includes('script.js?v=1.0.214') || html.includes('script.js?v=1.0.214'), 'index.html deve referenciar script.js');
-  assert.ok(html.includes('style.css?v=1.0.208') || html.includes('style.css?v=1.0.209') || html.includes('style.css?v=1.0.210') || html.includes('style.css?v=1.0.211') || html.includes('style.css?v=1.0.212') || html.includes('style.css?v=1.0.213') || html.includes('style.css?v=1.0.214') || html.includes('style.css?v=1.0.214'), 'index.html deve referenciar style.css');
-  assert.ok(swContent.includes('vortex-vip-v1.0.208') || swContent.includes('vortex-vip-v1.0.209') || swContent.includes('vortex-vip-v1.0.210') || swContent.includes('vortex-vip-v1.0.211') || swContent.includes('vortex-vip-v1.0.212') || swContent.includes('vortex-vip-v1.0.213') || swContent.includes('vortex-vip-v1.0.214') || swContent.includes('vortex-vip-v1.0.214'), 'sw.js deve conter cache');
+  assert.ok(['1.0.208', '1.0.209', '1.0.210', '1.0.211', '1.0.212', '1.0.213', '1.0.214', '1.0.215'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão compatível');
+  assert.ok(['1.0.208', '1.0.209', '1.0.210', '1.0.211', '1.0.212', '1.0.213', '1.0.214', '1.0.215'].includes(versionJson.version), 'version.json deve ter versão compatível');
+  assert.ok(html.includes('script.js?v=1.0.208') || html.includes('script.js?v=1.0.209') || html.includes('script.js?v=1.0.210') || html.includes('script.js?v=1.0.211') || html.includes('script.js?v=1.0.212') || html.includes('script.js?v=1.0.213') || html.includes('script.js?v=1.0.214') || html.includes('script.js?v=1.0.215') || html.includes('script.js?v=1.0.214') || html.includes('script.js?v=1.0.215'), 'index.html deve referenciar script.js');
+  assert.ok(html.includes('style.css?v=1.0.208') || html.includes('style.css?v=1.0.209') || html.includes('style.css?v=1.0.210') || html.includes('style.css?v=1.0.211') || html.includes('style.css?v=1.0.212') || html.includes('style.css?v=1.0.213') || html.includes('style.css?v=1.0.214') || html.includes('style.css?v=1.0.215') || html.includes('style.css?v=1.0.214') || html.includes('style.css?v=1.0.215'), 'index.html deve referenciar style.css');
+  assert.ok(swContent.includes('vortex-vip-v1.0.208') || swContent.includes('vortex-vip-v1.0.209') || swContent.includes('vortex-vip-v1.0.210') || swContent.includes('vortex-vip-v1.0.211') || swContent.includes('vortex-vip-v1.0.212') || swContent.includes('vortex-vip-v1.0.213') || swContent.includes('vortex-vip-v1.0.214') || swContent.includes('vortex-vip-v1.0.215') || swContent.includes('vortex-vip-v1.0.214') || swContent.includes('vortex-vip-v1.0.215'), 'sw.js deve conter cache');
 
   // 2. Correção de z-index do toast para sobrepor o modal (z-index: 99999 !important)
   assert.ok(css.includes('#toast-container { position: absolute; top: 15px; left: 15px; right: 15px; z-index: 99999 !important;'), 'toast-container deve ter z-index 99999 para nunca ficar escondido sob modais');
@@ -13643,11 +13643,11 @@ test('Centralização do Título (Texto) com o Ícone no Botão de Publicação 
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
 
   // 1. Integridade de Versionamento (v1.0.209+)
-  assert.ok(['1.0.209', '1.0.210', '1.0.211', '1.0.212', '1.0.213', '1.0.214'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão compatível');
-  assert.ok(['1.0.209', '1.0.210', '1.0.211', '1.0.212', '1.0.213', '1.0.214'].includes(versionJson.version), 'version.json deve ter versão compatível');
-  assert.ok(html.includes('script.js?v=1.0.209') || html.includes('script.js?v=1.0.210') || html.includes('script.js?v=1.0.211') || html.includes('script.js?v=1.0.212') || html.includes('script.js?v=1.0.213') || html.includes('script.js?v=1.0.214'), 'index.html deve referenciar script.js');
-  assert.ok(html.includes('style.css?v=1.0.209') || html.includes('style.css?v=1.0.210') || html.includes('style.css?v=1.0.211') || html.includes('style.css?v=1.0.212') || html.includes('style.css?v=1.0.213') || html.includes('style.css?v=1.0.214'), 'index.html deve referenciar style.css');
-  assert.ok(swContent.includes('vortex-vip-v1.0.209') || swContent.includes('vortex-vip-v1.0.210') || swContent.includes('vortex-vip-v1.0.211') || swContent.includes('vortex-vip-v1.0.212') || swContent.includes('vortex-vip-v1.0.213') || swContent.includes('vortex-vip-v1.0.214'), 'sw.js deve conter cache');
+  assert.ok(['1.0.209', '1.0.210', '1.0.211', '1.0.212', '1.0.213', '1.0.214', '1.0.215'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão compatível');
+  assert.ok(['1.0.209', '1.0.210', '1.0.211', '1.0.212', '1.0.213', '1.0.214', '1.0.215'].includes(versionJson.version), 'version.json deve ter versão compatível');
+  assert.ok(html.includes('script.js?v=1.0.209') || html.includes('script.js?v=1.0.210') || html.includes('script.js?v=1.0.211') || html.includes('script.js?v=1.0.212') || html.includes('script.js?v=1.0.213') || html.includes('script.js?v=1.0.214') || html.includes('script.js?v=1.0.215'), 'index.html deve referenciar script.js');
+  assert.ok(html.includes('style.css?v=1.0.209') || html.includes('style.css?v=1.0.210') || html.includes('style.css?v=1.0.211') || html.includes('style.css?v=1.0.212') || html.includes('style.css?v=1.0.213') || html.includes('style.css?v=1.0.214') || html.includes('style.css?v=1.0.215'), 'index.html deve referenciar style.css');
+  assert.ok(swContent.includes('vortex-vip-v1.0.209') || swContent.includes('vortex-vip-v1.0.210') || swContent.includes('vortex-vip-v1.0.211') || swContent.includes('vortex-vip-v1.0.212') || swContent.includes('vortex-vip-v1.0.213') || swContent.includes('vortex-vip-v1.0.214') || swContent.includes('vortex-vip-v1.0.215'), 'sw.js deve conter cache');
 
   // 2. Estrutura HTML do Botão de Publicar com Ícone e Título Centralizados
   assert.ok(html.includes('id="publish-post-btn"'), 'Deve existir o botão #publish-post-btn');
@@ -13677,11 +13677,11 @@ test('Botão para Ativar e Desativar a Loja no Catálogo e no Editar Perfil (v1.
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
 
   // 1. Integridade de Versionamento (v1.0.210)
-  assert.ok(['1.0.210', '1.0.211', '1.0.212', '1.0.213', '1.0.214'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão compatível');
-  assert.ok(['1.0.210', '1.0.211', '1.0.212', '1.0.213', '1.0.214'].includes(versionJson.version), 'version.json deve ter versão compatível');
-  assert.ok(html.includes('script.js?v=1.0.210') || html.includes('script.js?v=1.0.211') || html.includes('script.js?v=1.0.212') || html.includes('script.js?v=1.0.213') || html.includes('script.js?v=1.0.214'), 'index.html deve referenciar script.js compatível');
-  assert.ok(html.includes('style.css?v=1.0.210') || html.includes('style.css?v=1.0.211') || html.includes('style.css?v=1.0.212') || html.includes('style.css?v=1.0.213') || html.includes('style.css?v=1.0.214'), 'index.html deve referenciar style.css compatível');
-  assert.ok(swContent.includes('vortex-vip-v1.0.210') || swContent.includes('vortex-vip-v1.0.211') || swContent.includes('vortex-vip-v1.0.212') || swContent.includes('vortex-vip-v1.0.213') || swContent.includes('vortex-vip-v1.0.214'), 'sw.js deve conter cache compatível');
+  assert.ok(['1.0.210', '1.0.211', '1.0.212', '1.0.213', '1.0.214', '1.0.215'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão compatível');
+  assert.ok(['1.0.210', '1.0.211', '1.0.212', '1.0.213', '1.0.214', '1.0.215'].includes(versionJson.version), 'version.json deve ter versão compatível');
+  assert.ok(html.includes('script.js?v=1.0.210') || html.includes('script.js?v=1.0.211') || html.includes('script.js?v=1.0.212') || html.includes('script.js?v=1.0.213') || html.includes('script.js?v=1.0.214') || html.includes('script.js?v=1.0.215'), 'index.html deve referenciar script.js compatível');
+  assert.ok(html.includes('style.css?v=1.0.210') || html.includes('style.css?v=1.0.211') || html.includes('style.css?v=1.0.212') || html.includes('style.css?v=1.0.213') || html.includes('style.css?v=1.0.214') || html.includes('style.css?v=1.0.215'), 'index.html deve referenciar style.css compatível');
+  assert.ok(swContent.includes('vortex-vip-v1.0.210') || swContent.includes('vortex-vip-v1.0.211') || swContent.includes('vortex-vip-v1.0.212') || swContent.includes('vortex-vip-v1.0.213') || swContent.includes('vortex-vip-v1.0.214') || swContent.includes('vortex-vip-v1.0.215'), 'sw.js deve conter cache compatível');
 
   // 2. Elementos no DOM em index.html
   assert.ok(html.includes('id="profile-store-toggle-setting"'), 'Deve existir o container #profile-store-toggle-setting no Editar Perfil');
@@ -13783,11 +13783,11 @@ test('Bloqueio Anti-Roubo de Imagens e Vídeos nos Posts e Contatos (v1.0.211)',
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
 
   // 1. Integridade de Versionamento (v1.0.211)
-  assert.ok(['1.0.211', '1.0.212', '1.0.213', '1.0.214'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão compatível');
-  assert.ok(['1.0.211', '1.0.212', '1.0.213', '1.0.214'].includes(versionJson.version), 'version.json deve ter versão compatível');
-  assert.ok(html.includes('script.js?v=1.0.211') || html.includes('script.js?v=1.0.212') || html.includes('script.js?v=1.0.213') || html.includes('script.js?v=1.0.214'), 'index.html deve referenciar script.js compatível');
-  assert.ok(html.includes('style.css?v=1.0.211') || html.includes('style.css?v=1.0.212') || html.includes('style.css?v=1.0.213') || html.includes('style.css?v=1.0.214'), 'index.html deve referenciar style.css compatível');
-  assert.ok(swContent.includes('vortex-vip-v1.0.211') || swContent.includes('vortex-vip-v1.0.212') || swContent.includes('vortex-vip-v1.0.213') || swContent.includes('vortex-vip-v1.0.214'), 'sw.js deve conter cache compatível');
+  assert.ok(['1.0.211', '1.0.212', '1.0.213', '1.0.214', '1.0.215'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão compatível');
+  assert.ok(['1.0.211', '1.0.212', '1.0.213', '1.0.214', '1.0.215'].includes(versionJson.version), 'version.json deve ter versão compatível');
+  assert.ok(html.includes('script.js?v=1.0.211') || html.includes('script.js?v=1.0.212') || html.includes('script.js?v=1.0.213') || html.includes('script.js?v=1.0.214') || html.includes('script.js?v=1.0.215'), 'index.html deve referenciar script.js compatível');
+  assert.ok(html.includes('style.css?v=1.0.211') || html.includes('style.css?v=1.0.212') || html.includes('style.css?v=1.0.213') || html.includes('style.css?v=1.0.214') || html.includes('style.css?v=1.0.215'), 'index.html deve referenciar style.css compatível');
+  assert.ok(swContent.includes('vortex-vip-v1.0.211') || swContent.includes('vortex-vip-v1.0.212') || swContent.includes('vortex-vip-v1.0.213') || swContent.includes('vortex-vip-v1.0.214') || swContent.includes('vortex-vip-v1.0.215'), 'sw.js deve conter cache compatível');
 
   // 2. Proteção CSS contra cópia, drag & drop e touch callout móvel
   assert.ok(css.includes('-webkit-touch-callout: none !important'), 'CSS deve desativar touch callout móvel');
@@ -13897,11 +13897,11 @@ test('Reprodutor de Vídeo e Menu de Velocidade no Tema VORTEX VIP (v1.0.212)', 
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
 
   // 1. Integridade de Versionamento (v1.0.212)
-  assert.ok(['1.0.212', '1.0.213', '1.0.214'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão compatível');
-  assert.ok(['1.0.212', '1.0.213', '1.0.214'].includes(versionJson.version), 'version.json deve ter versão compatível');
-  assert.ok(html.includes('script.js?v=1.0.212') || html.includes('script.js?v=1.0.213') || html.includes('script.js?v=1.0.214'), 'index.html deve referenciar script.js');
-  assert.ok(html.includes('style.css?v=1.0.212') || html.includes('style.css?v=1.0.213') || html.includes('style.css?v=1.0.214'), 'index.html deve referenciar style.css');
-  assert.ok(swContent.includes('vortex-vip-v1.0.212') || swContent.includes('vortex-vip-v1.0.213') || swContent.includes('vortex-vip-v1.0.214'), 'sw.js deve conter cache');
+  assert.ok(['1.0.212', '1.0.213', '1.0.214', '1.0.215'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão compatível');
+  assert.ok(['1.0.212', '1.0.213', '1.0.214', '1.0.215'].includes(versionJson.version), 'version.json deve ter versão compatível');
+  assert.ok(html.includes('script.js?v=1.0.212') || html.includes('script.js?v=1.0.213') || html.includes('script.js?v=1.0.214') || html.includes('script.js?v=1.0.215'), 'index.html deve referenciar script.js');
+  assert.ok(html.includes('style.css?v=1.0.212') || html.includes('style.css?v=1.0.213') || html.includes('style.css?v=1.0.214') || html.includes('style.css?v=1.0.215'), 'index.html deve referenciar style.css');
+  assert.ok(swContent.includes('vortex-vip-v1.0.212') || swContent.includes('vortex-vip-v1.0.213') || swContent.includes('vortex-vip-v1.0.214') || swContent.includes('vortex-vip-v1.0.215'), 'sw.js deve conter cache');
 
   // 2. Estilos do Player de Vídeo e Menu de Velocidade VIP no style.css
   assert.ok(css.includes('.vortex-video-player'), 'style.css deve conter estilos para .vortex-video-player');
@@ -13992,11 +13992,11 @@ test('Correção ReferenceError isMyStory e Otimização do Quota Exceeded (429)
   const scriptContent = fs.readFileSync('public/script.js', 'utf8');
 
   // 1. Integridade de Versionamento (v1.0.213+)
-  assert.ok(['1.0.213', '1.0.214'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão compatível');
-  assert.ok(['1.0.213', '1.0.214'].includes(versionJson.version), 'version.json deve ter versão compatível');
-  assert.ok(html.includes('script.js?v=1.0.213') || html.includes('script.js?v=1.0.214') || html.includes('script.js?v=1.0.214'), 'index.html deve referenciar script.js');
-  assert.ok(html.includes('style.css?v=1.0.213') || html.includes('style.css?v=1.0.214') || html.includes('style.css?v=1.0.214'), 'index.html deve referenciar style.css');
-  assert.ok(swContent.includes('vortex-vip-v1.0.213') || swContent.includes('vortex-vip-v1.0.214') || swContent.includes('vortex-vip-v1.0.214'), 'sw.js deve conter cache');
+  assert.ok(['1.0.213', '1.0.214', '1.0.215'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão compatível');
+  assert.ok(['1.0.213', '1.0.214', '1.0.215'].includes(versionJson.version), 'version.json deve ter versão compatível');
+  assert.ok(html.includes('script.js?v=1.0.213') || html.includes('script.js?v=1.0.214') || html.includes('script.js?v=1.0.215') || html.includes('script.js?v=1.0.214') || html.includes('script.js?v=1.0.215'), 'index.html deve referenciar script.js');
+  assert.ok(html.includes('style.css?v=1.0.213') || html.includes('style.css?v=1.0.214') || html.includes('style.css?v=1.0.215') || html.includes('style.css?v=1.0.214') || html.includes('style.css?v=1.0.215'), 'index.html deve referenciar style.css');
+  assert.ok(swContent.includes('vortex-vip-v1.0.213') || swContent.includes('vortex-vip-v1.0.214') || swContent.includes('vortex-vip-v1.0.215') || swContent.includes('vortex-vip-v1.0.214') || swContent.includes('vortex-vip-v1.0.215'), 'sw.js deve conter cache');
 
   // 2. Proteção contra ReferenceError: isMyStory is not defined
   assert.ok(!scriptContent.includes('if (!isMyStory)'), 'script.js não deve referenciar isMyStory diretamente fora do escopo');
@@ -14048,7 +14048,7 @@ test('Correção ReferenceError isMyStory e Otimização do Quota Exceeded (429)
 });
 
 
-test('Sistema de Baú Diário, Moedas e Saque Pix no Tema VORTEX VIP (v1.0.214)', async () => {
+test('Sistema de Baú Diário, Moedas e Saque Pix no Tema VORTEX VIP (v1.0.215)', async () => {
   const env = createTestEnvironment();
   const win = env.sandbox.window;
   const html = fs.readFileSync('public/index.html', 'utf8');
@@ -14056,12 +14056,12 @@ test('Sistema de Baú Diário, Moedas e Saque Pix no Tema VORTEX VIP (v1.0.214)'
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
 
-  // 1. Integridade de Versionamento (v1.0.214)
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.214', 'script.js deve ter versão 1.0.214');
-  assert.strictEqual(versionJson.version, '1.0.214', 'version.json deve ter versão 1.0.214');
-  assert.ok(html.includes('script.js?v=1.0.214'), 'index.html deve referenciar script.js?v=1.0.214');
-  assert.ok(html.includes('style.css?v=1.0.214'), 'index.html deve referenciar style.css?v=1.0.214');
-  assert.ok(swContent.includes('vortex-vip-v1.0.214'), 'sw.js deve conter cache vortex-vip-v1.0.214');
+  // 1. Integridade de Versionamento (v1.0.215)
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.215', 'script.js deve ter versão 1.0.215');
+  assert.strictEqual(versionJson.version, '1.0.215', 'version.json deve ter versão 1.0.215');
+  assert.ok(html.includes('script.js?v=1.0.215'), 'index.html deve referenciar script.js?v=1.0.215');
+  assert.ok(html.includes('style.css?v=1.0.215'), 'index.html deve referenciar style.css?v=1.0.215');
+  assert.ok(swContent.includes('vortex-vip-v1.0.215'), 'sw.js deve conter cache vortex-vip-v1.0.215');
 
   // 2. Elementos DOM no HTML
   assert.ok(html.includes('id="daily-chest-header-btn"'), 'Botão do Baú Diário deve existir no cabeçalho');
@@ -14131,7 +14131,7 @@ test('Sistema de Baú Diário, Moedas e Saque Pix no Tema VORTEX VIP (v1.0.214)'
   await env.sandbox.submitChestWithdrawal();
   assert.strictEqual(env.sandbox.currentProfile.rewardCoinsBalance, 0.90, 'Saldo não deve ser alterado quando abaixo de R$ 1,00');
 
-  // 7. Atingiu a Meta (ou acumulou R$ 2,00+): Saque de R$ 1,00 com Saldo Zerando Conforme a Regra
+  // 7. Atingiu a Meta (ou acumulou R$ 2,00+): Saque de R$ 1,00 sem zerar (saldo permanece até sacar tudo)
   // Simular usuário com R$ 2,50 acumulado
   env.sandbox.currentProfile.rewardCoinsBalance = 2.50;
   assert.strictEqual(env.sandbox.canWithdrawDailyChest(), true, 'Saldo de R$ 2,50 permite saque');
@@ -14155,12 +14155,19 @@ test('Sistema de Baú Diário, Moedas e Saque Pix no Tema VORTEX VIP (v1.0.214)'
   assert.strictEqual(withdrawDocAdded.pixKey, '123.456.789-00', 'Chave Pix informada deve ser gravada');
   assert.strictEqual(withdrawDocAdded.status, 'pendente', 'Status inicial do saque deve ser pendente');
 
-  // Conforme o pedido do usuário: se tiver R$ 2,00 ou mais o saldo vem zerando para juntar de novo no baú diário
-  assert.strictEqual(env.sandbox.currentProfile.rewardCoinsBalance, 0, 'O saldo deve zerar após o saque de R$ 1,00 para reiniciar o acúmulo');
+  // Regra atualizada: Se tiver R$ 2,00 ou mais NÃO zera! O saldo restante (R$ 1,50) permanece na conta até sacar tudo
+  assert.strictEqual(env.sandbox.currentProfile.rewardCoinsBalance, 1.50, 'Ao sacar R$ 1,00 de R$ 2,50, o saldo não deve zerar: o restante (R$ 1,50) permanece na conta');
   assert.strictEqual(env.sandbox.currentProfile.lastWithdrawalDate, today, 'Data do último saque deve ser gravada como hoje');
 
-  // 8. Limite de 1 saque por dia
-  assert.strictEqual(env.sandbox.canWithdrawDailyChest(), false, 'Não deve permitir um segundo saque no mesmo dia');
+  // 8. Limite de 1 saque por dia (mesmo que o saldo seja alto)
+  assert.strictEqual(env.sandbox.canWithdrawDailyChest(), false, 'Não deve permitir um segundo saque no mesmo dia mesmo com saldo restante');
+
+  // 8b. Saque no dia seguinte até esgotar o saldo
+  env.sandbox.currentProfile.lastWithdrawalDate = '2026-10-01'; // simular dia seguinte
+  assert.strictEqual(env.sandbox.canWithdrawDailyChest(), true, 'No dia seguinte, com saldo de R$ 1,50, usuário pode sacar novamente');
+  await env.sandbox.submitChestWithdrawal();
+  assert.strictEqual(env.sandbox.currentProfile.rewardCoinsBalance, 0.50, 'Após o segundo saque de R$ 1,00, o saldo restante deve ser R$ 0,50');
+  assert.strictEqual(env.sandbox.canWithdrawDailyChest(), false, 'Com saldo de R$ 0,50 (< R$ 1,00), o saque fica bloqueado até juntar novamente');
 
   // 9. Gestão no Painel ADM
   let loadedWithdrawals = await env.sandbox.loadAdminWithdrawals();

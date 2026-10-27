@@ -5,19 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
     <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.199">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.214">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.214">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.214">
-    <link rel="stylesheet" href="style.css?v=1.0.214">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.215">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.215">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.215">
+    <link rel="stylesheet" href="style.css?v=1.0.215">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.214">
+    <link rel="manifest" href="manifest.json?v=1.0.215">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.214">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.214">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.215">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.215">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -2003,7 +2003,7 @@
                     <button id="subscribe-btn" class="danger-btn vip-action-btn">Assinar</button>
                 </div>
 
-                <!-- Card de Baú Diário e Moedas VIP (v1.0.214) -->
+                <!-- Card de Baú Diário e Moedas VIP (v1.0.215) -->
                 <div class="setting-item daily-chest-card-highlight" id="daily-chest-setting-item">
                     <div class="setting-info">
                         <span class="daily-chest-highlight-text"><i data-lucide="gift"></i> Baú Diário &amp; Moedas 🪙</span>
@@ -2479,7 +2479,7 @@
                     </div>
                 </div>
 
-                <!-- Aba de Saques do Baú Diário (v1.0.214) -->
+                <!-- Aba de Saques do Baú Diário (v1.0.215) -->
                 <div id="admin-view-withdrawals" class="admin-view">
                     <div class="admin-filter-bar">
                         <div class="admin-search-wrapper">
@@ -4523,7 +4523,7 @@
             </div>
         </div>
 
-        <!-- Modal do Baú Diário (Recompensa Diária - v1.0.214) -->
+        <!-- Modal do Baú Diário (Recompensa Diária - v1.0.215) -->
         <div id="daily-chest-modal" class="custom-modal-overlay" style="display:none;" aria-hidden="true">
             <div class="custom-modal-card daily-chest-modal-card">
                 <div class="panel-top-bar" style="padding:14px 18px;">
@@ -4582,8 +4582,8 @@
                             <span>Meta para saque: <strong>R$ 1,00</strong> (limite de 1 saque por dia).</span>
                         </div>
                         <div class="daily-chest-rule-item">
-                            <i data-lucide="refresh-cw"></i>
-                            <span>Valor do saque: <strong>R$ 1,00</strong>. Ao sacar, o saldo zera para começar a juntar de novo!</span>
+                            <i data-lucide="shield-check"></i>
+                            <span>Saldo acumulado: se atingir <strong>R$ 2,00 ou mais</strong>, o saldo não zera! O restante fica seguro na sua conta até você sacar tudo (1 saque por dia).</span>
                         </div>
                     </div>
 
@@ -4599,7 +4599,7 @@
             </div>
         </div>
 
-        <!-- Modal de Saque Pix (Baú Diário - v1.0.214) -->
+        <!-- Modal de Saque Pix (Baú Diário - v1.0.215) -->
         <div id="daily-chest-withdraw-modal" class="custom-modal-overlay" style="display:none;" aria-hidden="true">
             <div class="custom-modal-card daily-chest-withdraw-card">
                 <div class="panel-top-bar" style="padding:14px 18px;">
@@ -4618,11 +4618,15 @@
                             <span class="withdraw-summary-label">Saldo Atual:</span>
                             <span class="withdraw-summary-val secondary" id="withdraw-modal-balance">R$ 0,00</span>
                         </div>
+                        <div class="withdraw-summary-item">
+                            <span class="withdraw-summary-label">Saldo Restante:</span>
+                            <span class="withdraw-summary-val" id="withdraw-modal-remaining" style="color:#00e676;">R$ 0,00</span>
+                        </div>
                     </div>
 
                     <div class="daily-chest-withdraw-notice">
                         <i data-lucide="alert-circle"></i>
-                        <span><strong>Regra de Saque:</strong> É permitido sacar exatamente <strong>R$ 1,00</strong> por dia (limite de 1 saque por dia). Ao confirmar, seu saldo acumulado será zerado para você voltar a juntar moedas no baú diário!</span>
+                        <span id="daily-chest-withdraw-notice-text"><strong>Regra de Saque:</strong> Saque fixo de <strong>R$ 1,00</strong> por dia (limite de 1 saque a cada 24 horas). Se você tiver R$ 2,00 ou mais acumulados, o saldo <strong>não zera</strong>: o valor restante permanece seguro na sua conta para você sacar nos próximos dias (1 por dia) até sacar tudo!</span>
                     </div>
 
                     <div class="company-btn-input-group">
@@ -4660,6 +4664,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.214" defer></script>
+    <script type="module" src="script.js?v=1.0.215" defer></script>
 </body>
 </html>

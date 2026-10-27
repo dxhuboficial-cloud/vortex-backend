@@ -20679,7 +20679,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.214';
+export const CURRENT_APP_VERSION = '1.0.215';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -35524,7 +35524,7 @@ if (typeof window !== 'undefined') {
     window.buildCompanyButtonCardHTML = buildCompanyButtonCardHTML;
     window.openForwardModal = openForwardModal;
 
-    // Baú Diário e Saque Pix (v1.0.214)
+    // Baú Diário e Saque Pix (v1.0.215)
     window.openDailyChestModal = openDailyChestModal;
     window.closeDailyChestModal = closeDailyChestModal;
     window.claimDailyChestReward = claimDailyChestReward;
@@ -35565,7 +35565,7 @@ if (typeof window !== 'undefined') {
 
 
 /* ==========================================================================
-   VORTEX VIP ⚡ - BAÚ DIÁRIO & SAQUE PIX (v1.0.214)
+   VORTEX VIP ⚡ - BAÚ DIÁRIO & SAQUE PIX (v1.0.215)
    ========================================================================== */
 
 export function getTodayDateString() {
@@ -35725,13 +35725,17 @@ export function updateDailyChestUI() {
 
     if (balance >= 1.00) {
         if (goalHint) {
-            goalHint.innerHTML = '🎉 <strong style="color:#34c759;">Meta alcançada!</strong> Você já pode solicitar o saque de R$ 1,00 via Pix!';
+            if (balance >= 2.00) {
+                goalHint.innerHTML = '🎉 <strong style="color:#ffe600;">Saldo acumulado (' + formatBRLCurrency(balance) + ')!</strong> O saldo não zera: você pode sacar R$ 1,00 por dia e o restante continuará seguro na sua conta até sacar tudo!';
+            } else {
+                goalHint.innerHTML = '🎉 <strong style="color:#34c759;">Meta alcançada!</strong> Você já pode solicitar o saque de R$ 1,00 via Pix!';
+            }
         }
         if (modalWithdrawBtn) {
             modalWithdrawBtn.style.display = 'inline-flex';
             if (isWithdrawnToday) {
                 modalWithdrawBtn.disabled = true;
-                modalWithdrawBtn.innerHTML = '<i data-lucide="clock"></i> <span>Limite de 1 Saque por dia Atingido</span>';
+                modalWithdrawBtn.innerHTML = '<i data-lucide="clock"></i> <span>Saque Realizado Hoje (Volte Amanhã)</span>';
             } else {
                 modalWithdrawBtn.disabled = false;
                 modalWithdrawBtn.innerHTML = '<i data-lucide="banknote"></i> <span>Solicitar Saque de R$ 1,00 Pix 💸</span>';
@@ -35751,6 +35755,11 @@ export function updateDailyChestUI() {
     const withdrawModalBal = document.getElementById('withdraw-modal-balance');
     if (withdrawModalBal) {
         withdrawModalBal.textContent = formatBRLCurrency(balance);
+    }
+    const withdrawModalRem = document.getElementById('withdraw-modal-remaining');
+    if (withdrawModalRem) {
+        const remaining = Math.round(Math.max(0, balance - 1.00) * 100) / 100;
+        withdrawModalRem.textContent = formatBRLCurrency(remaining);
     }
 
     if (window.lucide && typeof window.lucide.createIcons === 'function') {
@@ -35912,6 +35921,7 @@ export async function submitChestWithdrawal() {
             pixKeyType: pixKeyType,
             amount: 1.00,
             previousBalance: balance,
+            remainingBalance: Math.round(Math.max(0, balance - 1.00) * 100) / 100,
             status: 'pendente',
             createdAt: Date.now(),
             createdDate: today
@@ -35919,13 +35929,16 @@ export async function submitChestWithdrawal() {
 
         await addDoc(collection(db, 'withdrawals'), withdrawalData);
 
-        // Conforme a regra do usuário: o saldo vem zerando ele junta com o baú diário
-        currentProfile.rewardCoinsBalance = 0;
+        // Regra atualizada: Se tiver R$ 2,00 ou mais, NÃO zera!
+        // O valor restante permanece na conta até que o usuário saque tudo (limite de 1 saque por dia se o valor for alto).
+        const remainingBalance = Math.round(Math.max(0, balance - 1.00) * 100) / 100;
+
+        currentProfile.rewardCoinsBalance = remainingBalance;
         currentProfile.lastWithdrawalDate = today;
         currentProfile.lastWithdrawalTimestamp = Date.now();
 
         await updateDoc(doc(db, 'users', currentUser.uid), {
-            rewardCoinsBalance: 0,
+            rewardCoinsBalance: remainingBalance,
             lastWithdrawalDate: today,
             lastWithdrawalTimestamp: Date.now()
         });
@@ -35934,7 +35947,11 @@ export async function submitChestWithdrawal() {
         closeDailyChestWithdrawModal();
         closeDailyChestModal();
 
-        showToast('Saque Solicitado! 💸', 'Seu saque de R$ 1,00 foi enviado ao ADM e será processado via Pix.', 'green');
+        const successMsg = remainingBalance > 0
+            ? ('Seu saque de R$ 1,00 foi solicitado via Pix! O saldo restante de ' + formatBRLCurrency(remainingBalance) + ' continua seguro na sua conta e poderá ser sacado amanhã (1 saque/dia).')
+            : 'Seu saque de R$ 1,00 foi enviado ao ADM e será processado via Pix.';
+
+        showToast('Saque Solicitado! 💸', successMsg, 'green');
     } catch (err) {
         console.error('Erro ao registrar saque:', err);
         if (errorBanner) {
