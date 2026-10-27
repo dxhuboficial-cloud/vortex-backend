@@ -1773,21 +1773,50 @@ function usernameValidationMessage(value) {
     return '';
 }
 
-async function ensureUsernameReservation(profile) {
-    const usernameKey = normalizeUsername(profile.username || '');
-    if (!profile.uid || !isValidUsername(usernameKey)) return;
+let isReservingUsername = false;
 
-    const usernameRef = doc(db, 'usernames', usernameKey);
-    await runTransaction(db, async (transaction) => {
-        const usernameSnap = await transaction.get(usernameRef);
-        if (!usernameSnap.exists()) {
-            transaction.set(usernameRef, {
-                uid: profile.uid,
-                username: `@${usernameKey}`,
-                updatedAt: Date.now()
-            });
+export async function ensureUsernameReservation(profile) {
+    if (!profile || !profile.uid) return;
+    const usernameKey = normalizeUsername(profile.username || '');
+    if (!isValidUsername(usernameKey)) return;
+
+    const cacheKey = `vortex_username_verified_${profile.uid}`;
+    if (typeof localStorage !== 'undefined' && localStorage.getItem(cacheKey) === usernameKey) {
+        return;
+    }
+
+    if (isReservingUsername) return;
+    isReservingUsername = true;
+
+    try {
+        const usernameRef = doc(db, 'usernames', usernameKey);
+        await runTransaction(db, async (transaction) => {
+            const usernameSnap = await transaction.get(usernameRef);
+            if (!usernameSnap.exists()) {
+                transaction.set(usernameRef, {
+                    uid: profile.uid,
+                    username: `@${usernameKey}`,
+                    updatedAt: Date.now()
+                });
+            }
+        });
+        if (typeof localStorage !== 'undefined') {
+            localStorage.setItem(cacheKey, usernameKey);
         }
-    });
+    } catch (error) {
+        const msg = String(error?.message || '');
+        const code = String(error?.code || '');
+        if (code === 'resource-exhausted' || msg.includes('Quota exceeded') || msg.includes('429')) {
+            console.warn('[VORTEX] Cota do Firestore temporariamente atingida ao verificar username; continuando localmente.');
+            if (typeof sessionStorage !== 'undefined') {
+                sessionStorage.setItem('vortex_quota_exceeded_username', '1');
+            }
+        } else {
+            console.warn('[VORTEX] Aviso ao reservar username inicial:', error);
+        }
+    } finally {
+        isReservingUsername = false;
+    }
 }
 
 /* ==========================================================================
@@ -1853,9 +1882,11 @@ onAuthStateChanged(auth, async (user) => {
     if (typeof updateActiveChatMuteUI === 'function') updateActiveChatMuteUI();
         if (typeof applyPinnedSortToChatList === 'function') applyPinnedSortToChatList();
 
-        ensureUsernameReservation(currentProfile).catch((error) => {
-            console.error('Erro ao reservar username inicial:', error);
-        });
+        if (typeof sessionStorage === 'undefined' || !sessionStorage.getItem('vortex_quota_exceeded_username')) {
+            ensureUsernameReservation(currentProfile).catch((error) => {
+                console.warn('[VORTEX] Aviso ao reservar username inicial:', error);
+            });
+        }
 
         setupPresence(user.uid);
 
@@ -10145,7 +10176,14 @@ document.getElementById('story-viewer')?.addEventListener('contextmenu', (e) => 
 
 document.getElementById('download-story-btn')?.addEventListener('click', (e) => {
     e.stopPropagation();
-    if (!isMyStory) {
+    const curStory = activeStoryList && activeStoryList[currentStoryIndex];
+    const isOwner = Boolean(
+        currentUser && (
+            (curStory && curStory.authorUid === currentUser.uid) ||
+            (currentStoryAuthor && (currentStoryAuthor.authorUid === currentUser.uid || currentStoryAuthor.uid === currentUser.uid))
+        )
+    );
+    if (!isOwner) {
         showToast('Protegido', 'Você não pode baixar mídias de outros membros no Vortex VIP.', 'orange');
         return;
     }
@@ -20635,7 +20673,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.212';
+export const CURRENT_APP_VERSION = '1.0.213';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -31879,6 +31917,9 @@ document.getElementById('save-profile-btn')?.addEventListener('click', async () 
     currentProfile.name = name;
     currentProfile.surname = surname;
     currentProfile.username = username;
+    if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(`vortex_username_verified_${currentUser.uid}`, usernameKey);
+    }
     currentProfile.isPrivateAccount = Boolean(document.getElementById('profile-private-toggle')?.checked);
     syncPrivateAccountToggles(currentProfile.isPrivateAccount);
     currentProfile.isStoreEnabled = isStoreEnabled;
