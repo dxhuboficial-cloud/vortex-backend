@@ -20725,7 +20725,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.223';
+export const CURRENT_APP_VERSION = '1.0.224';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -32160,6 +32160,8 @@ document.getElementById('settings-btn')?.addEventListener('click', () => {
     if (sPrivateToggle) {
         sPrivateToggle.checked = Boolean(currentProfile?.isPrivateAccount);
     }
+    const verBadge = document.getElementById('app-version-display-badge');
+    if (verBadge) verBadge.innerText = `v${CURRENT_APP_VERSION} ⚡`;
     document.getElementById('settings-panel')?.classList.add('active');
     if (typeof updateCompanyChatbotSettingsUI === 'function') updateCompanyChatbotSettingsUI();
     updateInstallUIVisibility();

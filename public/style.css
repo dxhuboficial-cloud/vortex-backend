@@ -24036,51 +24036,119 @@ video::-internal-media-controls-download-button {
     }
 }
 
-/* Rodapé de Versão Oficial nas Configurações (v1.0.223) */
-.app-version-info-footer {
+/* Card de Versão Oficial nas Configurações (v1.0.224) */
+.app-version-card {
+    background: linear-gradient(135deg, rgba(16, 24, 39, 0.85), rgba(8, 12, 20, 0.95)) !important;
+    border: 1px solid rgba(0, 255, 102, 0.25) !important;
+    border-radius: 14px;
+    padding: 12px 14px;
+    margin: 16px 0 12px 0;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    padding: 18px 12px 10px;
-    margin-top: 10px;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-    text-align: center;
+    gap: 8px;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.5), inset 0 0 12px rgba(0, 255, 102, 0.05);
+    transition: all 0.25s ease;
 }
 
-.app-version-brand {
+.app-version-card:hover {
+    border-color: rgba(0, 255, 102, 0.45) !important;
+    box-shadow: 0 6px 22px rgba(0, 255, 102, 0.15), inset 0 0 16px rgba(0, 255, 102, 0.08);
+}
+
+.app-version-header-row {
     display: flex;
     align-items: center;
-    gap: 6px;
-    font-size: 0.85rem;
-    font-weight: 700;
-    color: #e2e8f0;
-    letter-spacing: 0.5px;
+    justify-content: space-between;
+    gap: 10px;
 }
 
-.app-version-icon {
-    width: 16px;
-    height: 16px;
-    color: #00ff66;
-    filter: drop-shadow(0 0 6px rgba(0, 255, 102, 0.7));
+.app-version-brand-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
-.app-version-badge {
-    display: inline-block;
-    font-size: 0.78rem;
+.app-version-icon-img {
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    object-fit: contain;
+    filter: drop-shadow(0 0 6px rgba(0, 255, 102, 0.6));
+    flex-shrink: 0;
+}
+
+.app-version-brand-name {
+    font-size: 0.92rem;
     font-weight: 800;
-    padding: 4px 12px;
+    color: #f8fafc;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+}
+
+.app-version-pill-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.74rem;
+    font-weight: 800;
+    padding: 3px 10px;
     border-radius: 20px;
-    background: linear-gradient(135deg, rgba(0, 255, 102, 0.15), rgba(0, 229, 255, 0.12));
+    background: rgba(0, 255, 102, 0.12);
     color: #00ff66;
     border: 1px solid rgba(0, 255, 102, 0.35);
     box-shadow: 0 0 10px rgba(0, 255, 102, 0.2);
+    white-space: nowrap;
+    letter-spacing: 0.3px;
 }
 
-.app-version-hint {
-    font-size: 0.7rem;
+.app-version-status-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.app-version-status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #00ff66;
+    box-shadow: 0 0 8px #00ff66;
+    flex-shrink: 0;
+    animation: vortexPulseDot 2s infinite ease-in-out;
+}
+
+@keyframes vortexPulseDot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.85); }
+}
+
+.app-version-status-text {
+    font-size: 0.74rem;
     color: var(--text-dim, #94a3b8);
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+@media (max-width: 380px) {
+    .app-version-card {
+        padding: 10px 12px;
+        gap: 6px;
+    }
+
+    .app-version-brand-name {
+        font-size: 0.82rem;
+    }
+
+    .app-version-pill-badge {
+        font-size: 0.68rem;
+        padding: 2px 7px;
+    }
+
+    .app-version-status-text {
+        font-size: 0.68rem;
+    }
 }
 
 
