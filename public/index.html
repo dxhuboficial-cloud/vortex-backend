@@ -5,19 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
     <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.199">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.218">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.218">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.218">
-    <link rel="stylesheet" href="style.css?v=1.0.218">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.219">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.219">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.219">
+    <link rel="stylesheet" href="style.css?v=1.0.219">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.218">
+    <link rel="manifest" href="manifest.json?v=1.0.219">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.218">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.218">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.219">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.219">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -2037,19 +2037,22 @@
                     </div>
                 </div>
 
-                <!-- Card de Chatbot de Respostas Automáticas (Exclusivo Conta Empresa - v1.0.218) -->
+                <!-- Card de Chatbot de Respostas Automáticas (Exclusivo Conta Empresa - v1.0.219) -->
                 <div class="setting-item company-chatbot-card-highlight" id="company-chatbot-setting-item" style="display: none;">
-                    <div class="setting-info">
-                        <span class="company-chatbot-highlight-text"><i data-lucide="bot"></i> Chatbot de Resposta Automática 🤖</span>
-                        <small id="company-chatbot-setting-desc">Configure perguntas e respostas automáticas para seus clientes (Exclusivo Conta Empresa).</small>
+                    <div class="company-chatbot-setting-inner">
+                        <div class="company-chatbot-header-row">
+                            <span class="company-chatbot-highlight-text">
+                                <i data-lucide="bot"></i> Chatbot de Resposta Automática 🤖
+                            </span>
+                            <button id="open-company-chatbot-btn" type="button" class="danger-btn company-chatbot-open-action-btn">
+                                <i data-lucide="sliders"></i> <span>Configurar</span>
+                            </button>
+                        </div>
                         <div class="company-chatbot-status-row">
                             <span id="company-chatbot-setting-status-badge" class="company-chatbot-setting-badge inactive">Desativado</span>
                             <span id="company-chatbot-setting-rules-counter" class="company-chatbot-rules-counter">0 regras ativas</span>
                         </div>
                     </div>
-                    <button id="open-company-chatbot-btn" type="button" class="danger-btn company-chatbot-open-action-btn">
-                        <i data-lucide="sliders"></i> <span>Configurar</span>
-                    </button>
                 </div>
 
                 <div class="setting-item admin-setting-row" id="admin-settings-item" style="display: none;">
@@ -4801,6 +4804,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.218" defer></script>
+    <script type="module" src="script.js?v=1.0.219" defer></script>
 </body>
 </html>

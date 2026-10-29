@@ -22663,7 +22663,7 @@ video::-internal-media-controls-download-button {
 }
 
 /* ==========================================================================
-   11. CHATBOT DE RESPOSTAS AUTOMÁTICAS - CONTA EMPRESA (v1.0.218)
+   11. CHATBOT DE RESPOSTAS AUTOMÁTICAS - CONTA EMPRESA (v1.0.219)
    ========================================================================== */
 
 /* Card de Destaque nas Configurações */
@@ -22671,29 +22671,48 @@ video::-internal-media-controls-download-button {
     background: linear-gradient(135deg, rgba(0, 229, 255, 0.08) 0%, rgba(0, 119, 255, 0.04) 100%) !important;
     border: 1px solid rgba(0, 229, 255, 0.28) !important;
     border-radius: 14px;
-    padding: 14px 16px;
+    padding: 12px 14px;
     box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4), inset 0 0 12px rgba(0, 229, 255, 0.06);
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.company-chatbot-setting-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+}
+
+.company-chatbot-header-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    width: 100%;
+    gap: 10px;
 }
 
 .company-chatbot-highlight-text {
-    font-size: 0.98rem;
+    font-size: 0.95rem;
     font-weight: 700;
     color: #00e5ff;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     gap: 8px;
-    margin-bottom: 2px;
+    margin: 0;
+    line-height: 1.2;
+    flex: 1;
 }
 
 .company-chatbot-status-row {
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-top: 6px;
+    margin: 0;
 }
 
 .company-chatbot-setting-badge {
@@ -22728,9 +22747,9 @@ video::-internal-media-controls-download-button {
     background: linear-gradient(135deg, #00e5ff, #0099ff) !important;
     color: #000000 !important;
     font-weight: 800;
-    font-size: 0.82rem;
-    padding: 8px 14px;
-    border-radius: 10px;
+    font-size: 0.8rem;
+    padding: 7px 13px;
+    border-radius: 9px;
     border: none;
     cursor: pointer;
     display: inline-flex;
@@ -23350,5 +23369,14 @@ video::-internal-media-controls-download-button {
     .chatbot-info-note {
         font-size: 0.7rem;
         padding: 6px 8px;
+    }
+
+    .company-chatbot-highlight-text {
+        font-size: 0.88rem;
+    }
+
+    .company-chatbot-open-action-btn {
+        padding: 6px 11px;
+        font-size: 0.76rem;
     }
 }
