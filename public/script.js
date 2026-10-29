@@ -12717,6 +12717,9 @@ function listenToContacts() {
                         timeEl.innerText = formatMessageTime(lastData.createdAt);
                     }
 
+                    // O sino e processamento em background só ocorrem se o usuário NÃO estiver com este chat aberto no momento
+                    const isChatCurrentlyOpen = activeChatContact && (activeChatContact.uid === contactUid || activeChatContact.uid === contact.uid) && document.getElementById('chat-window')?.classList.contains('active');
+
                     // Contar mensagens não lidas enviadas pelo outro contato
                     let unreadCount = 0;
                     visibleDocs.forEach(docSnap => {
@@ -12726,14 +12729,12 @@ function listenToContacts() {
                         const isRead = (Array.isArray(m.readBy) && m.readBy.includes(currentUser.uid)) || (m.readByMap && !!m.readByMap[currentUser.uid]);
                         if (isFromOther && !m.deletedForEveryone && !isRead) {
                             unreadCount++;
-                            if (typeof processIncomingMessageForChatbot === 'function' && m.createdAt && (Date.now() - Number(m.createdAt) < 60000)) {
+                            // Se o chat já está aberto, o listener do chat aberto cuida do Chatbot em tempo real (evita duplicar envio)
+                            if (!isChatCurrentlyOpen && typeof processIncomingMessageForChatbot === 'function' && m.createdAt && (Date.now() - Number(m.createdAt) < 60000)) {
                                 processIncomingMessageForChatbot(m, docSnap.id, chatId);
                             }
                         }
                     });
-
-                    // O sino só fica visível se o usuário NÃO estiver com este chat aberto no momento
-                    const isChatCurrentlyOpen = activeChatContact && (activeChatContact.uid === contactUid || activeChatContact.uid === contact.uid) && document.getElementById('chat-window')?.classList.contains('active');
 
                     const hasUnread = unreadCount > 0 && !isChatCurrentlyOpen;
                     card.classList.toggle('unread', hasUnread);
@@ -20724,7 +20725,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.219';
+export const CURRENT_APP_VERSION = '1.0.220';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -36390,38 +36391,84 @@ export async function processIncomingMessageForChatbot(messageData, msgId = null
     }
 
     const uniqueMsgId = msgId || messageData.id || `${sender}_${messageData.createdAt}`;
+    if (!uniqueMsgId) return;
+
+    // 1. Prevenção de duplicidade em memória local
     if (processedChatbotMsgIds.has(uniqueMsgId)) return;
     processedChatbotMsgIds.add(uniqueMsgId);
 
-    const lastReply = chatbotClientCooldownMap.get(sender) || 0;
-    if (Date.now() - lastReply < 1200) return;
+    // 2. Prevenção de duplicidade entre abas / janelas (localStorage lock)
+    const storageKey = `vortex_cb_replied_${uniqueMsgId}`;
+    if (typeof localStorage !== 'undefined') {
+        try {
+            if (localStorage.getItem(storageKey)) return;
+            localStorage.setItem(storageKey, String(Date.now()));
+        } catch (_) {}
+    }
+
+    // 3. Cooldown de envio por cliente (mínimo de 3.5s entre respostas automáticas consecutivas)
+    const senderCooldownKey = `vortex_cb_cooldown_${sender}`;
+    let lastReply = chatbotClientCooldownMap.get(sender) || 0;
+    if (typeof localStorage !== 'undefined') {
+        try {
+            const storedLast = Number(localStorage.getItem(senderCooldownKey) || 0);
+            if (storedLast > lastReply) lastReply = storedLast;
+        } catch (_) {}
+    }
+    if (Date.now() - lastReply < 3500) return;
 
     // Se o cliente enviar uma pergunta não cadastrada, o Chatbot NÃO responde nada!
     const matchedRule = findMatchingChatbotRule(messageData.text, settings.rules);
     if (!matchedRule) return;
 
     chatbotClientCooldownMap.set(sender, Date.now());
+    if (typeof localStorage !== 'undefined') {
+        try {
+            localStorage.setItem(senderCooldownKey, String(Date.now()));
+        } catch (_) {}
+    }
 
     setTimeout(async () => {
         try {
             const chatId = targetChatId || [currentUser.uid, sender].sort().join('_');
-            const replyMsg = {
-                senderUid: currentUser.uid,
-                senderName: currentProfile?.name || 'Empresa',
-                senderAvatar: currentProfile?.avatar || '',
-                type: 'text',
-                text: matchedRule.response,
-                isChatbotReply: true,
-                createdAt: Date.now()
-            };
-            if (typeof db !== 'undefined' && typeof collection === 'function' && typeof addDoc === 'function') {
-                await addDoc(collection(db, 'chats', chatId, 'messages'), replyMsg);
+            const replyDocId = `cb_reply_${uniqueMsgId}`;
+
+            // 4. Idempotência absoluta no Firestore: ID determinístico para nunca criar duas mensagens
+            if (typeof db !== 'undefined') {
+                if (typeof doc === 'function' && typeof getDoc === 'function') {
+                    try {
+                        const replyDocRef = doc(db, 'chats', chatId, 'messages', replyDocId);
+                        const existingSnap = await getDoc(replyDocRef);
+                        if (existingSnap.exists()) {
+                            console.log(`[VORTEX CHATBOT] Resposta automática já registrada no Firestore para ${uniqueMsgId}. Abortando duplicata.`);
+                            return;
+                        }
+                    } catch (_) {}
+                }
+
+                const replyMsg = {
+                    senderUid: currentUser.uid,
+                    senderName: currentProfile?.name || 'Empresa',
+                    senderAvatar: currentProfile?.avatar || '',
+                    type: 'text',
+                    text: matchedRule.response,
+                    isChatbotReply: true,
+                    isChatbotReplyFor: uniqueMsgId,
+                    createdAt: Date.now()
+                };
+
+                if (typeof doc === 'function' && typeof setDoc === 'function') {
+                    const targetRef = doc(db, 'chats', chatId, 'messages', replyDocId);
+                    await setDoc(targetRef, replyMsg, { merge: true });
+                } else if (typeof collection === 'function' && typeof addDoc === 'function') {
+                    await addDoc(collection(db, 'chats', chatId, 'messages'), replyMsg);
+                }
+                console.log(`[VORTEX CHATBOT] Resposta automática única enviada para ${sender}: "${matchedRule.response}"`);
             }
-            console.log(`[VORTEX CHATBOT] Resposta automática enviada para ${sender}: "${matchedRule.response}"`);
         } catch (err) {
             console.error('[VORTEX CHATBOT] Falha ao enviar resposta automática:', err);
         }
-    }, 600);
+    }, 350);
 }
 
 export function openCompanyChatbotModal() {

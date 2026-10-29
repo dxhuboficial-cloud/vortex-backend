@@ -5,19 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
     <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.199">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.219">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.219">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.219">
-    <link rel="stylesheet" href="style.css?v=1.0.219">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.220">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.220">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.220">
+    <link rel="stylesheet" href="style.css?v=1.0.220">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.219">
+    <link rel="manifest" href="manifest.json?v=1.0.220">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.219">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.219">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.220">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.220">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -1303,17 +1303,19 @@
                         </span>
                     </div>
 
-                    <!-- Chatbot de Respostas Automáticas (Atalho Perfil) -->
+                    <!-- Chatbot de Respostas Automáticas (Atalho Perfil - v1.0.220) -->
                     <div class="setting-item profile-chatbot-quick-card">
-                        <div class="setting-info">
-                            <span class="profile-field-title">
-                                <i data-lucide="bot" class="profile-field-icon" style="color:#00e5ff;"></i> Chatbot da Empresa 🤖
-                            </span>
-                            <small>Responda perguntas de clientes automaticamente</small>
+                        <div class="profile-chatbot-inner">
+                            <div class="profile-chatbot-header-row">
+                                <span class="profile-field-title">
+                                    <i data-lucide="bot" class="profile-field-icon" style="color:#00e5ff;"></i> Chatbot da Empresa 🤖
+                                </span>
+                                <button type="button" id="profile-open-chatbot-btn" class="secondary-btn profile-chatbot-btn">
+                                    <i data-lucide="sliders"></i> <span>Configurar</span>
+                                </button>
+                            </div>
+                            <small class="profile-chatbot-subtext">Responda perguntas de clientes automaticamente</small>
                         </div>
-                        <button type="button" id="profile-open-chatbot-btn" class="secondary-btn profile-chatbot-btn">
-                            <i data-lucide="sliders"></i> <span>Configurar</span>
-                        </button>
                     </div>
 
                     <div class="setting-item">
@@ -4751,7 +4753,7 @@
                                 <i data-lucide="message-square-reply"></i>
                                 <span>Resposta enviada automaticamente pelo Chatbot:</span>
                             </label>
-                            <textarea id="chatbot-rule-response-input" class="chatbot-textarea" placeholder="Ex: Olá! Seja bem-vindo à nossa empresa! Como podemos te ajudar hoje? 😊" rows="3" maxlength="600"></textarea>
+                            <textarea id="chatbot-rule-response-input" class="chatbot-textarea" placeholder="Ex: Olá! Seja bem-vindo à nossa empresa! Como podemos te ajudar hoje? 😊" rows="2" maxlength="600"></textarea>
                             <small class="chatbot-input-hint">Esta será a resposta exata enviada para o cliente.</small>
                         </div>
 
@@ -4804,6 +4806,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.219" defer></script>
+    <script type="module" src="script.js?v=1.0.220" defer></script>
 </body>
 </html>
