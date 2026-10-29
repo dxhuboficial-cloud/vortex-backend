@@ -21874,37 +21874,94 @@ video::-internal-media-controls-download-button {
 
 /* 3. Modal do Baú Diário */
 .daily-chest-modal-card {
-    max-width: 440px;
-    width: 95%;
+    max-width: 400px;
+    width: 94%;
+    max-height: 90vh;
+    max-height: 90dvh;
     border-radius: 18px;
     background: var(--bg-secondary, #151525);
     border: 1px solid rgba(255, 215, 0, 0.3);
     box-shadow: 0 10px 35px rgba(0, 0, 0, 0.8), 0 0 25px rgba(255, 215, 0, 0.15);
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.daily-chest-top-bar {
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(255, 215, 0, 0.15);
+    background: rgba(0, 0, 0, 0.25);
+    flex-shrink: 0;
+}
+
+.daily-chest-top-bar .modal-title {
+    font-size: 0.96rem;
+    font-weight: 700;
+    color: #ffd700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+}
+
+.daily-chest-top-bar .modal-title i,
+.daily-chest-top-bar .modal-title svg {
+    width: 17px;
+    height: 17px;
+    min-width: 17px;
+    min-height: 17px;
+    color: #ffd700;
+    stroke: #ffd700;
+    flex-shrink: 0;
 }
 
 .daily-chest-modal-body {
-    padding: 10px 18px 22px;
+    padding: 10px 14px 18px;
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 10px;
     align-items: center;
     text-align: center;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Scrollbar fina e elegante para o baú diário */
+.daily-chest-modal-body::-webkit-scrollbar {
+    width: 4px;
+}
+.daily-chest-modal-body::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.15);
+}
+.daily-chest-modal-body::-webkit-scrollbar-thumb {
+    background: rgba(255, 215, 0, 0.35);
+    border-radius: 4px;
+}
+.daily-chest-modal-body::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 215, 0, 0.6);
 }
 
 .daily-chest-stage {
     position: relative;
     width: 100%;
-    height: 150px;
+    height: 105px;
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
 }
 
 .daily-chest-glow {
     position: absolute;
-    width: 130px;
-    height: 130px;
+    width: 100px;
+    height: 100px;
     background: radial-gradient(circle, rgba(255, 215, 0, 0.35) 0%, rgba(255, 215, 0, 0) 70%);
     border-radius: 50%;
     pointer-events: none;
@@ -21919,8 +21976,8 @@ video::-internal-media-controls-download-button {
 /* 4. Estrutura Visual do Baú Cyberpunk */
 .daily-chest-box {
     position: relative;
-    width: 100px;
-    height: 90px;
+    width: 86px;
+    height: 76px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -21936,7 +21993,7 @@ video::-internal-media-controls-download-button {
 
 @keyframes chestFloat {
     0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-7px); }
+    50% { transform: translateY(-5px); }
 }
 
 .daily-chest-box:hover {
@@ -21945,10 +22002,10 @@ video::-internal-media-controls-download-button {
 
 .daily-chest-lid {
     position: relative;
-    width: 96px;
-    height: 38px;
+    width: 82px;
+    height: 32px;
     background: linear-gradient(180deg, #ffd700 0%, #b8860b 80%, #856108 100%);
-    border-radius: 20px 20px 6px 6px;
+    border-radius: 18px 18px 5px 5px;
     border: 2px solid #fff01f;
     box-shadow: inset 0 2px 6px rgba(255, 255, 255, 0.6), 0 3px 10px rgba(0, 0, 0, 0.5);
     display: flex;
@@ -21960,19 +22017,19 @@ video::-internal-media-controls-download-button {
 }
 
 .daily-chest-lid-lock {
-    font-size: 1.1rem;
+    font-size: 0.95rem;
     color: #fff;
     filter: drop-shadow(0 0 6px #fff01f);
 }
 
 .daily-chest-base {
     position: relative;
-    width: 90px;
-    height: 52px;
+    width: 76px;
+    height: 44px;
     background: linear-gradient(180deg, #1c1c2e 0%, #0d0d18 100%);
     border: 2px solid #ffd700;
     border-top: none;
-    border-radius: 0 0 14px 14px;
+    border-radius: 0 0 12px 12px;
     box-shadow: inset 0 0 12px rgba(255, 215, 0, 0.2), 0 8px 18px rgba(0, 0, 0, 0.7);
     display: flex;
     align-items: center;
@@ -21982,20 +22039,20 @@ video::-internal-media-controls-download-button {
 }
 
 .daily-chest-emblem {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     font-weight: 900;
-    letter-spacing: 1px;
+    letter-spacing: 0.8px;
     color: #ffd700;
     border: 1px solid rgba(255, 215, 0, 0.4);
-    padding: 2px 7px;
-    border-radius: 6px;
+    padding: 2px 6px;
+    border-radius: 5px;
     background: rgba(0, 0, 0, 0.5);
     box-shadow: 0 0 8px rgba(255, 215, 0, 0.3);
 }
 
 /* Estado Aberto / Coletado */
 .daily-chest-box.opened .daily-chest-lid {
-    transform: rotateX(-50deg) translateY(-14px);
+    transform: rotateX(-50deg) translateY(-12px);
     box-shadow: 0 -4px 14px rgba(255, 215, 0, 0.4);
 }
 
@@ -22007,11 +22064,11 @@ video::-internal-media-controls-download-button {
 /* Partículas de Moedas Pulando */
 .daily-chest-burst {
     position: absolute;
-    top: 30px;
+    top: 20px;
     left: 50%;
     transform: translateX(-50%);
-    width: 100px;
-    height: 80px;
+    width: 80px;
+    height: 60px;
     pointer-events: none;
     z-index: 10;
 }
@@ -22042,13 +22099,13 @@ video::-internal-media-controls-download-button {
 }
 
 .daily-chest-reward-title {
-    font-size: 0.9rem;
+    font-size: 0.82rem;
     color: var(--text-dim, #aaa);
     font-weight: 500;
 }
 
 .daily-chest-reward-val {
-    font-size: 1.28rem;
+    font-size: 1.18rem;
     font-weight: 900;
     color: #ffd700;
     letter-spacing: 0.4px;
@@ -22060,12 +22117,12 @@ video::-internal-media-controls-download-button {
     width: 100%;
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 12px;
-    padding: 12px 14px;
+    border-radius: 11px;
+    padding: 9px 12px;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
     text-align: left;
 }
 
@@ -22073,7 +22130,7 @@ video::-internal-media-controls-download-button {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 0.8rem;
+    font-size: 0.78rem;
 }
 
 .daily-chest-goal-label {
@@ -22084,12 +22141,12 @@ video::-internal-media-controls-download-button {
 .daily-chest-goal-counter {
     color: #ffd700;
     font-weight: 800;
-    font-size: 0.86rem;
+    font-size: 0.84rem;
 }
 
 .daily-chest-progress-bar {
     width: 100%;
-    height: 8px;
+    height: 7px;
     background: rgba(0, 0, 0, 0.45);
     border-radius: 6px;
     overflow: hidden;
@@ -22105,38 +22162,49 @@ video::-internal-media-controls-download-button {
 }
 
 .daily-chest-goal-hint {
-    font-size: 0.74rem;
+    font-size: 0.72rem;
     color: var(--text-dim, #888);
-    line-height: 1.35;
+    line-height: 1.3;
 }
 
-/* 7. Caixinha de Regras */
+/* 7. Caixinha de Regras com Alinhamento Perfeito */
 .daily-chest-rules-box {
     width: 100%;
     background: rgba(0, 0, 0, 0.25);
     border-radius: 10px;
-    padding: 10px 12px;
+    padding: 8px 11px;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
-    gap: 7px;
+    gap: 6px;
     text-align: left;
 }
 
 .daily-chest-rule-item {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 8px;
-    font-size: 0.76rem;
+    font-size: 0.74rem;
     color: var(--text-dim, #aaa);
-    line-height: 1.3;
+    line-height: 1.35;
+    text-align: left;
 }
 
-.daily-chest-rule-item i {
-    width: 14px;
-    height: 14px;
+.daily-chest-rule-item i,
+.daily-chest-rule-item svg {
+    width: 15px;
+    height: 15px;
+    min-width: 15px;
+    min-height: 15px;
     color: #ffd700;
+    stroke: #ffd700;
     flex-shrink: 0;
+    margin-top: 1.5px;
+}
+
+.daily-chest-rule-item span {
+    flex: 1;
+    word-break: break-word;
 }
 
 .daily-chest-rule-item strong {
@@ -22148,14 +22216,14 @@ video::-internal-media-controls-download-button {
     width: 100%;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
 }
 
 .daily-chest-claim-action {
     width: 100%;
-    padding: 11px;
+    padding: 10px 14px;
     border-radius: 12px;
-    font-size: 0.92rem;
+    font-size: 0.88rem;
     font-weight: 800;
     background: linear-gradient(135deg, #ffd700, #ffb300) !important;
     color: #000 !important;
@@ -22167,6 +22235,7 @@ video::-internal-media-controls-download-button {
     gap: 8px;
     box-shadow: 0 4px 16px rgba(255, 215, 0, 0.35);
     transition: all 0.2s ease;
+    min-height: 40px;
 }
 
 .daily-chest-claim-action:disabled {
@@ -22178,9 +22247,9 @@ video::-internal-media-controls-download-button {
 
 .daily-chest-to-withdraw-action {
     width: 100%;
-    padding: 10px;
+    padding: 8px 12px;
     border-radius: 12px;
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     font-weight: 700;
     background: rgba(52, 199, 89, 0.15) !important;
     border: 1px solid rgba(52, 199, 89, 0.4) !important;
@@ -22191,6 +22260,7 @@ video::-internal-media-controls-download-button {
     justify-content: center;
     gap: 7px;
     transition: all 0.2s ease;
+    min-height: 36px;
 }
 
 .daily-chest-to-withdraw-action:hover {
@@ -22199,20 +22269,45 @@ video::-internal-media-controls-download-button {
 
 /* 9. Modal de Saque Pix do Baú */
 .daily-chest-withdraw-card {
-    max-width: 440px;
-    width: 95%;
+    max-width: 400px;
+    width: 94%;
+    max-height: 90vh;
+    max-height: 90dvh;
     border-radius: 18px;
     background: var(--bg-secondary, #151525);
     border: 1px solid rgba(52, 199, 89, 0.3);
     box-shadow: 0 10px 35px rgba(0, 0, 0, 0.8), 0 0 25px rgba(52, 199, 89, 0.15);
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
 .daily-chest-withdraw-content {
-    padding: 14px 18px 22px;
+    padding: 12px 14px 18px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Scrollbar fina para modal de saque */
+.daily-chest-withdraw-content::-webkit-scrollbar {
+    width: 4px;
+}
+.daily-chest-withdraw-content::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.15);
+}
+.daily-chest-withdraw-content::-webkit-scrollbar-thumb {
+    background: rgba(52, 199, 89, 0.35);
+    border-radius: 4px;
+}
+.daily-chest-withdraw-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(52, 199, 89, 0.6);
 }
 
 .daily-chest-withdraw-summary {
@@ -22221,25 +22316,25 @@ video::-internal-media-controls-download-button {
     background: rgba(0, 0, 0, 0.35);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 12px;
-    padding: 12px 14px;
+    padding: 10px 12px;
 }
 
 .withdraw-summary-item {
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    gap: 2px;
 }
 
 .withdraw-summary-label {
-    font-size: 0.74rem;
+    font-size: 0.72rem;
     color: var(--text-dim, #aaa);
     text-transform: uppercase;
     letter-spacing: 0.4px;
 }
 
 .withdraw-summary-val {
-    font-size: 1.15rem;
+    font-size: 1.1rem;
     font-weight: 800;
     color: #34c759;
 }
@@ -22251,22 +22346,213 @@ video::-internal-media-controls-download-button {
 .daily-chest-withdraw-notice {
     display: flex;
     align-items: flex-start;
-    gap: 10px;
+    gap: 8px;
     background: rgba(255, 165, 0, 0.08);
     border: 1px solid rgba(255, 165, 0, 0.25);
     border-radius: 10px;
-    padding: 10px 12px;
-    font-size: 0.78rem;
+    padding: 8px 10px;
+    font-size: 0.76rem;
     color: var(--text-main, #e0e0e0);
-    line-height: 1.4;
+    line-height: 1.35;
 }
 
-.daily-chest-withdraw-notice i {
-    width: 18px;
-    height: 18px;
+.daily-chest-withdraw-notice i,
+.daily-chest-withdraw-notice svg {
+    width: 16px;
+    height: 16px;
+    min-width: 16px;
+    min-height: 16px;
     color: #ffa500;
+    stroke: #ffa500;
     flex-shrink: 0;
     margin-top: 1px;
+}
+
+/* Responsividade Especial para Telas Menores de Celular (Baú Diário & Saque) */
+@media (max-width: 440px), (max-height: 740px) {
+    .daily-chest-modal-card,
+    .daily-chest-withdraw-card {
+        width: 95%;
+        max-width: 360px;
+        max-height: 92vh;
+        max-height: 92dvh;
+        border-radius: 15px;
+    }
+
+    .daily-chest-top-bar {
+        padding: 8px 12px;
+    }
+
+    .daily-chest-top-bar .modal-title {
+        font-size: 0.88rem;
+        gap: 6px;
+    }
+
+    .daily-chest-top-bar .modal-title i,
+    .daily-chest-top-bar .modal-title svg {
+        width: 15px;
+        height: 15px;
+        min-width: 15px;
+        min-height: 15px;
+    }
+
+    .daily-chest-modal-body {
+        padding: 8px 12px 14px;
+        gap: 8px;
+    }
+
+    .daily-chest-stage {
+        height: 80px;
+        margin-bottom: 2px;
+    }
+
+    .daily-chest-glow {
+        width: 80px;
+        height: 80px;
+    }
+
+    .daily-chest-box {
+        transform: scale(0.82);
+    }
+
+    .daily-chest-box:hover {
+        transform: scale(0.86);
+    }
+
+    .daily-chest-reward-banner {
+        gap: 1px;
+    }
+
+    .daily-chest-reward-title {
+        font-size: 0.76rem;
+    }
+
+    .daily-chest-reward-val {
+        font-size: 1.05rem;
+    }
+
+    .daily-chest-goal-card {
+        padding: 7px 10px;
+        gap: 5px;
+        border-radius: 9px;
+    }
+
+    .daily-chest-goal-header {
+        font-size: 0.74rem;
+    }
+
+    .daily-chest-goal-counter {
+        font-size: 0.78rem;
+    }
+
+    .daily-chest-progress-bar {
+        height: 6px;
+    }
+
+    .daily-chest-goal-hint {
+        font-size: 0.69rem;
+        line-height: 1.25;
+    }
+
+    .daily-chest-rules-box {
+        padding: 6px 9px;
+        gap: 5px;
+        border-radius: 8px;
+    }
+
+    .daily-chest-rule-item {
+        font-size: 0.71rem;
+        line-height: 1.3;
+        gap: 6px;
+    }
+
+    .daily-chest-rule-item i,
+    .daily-chest-rule-item svg {
+        width: 13px;
+        height: 13px;
+        min-width: 13px;
+        min-height: 13px;
+        margin-top: 1px;
+    }
+
+    .daily-chest-modal-actions {
+        gap: 6px;
+    }
+
+    .daily-chest-claim-action {
+        padding: 9px 12px;
+        font-size: 0.84rem;
+        min-height: 38px;
+        border-radius: 10px;
+    }
+
+    .daily-chest-to-withdraw-action {
+        padding: 7px 10px;
+        font-size: 0.78rem;
+        min-height: 34px;
+        border-radius: 10px;
+    }
+
+    /* Modal de Saque no Mobile */
+    .daily-chest-withdraw-content {
+        padding: 10px 12px 14px;
+        gap: 8px;
+    }
+
+    .daily-chest-withdraw-summary {
+        padding: 8px 10px;
+        gap: 8px;
+    }
+
+    .withdraw-summary-label {
+        font-size: 0.68rem;
+    }
+
+    .withdraw-summary-val {
+        font-size: 1rem;
+    }
+
+    .withdraw-input-group label {
+        font-size: 0.72rem;
+    }
+
+    .withdraw-input-group input,
+    .withdraw-input-group select {
+        padding: 7px 10px;
+        font-size: 0.82rem;
+    }
+
+    .withdraw-rules-note {
+        font-size: 0.68rem;
+        padding: 6px 8px;
+    }
+
+    .withdraw-submit-btn {
+        padding: 9px 12px;
+        font-size: 0.84rem;
+    }
+}
+
+/* Suporte para telas ultra compactas / landscape */
+@media (max-height: 560px) {
+    .daily-chest-stage {
+        height: 55px;
+    }
+    .daily-chest-box {
+        transform: scale(0.65);
+    }
+    .daily-chest-box:hover {
+        transform: scale(0.68);
+    }
+    .daily-chest-reward-banner {
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+    .daily-chest-reward-val {
+        font-size: 0.95rem;
+    }
 }
 
 /* 10. Aba de Saques no Painel ADM */
