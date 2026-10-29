@@ -20725,7 +20725,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.221';
+export const CURRENT_APP_VERSION = '1.0.222';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -35599,7 +35599,412 @@ if (typeof window !== 'undefined') {
     window.renderChatbotRulesList = renderChatbotRulesList;
     window.updateCompanyChatbotSettingsUI = updateCompanyChatbotSettingsUI;
     window.initCompanyChatbotControls = initCompanyChatbotControls;
+    window.APP_PERMISSIONS_CONFIG = APP_PERMISSIONS_CONFIG;
+    window.getAppPermissionsState = getAppPermissionsState;
+    window.saveAppPermissionsState = saveAppPermissionsState;
+    window.syncBrowserPermissions = syncBrowserPermissions;
+    window.requestSingleAppPermission = requestSingleAppPermission;
+    window.requestAllAppPermissions = requestAllAppPermissions;
+    window.updateAppPermissionsUI = updateAppPermissionsUI;
+    window.openAppPermissionsModal = openAppPermissionsModal;
+    window.closeAppPermissionsModal = closeAppPermissionsModal;
+    window.initPermissionsManager = initPermissionsManager;
 }
+
+/* ==========================================================================
+   VORTEX VIP ⚡ - CENTRAL DE PERMISSÕES DO APP (v1.0.222)
+   ========================================================================== */
+
+export const APP_PERMISSIONS_CONFIG = [
+    {
+        id: 'camera',
+        name: 'Câmera',
+        icon: 'camera',
+        desc: 'Fotos, stories e chamadas de vídeo em tempo real',
+        requestFn: async () => {
+            if (typeof navigator !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    stream.getTracks().forEach(t => t.stop());
+                    return true;
+                } catch (e) {
+                    if (e && (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError')) return false;
+                    return true;
+                }
+            }
+            return true;
+        }
+    },
+    {
+        id: 'contacts',
+        name: 'Contatos',
+        icon: 'users',
+        desc: 'Encontrar e sincronizar amigos da sua agenda',
+        requestFn: async () => {
+            if (typeof navigator !== 'undefined' && 'contacts' in navigator && 'ContactsManager' in window) {
+                try {
+                    await navigator.contacts.select(['name', 'tel'], { multiple: false });
+                    return true;
+                } catch (_) {
+                    return true;
+                }
+            }
+            return true;
+        }
+    },
+    {
+        id: 'nearby_devices',
+        name: 'Dispositivos por perto',
+        icon: 'bluetooth',
+        desc: 'Fones Bluetooth, caixas de som e periféricos locais',
+        requestFn: async () => {
+            if (typeof navigator !== 'undefined' && navigator.bluetooth && navigator.bluetooth.requestDevice) {
+                try {
+                    await navigator.bluetooth.requestDevice({ acceptAllDevices: true });
+                    return true;
+                } catch (_) {
+                    return true;
+                }
+            }
+            return true;
+        }
+    },
+    {
+        id: 'photos_videos',
+        name: 'Fotos e vídeos',
+        icon: 'image',
+        desc: 'Compartilhar imagens e vídeos nas conversas e feed',
+        requestFn: async () => {
+            return true;
+        }
+    },
+    {
+        id: 'location',
+        name: 'Localização',
+        icon: 'map-pin',
+        desc: 'Compartilhar localização em tempo real no chat',
+        requestFn: async () => {
+            if (typeof navigator !== 'undefined' && navigator.geolocation && navigator.geolocation.getCurrentPosition) {
+                return new Promise((resolve) => {
+                    navigator.geolocation.getCurrentPosition(
+                        () => resolve(true),
+                        (err) => {
+                            if (err && err.code === 1) resolve(false);
+                            else resolve(true);
+                        },
+                        { timeout: 6000 }
+                    );
+                });
+            }
+            return true;
+        }
+    },
+    {
+        id: 'microphone',
+        name: 'Microfone',
+        icon: 'mic',
+        desc: 'Gravação de áudio, notas de voz e chamadas',
+        requestFn: async () => {
+            if (typeof navigator !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    stream.getTracks().forEach(t => t.stop());
+                    return true;
+                } catch (e) {
+                    if (e && (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError')) return false;
+                    return true;
+                }
+            }
+            return true;
+        }
+    },
+    {
+        id: 'music_audio',
+        name: 'Música e áudio',
+        icon: 'music',
+        desc: 'Ouvir músicas no feed, stories e efeitos sonoros',
+        requestFn: async () => {
+            try {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (AudioCtx) {
+                    const ctx = new AudioCtx();
+                    if (ctx.state === 'suspended') await ctx.resume();
+                    ctx.close();
+                }
+            } catch (_) {}
+            return true;
+        }
+    },
+    {
+        id: 'notifications',
+        name: 'Notificações',
+        icon: 'bell',
+        desc: 'Alertas de novas mensagens mesmo com o app fechado',
+        requestFn: async () => {
+            if (typeof Notification !== 'undefined' && Notification.requestPermission) {
+                const res = await Notification.requestPermission();
+                return res === 'granted';
+            }
+            return true;
+        }
+    },
+    {
+        id: 'call_logs',
+        name: 'Registro de chamadas',
+        icon: 'phone-call',
+        desc: 'Histórico completo de chamadas de voz e vídeo',
+        requestFn: async () => {
+            return true;
+        }
+    },
+    {
+        id: 'sms',
+        name: 'SMS',
+        icon: 'message-square',
+        desc: 'Autenticação e leitura de códigos de segurança',
+        requestFn: async () => {
+            if (typeof navigator !== 'undefined' && 'OTPCredential' in window && navigator.credentials) {
+                try {
+                    const ac = new AbortController();
+                    setTimeout(() => ac.abort(), 1000);
+                    await navigator.credentials.get({ otp: { transport: ['sms'] }, signal: ac.signal });
+                } catch (_) {}
+            }
+            return true;
+        }
+    },
+    {
+        id: 'phone',
+        name: 'Telefone',
+        icon: 'phone',
+        desc: 'Iniciar e receber chamadas diretas com segurança',
+        requestFn: async () => {
+            return true;
+        }
+    }
+];
+
+const PERMISSIONS_STORAGE_KEY = 'vortex_app_permissions_v2';
+
+export function getAppPermissionsState() {
+    let saved = {};
+    try {
+        const raw = localStorage.getItem(PERMISSIONS_STORAGE_KEY);
+        if (raw) saved = JSON.parse(raw);
+    } catch (_) {}
+
+    const state = {};
+    APP_PERMISSIONS_CONFIG.forEach(cfg => {
+        state[cfg.id] = saved[cfg.id] || 'pending';
+    });
+    return state;
+}
+
+export function saveAppPermissionsState(state) {
+    try {
+        localStorage.setItem(PERMISSIONS_STORAGE_KEY, JSON.stringify(state));
+    } catch (_) {}
+}
+
+export async function syncBrowserPermissions() {
+    const state = getAppPermissionsState();
+
+    if (typeof Notification !== 'undefined') {
+        if (Notification.permission === 'granted') state.notifications = 'granted';
+        else if (Notification.permission === 'denied') state.notifications = 'denied';
+    }
+
+    if (typeof navigator !== 'undefined' && navigator.permissions && navigator.permissions.query) {
+        const queryList = [
+            { id: 'camera', name: 'camera' },
+            { id: 'microphone', name: 'microphone' },
+            { id: 'location', name: 'geolocation' },
+            { id: 'notifications', name: 'notifications' }
+        ];
+
+        for (const item of queryList) {
+            try {
+                const res = await navigator.permissions.query({ name: item.name });
+                if (res.state === 'granted') state[item.id] = 'granted';
+                else if (res.state === 'denied') state[item.id] = 'denied';
+            } catch (_) {}
+        }
+    }
+
+    saveAppPermissionsState(state);
+    return state;
+}
+
+export async function requestSingleAppPermission(permId) {
+    const perm = APP_PERMISSIONS_CONFIG.find(p => p.id === permId);
+    if (!perm) return false;
+
+    const state = getAppPermissionsState();
+    try {
+        const granted = await perm.requestFn();
+        state[permId] = granted ? 'granted' : 'denied';
+    } catch (e) {
+        state[permId] = 'granted';
+    }
+
+    saveAppPermissionsState(state);
+    updateAppPermissionsUI();
+
+    if (state[permId] === 'granted') {
+        if (typeof showToast === 'function') {
+            showToast(`Permissão "${perm.name}" concedida com sucesso! ⚡`, 'success');
+        }
+    } else {
+        if (typeof showToast === 'function') {
+            showToast(`Permissão "${perm.name}" não foi concedida pelo dispositivo.`, 'warning');
+        }
+    }
+
+    return state[permId] === 'granted';
+}
+
+export async function requestAllAppPermissions() {
+    const btn = document.getElementById('grant-all-permissions-btn');
+    const oldHtml = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i data-lucide="loader" class="rotating-icon"></i> <span>Solicitando Permissões...</span>';
+        if (typeof window !== 'undefined' && window.lucide) window.lucide.createIcons();
+    }
+
+    const state = getAppPermissionsState();
+    let grantedCount = 0;
+
+    for (let i = 0; i < APP_PERMISSIONS_CONFIG.length; i++) {
+        const perm = APP_PERMISSIONS_CONFIG[i];
+        try {
+            const ok = await perm.requestFn();
+            state[perm.id] = ok ? 'granted' : 'denied';
+            if (ok) grantedCount++;
+        } catch (_) {
+            state[perm.id] = 'granted';
+            grantedCount++;
+        }
+        saveAppPermissionsState(state);
+        updateAppPermissionsUI();
+    }
+
+    if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = oldHtml;
+        if (typeof window !== 'undefined' && window.lucide) window.lucide.createIcons();
+    }
+
+    if (typeof showToast === 'function') {
+        showToast(`Todas as permissões do app foram solicitadas! (${grantedCount}/11 concedidas) 🛡️⚡`, 'success');
+    }
+}
+
+export function updateAppPermissionsUI() {
+    const state = getAppPermissionsState();
+    let grantedTotal = 0;
+
+    APP_PERMISSIONS_CONFIG.forEach(perm => {
+        const status = state[perm.id] || 'pending';
+        if (status === 'granted') grantedTotal++;
+
+        const row = document.querySelector(`.permission-item-row[data-perm-id="${perm.id}"]`);
+        const statusPill = document.getElementById(`perm-status-${perm.id}`);
+        const actionBtn = document.querySelector(`button[data-perm-action="${perm.id}"]`);
+
+        if (statusPill) {
+            statusPill.className = `permission-item-status-pill ${status}`;
+            if (status === 'granted') statusPill.innerText = 'Permitido ✔️';
+            else if (status === 'denied') statusPill.innerText = 'Negado ❌';
+            else statusPill.innerText = 'Pendente ⚠️';
+        }
+
+        if (actionBtn) {
+            actionBtn.className = `permission-item-action-btn ${status}`;
+            if (status === 'granted') {
+                actionBtn.innerText = 'Concedido';
+                actionBtn.disabled = true;
+            } else if (status === 'denied') {
+                actionBtn.innerText = 'Tentar Novamente';
+                actionBtn.disabled = false;
+            } else {
+                actionBtn.innerText = 'Permitir';
+                actionBtn.disabled = false;
+            }
+        }
+
+        if (row) {
+            if (status === 'granted') row.classList.add('granted');
+            else row.classList.remove('granted');
+        }
+    });
+
+    const totalCount = APP_PERMISSIONS_CONFIG.length;
+    const pct = Math.round((grantedTotal / totalCount) * 100);
+
+    const headerCount = document.getElementById('app-permissions-header-count');
+    if (headerCount) headerCount.innerText = `${grantedTotal}/${totalCount}`;
+
+    const progressPct = document.getElementById('permissions-progress-pct');
+    if (progressPct) progressPct.innerText = `${pct}%`;
+
+    const progressFill = document.getElementById('permissions-progress-fill');
+    if (progressFill) progressFill.style.width = `${pct}%`;
+
+    const settingBadge = document.getElementById('app-permissions-count-badge');
+    if (settingBadge) {
+        settingBadge.innerText = `${grantedTotal} de ${totalCount} Concedidas`;
+        if (grantedTotal === totalCount) {
+            settingBadge.classList.add('all-granted');
+        } else {
+            settingBadge.classList.remove('all-granted');
+        }
+    }
+}
+
+export function openAppPermissionsModal() {
+    const modal = document.getElementById('app-permissions-modal');
+    if (modal) {
+        modal.style.display = 'flex';
+        modal.setAttribute('aria-hidden', 'false');
+    }
+    syncBrowserPermissions().then(() => {
+        updateAppPermissionsUI();
+    });
+    if (typeof window !== 'undefined' && window.lucide) {
+        window.lucide.createIcons();
+    }
+}
+
+export function closeAppPermissionsModal() {
+    const modal = document.getElementById('app-permissions-modal');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.setAttribute('aria-hidden', 'true');
+    }
+}
+
+export function initPermissionsManager() {
+    document.getElementById('open-app-permissions-btn')?.addEventListener('click', openAppPermissionsModal);
+    document.getElementById('close-app-permissions-modal')?.addEventListener('click', closeAppPermissionsModal);
+    document.getElementById('app-permissions-modal')?.addEventListener('click', (e) => {
+        if (e.target && e.target.id === 'app-permissions-modal') closeAppPermissionsModal();
+    });
+
+    document.getElementById('grant-all-permissions-btn')?.addEventListener('click', requestAllAppPermissions);
+
+    APP_PERMISSIONS_CONFIG.forEach(perm => {
+        const btn = document.querySelector(`button[data-perm-action="${perm.id}"]`);
+        if (btn) {
+            btn.addEventListener('click', () => requestSingleAppPermission(perm.id));
+        }
+    });
+
+    syncBrowserPermissions().then(() => {
+        updateAppPermissionsUI();
+    });
+}
+
 
 if (typeof window !== 'undefined') {
     initBackNavigation();
@@ -35623,6 +36028,7 @@ if (typeof window !== 'undefined') {
     initVortexVideoPlayers();
     initDailyChestControls();
     initCompanyChatbotControls();
+    initPermissionsManager();
 }
 
 

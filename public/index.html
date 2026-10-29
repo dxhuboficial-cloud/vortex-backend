@@ -4,20 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.221">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.221">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.221">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.221">
-    <link rel="stylesheet" href="style.css?v=1.0.221">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.222">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.222">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.222">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.222">
+    <link rel="stylesheet" href="style.css?v=1.0.222">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.221">
+    <link rel="manifest" href="manifest.json?v=1.0.222">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.221">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.221">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.222">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.222">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -2057,6 +2057,24 @@
                     </div>
                 </div>
 
+                <!-- Card de Permissões do App (v1.0.222) -->
+                <div class="setting-item app-permissions-card-highlight" id="app-permissions-setting-item">
+                    <div class="app-permissions-setting-inner">
+                        <div class="app-permissions-header-row">
+                            <span class="app-permissions-highlight-text">
+                                <i data-lucide="shield-check"></i> Permissões do App 🛡️
+                            </span>
+                            <button id="open-app-permissions-btn" type="button" class="danger-btn app-permissions-open-action-btn">
+                                <i data-lucide="sliders"></i> <span>Gerenciar</span>
+                            </button>
+                        </div>
+                        <div class="app-permissions-status-row">
+                            <span id="app-permissions-count-badge" class="app-permissions-setting-badge">0 de 11 Concedidas</span>
+                            <small class="app-permissions-quick-summary">Câmera, Microfone, Notificações, Contatos, Fotos e mais</small>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="setting-item admin-setting-row" id="admin-settings-item" style="display: none;">
                     <div class="setting-info">
                         <span class="admin-setting-label"><i data-lucide="shield-alert" class="admin-inline-shield"></i> Painel de Administração ADM</span>
@@ -3322,7 +3340,7 @@
             <div class="pwa-banner-glow-line"></div>
             <div class="pwa-banner-content">
                 <div class="pwa-banner-icon-box">
-                    <img src="icons/vortex-vip-192.png?v=1.0.221" alt="VORTEX VIP" class="pwa-banner-logo" width="44" height="44">
+                    <img src="icons/vortex-vip-192.png?v=1.0.222" alt="VORTEX VIP" class="pwa-banner-logo" width="44" height="44">
                 </div>
                 <div class="pwa-banner-text">
                     <div class="pwa-banner-title">Instalar VORTEX VIP ⚡</div>
@@ -3340,7 +3358,7 @@
             <div class="pwa-ios-content">
                 <div class="pwa-ios-header">
                     <div class="pwa-ios-icon-wrap">
-                        <img src="icons/vortex-vip-192.png?v=1.0.221" alt="VORTEX VIP" width="48" height="48">
+                        <img src="icons/vortex-vip-192.png?v=1.0.222" alt="VORTEX VIP" width="48" height="48">
                     </div>
                     <h3 class="pwa-ios-title">Instalar no iPhone / iPad 📲</h3>
                     <p class="pwa-ios-subtitle">Siga os 2 passos rápidos abaixo no Safari para ter o VORTEX VIP na sua tela de início:</p>
@@ -4804,8 +4822,256 @@
             </div>
         </div>
 
+        <!-- Modal da Central de Permissões do App (v1.0.222) -->
+        <div id="app-permissions-modal" class="custom-modal-overlay app-permissions-overlay" style="display:none;" aria-hidden="true">
+            <div class="custom-modal-card app-permissions-card">
+                <div class="panel-top-bar app-permissions-top-bar">
+                    <div class="app-permissions-title-wrap">
+                        <div class="app-permissions-icon-badge">
+                            <i data-lucide="shield-check"></i>
+                        </div>
+                        <div>
+                            <div class="app-permissions-title-row">
+                                <h3 class="modal-title">Permissões do App</h3>
+                                <span class="app-permissions-badge-tag" id="app-permissions-header-count">0/11</span>
+                            </div>
+                            <span class="app-permissions-subtitle">Acesso aos recursos essenciais do seu dispositivo</span>
+                        </div>
+                    </div>
+                    <div class="header-icon-btn" id="close-app-permissions-modal" title="Fechar" aria-label="Fechar">
+                        <i data-lucide="x"></i>
+                    </div>
+                </div>
+
+                <div class="app-permissions-modal-body">
+                    <!-- Card de Destaque com Botão Solicitar Todas -->
+                    <div class="permissions-grant-all-card">
+                        <div class="permissions-grant-all-info">
+                            <div class="permissions-grant-all-title">
+                                <i data-lucide="zap"></i>
+                                <span>Solicitar Todas as Permissões</span>
+                            </div>
+                            <p class="permissions-grant-all-desc">
+                                Ative todos os 11 recursos com um único clique para liberar a melhor experiência no VORTEX VIP.
+                            </p>
+                        </div>
+                        <button type="button" id="grant-all-permissions-btn" class="danger-btn grant-all-permissions-action-btn">
+                            <i data-lucide="shield-check"></i> <span>Permitir Todas as Permissões</span>
+                        </button>
+                    </div>
+
+                    <!-- Progresso Geral -->
+                    <div class="permissions-progress-section">
+                        <div class="permissions-progress-label-row">
+                            <span class="permissions-progress-label">Concessão Total</span>
+                            <span id="permissions-progress-pct" class="permissions-progress-pct">0%</span>
+                        </div>
+                        <div class="permissions-progress-track">
+                            <div id="permissions-progress-fill" class="permissions-progress-fill" style="width: 0%;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Lista das 11 Permissões (Exatamente como exibido no Android) -->
+                    <div class="permissions-items-list" id="permissions-items-list">
+                        <!-- 1. Câmera -->
+                        <div class="permission-item-row" data-perm-id="camera">
+                            <div class="permission-item-icon-wrap camera">
+                                <i data-lucide="camera"></i>
+                            </div>
+                            <div class="permission-item-info">
+                                <div class="permission-item-name-row">
+                                    <span class="permission-item-name">Câmera</span>
+                                    <span class="permission-item-status-pill pending" id="perm-status-camera">Pendente</span>
+                                </div>
+                                <span class="permission-item-desc">Fotos, stories e chamadas de vídeo em tempo real</span>
+                            </div>
+                            <button type="button" class="permission-item-action-btn" data-perm-action="camera" title="Solicitar Câmera">
+                                <span>Permitir</span>
+                            </button>
+                        </div>
+
+                        <!-- 2. Contatos -->
+                        <div class="permission-item-row" data-perm-id="contacts">
+                            <div class="permission-item-icon-wrap contacts">
+                                <i data-lucide="users"></i>
+                            </div>
+                            <div class="permission-item-info">
+                                <div class="permission-item-name-row">
+                                    <span class="permission-item-name">Contatos</span>
+                                    <span class="permission-item-status-pill pending" id="perm-status-contacts">Pendente</span>
+                                </div>
+                                <span class="permission-item-desc">Encontrar e sincronizar amigos da sua agenda</span>
+                            </div>
+                            <button type="button" class="permission-item-action-btn" data-perm-action="contacts" title="Solicitar Contatos">
+                                <span>Permitir</span>
+                            </button>
+                        </div>
+
+                        <!-- 3. Dispositivos por perto -->
+                        <div class="permission-item-row" data-perm-id="nearby_devices">
+                            <div class="permission-item-icon-wrap nearby">
+                                <i data-lucide="bluetooth"></i>
+                            </div>
+                            <div class="permission-item-info">
+                                <div class="permission-item-name-row">
+                                    <span class="permission-item-name">Dispositivos por perto</span>
+                                    <span class="permission-item-status-pill pending" id="perm-status-nearby_devices">Pendente</span>
+                                </div>
+                                <span class="permission-item-desc">Fones Bluetooth, caixas de som e periféricos locais</span>
+                            </div>
+                            <button type="button" class="permission-item-action-btn" data-perm-action="nearby_devices" title="Solicitar Dispositivos por perto">
+                                <span>Permitir</span>
+                            </button>
+                        </div>
+
+                        <!-- 4. Fotos e vídeos -->
+                        <div class="permission-item-row" data-perm-id="photos_videos">
+                            <div class="permission-item-icon-wrap photos">
+                                <i data-lucide="image"></i>
+                            </div>
+                            <div class="permission-item-info">
+                                <div class="permission-item-name-row">
+                                    <span class="permission-item-name">Fotos e vídeos</span>
+                                    <span class="permission-item-status-pill pending" id="perm-status-photos_videos">Pendente</span>
+                                </div>
+                                <span class="permission-item-desc">Compartilhar imagens e vídeos nas conversas e feed</span>
+                            </div>
+                            <button type="button" class="permission-item-action-btn" data-perm-action="photos_videos" title="Solicitar Fotos e vídeos">
+                                <span>Permitir</span>
+                            </button>
+                        </div>
+
+                        <!-- 5. Localização -->
+                        <div class="permission-item-row" data-perm-id="location">
+                            <div class="permission-item-icon-wrap location">
+                                <i data-lucide="map-pin"></i>
+                            </div>
+                            <div class="permission-item-info">
+                                <div class="permission-item-name-row">
+                                    <span class="permission-item-name">Localização</span>
+                                    <span class="permission-item-status-pill pending" id="perm-status-location">Pendente</span>
+                                </div>
+                                <span class="permission-item-desc">Compartilhar localização em tempo real no chat</span>
+                            </div>
+                            <button type="button" class="permission-item-action-btn" data-perm-action="location" title="Solicitar Localização">
+                                <span>Permitir</span>
+                            </button>
+                        </div>
+
+                        <!-- 6. Microfone -->
+                        <div class="permission-item-row" data-perm-id="microphone">
+                            <div class="permission-item-icon-wrap mic">
+                                <i data-lucide="mic"></i>
+                            </div>
+                            <div class="permission-item-info">
+                                <div class="permission-item-name-row">
+                                    <span class="permission-item-name">Microfone</span>
+                                    <span class="permission-item-status-pill pending" id="perm-status-microphone">Pendente</span>
+                                </div>
+                                <span class="permission-item-desc">Gravação de áudio, notas de voz e chamadas</span>
+                            </div>
+                            <button type="button" class="permission-item-action-btn" data-perm-action="microphone" title="Solicitar Microfone">
+                                <span>Permitir</span>
+                            </button>
+                        </div>
+
+                        <!-- 7. Música e áudio -->
+                        <div class="permission-item-row" data-perm-id="music_audio">
+                            <div class="permission-item-icon-wrap music">
+                                <i data-lucide="music"></i>
+                            </div>
+                            <div class="permission-item-info">
+                                <div class="permission-item-name-row">
+                                    <span class="permission-item-name">Música e áudio</span>
+                                    <span class="permission-item-status-pill pending" id="perm-status-music_audio">Pendente</span>
+                                </div>
+                                <span class="permission-item-desc">Ouvir músicas no feed, stories e efeitos sonoros</span>
+                            </div>
+                            <button type="button" class="permission-item-action-btn" data-perm-action="music_audio" title="Solicitar Música e áudio">
+                                <span>Permitir</span>
+                            </button>
+                        </div>
+
+                        <!-- 8. Notificações -->
+                        <div class="permission-item-row" data-perm-id="notifications">
+                            <div class="permission-item-icon-wrap notifications">
+                                <i data-lucide="bell"></i>
+                            </div>
+                            <div class="permission-item-info">
+                                <div class="permission-item-name-row">
+                                    <span class="permission-item-name">Notificações</span>
+                                    <span class="permission-item-status-pill pending" id="perm-status-notifications">Pendente</span>
+                                </div>
+                                <span class="permission-item-desc">Alertas de novas mensagens mesmo com o app fechado</span>
+                            </div>
+                            <button type="button" class="permission-item-action-btn" data-perm-action="notifications" title="Solicitar Notificações">
+                                <span>Permitir</span>
+                            </button>
+                        </div>
+
+                        <!-- 9. Registro de chamadas -->
+                        <div class="permission-item-row" data-perm-id="call_logs">
+                            <div class="permission-item-icon-wrap call-logs">
+                                <i data-lucide="phone-call"></i>
+                            </div>
+                            <div class="permission-item-info">
+                                <div class="permission-item-name-row">
+                                    <span class="permission-item-name">Registro de chamadas</span>
+                                    <span class="permission-item-status-pill pending" id="perm-status-call_logs">Pendente</span>
+                                </div>
+                                <span class="permission-item-desc">Histórico completo de chamadas de voz e vídeo</span>
+                            </div>
+                            <button type="button" class="permission-item-action-btn" data-perm-action="call_logs" title="Solicitar Registro de chamadas">
+                                <span>Permitir</span>
+                            </button>
+                        </div>
+
+                        <!-- 10. SMS -->
+                        <div class="permission-item-row" data-perm-id="sms">
+                            <div class="permission-item-icon-wrap sms">
+                                <i data-lucide="message-square"></i>
+                            </div>
+                            <div class="permission-item-info">
+                                <div class="permission-item-name-row">
+                                    <span class="permission-item-name">SMS</span>
+                                    <span class="permission-item-status-pill pending" id="perm-status-sms">Pendente</span>
+                                </div>
+                                <span class="permission-item-desc">Autenticação e leitura de códigos de segurança</span>
+                            </div>
+                            <button type="button" class="permission-item-action-btn" data-perm-action="sms" title="Solicitar SMS">
+                                <span>Permitir</span>
+                            </button>
+                        </div>
+
+                        <!-- 11. Telefone -->
+                        <div class="permission-item-row" data-perm-id="phone">
+                            <div class="permission-item-icon-wrap phone">
+                                <i data-lucide="phone"></i>
+                            </div>
+                            <div class="permission-item-info">
+                                <div class="permission-item-name-row">
+                                    <span class="permission-item-name">Telefone</span>
+                                    <span class="permission-item-status-pill pending" id="perm-status-phone">Pendente</span>
+                                </div>
+                                <span class="permission-item-desc">Iniciar e receber chamadas diretas com segurança</span>
+                            </div>
+                            <button type="button" class="permission-item-action-btn" data-perm-action="phone" title="Solicitar Telefone">
+                                <span>Permitir</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Nota Informativa de Privacidade e Segurança -->
+                    <div class="permissions-info-footer">
+                        <i data-lucide="shield"></i>
+                        <span>Seus dados e permissões são protegidos por criptografia de ponta a ponta na VORTEX VIP. Você pode alterar essas permissões a qualquer momento nas configurações do seu aparelho ou navegador.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.221" defer></script>
+    <script type="module" src="script.js?v=1.0.222" defer></script>
 </body>
 </html>

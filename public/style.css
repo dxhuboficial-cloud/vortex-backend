@@ -23476,3 +23476,563 @@ video::-internal-media-controls-download-button {
         max-width: 100px;
     }
 }
+
+/* ==========================================================================
+   VORTEX VIP ⚡ - CENTRAL DE PERMISSÕES DO APP (v1.0.222)
+   ========================================================================== */
+
+/* Card de Permissões no Painel de Configurações */
+.app-permissions-card-highlight {
+    background: linear-gradient(135deg, rgba(0, 229, 255, 0.08), rgba(0, 255, 102, 0.05)) !important;
+    border: 1px solid rgba(0, 229, 255, 0.25) !important;
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+    transition: all 0.25s ease;
+}
+
+.app-permissions-card-highlight:hover {
+    border-color: rgba(0, 229, 255, 0.5) !important;
+    box-shadow: 0 6px 20px rgba(0, 229, 255, 0.15);
+}
+
+.app-permissions-setting-inner {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.app-permissions-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.app-permissions-highlight-text {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #e0f2fe;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    letter-spacing: 0.3px;
+}
+
+.app-permissions-highlight-text i {
+    width: 18px;
+    height: 18px;
+    color: #00e5ff;
+    filter: drop-shadow(0 0 6px rgba(0, 229, 255, 0.6));
+}
+
+.app-permissions-open-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: linear-gradient(135deg, #00e5ff, #0088ff);
+    color: #000;
+    font-weight: 700;
+    font-size: 0.8rem;
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(0, 229, 255, 0.35);
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.app-permissions-open-action-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 0 16px rgba(0, 229, 255, 0.6);
+    filter: brightness(1.1);
+}
+
+.app-permissions-open-action-btn i {
+    width: 14px;
+    height: 14px;
+}
+
+.app-permissions-status-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.app-permissions-setting-badge {
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    background: rgba(0, 229, 255, 0.15);
+    color: #00e5ff;
+    border: 1px solid rgba(0, 229, 255, 0.35);
+}
+
+.app-permissions-setting-badge.all-granted {
+    background: rgba(0, 255, 102, 0.15);
+    color: #00ff66;
+    border-color: rgba(0, 255, 102, 0.4);
+    box-shadow: 0 0 8px rgba(0, 255, 102, 0.25);
+}
+
+.app-permissions-quick-summary {
+    font-size: 0.75rem;
+    color: var(--text-dim, #94a3b8);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 320px;
+}
+
+/* Modal Central de Permissões */
+.app-permissions-overlay {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    background: rgba(5, 7, 15, 0.85);
+    z-index: 10050;
+}
+
+.app-permissions-card {
+    max-width: 580px;
+    width: 95%;
+    max-height: 92vh;
+    overflow-y: auto;
+    border-radius: 20px;
+    background: #0f1422;
+    border: 1px solid rgba(0, 229, 255, 0.25);
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.8), 0 0 24px rgba(0, 229, 255, 0.15);
+    display: flex;
+    flex-direction: column;
+}
+
+.app-permissions-top-bar {
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(15, 20, 34, 0.95);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.app-permissions-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.app-permissions-icon-badge {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(0, 229, 255, 0.2), rgba(0, 255, 102, 0.15));
+    border: 1px solid rgba(0, 229, 255, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #00e5ff;
+    flex-shrink: 0;
+}
+
+.app-permissions-icon-badge i {
+    width: 22px;
+    height: 22px;
+}
+
+.app-permissions-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.app-permissions-title-row .modal-title {
+    font-size: 1.08rem;
+    font-weight: 800;
+    color: #fff;
+    margin: 0;
+}
+
+.app-permissions-badge-tag {
+    font-size: 0.68rem;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: rgba(0, 255, 102, 0.15);
+    color: #00ff66;
+    border: 1px solid rgba(0, 255, 102, 0.35);
+}
+
+.app-permissions-subtitle {
+    font-size: 0.78rem;
+    color: var(--text-dim, #94a3b8);
+    display: block;
+    margin-top: 2px;
+}
+
+.app-permissions-modal-body {
+    padding: 16px 20px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* Card Destaque: Permitir Todas */
+.permissions-grant-all-card {
+    background: linear-gradient(135deg, rgba(0, 255, 102, 0.12), rgba(0, 229, 255, 0.08));
+    border: 1px solid rgba(0, 255, 102, 0.35);
+    border-radius: 16px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-shadow: 0 4px 18px rgba(0, 255, 102, 0.1);
+}
+
+.permissions-grant-all-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.permissions-grant-all-title {
+    font-size: 0.96rem;
+    font-weight: 800;
+    color: #e0ffe8;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.permissions-grant-all-title i {
+    width: 18px;
+    height: 18px;
+    color: #00ff66;
+    filter: drop-shadow(0 0 6px rgba(0, 255, 102, 0.7));
+}
+
+.permissions-grant-all-desc {
+    font-size: 0.78rem;
+    color: #cbd5e1;
+    margin: 0;
+    line-height: 1.4;
+}
+
+.grant-all-permissions-action-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background: linear-gradient(135deg, #00ff66, #00e5ff) !important;
+    color: #000 !important;
+    font-weight: 800;
+    font-size: 0.92rem;
+    padding: 12px 18px;
+    border-radius: 14px;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 4px 18px rgba(0, 255, 102, 0.4);
+    transition: all 0.25s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.grant-all-permissions-action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 24px rgba(0, 255, 102, 0.65);
+    filter: brightness(1.1);
+}
+
+.grant-all-permissions-action-btn i {
+    width: 20px;
+    height: 20px;
+}
+
+/* Seção de Progresso */
+.permissions-progress-section {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.permissions-progress-label-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--text-dim, #94a3b8);
+    font-weight: 600;
+}
+
+.permissions-progress-pct {
+    color: #00e5ff;
+    font-weight: 700;
+}
+
+.permissions-progress-track {
+    width: 100%;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.permissions-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #00e5ff, #00ff66);
+    border-radius: 6px;
+    transition: width 0.35s ease;
+    box-shadow: 0 0 10px rgba(0, 255, 102, 0.5);
+}
+
+/* Lista de Itens */
+.permissions-items-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.permission-item-row {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 14px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: all 0.2s ease;
+}
+
+.permission-item-row:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(0, 229, 255, 0.25);
+    transform: translateX(2px);
+}
+
+.permission-item-row.granted {
+    border-color: rgba(0, 255, 102, 0.2);
+    background: rgba(0, 255, 102, 0.025);
+}
+
+.permission-item-icon-wrap {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.permission-item-icon-wrap i {
+    width: 20px;
+    height: 20px;
+}
+
+/* Cores específicas de ícones (idêntico ao Android / VORTEX VIP) */
+.permission-item-icon-wrap.camera { background: rgba(0, 229, 255, 0.15); color: #00e5ff; }
+.permission-item-icon-wrap.contacts { background: rgba(168, 85, 247, 0.15); color: #a855f7; }
+.permission-item-icon-wrap.nearby { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
+.permission-item-icon-wrap.photos { background: rgba(255, 159, 10, 0.15); color: #ff9f0a; }
+.permission-item-icon-wrap.location { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+.permission-item-icon-wrap.mic { background: rgba(255, 59, 48, 0.15); color: #ff3b30; }
+.permission-item-icon-wrap.music { background: rgba(236, 72, 153, 0.15); color: #ec4899; }
+.permission-item-icon-wrap.notifications { background: rgba(255, 240, 31, 0.15); color: #fff01f; }
+.permission-item-icon-wrap.call-logs { background: rgba(6, 182, 212, 0.15); color: #06b6d4; }
+.permission-item-icon-wrap.sms { background: rgba(132, 204, 22, 0.15); color: #84cc16; }
+.permission-item-icon-wrap.phone { background: rgba(0, 255, 102, 0.15); color: #00ff66; }
+
+.permission-item-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.permission-item-name-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.permission-item-name {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #f1f5f9;
+}
+
+.permission-item-status-pill {
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 8px;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+}
+
+.permission-item-status-pill.granted {
+    background: rgba(0, 255, 102, 0.15);
+    color: #00ff66;
+    border: 1px solid rgba(0, 255, 102, 0.35);
+}
+
+.permission-item-status-pill.pending {
+    background: rgba(255, 240, 31, 0.12);
+    color: #fff01f;
+    border: 1px solid rgba(255, 240, 31, 0.3);
+}
+
+.permission-item-status-pill.denied {
+    background: rgba(255, 59, 48, 0.15);
+    color: #ff3b30;
+    border: 1px solid rgba(255, 59, 48, 0.3);
+}
+
+.permission-item-desc {
+    font-size: 0.74rem;
+    color: var(--text-dim, #94a3b8);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.permission-item-action-btn {
+    padding: 6px 12px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    border-radius: 10px;
+    border: 1px solid rgba(0, 229, 255, 0.35);
+    background: rgba(0, 229, 255, 0.1);
+    color: #00e5ff;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.permission-item-action-btn:hover {
+    background: rgba(0, 229, 255, 0.25);
+    border-color: #00e5ff;
+    box-shadow: 0 0 10px rgba(0, 229, 255, 0.35);
+}
+
+.permission-item-action-btn.granted {
+    background: rgba(0, 255, 102, 0.12);
+    border-color: rgba(0, 255, 102, 0.4);
+    color: #00ff66;
+    cursor: default;
+}
+
+.permission-item-action-btn.denied {
+    background: rgba(255, 59, 48, 0.12);
+    border-color: rgba(255, 59, 48, 0.4);
+    color: #ff3b30;
+}
+
+/* Rodapé Informativo */
+.permissions-info-footer {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-size: 0.72rem;
+    color: var(--text-dim, #94a3b8);
+    line-height: 1.4;
+}
+
+.permissions-info-footer i {
+    width: 16px;
+    height: 16px;
+    color: #00e5ff;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+/* Responsividade para Celulares com Telas Pequenas */
+@media (max-width: 480px) {
+    .app-permissions-card {
+        width: 100%;
+        max-height: 96vh;
+        border-radius: 16px;
+    }
+
+    .app-permissions-top-bar {
+        padding: 12px 14px;
+    }
+
+    .app-permissions-modal-body {
+        padding: 12px 14px 20px;
+        gap: 12px;
+    }
+
+    .grant-all-permissions-action-btn {
+        font-size: 0.84rem;
+        padding: 10px 14px;
+    }
+
+    .permission-item-row {
+        padding: 8px 10px;
+        gap: 8px;
+    }
+
+    .permission-item-icon-wrap {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+    }
+
+    .permission-item-icon-wrap i {
+        width: 16px;
+        height: 16px;
+    }
+
+    .permission-item-name {
+        font-size: 0.82rem;
+    }
+
+    .permission-item-desc {
+        font-size: 0.68rem;
+    }
+
+    .permission-item-action-btn {
+        padding: 4px 8px;
+        font-size: 0.7rem;
+    }
+}
+
+@media (max-width: 380px) {
+    .app-permissions-highlight-text {
+        font-size: 0.82rem;
+    }
+
+    .app-permissions-open-action-btn {
+        padding: 5px 10px;
+        font-size: 0.72rem;
+    }
+
+    .permission-item-name-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 2px;
+    }
+
+    .permission-item-status-pill {
+        font-size: 0.58rem;
+        padding: 1px 5px;
+    }
+}
+
