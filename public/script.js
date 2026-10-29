@@ -12726,6 +12726,9 @@ function listenToContacts() {
                         const isRead = (Array.isArray(m.readBy) && m.readBy.includes(currentUser.uid)) || (m.readByMap && !!m.readByMap[currentUser.uid]);
                         if (isFromOther && !m.deletedForEveryone && !isRead) {
                             unreadCount++;
+                            if (typeof processIncomingMessageForChatbot === 'function' && m.createdAt && (Date.now() - Number(m.createdAt) < 60000)) {
+                                processIncomingMessageForChatbot(m, docSnap.id, chatId);
+                            }
                         }
                     });
 
@@ -15241,6 +15244,11 @@ function loadRealtimeMessages() {
                     readBy: arrayUnion(currentUser.uid),
                     [`readByMap.${currentUser.uid}`]: Date.now()
                 }).catch(() => {});
+
+                // 🤖 Processamento automático do Chatbot da Empresa (v1.0.218)
+                if (typeof processIncomingMessageForChatbot === 'function') {
+                    processIncomingMessageForChatbot(message, docSnap.id, chatId);
+                }
             }
         });
 
@@ -20716,7 +20724,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.217';
+export const CURRENT_APP_VERSION = '1.0.218';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -30708,6 +30716,7 @@ document.getElementById('profile-btn')?.addEventListener('click', () => {
 });
 
 const handleAccountTypeChange = () => {
+    if (typeof updateCompanyChatbotSettingsUI === 'function') updateCompanyChatbotSettingsUI();
     const isBiz = document.getElementById('profile-type-business')?.checked;
     const bFields = document.getElementById('profile-business-fields');
     if (bFields) {
@@ -32151,6 +32160,7 @@ document.getElementById('settings-btn')?.addEventListener('click', () => {
         sPrivateToggle.checked = Boolean(currentProfile?.isPrivateAccount);
     }
     document.getElementById('settings-panel')?.classList.add('active');
+    if (typeof updateCompanyChatbotSettingsUI === 'function') updateCompanyChatbotSettingsUI();
     updateInstallUIVisibility();
     if (isAppInstalledPwa()) {
         checkForAppUpdates();
@@ -35575,6 +35585,19 @@ if (typeof window !== 'undefined') {
     window.loadAdminWithdrawals = loadAdminWithdrawals;
     window.renderAdminWithdrawals = renderAdminWithdrawals;
     window.initDailyChestControls = initDailyChestControls;
+    window.getChatbotSettings = getChatbotSettings;
+    window.saveChatbotSettings = saveChatbotSettings;
+    window.addChatbotRule = addChatbotRule;
+    window.removeChatbotRule = removeChatbotRule;
+    window.toggleChatbotStatus = toggleChatbotStatus;
+    window.findMatchingChatbotRule = findMatchingChatbotRule;
+    window.normalizeChatbotText = normalizeChatbotText;
+    window.processIncomingMessageForChatbot = processIncomingMessageForChatbot;
+    window.openCompanyChatbotModal = openCompanyChatbotModal;
+    window.closeCompanyChatbotModal = closeCompanyChatbotModal;
+    window.renderChatbotRulesList = renderChatbotRulesList;
+    window.updateCompanyChatbotSettingsUI = updateCompanyChatbotSettingsUI;
+    window.initCompanyChatbotControls = initCompanyChatbotControls;
 }
 
 if (typeof window !== 'undefined') {
@@ -35598,6 +35621,7 @@ if (typeof window !== 'undefined') {
     initMediaProtection();
     initVortexVideoPlayers();
     initDailyChestControls();
+    initCompanyChatbotControls();
 }
 
 
@@ -36202,3 +36226,340 @@ export function initDailyChestControls() {
     updateDailyChestUI();
 }
 
+
+
+/* ==========================================================================
+   VORTEX VIP ⚡ - CHATBOT DE RESPOSTAS AUTOMÁTICAS (CONTA EMPRESA - v1.0.218)
+   ========================================================================== */
+
+const processedChatbotMsgIds = new Set();
+const chatbotClientCooldownMap = new Map();
+
+export function getChatbotSettings() {
+    if (currentProfile && currentProfile.chatbotSettings) {
+        return currentProfile.chatbotSettings;
+    }
+    try {
+        const uid = currentUser?.uid;
+        if (uid && typeof localStorage !== 'undefined') {
+            const raw = localStorage.getItem(`vortex_chatbot_${uid}`);
+            if (raw) return JSON.parse(raw);
+        }
+    } catch (_) {}
+    return {
+        enabled: false,
+        rules: []
+    };
+}
+
+export async function saveChatbotSettings(settings) {
+    if (!currentProfile) return;
+    currentProfile.chatbotSettings = settings;
+    try {
+        const uid = currentUser?.uid;
+        if (uid) {
+            if (typeof localStorage !== 'undefined') {
+                localStorage.setItem(`vortex_chatbot_${uid}`, JSON.stringify(settings));
+            }
+            if (typeof db !== 'undefined' && typeof doc === 'function' && typeof updateDoc === 'function') {
+                await updateDoc(doc(db, 'users', uid), {
+                    chatbotSettings: settings
+                });
+            }
+        }
+    } catch (err) {
+        console.warn('[VORTEX CHATBOT] Erro ao persistir chatbotSettings no Firestore:', err);
+    }
+    updateCompanyChatbotSettingsUI();
+}
+
+export async function toggleChatbotStatus(enabled) {
+    const settings = getChatbotSettings();
+    settings.enabled = Boolean(enabled);
+    await saveChatbotSettings(settings);
+    renderChatbotRulesList();
+    if (typeof showToast === 'function') {
+        showToast(
+            settings.enabled ? 'Chatbot Ativado 🤖' : 'Chatbot Desativado ⏸️',
+            settings.enabled ? 'O robô responderá automaticamente às perguntas cadastradas!' : 'Respostas automáticas pausadas.',
+            settings.enabled ? 'emerald' : 'orange'
+        );
+    }
+}
+
+export async function addChatbotRule(trigger, response, matchType = 'exact') {
+    const cleanTrigger = (trigger || '').trim();
+    const cleanResponse = (response || '').trim();
+
+    if (!cleanTrigger) {
+        if (typeof showToast === 'function') {
+            showToast('Pergunta Obrigatória', 'Digite a pergunta ou palavra-chave que o cliente enviará.', 'orange');
+        }
+        return false;
+    }
+    if (!cleanResponse) {
+        if (typeof showToast === 'function') {
+            showToast('Resposta Obrigatória', 'Digite a resposta que o robô deve enviar.', 'orange');
+        }
+        return false;
+    }
+
+    const settings = getChatbotSettings();
+    if (!Array.isArray(settings.rules)) {
+        settings.rules = [];
+    }
+
+    const cleanLower = cleanTrigger.toLowerCase();
+    const existingIdx = settings.rules.findIndex(r => (r.trigger || '').trim().toLowerCase() === cleanLower);
+    if (existingIdx >= 0) {
+        settings.rules[existingIdx].response = cleanResponse;
+        settings.rules[existingIdx].matchType = matchType;
+        settings.rules[existingIdx].updatedAt = Date.now();
+    } else {
+        settings.rules.push({
+            id: `cb_rule_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+            trigger: cleanTrigger,
+            response: cleanResponse,
+            matchType: matchType,
+            createdAt: Date.now()
+        });
+    }
+
+    await saveChatbotSettings(settings);
+    renderChatbotRulesList();
+    if (typeof showToast === 'function') {
+        showToast('Regra Salva! 🤖', `Chatbot programado para responder quando o cliente enviar "${cleanTrigger}"!`, 'green');
+    }
+    return true;
+}
+
+export async function removeChatbotRule(ruleId) {
+    const settings = getChatbotSettings();
+    if (!Array.isArray(settings.rules)) return;
+    settings.rules = settings.rules.filter(r => r.id !== ruleId);
+    await saveChatbotSettings(settings);
+    renderChatbotRulesList();
+    if (typeof showToast === 'function') {
+        showToast('Regra Removida', 'A resposta automática foi excluída.', 'orange');
+    }
+}
+
+export function normalizeChatbotText(text) {
+    if (!text) return '';
+    return String(text)
+        .trim()
+        .toLowerCase()
+        .replace(/^[!?.,;:~`'"“”‘’\s]+|[!?.,;:~`'"“”‘’\s]+$/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+export function findMatchingChatbotRule(messageText, rules) {
+    if (!messageText || !Array.isArray(rules) || rules.length === 0) return null;
+    const cleanMsg = normalizeChatbotText(messageText);
+    if (!cleanMsg) return null;
+
+    for (const rule of rules) {
+        if (!rule || !rule.trigger || !rule.response) continue;
+        const cleanTrigger = normalizeChatbotText(rule.trigger);
+        if (!cleanTrigger) continue;
+
+        if (rule.matchType === 'contains') {
+            if (cleanMsg.includes(cleanTrigger)) {
+                return rule;
+            }
+        } else {
+            // Padrão: correspondência exata
+            if (cleanMsg === cleanTrigger) {
+                return rule;
+            }
+        }
+    }
+    return null;
+}
+
+export async function processIncomingMessageForChatbot(messageData, msgId = null, targetChatId = null) {
+    if (!isBusinessAccount(currentProfile)) return;
+    if (!messageData || !currentUser) return;
+    const sender = messageData.senderUid || messageData.fromUid;
+    if (!sender || sender === currentUser.uid) return;
+
+    const settings = getChatbotSettings();
+    if (!settings || !settings.enabled || !Array.isArray(settings.rules) || settings.rules.length === 0) {
+        return;
+    }
+
+    const uniqueMsgId = msgId || messageData.id || `${sender}_${messageData.createdAt}`;
+    if (processedChatbotMsgIds.has(uniqueMsgId)) return;
+    processedChatbotMsgIds.add(uniqueMsgId);
+
+    const lastReply = chatbotClientCooldownMap.get(sender) || 0;
+    if (Date.now() - lastReply < 1200) return;
+
+    // Se o cliente enviar uma pergunta não cadastrada, o Chatbot NÃO responde nada!
+    const matchedRule = findMatchingChatbotRule(messageData.text, settings.rules);
+    if (!matchedRule) return;
+
+    chatbotClientCooldownMap.set(sender, Date.now());
+
+    setTimeout(async () => {
+        try {
+            const chatId = targetChatId || [currentUser.uid, sender].sort().join('_');
+            const replyMsg = {
+                senderUid: currentUser.uid,
+                senderName: currentProfile?.name || 'Empresa',
+                senderAvatar: currentProfile?.avatar || '',
+                type: 'text',
+                text: matchedRule.response,
+                isChatbotReply: true,
+                createdAt: Date.now()
+            };
+            if (typeof db !== 'undefined' && typeof collection === 'function' && typeof addDoc === 'function') {
+                await addDoc(collection(db, 'chats', chatId, 'messages'), replyMsg);
+            }
+            console.log(`[VORTEX CHATBOT] Resposta automática enviada para ${sender}: "${matchedRule.response}"`);
+        } catch (err) {
+            console.error('[VORTEX CHATBOT] Falha ao enviar resposta automática:', err);
+        }
+    }, 600);
+}
+
+export function openCompanyChatbotModal() {
+    if (!isBusinessAccount(currentProfile)) {
+        if (typeof showToast === 'function') {
+            showToast('Recurso Exclusivo 🏢', 'O Chatbot de respostas automáticas é exclusivo para contas Empresa.', 'orange');
+        }
+        return;
+    }
+    const modal = document.getElementById('company-chatbot-modal');
+    if (!modal) return;
+    modal.style.display = 'flex';
+    modal.setAttribute('aria-hidden', 'false');
+    renderChatbotRulesList();
+    if (typeof window !== 'undefined' && window.lucide) {
+        window.lucide.createIcons();
+    }
+}
+
+export function closeCompanyChatbotModal() {
+    const modal = document.getElementById('company-chatbot-modal');
+    if (!modal) return;
+    modal.style.display = 'none';
+    modal.setAttribute('aria-hidden', 'true');
+}
+
+export function renderChatbotRulesList() {
+    const settings = getChatbotSettings();
+    const rules = Array.isArray(settings.rules) ? settings.rules : [];
+
+    const toggle = document.getElementById('chatbot-status-toggle');
+    const statusPill = document.getElementById('chatbot-status-pill');
+    if (toggle) toggle.checked = Boolean(settings.enabled);
+    if (statusPill) {
+        statusPill.className = `chatbot-status-pill ${settings.enabled ? 'active' : 'inactive'}`;
+        statusPill.innerText = settings.enabled ? 'Ativado ⚡' : 'Desativado';
+    }
+
+    const countBadge = document.getElementById('chatbot-rules-count-badge');
+    if (countBadge) {
+        countBadge.innerText = `${rules.length} ${rules.length === 1 ? 'regra' : 'regras'}`;
+    }
+
+    const listEl = document.getElementById('chatbot-rules-list');
+    const emptyEl = document.getElementById('chatbot-rules-empty');
+
+    if (!listEl) return;
+    listEl.innerHTML = '';
+
+    if (rules.length === 0) {
+        if (emptyEl) emptyEl.style.display = 'flex';
+    } else {
+        if (emptyEl) emptyEl.style.display = 'none';
+        rules.forEach(rule => {
+            const card = document.createElement('div');
+            card.className = 'chatbot-rule-item-card';
+            card.dataset.ruleId = rule.id;
+
+            const isContains = rule.matchType === 'contains';
+            card.innerHTML = `
+                <div class="chatbot-rule-header">
+                    <div class="chatbot-rule-trigger-wrap">
+                        <span class="chatbot-rule-trigger-badge" title="Pergunta: ${rule.trigger}">"${rule.trigger}"</span>
+                        <span class="chatbot-rule-match-tag">${isContains ? 'Contém' : 'Exata'}</span>
+                    </div>
+                    <button type="button" class="chatbot-rule-delete-btn" title="Excluir regra" aria-label="Excluir regra">
+                        <i data-lucide="trash-2"></i>
+                    </button>
+                </div>
+                <div class="chatbot-rule-response-box">
+                    <div class="chatbot-rule-response-label">Resposta Automática:</div>
+                    <div>${rule.response}</div>
+                </div>
+            `;
+
+            const delBtn = card.querySelector('.chatbot-rule-delete-btn');
+            if (delBtn) {
+                delBtn.onclick = () => removeChatbotRule(rule.id);
+            }
+            listEl.appendChild(card);
+        });
+    }
+
+    if (typeof window !== 'undefined' && window.lucide) {
+        window.lucide.createIcons();
+    }
+}
+
+export function updateCompanyChatbotSettingsUI() {
+    const isBiz = isBusinessAccount(currentProfile);
+    const settingItem = document.getElementById('company-chatbot-setting-item');
+    if (settingItem) {
+        settingItem.style.display = isBiz ? 'flex' : 'none';
+    }
+
+    const settings = getChatbotSettings();
+    const rules = Array.isArray(settings.rules) ? settings.rules : [];
+
+    const badge = document.getElementById('company-chatbot-setting-status-badge');
+    if (badge) {
+        badge.className = `company-chatbot-setting-badge ${settings.enabled ? 'active' : 'inactive'}`;
+        badge.innerText = settings.enabled ? 'Ativado ⚡' : 'Desativado';
+    }
+
+    const counter = document.getElementById('company-chatbot-setting-rules-counter');
+    if (counter) {
+        counter.innerText = `${rules.length} ${rules.length === 1 ? 'regra ativa' : 'regras ativas'}`;
+    }
+}
+
+export function initCompanyChatbotControls() {
+    document.getElementById('open-company-chatbot-btn')?.addEventListener('click', openCompanyChatbotModal);
+    document.getElementById('profile-open-chatbot-btn')?.addEventListener('click', openCompanyChatbotModal);
+    document.getElementById('close-company-chatbot-modal')?.addEventListener('click', closeCompanyChatbotModal);
+    document.getElementById('company-chatbot-modal')?.addEventListener('click', (e) => {
+        if (e.target && e.target.id === 'company-chatbot-modal') closeCompanyChatbotModal();
+    });
+
+    document.getElementById('chatbot-status-toggle')?.addEventListener('change', (e) => {
+        toggleChatbotStatus(e.target.checked);
+    });
+
+    document.getElementById('add-chatbot-rule-btn')?.addEventListener('click', async () => {
+        const triggerInput = document.getElementById('chatbot-rule-trigger-input');
+        const responseInput = document.getElementById('chatbot-rule-response-input');
+        const matchSelect = document.getElementById('chatbot-rule-match-select');
+
+        const trigger = triggerInput?.value || '';
+        const response = responseInput?.value || '';
+        const matchType = matchSelect?.value || 'exact';
+
+        const ok = await addChatbotRule(trigger, response, matchType);
+        if (ok) {
+            if (triggerInput) triggerInput.value = '';
+            if (responseInput) responseInput.value = '';
+            triggerInput?.focus();
+        }
+    });
+
+    updateCompanyChatbotSettingsUI();
+}

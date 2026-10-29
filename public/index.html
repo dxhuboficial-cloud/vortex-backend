@@ -5,19 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
     <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.199">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.217">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.217">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.217">
-    <link rel="stylesheet" href="style.css?v=1.0.217">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.218">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.218">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.218">
+    <link rel="stylesheet" href="style.css?v=1.0.218">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.217">
+    <link rel="manifest" href="manifest.json?v=1.0.218">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.217">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.217">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.218">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.218">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -1303,6 +1303,19 @@
                         </span>
                     </div>
 
+                    <!-- Chatbot de Respostas Automáticas (Atalho Perfil) -->
+                    <div class="setting-item profile-chatbot-quick-card">
+                        <div class="setting-info">
+                            <span class="profile-field-title">
+                                <i data-lucide="bot" class="profile-field-icon" style="color:#00e5ff;"></i> Chatbot da Empresa 🤖
+                            </span>
+                            <small>Responda perguntas de clientes automaticamente</small>
+                        </div>
+                        <button type="button" id="profile-open-chatbot-btn" class="secondary-btn profile-chatbot-btn">
+                            <i data-lucide="sliders"></i> <span>Configurar</span>
+                        </button>
+                    </div>
+
                     <div class="setting-item">
                         <label for="profile-whatsapp-input" class="setting-info">
                             <span class="profile-field-title">
@@ -2022,6 +2035,21 @@
                             <i data-lucide="banknote"></i> <span>Sacar R$ 1,00</span>
                         </button>
                     </div>
+                </div>
+
+                <!-- Card de Chatbot de Respostas Automáticas (Exclusivo Conta Empresa - v1.0.218) -->
+                <div class="setting-item company-chatbot-card-highlight" id="company-chatbot-setting-item" style="display: none;">
+                    <div class="setting-info">
+                        <span class="company-chatbot-highlight-text"><i data-lucide="bot"></i> Chatbot de Resposta Automática 🤖</span>
+                        <small id="company-chatbot-setting-desc">Configure perguntas e respostas automáticas para seus clientes (Exclusivo Conta Empresa).</small>
+                        <div class="company-chatbot-status-row">
+                            <span id="company-chatbot-setting-status-badge" class="company-chatbot-setting-badge inactive">Desativado</span>
+                            <span id="company-chatbot-setting-rules-counter" class="company-chatbot-rules-counter">0 regras ativas</span>
+                        </div>
+                    </div>
+                    <button id="open-company-chatbot-btn" type="button" class="danger-btn company-chatbot-open-action-btn">
+                        <i data-lucide="sliders"></i> <span>Configurar</span>
+                    </button>
                 </div>
 
                 <div class="setting-item admin-setting-row" id="admin-settings-item" style="display: none;">
@@ -4662,8 +4690,117 @@
             </div>
         </div>
 
+        <!-- Modal do Chatbot de Respostas Automáticas (Conta Empresa - v1.0.218) -->
+        <div id="company-chatbot-modal" class="custom-modal-overlay company-chatbot-overlay" style="display:none;" aria-hidden="true">
+            <div class="custom-modal-card company-chatbot-card">
+                <div class="panel-top-bar company-chatbot-top-bar">
+                    <div class="company-chatbot-title-wrap">
+                        <div class="company-chatbot-icon-badge">
+                            <i data-lucide="bot"></i>
+                        </div>
+                        <div>
+                            <div class="company-chatbot-title-row">
+                                <h3 class="modal-title">Chatbot Empresa</h3>
+                                <span class="company-chatbot-badge-tag">Respostas Automáticas</span>
+                            </div>
+                            <span class="company-chatbot-subtitle">Responda seus clientes automaticamente</span>
+                        </div>
+                    </div>
+                    <div class="header-icon-btn" id="close-company-chatbot-modal" title="Fechar" aria-label="Fechar">
+                        <i data-lucide="x"></i>
+                    </div>
+                </div>
+
+                <div class="company-chatbot-modal-body">
+                    <!-- Switch de Ativação do Chatbot -->
+                    <div class="chatbot-status-card">
+                        <div class="chatbot-status-info">
+                            <div class="chatbot-status-title-row">
+                                <span class="chatbot-status-title">Status do Chatbot</span>
+                                <span id="chatbot-status-pill" class="chatbot-status-pill inactive">Desativado</span>
+                            </div>
+                            <small class="chatbot-status-desc">O robô responderá automaticamente às perguntas cadastradas dos seus clientes.</small>
+                        </div>
+                        <label class="switch chatbot-main-switch">
+                            <input type="checkbox" id="chatbot-status-toggle" title="Ativar Chatbot">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <!-- Formulário para Criar/Adicionar Nova Regra -->
+                    <div class="chatbot-create-rule-card">
+                        <div class="chatbot-section-title">
+                            <i data-lucide="plus-circle"></i>
+                            <span>Cadastrar Pergunta & Resposta</span>
+                        </div>
+
+                        <div class="chatbot-input-group">
+                            <label for="chatbot-rule-trigger-input" class="chatbot-input-label">
+                                <i data-lucide="help-circle"></i>
+                                <span>Quando o cliente enviar (Pergunta / Palavra):</span>
+                            </label>
+                            <input type="text" id="chatbot-rule-trigger-input" class="chatbot-input" placeholder="Ex: oi, olá, preço, horário, pix, endereço..." maxlength="120" autocomplete="off">
+                            <small class="chatbot-input-hint">O que o cliente precisa escrever para receber esta resposta.</small>
+                        </div>
+
+                        <div class="chatbot-input-group">
+                            <label for="chatbot-rule-response-input" class="chatbot-input-label">
+                                <i data-lucide="message-square-reply"></i>
+                                <span>Resposta enviada automaticamente pelo Chatbot:</span>
+                            </label>
+                            <textarea id="chatbot-rule-response-input" class="chatbot-textarea" placeholder="Ex: Olá! Seja bem-vindo à nossa empresa! Como podemos te ajudar hoje? 😊" rows="3" maxlength="600"></textarea>
+                            <small class="chatbot-input-hint">Esta será a resposta exata enviada para o cliente.</small>
+                        </div>
+
+                        <div class="chatbot-input-group">
+                            <label for="chatbot-rule-match-select" class="chatbot-input-label">
+                                <i data-lucide="sliders"></i>
+                                <span>Tipo de Correspondência:</span>
+                            </label>
+                            <select id="chatbot-rule-match-select" class="chatbot-select">
+                                <option value="exact" selected>Correspondência Exata (Recomendado - ex: "oi" responde se cliente mandar "oi")</option>
+                                <option value="contains">Contém a Palavra (ex: responde se o cliente incluir essa palavra no texto)</option>
+                            </select>
+                        </div>
+
+                        <button type="button" id="add-chatbot-rule-btn" class="danger-btn chatbot-add-btn">
+                            <i data-lucide="plus"></i>
+                            <span>Salvar Regra de Resposta</span>
+                        </button>
+                    </div>
+
+                    <!-- Lista de Respostas Automáticas Cadastradas -->
+                    <div class="chatbot-rules-container">
+                        <div class="chatbot-rules-header">
+                            <div class="chatbot-rules-header-title">
+                                <i data-lucide="list"></i>
+                                <span>Perguntas & Respostas Cadastradas</span>
+                            </div>
+                            <span id="chatbot-rules-count-badge" class="chatbot-rules-count-badge">0 regras</span>
+                        </div>
+
+                        <div id="chatbot-rules-list" class="chatbot-rules-list">
+                            <!-- Injetado dinamicamente via JS -->
+                        </div>
+
+                        <div id="chatbot-rules-empty" class="chatbot-rules-empty">
+                            <i data-lucide="bot" class="chatbot-empty-icon"></i>
+                            <p>Nenhuma resposta automática cadastrada ainda.</p>
+                            <small>Cadastre perguntas comuns dos clientes acima para o robô responder automaticamente!</small>
+                        </div>
+                    </div>
+
+                    <!-- Nota Informativa VIP -->
+                    <div class="chatbot-info-note">
+                        <i data-lucide="info"></i>
+                        <span><strong>Como funciona:</strong> Se o cliente enviar uma pergunta cadastrada (ex: "oi"), o Chatbot responderá instantaneamente. Se a mensagem do cliente não estiver cadastrada, o Chatbot <strong>não responde nada</strong>, deixando a conversa livre para seu atendimento manual.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.217" defer></script>
+    <script type="module" src="script.js?v=1.0.218" defer></script>
 </body>
 </html>
