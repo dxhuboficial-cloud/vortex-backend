@@ -20725,7 +20725,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.222';
+export const CURRENT_APP_VERSION = '1.0.223';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -35599,16 +35599,6 @@ if (typeof window !== 'undefined') {
     window.renderChatbotRulesList = renderChatbotRulesList;
     window.updateCompanyChatbotSettingsUI = updateCompanyChatbotSettingsUI;
     window.initCompanyChatbotControls = initCompanyChatbotControls;
-    window.APP_PERMISSIONS_CONFIG = APP_PERMISSIONS_CONFIG;
-    window.getAppPermissionsState = getAppPermissionsState;
-    window.saveAppPermissionsState = saveAppPermissionsState;
-    window.syncBrowserPermissions = syncBrowserPermissions;
-    window.requestSingleAppPermission = requestSingleAppPermission;
-    window.requestAllAppPermissions = requestAllAppPermissions;
-    window.updateAppPermissionsUI = updateAppPermissionsUI;
-    window.openAppPermissionsModal = openAppPermissionsModal;
-    window.closeAppPermissionsModal = closeAppPermissionsModal;
-    window.initPermissionsManager = initPermissionsManager;
 }
 
 /* ==========================================================================
@@ -36007,6 +35997,17 @@ export function initPermissionsManager() {
 
 
 if (typeof window !== 'undefined') {
+    window.APP_PERMISSIONS_CONFIG = APP_PERMISSIONS_CONFIG;
+    window.getAppPermissionsState = getAppPermissionsState;
+    window.saveAppPermissionsState = saveAppPermissionsState;
+    window.syncBrowserPermissions = syncBrowserPermissions;
+    window.requestSingleAppPermission = requestSingleAppPermission;
+    window.requestAllAppPermissions = requestAllAppPermissions;
+    window.updateAppPermissionsUI = updateAppPermissionsUI;
+    window.openAppPermissionsModal = openAppPermissionsModal;
+    window.closeAppPermissionsModal = closeAppPermissionsModal;
+    window.initPermissionsManager = initPermissionsManager;
+
     initBackNavigation();
     setupChatEmojiDrawer();
     setupChatWallpaperModal();
