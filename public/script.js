@@ -3591,7 +3591,73 @@ export function setupVipSettingsControls() {
     });
 }
 
-function applyUserTheme() {
+export function getSystemThemeColorForProfile(profile) {
+    const prof = profile || (typeof currentProfile !== 'undefined' ? currentProfile : null) || {};
+
+    // 1. Total Black ativado explicitamente pelo usuário
+    if (prof.themeEnabled === false) {
+        return '#000000';
+    }
+
+    // 2. Temas VIP exclusivos
+    const isVip = typeof checkIsVipUser === 'function' ? checkIsVipUser(prof) : false;
+    const savedVipTheme = prof.vipTheme || (typeof localStorage !== 'undefined' ? localStorage.getItem('vortex_vip_theme') : 'default') || 'default';
+    const activeVipTheme = (isVip && savedVipTheme !== 'default') ? savedVipTheme : 'default';
+
+    if (activeVipTheme === 'hacker') {
+        return '#00ff66';
+    }
+    if (activeVipTheme === 'cyberpark') {
+        return '#ff007f';
+    }
+    if (activeVipTheme === 'rgb') {
+        return '#00f5ff';
+    }
+
+    // 3. Cor Neon do App selecionada pelo usuário (ex: #39ff14 Verde Neon)
+    if (prof.accentColor) {
+        return prof.accentColor;
+    }
+
+    if (typeof localStorage !== 'undefined') {
+        const localAccent = localStorage.getItem('vortex_accent_color');
+        if (localAccent) return localAccent;
+    }
+
+    return '#39ff14'; // Padrão verde neon do VORTEX VIP
+}
+
+export function updateSystemThemeColor(targetColor) {
+    if (typeof document === 'undefined') return;
+    const color = targetColor || getSystemThemeColorForProfile(typeof currentProfile !== 'undefined' ? currentProfile : null);
+
+    let metaTheme = document.querySelector('meta[name="theme-color"]') || (typeof document.getElementById === 'function' ? document.getElementById('app-theme-color-meta') : null);
+    if (!metaTheme && typeof document.createElement === 'function') {
+        metaTheme = document.createElement('meta');
+        metaTheme.name = 'theme-color';
+        metaTheme.id = 'app-theme-color-meta';
+        if (document.head && typeof document.head.appendChild === 'function') {
+            document.head.appendChild(metaTheme);
+        }
+    }
+    if (metaTheme && typeof metaTheme.setAttribute === 'function') {
+        metaTheme.setAttribute('content', color);
+    }
+
+    // Suporte iOS Safari status bar
+    let metaApple = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+    if (metaApple && typeof metaApple.setAttribute === 'function') {
+        metaApple.setAttribute('content', 'black-translucent');
+    }
+}
+
+export function applyUserTheme() {
+    // Sincronizar theme-color das barras do sistema do celular (Status Bar no topo e Navigation Bar no rodapé)
+    updateSystemThemeColor();
+
+    if (typeof localStorage !== 'undefined' && currentProfile && currentProfile.accentColor) {
+        localStorage.setItem('vortex_accent_color', currentProfile.accentColor);
+    }
     // Temas VORTEX VIP (Cyberpunk, Hacker com chuva binária e RGB)
     const isVip = checkIsVipUser(currentProfile);
     const savedVipTheme = currentProfile.vipTheme || (typeof localStorage !== 'undefined' ? localStorage.getItem('vortex_vip_theme') : 'default') || 'default';
@@ -20725,7 +20791,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.226';
+export const CURRENT_APP_VERSION = '1.0.227';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -21243,6 +21309,9 @@ if (typeof window !== 'undefined') {
     window.getPwaIsInstalled = getPwaIsInstalled;
     window.checkForAppUpdates = checkForAppUpdates;
     window.triggerPwaUpdate = triggerPwaUpdate;
+    window.applyUserTheme = applyUserTheme;
+    window.updateSystemThemeColor = updateSystemThemeColor;
+    window.getSystemThemeColorForProfile = getSystemThemeColorForProfile;
 }
 
 // Listeners de Instalação PWA
@@ -33052,6 +33121,9 @@ document.querySelectorAll('.color-option').forEach(opt => {
     opt.addEventListener('click', async () => {
         const color = opt.dataset.color;
         currentProfile.accentColor = color;
+        if (typeof localStorage !== 'undefined') {
+            localStorage.setItem('vortex_accent_color', color);
+        }
         applyUserTheme();
         if (currentUser) await updateDoc(doc(db, 'users', currentUser.uid), { accentColor: color }).catch(error => console.error('Erro ao salvar cor:', error));
     });
@@ -33137,6 +33209,9 @@ document.getElementById('privacy-toggle')?.addEventListener('change', async (e) 
 document.getElementById('theme-toggle')?.addEventListener('change', async (e) => {
     const checked = !!e.target.checked;
     currentProfile.themeEnabled = checked;
+    if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('vortex_theme_enabled', String(checked));
+    }
     document.body.classList.toggle('total-black', !checked);
     applyUserTheme();
     if (currentUser) {
@@ -36681,6 +36756,9 @@ export async function saveChatbotSettings(settings) {
         console.warn('[VORTEX CHATBOT] Erro ao persistir chatbotSettings no Firestore:', err);
     }
     updateCompanyChatbotSettingsUI();
+    try {
+        updateSystemThemeColor();
+    } catch (e) {}
 }
 
 export async function toggleChatbotStatus(enabled) {
@@ -37034,4 +37112,7 @@ export function initCompanyChatbotControls() {
     });
 
     updateCompanyChatbotSettingsUI();
+    try {
+        updateSystemThemeColor();
+    } catch (e) {}
 }
