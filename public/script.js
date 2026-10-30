@@ -3631,24 +3631,73 @@ export function updateSystemThemeColor(targetColor) {
     if (typeof document === 'undefined') return;
     const color = targetColor || getSystemThemeColorForProfile(typeof currentProfile !== 'undefined' ? currentProfile : null);
 
-    let metaTheme = document.querySelector('meta[name="theme-color"]') || (typeof document.getElementById === 'function' ? document.getElementById('app-theme-color-meta') : null);
-    if (!metaTheme && typeof document.createElement === 'function') {
-        metaTheme = document.createElement('meta');
-        metaTheme.name = 'theme-color';
-        metaTheme.id = 'app-theme-color-meta';
-        if (document.head && typeof document.head.appendChild === 'function') {
-            document.head.appendChild(metaTheme);
+    // 1. Atualizar todas as tags meta[name="theme-color"] (padrão, dark e light)
+    let metas = (typeof document.querySelectorAll === 'function') ? document.querySelectorAll('meta[name="theme-color"]') : [];
+    if (!metas || metas.length === 0) {
+        let metaTheme = (typeof document.querySelector === 'function') ? document.querySelector('meta[name="theme-color"]') : null;
+        if (!metaTheme && typeof document.getElementById === 'function') {
+            metaTheme = document.getElementById('app-theme-color-meta');
         }
-    }
-    if (metaTheme && typeof metaTheme.setAttribute === 'function') {
-        metaTheme.setAttribute('content', color);
+        if (!metaTheme && typeof document.createElement === 'function') {
+            metaTheme = document.createElement('meta');
+            metaTheme.name = 'theme-color';
+            metaTheme.id = 'app-theme-color-meta';
+            if (document.head && typeof document.head.appendChild === 'function') {
+                document.head.appendChild(metaTheme);
+            }
+        }
+        if (metaTheme && typeof metaTheme.setAttribute === 'function') {
+            metaTheme.setAttribute('content', color);
+        }
+    } else {
+        metas.forEach(m => {
+            if (m && typeof m.setAttribute === 'function') {
+                m.setAttribute('content', color);
+            }
+        });
     }
 
-    // Suporte iOS Safari status bar
-    let metaApple = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+    // 2. Suporte iOS Safari status bar
+    let metaApple = (typeof document.querySelector === 'function') ? document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]') : null;
     if (metaApple && typeof metaApple.setAttribute === 'function') {
         metaApple.setAttribute('content', 'black-translucent');
     }
+
+    // 3. Propagar CSS custom property para o root e body (safe-area background)
+    if (document.documentElement && document.documentElement.style && typeof document.documentElement.style.setProperty === 'function') {
+        document.documentElement.style.setProperty('--system-theme-color', color);
+    }
+    if (document.body && document.body.style && typeof document.body.style.setProperty === 'function') {
+        document.body.style.setProperty('--system-theme-color', color);
+    }
+
+    // 4. Sincronizar dinamicamente o manifest para o Android Chrome pintar a Barra de Navegação Inferior (Navigation Bar)
+    try {
+        const manifestLink = (typeof document.querySelector === 'function' ? document.querySelector('link[rel="manifest"]') : null) || (typeof document.getElementById === 'function' ? document.getElementById('app-manifest-link') : null);
+        if (manifestLink && typeof manifestLink.setAttribute === 'function' && typeof Blob !== 'undefined' && typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function') {
+            const isTotalBlack = (typeof currentProfile !== 'undefined' && currentProfile && currentProfile.themeEnabled === false);
+            const dynManifest = {
+                name: "VORTEX VIP ⚡ - Mensagens em Tempo Real",
+                short_name: "VORTEX VIP",
+                version: CURRENT_APP_VERSION,
+                start_url: "/?source=pwa",
+                scope: "/",
+                display: "standalone",
+                orientation: "portrait-primary",
+                background_color: isTotalBlack ? "#000000" : "#0a0a0c",
+                theme_color: color,
+                icons: [
+                    { src: "/icons/vortex-vip-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+                    { src: "/icons/vortex-vip-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+                    { src: "/icons/vortex-vip-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+                    { src: "/icons/vortex-vip.svg", sizes: "any", type: "image/svg+xml", purpose: "any" }
+                ]
+            };
+            const blob = new Blob([JSON.stringify(dynManifest)], { type: 'application/manifest+json' });
+            const dynHref = URL.createObjectURL(blob);
+            manifestLink.setAttribute('href', dynHref);
+        }
+    } catch (e) {}
 }
 
 export function applyUserTheme() {
@@ -20791,7 +20840,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.227';
+export const CURRENT_APP_VERSION = '1.0.228';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;

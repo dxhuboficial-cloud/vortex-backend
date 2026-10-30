@@ -1,7 +1,7 @@
 {
   "name": "VORTEX VIP ⚡ - Mensagens em Tempo Real",
   "short_name": "VORTEX VIP",
-  "version": "1.0.227",
+  "version": "1.0.228",
   "description": "Rede social e mensagens em tempo real com criptografia quântica, chamadas e recursos exclusivos VIP.",
   "start_url": "/?source=pwa",
   "scope": "/",
@@ -13,7 +13,7 @@
   ],
   "orientation": "portrait-primary",
   "background_color": "#0a0a0c",
-  "theme_color": "#fff01f",
+  "theme_color": "#39ff14",
   "lang": "pt-BR",
   "dir": "ltr",
   "categories": [
