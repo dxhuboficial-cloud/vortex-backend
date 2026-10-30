@@ -4,20 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.224">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.224">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.224">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.224">
-    <link rel="stylesheet" href="style.css?v=1.0.224">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.225">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.225">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.225">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.225">
+    <link rel="stylesheet" href="style.css?v=1.0.225">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.224">
+    <link rel="manifest" href="manifest.json?v=1.0.225">
     <meta name="theme-color" content="#fff01f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.224">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.224">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.225">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.225">
     <!-- SDK Oficial do Mercado Pago v2 -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <!-- Ícones Lucide -->
@@ -2057,7 +2057,7 @@
                     </div>
                 </div>
 
-                <!-- Card de Permissões do App (v1.0.224) -->
+                <!-- Card de Permissões do App (v1.0.225) -->
                 <div class="setting-item app-permissions-card-highlight" id="app-permissions-setting-item">
                     <div class="app-permissions-setting-inner">
                         <div class="app-permissions-header-row">
@@ -2278,14 +2278,14 @@
                     <button id="delete-account-btn" type="button" class="danger-btn delete-account-action-btn">Apagar Conta</button>
                 </div>
 
-                <!-- Card de Versão Oficial do App (v1.0.224) -->
+                <!-- Card de Versão Oficial do App (v1.0.225) -->
                 <div class="app-version-card" id="app-version-info-footer">
                     <div class="app-version-header-row">
                         <div class="app-version-brand-wrap">
-                            <img src="icons/vortex-vip-192.png?v=1.0.224" alt="VORTEX VIP" class="app-version-icon-img" width="22" height="22">
+                            <img src="icons/vortex-vip-192.png?v=1.0.225" alt="VORTEX VIP" class="app-version-icon-img" width="22" height="22">
                             <span class="app-version-brand-name">VORTEX VIP Oficial</span>
                         </div>
-                        <span class="app-version-pill-badge" id="app-version-display-badge">v1.0.224 ⚡</span>
+                        <span class="app-version-pill-badge" id="app-version-display-badge">v1.0.225 ⚡</span>
                     </div>
                     <div class="app-version-status-row">
                         <span class="app-version-status-dot"></span>
@@ -3355,7 +3355,7 @@
             <div class="pwa-banner-glow-line"></div>
             <div class="pwa-banner-content">
                 <div class="pwa-banner-icon-box">
-                    <img src="icons/vortex-vip-192.png?v=1.0.224" alt="VORTEX VIP" class="pwa-banner-logo" width="44" height="44">
+                    <img src="icons/vortex-vip-192.png?v=1.0.225" alt="VORTEX VIP" class="pwa-banner-logo" width="44" height="44">
                 </div>
                 <div class="pwa-banner-text">
                     <div class="pwa-banner-title">Instalar VORTEX VIP ⚡</div>
@@ -3373,7 +3373,7 @@
             <div class="pwa-ios-content">
                 <div class="pwa-ios-header">
                     <div class="pwa-ios-icon-wrap">
-                        <img src="icons/vortex-vip-192.png?v=1.0.224" alt="VORTEX VIP" width="48" height="48">
+                        <img src="icons/vortex-vip-192.png?v=1.0.225" alt="VORTEX VIP" width="48" height="48">
                     </div>
                     <h3 class="pwa-ios-title">Instalar no iPhone / iPad 📲</h3>
                     <p class="pwa-ios-subtitle">Siga os 2 passos rápidos abaixo no Safari para ter o VORTEX VIP na sua tela de início:</p>
@@ -4796,9 +4796,13 @@
                                 <span>Tipo de Correspondência:</span>
                             </label>
                             <select id="chatbot-rule-match-select" class="chatbot-select">
-                                <option value="exact" selected>Correspondência Exata (Recomendado - ex: "oi" responde se cliente mandar "oi")</option>
-                                <option value="contains">Contém a Palavra (ex: responde se o cliente incluir essa palavra no texto)</option>
+                                <option value="exact" selected>Correspondência Exata</option>
+                                <option value="contains">Contém a Palavra</option>
                             </select>
+                            <div class="chatbot-match-hint-box" id="chatbot-match-hint-box">
+                                <i data-lucide="info"></i>
+                                <span id="chatbot-rule-match-hint"><strong>Exata:</strong> Só responde se a pergunta for idêntica (ex: "oi").</span>
+                            </div>
                         </div>
 
                         <button type="button" id="add-chatbot-rule-btn" class="danger-btn chatbot-add-btn">
@@ -4837,7 +4841,7 @@
             </div>
         </div>
 
-        <!-- Modal da Central de Permissões do App (v1.0.224) -->
+        <!-- Modal da Central de Permissões do App (v1.0.225) -->
         <div id="app-permissions-modal" class="custom-modal-overlay app-permissions-overlay" style="display:none;" aria-hidden="true">
             <div class="custom-modal-card app-permissions-card">
                 <div class="panel-top-bar app-permissions-top-bar">
@@ -5087,6 +5091,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.224" defer></script>
+    <script type="module" src="script.js?v=1.0.225" defer></script>
 </body>
 </html>

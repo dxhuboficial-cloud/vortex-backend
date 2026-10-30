@@ -20725,7 +20725,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.224';
+export const CURRENT_APP_VERSION = '1.0.225';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -37000,10 +37000,22 @@ export function initCompanyChatbotControls() {
         toggleChatbotStatus(e.target.checked);
     });
 
+    const matchSelect = document.getElementById('chatbot-rule-match-select');
+    const updateMatchHint = () => {
+        const hintEl = document.getElementById('chatbot-rule-match-hint');
+        if (!hintEl || !matchSelect) return;
+        if (matchSelect.value === 'contains') {
+            hintEl.innerHTML = '<strong>Contém:</strong> Responde se a palavra estiver dentro da frase do cliente.';
+        } else {
+            hintEl.innerHTML = '<strong>Exata:</strong> Só responde se a pergunta for idêntica (ex: "oi").';
+        }
+    };
+    matchSelect?.addEventListener('change', updateMatchHint);
+    updateMatchHint();
+
     document.getElementById('add-chatbot-rule-btn')?.addEventListener('click', async () => {
         const triggerInput = document.getElementById('chatbot-rule-trigger-input');
         const responseInput = document.getElementById('chatbot-rule-response-input');
-        const matchSelect = document.getElementById('chatbot-rule-match-select');
 
         const trigger = triggerInput?.value || '';
         const response = responseInput?.value || '';
@@ -37013,6 +37025,10 @@ export function initCompanyChatbotControls() {
         if (ok) {
             if (triggerInput) triggerInput.value = '';
             if (responseInput) responseInput.value = '';
+            if (matchSelect) {
+                matchSelect.value = 'exact';
+                updateMatchHint();
+            }
             triggerInput?.focus();
         }
     });
