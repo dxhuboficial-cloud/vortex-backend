@@ -20936,7 +20936,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.229';
+export const CURRENT_APP_VERSION = '1.0.230';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -26170,7 +26170,7 @@ export async function startCall(isVideo = true) {
         localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
         if (!isVideo && typeof peerConnection.addTransceiver === 'function') {
             try {
-                peerConnection.addTransceiver('video', { direction: 'recvonly' });
+                peerConnection.addTransceiver('video', { direction: 'sendrecv' });
             } catch (_) {}
         }
 
@@ -26266,17 +26266,8 @@ export async function startCall(isVideo = true) {
                     endCall();
                 }
 
-                if (data.type === 'video' || data.isVideoCall) {
-                    if (overlay && overlay.classList.contains('audio-call-mode')) {
-                        overlay.classList.remove('audio-call-mode');
-                        if (userInfoBox) {
-                            userInfoBox.classList.remove('audio-only-call');
-                            userInfoBox.classList.add('video-active');
-                        }
-                        if (statusEl && statusEl.innerText.includes('Áudio')) {
-                            statusEl.innerText = 'Conectado • Chamada de Vídeo VIP';
-                        }
-                    }
+                if (data.type === 'video' || data.isVideoCall || data.hasVideo || data.switchedToVideoAt) {
+                    handleCallSwitchedToVideo(data);
                 }
             }
         });
@@ -26439,7 +26430,17 @@ async function acceptIncomingCall() {
         localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
         if (!isVideo && typeof peerConnection.addTransceiver === 'function') {
             try {
-                peerConnection.addTransceiver('video', { direction: 'recvonly' });
+                const transceivers = peerConnection.getTransceivers ? peerConnection.getTransceivers() : [];
+                const videoTransceiver = transceivers.find(t => 
+                    (t.receiver && t.receiver.track && t.receiver.track.kind === 'video') ||
+                    (t.sender && t.sender.kind === 'video') ||
+                    t.kind === 'video'
+                );
+                if (videoTransceiver) {
+                    videoTransceiver.direction = 'sendrecv';
+                } else {
+                    peerConnection.addTransceiver('video', { direction: 'sendrecv' });
+                }
             } catch (_) {}
         }
 
@@ -26512,20 +26513,8 @@ async function acceptIncomingCall() {
                     endCall();
                     return;
                 }
-                if (data.type === 'video' || data.isVideoCall) {
-                    const overlay = document.getElementById('video-call-overlay');
-                    const userInfoBox = document.getElementById('call-user-info-box');
-                    const statusEl = document.getElementById('call-status');
-                    if (overlay && overlay.classList.contains('audio-call-mode')) {
-                        overlay.classList.remove('audio-call-mode');
-                        if (userInfoBox) {
-                            userInfoBox.classList.remove('audio-only-call');
-                            userInfoBox.classList.add('video-active');
-                        }
-                        if (statusEl && statusEl.innerText.includes('Áudio')) {
-                            statusEl.innerText = 'Conectado • Chamada de Vídeo VIP';
-                        }
-                    }
+                if (data.type === 'video' || data.isVideoCall || data.hasVideo || data.switchedToVideoAt) {
+                    handleCallSwitchedToVideo(data);
                 }
             }
         });
@@ -26806,6 +26795,9 @@ export function updateCameraToggleButtonUI(cameraOff = isCameraOff) {
 
     if (wrapper) {
         wrapper.classList.toggle('camera-off', !!cameraOff);
+        if (!isAudioMode) {
+            wrapper.style.display = '';
+        }
     }
     if (localVideo) {
         localVideo.style.display = cameraOff ? 'none' : 'block';
@@ -26819,12 +26811,159 @@ export function updateCameraToggleButtonUI(cameraOff = isCameraOff) {
     }
 }
 
+export async function handleCallSwitchedToVideo(data = {}) {
+    const overlay = document.getElementById('video-call-overlay');
+    const userInfoBox = document.getElementById('call-user-info-box');
+    const statusEl = document.getElementById('call-status');
+    const localPip = document.getElementById('local-video-wrapper');
+    const switchCamBtn = document.getElementById('switch-camera-btn');
+    const remoteFeed = document.getElementById('remote-webcam-feed');
+    const localFeed = document.getElementById('local-webcam-feed');
+    const placeholder = document.getElementById('local-video-off-placeholder');
+
+    if (overlay) {
+        overlay.classList.remove('audio-call-mode');
+    }
+    if (localPip) {
+        localPip.style.display = '';
+    }
+    if (switchCamBtn) {
+        switchCamBtn.style.display = 'flex';
+    }
+    if (statusEl) {
+        if (statusEl.innerText.includes('Chamando')) {
+            statusEl.innerText = 'Chamando (Vídeo)...';
+        } else if (statusEl.innerText.includes('Áudio')) {
+            statusEl.innerText = 'Conectado • Chamada de Vídeo VIP';
+        }
+    }
+    if (activeCallRecordContext) {
+        activeCallRecordContext.callType = 'video';
+    }
+
+    if (remoteFeed && remoteStream) {
+        if (remoteFeed.srcObject !== remoteStream) {
+            remoteFeed.srcObject = remoteStream;
+        }
+        if (typeof remoteFeed.play === 'function') {
+            remoteFeed.play().catch(() => {});
+        }
+    }
+
+    const hasLocalVideoTrack = localStream && typeof localStream.getVideoTracks === 'function' && localStream.getVideoTracks().length > 0;
+    const isSwitchedByOther = Boolean(data.switchedToVideoBy && currentUser && data.switchedToVideoBy !== currentUser.uid);
+
+    if (!hasLocalVideoTrack || isSwitchedByOther) {
+        try {
+            let videoStream = null;
+            if (navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') {
+                try {
+                    videoStream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: currentFacingMode }
+                    });
+                } catch (e1) {
+                    videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                }
+            }
+
+            if (videoStream) {
+                const newVideoTrack = videoStream.getVideoTracks ? videoStream.getVideoTracks()[0] : null;
+                if (newVideoTrack) {
+                    if (localStream) {
+                        if (typeof localStream.getVideoTracks === 'function') {
+                            localStream.getVideoTracks().forEach(t => {
+                                if (typeof t.stop === 'function') t.stop();
+                                if (typeof localStream.removeTrack === 'function') localStream.removeTrack(t);
+                            });
+                        }
+                        if (typeof localStream.addTrack === 'function') {
+                            localStream.addTrack(newVideoTrack);
+                        }
+                    } else {
+                        localStream = videoStream;
+                    }
+
+                    if (localFeed) {
+                        localFeed.srcObject = localStream;
+                        localFeed.style.display = 'block';
+                    }
+
+                    if (peerConnection) {
+                        const transceivers = typeof peerConnection.getTransceivers === 'function' ? peerConnection.getTransceivers() : [];
+                        const videoTransceiver = transceivers.find(t => 
+                            (t.sender && (t.sender.track?.kind === 'video' || t.sender.kind === 'video')) ||
+                            (t.receiver && t.receiver.track?.kind === 'video') ||
+                            t.kind === 'video'
+                        );
+                        if (videoTransceiver) {
+                            videoTransceiver.direction = 'sendrecv';
+                            if (videoTransceiver.sender && typeof videoTransceiver.sender.replaceTrack === 'function') {
+                                await videoTransceiver.sender.replaceTrack(newVideoTrack).catch(() => {});
+                            }
+                        } else {
+                            const senders = typeof peerConnection.getSenders === 'function' ? peerConnection.getSenders() : [];
+                            const videoSender = senders.find(s => (s.track && s.track.kind === 'video') || s.kind === 'video');
+                            if (videoSender && typeof videoSender.replaceTrack === 'function') {
+                                await videoSender.replaceTrack(newVideoTrack).catch(() => {});
+                            } else if (typeof peerConnection.addTrack === 'function') {
+                                try {
+                                    peerConnection.addTrack(newVideoTrack, localStream);
+                                } catch (_) {}
+                            }
+                        }
+                    }
+
+                    isCameraOff = false;
+                    updateCameraToggleButtonUI(false);
+                    if (placeholder) placeholder.style.display = 'none';
+                    if (localPip) localPip.classList.remove('camera-off');
+                    showToast("Chamada de Vídeo", "Câmera ativada! Chamada alterada para vídeo.", "green");
+                }
+            } else {
+                isCameraOff = true;
+                updateCameraToggleButtonUI(true);
+                if (placeholder) placeholder.style.display = 'flex';
+                if (localFeed) localFeed.style.display = 'none';
+                if (localPip) localPip.classList.add('camera-off');
+            }
+        } catch (err) {
+            console.warn("Câmera local não iniciada automaticamente ao receber switch:", err);
+            isCameraOff = true;
+            updateCameraToggleButtonUI(true);
+            if (placeholder) placeholder.style.display = 'flex';
+            if (localFeed) localFeed.style.display = 'none';
+            if (localPip) localPip.classList.add('camera-off');
+        }
+    } else {
+        updateCameraToggleButtonUI(isCameraOff);
+        if (localPip) {
+            localPip.classList.toggle('camera-off', isCameraOff);
+        }
+        if (placeholder) {
+            placeholder.style.display = isCameraOff ? 'flex' : 'none';
+        }
+        if (localFeed) {
+            localFeed.style.display = isCameraOff ? 'none' : 'block';
+        }
+    }
+
+    const remoteHasVideo = remoteStream && typeof remoteStream.getVideoTracks === 'function' && remoteStream.getVideoTracks().length > 0;
+    if (remoteHasVideo || !isCameraOff) {
+        if (userInfoBox) {
+            userInfoBox.classList.remove('audio-only-call');
+            userInfoBox.classList.add('video-active');
+        }
+    }
+}
+
 export async function switchToVideoCall() {
     const overlay = document.getElementById('video-call-overlay');
     const userInfoBox = document.getElementById('call-user-info-box');
     const localPip = document.getElementById('local-video-wrapper');
     const switchCamBtn = document.getElementById('switch-camera-btn');
     const statusEl = document.getElementById('call-status');
+    const localFeed = document.getElementById('local-webcam-feed');
+    const placeholder = document.getElementById('local-video-off-placeholder');
 
     try {
         let videoStream = null;
@@ -26863,20 +27002,37 @@ export async function switchToVideoCall() {
             localStream = videoStream;
         }
 
-        const localFeed = document.getElementById('local-webcam-feed');
         if (localFeed) {
             localFeed.srcObject = localStream;
+            localFeed.style.display = 'block';
+        }
+
+        if (placeholder) {
+            placeholder.style.display = 'none';
         }
 
         if (peerConnection) {
-            const senders = typeof peerConnection.getSenders === 'function' ? peerConnection.getSenders() : [];
-            const videoSender = senders.find(s => (s.track && s.track.kind === 'video') || s.kind === 'video');
-            if (videoSender && typeof videoSender.replaceTrack === 'function') {
-                await videoSender.replaceTrack(newVideoTrack).catch(() => {});
-            } else if (typeof peerConnection.addTrack === 'function') {
-                try {
-                    peerConnection.addTrack(newVideoTrack, localStream);
-                } catch (_) {}
+            const transceivers = typeof peerConnection.getTransceivers === 'function' ? peerConnection.getTransceivers() : [];
+            const videoTransceiver = transceivers.find(t => 
+                (t.sender && (t.sender.track?.kind === 'video' || t.sender.kind === 'video')) ||
+                (t.receiver && t.receiver.track?.kind === 'video') ||
+                t.kind === 'video'
+            );
+            if (videoTransceiver) {
+                videoTransceiver.direction = 'sendrecv';
+                if (videoTransceiver.sender && typeof videoTransceiver.sender.replaceTrack === 'function') {
+                    await videoTransceiver.sender.replaceTrack(newVideoTrack).catch(() => {});
+                }
+            } else {
+                const senders = typeof peerConnection.getSenders === 'function' ? peerConnection.getSenders() : [];
+                const videoSender = senders.find(s => (s.track && s.track.kind === 'video') || s.kind === 'video');
+                if (videoSender && typeof videoSender.replaceTrack === 'function') {
+                    await videoSender.replaceTrack(newVideoTrack).catch(() => {});
+                } else if (typeof peerConnection.addTrack === 'function') {
+                    try {
+                        peerConnection.addTrack(newVideoTrack, localStream);
+                    } catch (_) {}
+                }
             }
         }
 
@@ -26889,6 +27045,7 @@ export async function switchToVideoCall() {
         }
         if (localPip) {
             localPip.style.display = '';
+            localPip.classList.remove('camera-off');
         }
         if (switchCamBtn) {
             switchCamBtn.style.display = 'flex';
@@ -26901,7 +27058,7 @@ export async function switchToVideoCall() {
             if (statusEl.innerText.includes('Chamando')) {
                 statusEl.innerText = 'Chamando (Vídeo)...';
             } else {
-                statusEl.innerText = 'Conectado • Criptografia Quântica VIP';
+                statusEl.innerText = 'Conectado • Chamada de Vídeo VIP';
             }
         }
 
@@ -26909,6 +27066,7 @@ export async function switchToVideoCall() {
             await updateDoc(doc(db, 'calls', currentCallId), {
                 type: 'video',
                 hasVideo: true,
+                switchedToVideoBy: (currentUser && currentUser.uid) ? currentUser.uid : '',
                 switchedToVideoAt: Date.now()
             }).catch(() => {});
         }
@@ -35712,6 +35870,7 @@ if (typeof window !== 'undefined') {
     window.closeCallTypeModal = closeCallTypeModal;
     window.startCall = startCall;
     window.switchToVideoCall = switchToVideoCall;
+window.handleCallSwitchedToVideo = handleCallSwitchedToVideo;
     // Favoritos no Feed Reels (v1.0.190)
     window.getSavedPostIds = getSavedPostIds;
     window.savePostIdsToStorage = savePostIdsToStorage;
