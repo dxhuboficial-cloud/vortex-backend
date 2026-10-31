@@ -25113,3 +25113,141 @@ video::-internal-media-controls-download-button {
     transform: translateY(-1px);
 }
 
+
+/* ==========================================================================
+   VORTEX VIP ⚡ - VERIFICADO COMPLETO E AVISO VERMELHO DE LINKS (v1.0.234)
+   ========================================================================== */
+
+/* Feedback sob os campos de URL (Botão Interativo & Sites do Perfil) */
+.business-link-feedback {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-top: 6px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    word-break: break-word;
+    line-height: 1.4;
+    transition: all 0.25s ease;
+}
+
+.business-link-feedback i {
+    width: 16px;
+    height: 16px;
+    min-width: 16px;
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+.business-link-feedback.valid {
+    color: #00e676;
+    background: rgba(0, 230, 118, 0.09);
+    border: 1px solid rgba(0, 230, 118, 0.35);
+    box-shadow: 0 0 10px rgba(0, 230, 118, 0.15);
+}
+
+.business-link-feedback.invalid {
+    color: #ff5555;
+    background: rgba(255, 68, 68, 0.1);
+    border: 1px solid #ff4444;
+    box-shadow: 0 0 10px rgba(255, 68, 68, 0.2);
+}
+
+/* Banner de Verificação no Card do Botão Comercial (Chat) */
+.vortex-link-verified-banner {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 0.76rem;
+    font-weight: 600;
+    margin-top: 6px;
+    margin-bottom: 8px;
+    padding: 6px 10px;
+    border-radius: 7px;
+    line-height: 1.35;
+    word-break: break-word;
+}
+
+.vortex-link-verified-banner i {
+    width: 15px;
+    height: 15px;
+    min-width: 15px;
+    flex-shrink: 0;
+}
+
+.vortex-link-verified-banner.valid {
+    color: #00e676;
+    background: rgba(0, 230, 118, 0.12);
+    border: 1px solid rgba(0, 230, 118, 0.4);
+    box-shadow: 0 0 8px rgba(0, 230, 118, 0.2);
+}
+
+.vortex-link-verified-banner.invalid {
+    color: #ff5555;
+    background: rgba(255, 68, 68, 0.12);
+    border: 1px solid rgba(255, 68, 68, 0.45);
+    box-shadow: 0 0 8px rgba(255, 68, 68, 0.2);
+}
+
+/* Tags de Verificado nos Sites Oficiais do Perfil Público do Contato */
+.contact-social-pill.verified-link {
+    border-color: rgba(0, 230, 118, 0.5) !important;
+    background: rgba(0, 230, 118, 0.08) !important;
+    box-shadow: 0 0 8px rgba(0, 230, 118, 0.2) !important;
+}
+
+.contact-social-pill.verified-link:hover {
+    box-shadow: 0 0 12px rgba(0, 230, 118, 0.4) !important;
+}
+
+.contact-social-pill.unverified-link {
+    border-color: rgba(255, 68, 68, 0.6) !important;
+    background: rgba(255, 68, 68, 0.08) !important;
+    box-shadow: 0 0 8px rgba(255, 68, 68, 0.25) !important;
+}
+
+.verified-site-icon {
+    color: #00e676;
+    margin-left: 3px;
+    width: 14px;
+    height: 14px;
+}
+
+.unverified-site-icon {
+    color: #ff5555;
+    margin-left: 3px;
+    width: 14px;
+    height: 14px;
+}
+
+/* Tag de Status de Verificação na Aba de Links do Painel ADM */
+.vortex-admin-link-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 6px;
+    letter-spacing: 0.2px;
+}
+
+.vortex-admin-link-tag i {
+    width: 13px;
+    height: 13px;
+    flex-shrink: 0;
+}
+
+.vortex-admin-link-tag.verified {
+    color: #00e676;
+    background: rgba(0, 230, 118, 0.14);
+    border: 1px solid rgba(0, 230, 118, 0.4);
+}
+
+.vortex-admin-link-tag.unrecognized {
+    color: #ff5555;
+    background: rgba(255, 68, 68, 0.14);
+    border: 1px solid rgba(255, 68, 68, 0.45);
+}

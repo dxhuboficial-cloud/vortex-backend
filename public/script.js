@@ -4987,38 +4987,117 @@ export function validateProductDigitalLink(rawVal) {
 
 export function applyDigitalLinkValidationFeedback(input, feedbackEl, res) {
     if (!input) return;
+    const isBiz = feedbackEl && (
+        feedbackEl.id?.includes('company') ||
+        feedbackEl.id?.includes('profile-website') ||
+        (feedbackEl.classList && feedbackEl.classList.contains('business-link-feedback'))
+    );
+    const baseClass = isBiz ? 'business-link-feedback' : 'catalog-field-hint catalog-link-feedback';
+
     if (res.isEmpty) {
-        input.classList.remove('catalog-input-error', 'catalog-input-success');
+        input.classList.remove('catalog-input-error', 'catalog-input-success', 'input-invalid', 'input-valid');
+        input.style.borderColor = '';
+        input.style.boxShadow = '';
+        input.style.color = '';
+        if (typeof input.setCustomValidity === 'function') input.setCustomValidity('');
         if (feedbackEl) {
             feedbackEl.innerText = '';
             feedbackEl.style.display = 'none';
-            feedbackEl.className = 'catalog-field-hint catalog-link-feedback';
+            feedbackEl.className = baseClass;
         }
         return;
     }
 
     if (res.isValid) {
-        input.classList.remove('catalog-input-error');
-        input.classList.add('catalog-input-success');
+        input.classList.remove('catalog-input-error', 'input-invalid');
+        input.classList.add('catalog-input-success', 'input-valid');
+        input.style.borderColor = '#34c759';
+        input.style.boxShadow = '0 0 10px rgba(52, 199, 89, 0.35)';
+        input.style.color = '#34c759';
+        if (typeof input.setCustomValidity === 'function') input.setCustomValidity('');
         if (feedbackEl) {
-            feedbackEl.className = 'catalog-field-hint catalog-link-feedback valid';
+            feedbackEl.className = `${baseClass} valid`;
             const badgeIcon = res.isOfficialMarketplace ? 'badge-check' : 'shield-check';
-            feedbackEl.innerHTML = `<i data-lucide="${badgeIcon}"></i> <span>${escapeHTML(res.label || 'Link Seguro')}: <strong>${escapeHTML(res.domain)}</strong></span>`;
+            const label = res.label || (res.isOfficialMarketplace ? 'Loja Oficial Verificada' : 'Site Oficial Verificado');
+            feedbackEl.innerHTML = `<i data-lucide="${badgeIcon}"></i> <span>${escapeHTML(label)}: <strong>${escapeHTML(res.domain)}</strong></span>`;
             feedbackEl.style.display = 'flex';
         }
     } else {
-        input.classList.remove('catalog-input-success');
-        input.classList.add('catalog-input-error');
+        input.classList.remove('catalog-input-success', 'input-valid');
+        input.classList.add('catalog-input-error', 'input-invalid');
+        input.style.borderColor = '#ff3b30';
+        input.style.boxShadow = '0 0 10px rgba(255, 59, 48, 0.35)';
+        input.style.color = '#ff6b6b';
+        if (typeof input.setCustomValidity === 'function' && res.error) {
+            input.setCustomValidity(res.error);
+        }
         if (feedbackEl) {
-            feedbackEl.className = 'catalog-field-hint catalog-link-feedback invalid';
+            feedbackEl.className = `${baseClass} invalid`;
             feedbackEl.innerHTML = `<i data-lucide="shield-alert"></i> <span>${escapeHTML(res.error)}</span>`;
             feedbackEl.style.display = 'flex';
         }
     }
 
-    if (typeof window !== 'undefined' && window.lucide) {
+    if (typeof window !== 'undefined' && window.lucide && typeof window.lucide.createIcons === 'function') {
         window.lucide.createIcons();
     }
+}
+
+export function setupCompanyButtonLinkValidation() {
+    const linkInput = document.getElementById('company-btn-link-input');
+    const feedbackEl = document.getElementById('company-btn-link-feedback');
+    if (!linkInput || linkInput.dataset.secBound) return;
+    linkInput.dataset.secBound = 'true';
+
+    const handler = () => {
+        const val = (linkInput.value || '').trim();
+        if (!val) {
+            applyDigitalLinkValidationFeedback(linkInput, feedbackEl, { isEmpty: true });
+            return;
+        }
+        const res = validateProductDigitalLink(val);
+        applyDigitalLinkValidationFeedback(linkInput, feedbackEl, res);
+    };
+
+    linkInput.addEventListener('input', handler);
+    linkInput.addEventListener('change', handler);
+    linkInput.addEventListener('blur', handler);
+    linkInput.addEventListener('paste', () => setTimeout(handler, 0));
+}
+
+export function setupProfileWebsitesLinkValidation() {
+    [1, 2, 3].forEach(idx => {
+        const input = document.getElementById(`profile-website${idx}-input`);
+        const feedbackEl = document.getElementById(`profile-website${idx}-feedback`);
+        if (!input || input.dataset.secBound) return;
+        input.dataset.secBound = 'true';
+
+        const handler = () => {
+            const val = (input.value || '').trim();
+            if (!val) {
+                applyDigitalLinkValidationFeedback(input, feedbackEl, { isEmpty: true });
+                return;
+            }
+            if (!val.toLowerCase().startsWith('https://')) {
+                const res = {
+                    isValid: false,
+                    isEmpty: false,
+                    formatted: val,
+                    domain: val,
+                    error: 'O link do site deve começar obrigatoriamente com https://'
+                };
+                applyDigitalLinkValidationFeedback(input, feedbackEl, res);
+                return;
+            }
+            const res = validateProductDigitalLink(val);
+            applyDigitalLinkValidationFeedback(input, feedbackEl, res);
+        };
+
+        input.addEventListener('input', handler);
+        input.addEventListener('change', handler);
+        input.addEventListener('blur', handler);
+        input.addEventListener('paste', () => setTimeout(handler, 0));
+    });
 }
 
 export function setupProductDigitalLinkValidation() {
@@ -13617,7 +13696,16 @@ export function updateContactProfileSocialUI(data) {
                     w1Label.innerText = d.length > 20 ? 'Site 1' : (d || 'Site 1');
                 }
             }
-            w1Link.title = customTitle1 ? `Acessar ${customTitle1}` : 'Acessar Site Oficial 1';
+            const check1 = validateProductDigitalLink(website1);
+            if (check1.isValid) {
+                w1Link.classList.add('verified-link');
+                w1Link.classList.remove('unverified-link');
+                w1Link.title = (customTitle1 || 'Site Oficial 1') + ' • Domínio Oficial Verificado (' + check1.domain + ')';
+            } else {
+                w1Link.classList.add('unverified-link');
+                w1Link.classList.remove('verified-link');
+                w1Link.title = (customTitle1 || 'Site Oficial 1') + ' • Domínio Não Reconhecido (Aviso de Segurança)';
+            }
             w1Link.style.display = 'inline-flex';
             hasAnyWebsite = true;
         } else {
@@ -13638,7 +13726,16 @@ export function updateContactProfileSocialUI(data) {
                     w2Label.innerText = d.length > 20 ? 'Site 2' : (d || 'Site 2');
                 }
             }
-            w2Link.title = customTitle2 ? `Acessar ${customTitle2}` : 'Acessar Site Oficial 2';
+            const check2 = validateProductDigitalLink(website2);
+            if (check2.isValid) {
+                w2Link.classList.add('verified-link');
+                w2Link.classList.remove('unverified-link');
+                w2Link.title = (customTitle2 || 'Site Oficial 2') + ' • Domínio Oficial Verificado (' + check2.domain + ')';
+            } else {
+                w2Link.classList.add('unverified-link');
+                w2Link.classList.remove('verified-link');
+                w2Link.title = (customTitle2 || 'Site Oficial 2') + ' • Domínio Não Reconhecido (Aviso de Segurança)';
+            }
             w2Link.style.display = 'inline-flex';
             hasAnyWebsite = true;
         } else {
@@ -13659,7 +13756,16 @@ export function updateContactProfileSocialUI(data) {
                     w3Label.innerText = d.length > 20 ? 'Site 3' : (d || 'Site 3');
                 }
             }
-            w3Link.title = customTitle3 ? `Acessar ${customTitle3}` : 'Acessar Site Oficial 3';
+            const check3 = validateProductDigitalLink(website3);
+            if (check3.isValid) {
+                w3Link.classList.add('verified-link');
+                w3Link.classList.remove('unverified-link');
+                w3Link.title = (customTitle3 || 'Site Oficial 3') + ' • Domínio Oficial Verificado (' + check3.domain + ')';
+            } else {
+                w3Link.classList.add('unverified-link');
+                w3Link.classList.remove('verified-link');
+                w3Link.title = (customTitle3 || 'Site Oficial 3') + ' • Domínio Não Reconhecido (Aviso de Segurança)';
+            }
             w3Link.style.display = 'inline-flex';
             hasAnyWebsite = true;
         } else {
@@ -20965,7 +21071,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.233';
+export const CURRENT_APP_VERSION = '1.0.234';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -23038,6 +23144,14 @@ export function renderAdminLinks(filter = currentAdminLinksFilter, searchQuery =
             riskBadgeText = `Baixo Risco (${score}%) 🟢`;
         }
 
+        const isOfficialDomain = validateProductDigitalLink(link.url).isValid;
+        const verifiedTagHTML = `
+            <span class="vortex-admin-link-tag ${isOfficialDomain ? 'verified' : 'unrecognized'}">
+                <i data-lucide="${isOfficialDomain ? 'badge-check' : 'shield-alert'}"></i>
+                ${isOfficialDomain ? 'Domínio Oficial Verificado' : 'Domínio Não Reconhecido (Aviso Vermelho)'}
+            </span>
+        `;
+
         const sourceLabel = link.source === 'company_button' ? 'Botão Comercial' : (link.source === 'profile_website' ? 'Sites Oficiais' : 'Link Externo');
         const authorName = escapeHTML(link.ownerName || 'Membro Vortex');
         const authorUsername = escapeHTML(link.ownerUsername || '@usuario');
@@ -23116,7 +23230,10 @@ export function renderAdminLinks(filter = currentAdminLinksFilter, searchQuery =
                         <strong style="color:#fff; font-size:0.86rem;">${authorName}</strong>
                         <span style="color:var(--text-dim, #888); font-size:0.75rem;">${authorUsername}</span>
                     </div>
-                    <span class="link-risk-badge ${riskBadgeClass}">${riskBadgeText}</span>
+                    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                        ${verifiedTagHTML}
+                        <span class="link-risk-badge ${riskBadgeClass}">${riskBadgeText}</span>
+                    </div>
                 </div>
 
                 <div class="admin-link-url-box">
@@ -26795,6 +26912,27 @@ export function buildCompanyButtonCardHTML(msg) {
     ` : '';
     const descHtml = msg.text ? `<p class="company-btn-card-desc">${escapeHTML(msg.text)}</p>` : '';
 
+    // Verificado Completo ou Aviso Vermelho no VORTEX (v1.0.234)
+    const linkCheck = validateProductDigitalLink(url);
+    let verifiedBannerHTML = '';
+    if (linkCheck.isValid) {
+        const badgeIcon = linkCheck.isOfficialMarketplace ? 'badge-check' : 'shield-check';
+        const label = linkCheck.label || (linkCheck.isOfficialMarketplace ? 'Loja Oficial Verificada' : 'Site Oficial Verificado');
+        verifiedBannerHTML = `
+            <div class="vortex-link-verified-banner valid">
+                <i data-lucide="${badgeIcon}"></i>
+                <span>${escapeHTML(label)}: <strong>${escapeHTML(linkCheck.domain || url)}</strong></span>
+            </div>
+        `;
+    } else {
+        verifiedBannerHTML = `
+            <div class="vortex-link-verified-banner invalid">
+                <i data-lucide="shield-alert"></i>
+                <span>Domínio Não Reconhecido (Cuidado com Golpes)</span>
+            </div>
+        `;
+    }
+
     return `
         <div class="company-btn-message-card">
             <div class="company-btn-card-badge">
@@ -26803,6 +26941,7 @@ export function buildCompanyButtonCardHTML(msg) {
             </div>
             ${imgHtml}
             ${descHtml}
+            ${verifiedBannerHTML}
             <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="company-interactive-cta-btn" onclick="event.stopPropagation();">
                 <i data-lucide="external-link"></i>
                 <span>${safeTitle}</span>
@@ -26832,6 +26971,13 @@ export function openCompanyButtonModal() {
     if (previewBox) previewBox.style.display = 'none';
     if (previewImg) previewImg.src = '';
     if (uploadLabel) uploadLabel.style.display = 'inline-flex';
+
+    const companyFeedback = document.getElementById('company-btn-link-feedback');
+    if (companyFeedback) {
+        companyFeedback.style.display = 'none';
+        companyFeedback.innerText = '';
+        companyFeedback.className = 'business-link-feedback';
+    }
 
     modal.style.display = 'flex';
     modal.classList.add('active');
@@ -26951,6 +27097,13 @@ export async function sendCompanyButtonMessage() {
     const linkAnalysis = analyzeUrlSecurity(url);
     if (!linkAnalysis.isAllowed) {
         showError('Este link foi bloqueado por representar alto risco à segurança da plataforma VORTEX VIP (ex: rastreadores ou espionagem).', linkInput);
+        return;
+    }
+
+    // Validação Oficial de Domínio do Botão Comercial (v1.0.234)
+    const officialCheck = validateProductDigitalLink(url);
+    if (!officialCheck.isValid) {
+        showError(officialCheck.error || 'Domínio não reconhecido como oficial. Use uma loja oficial (Mercado Livre, Shopee, Amazon, AliExpress, Shein, Google Play...) ou site com domínio próprio oficial registrado.', linkInput);
         return;
     }
 
@@ -33517,6 +33670,17 @@ export function validateProfileLink(network, rawVal) {
                 error: 'Endereço de domínio inválido. Ex: https://seusite.com'
             };
         }
+        // Validação oficial VORTEX (v1.0.234)
+        const digiCheck = validateProductDigitalLink(val);
+        if (!digiCheck.isValid) {
+            return {
+                isValid: false,
+                isEmpty: false,
+                formatted: val,
+                error: digiCheck.error || 'Domínio não reconhecido como oficial. Use uma loja oficial (Mercado Livre, Shopee, Amazon, AliExpress, Shein, Google Play...) ou site com domínio próprio oficial registrado.'
+            };
+        }
+
         const formattedHref = (url.href || val).replace(/\/$/, '');
         return {
             isValid: true,
@@ -37441,6 +37605,8 @@ window.handleCallSwitchedToVideo = handleCallSwitchedToVideo;
     window.adminRestrictLink = adminRestrictLink;
     window.adminRequestLastJustification = adminRequestLastJustification;
     window.initLinkSecurityUI = initLinkSecurityUI;
+    window.setupCompanyButtonLinkValidation = setupCompanyButtonLinkValidation;
+    window.setupProfileWebsitesLinkValidation = setupProfileWebsitesLinkValidation;
     window.renderGroupMiniAdminPanel = renderGroupMiniAdminPanel;
     window.approveGroupJoinRequest = approveGroupJoinRequest;
     window.rejectGroupJoinRequest = rejectGroupJoinRequest;
@@ -37923,9 +38089,11 @@ if (typeof window !== 'undefined') {
     setupEphemeralMessagesModal();
     initCatalog();
     setupProfileLinkValidationListeners();
+    setupProfileWebsitesLinkValidation();
     setupFeedSearchListeners();
     setupVigenciaExpirationListeners();
     setupProductDigitalLinkValidation();
+    setupCompanyButtonLinkValidation();
     initStoryCaptionAndLinkControls();
     initBusinessPostControls();
     initPostTitleAndHashtagsControls();
