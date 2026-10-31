@@ -12485,6 +12485,22 @@ document.getElementById('publish-status-btn')?.addEventListener('click', async (
                 createdAt: Date.now()
             };
 
+            // 🛡️ Validação de Segurança Global do Story (Anti-Golpe e Fraude v1.0.232)
+            const storyContentToCheck = `${finalCaption} ${storyLinkPayload ? storyLinkPayload.url : ''}`.trim();
+            if (storyContentToCheck) {
+                const storySecCheck = checkGlobalContentSecurity(storyContentToCheck, { context: 'story', uid: currentUser.uid });
+                if (!storySecCheck.isSafe) {
+                    showToast('Segurança Global 🛡️', storySecCheck.violation.message, 'red');
+                    recordSecurityIncident({
+                        uid: currentUser.uid,
+                        category: storySecCheck.violation.category,
+                        reason: storySecCheck.violation.reason,
+                        textSnippet: storyContentToCheck
+                    });
+                    return;
+                }
+            }
+
             const storyDocRef = await saveMediaWithChunks('stories', storyData, 'src', mediaSrc);
 
             if (localAudioPayload && storyDocRef && storyDocRef.id) {
@@ -20936,7 +20952,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.231';
+export const CURRENT_APP_VERSION = '1.0.232';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -22484,6 +22500,258 @@ export function checkGroupSecurityViolation({
     return { blocked: false };
 }
 
+/* ==========================================================================
+   SISTEMA DE SEGURANÇA GLOBAL CONTRA GOLPE E FRAUDE VORTEX SHIELD 🛡️ (v1.0.232)
+   Proteção Global Ativa: Chat Privado, Grupos, Feed, Stories, Loja e Perfis
+   ========================================================================== */
+
+export const globalFraudIncidents = {
+    userViolationCounts: new Map(), // uid -> number of fraud attempts
+    recentAuditLogs: []             // in-memory log of recent interceptions
+};
+
+export function checkGlobalContentSecurity(text = '', options = {}) {
+    if (!text || typeof text !== 'string') return { isSafe: true, violation: null };
+    const cleanText = text.trim();
+    if (!cleanText) return { isSafe: true, violation: null };
+
+    const normalize = (str) => String(str).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const normalized = normalize(cleanText);
+
+    // 1. Golpes Financeiros / Falsas Rendas / Urubu do Pix / Fraude de Investimento
+    const financialFraudPatterns = [
+        /(pix\s*premiado|urubu\s*do\s*pix|dobro\s*do\s*pix|multiplicador\s*de\s*pix|gerador\s*de\s*pix|tabela\s*do\s*pix|chave\s*premiada)/i,
+        /(renda\s*extra\s*(f[aá]cil|garantida|sem\s*sair\s*de\s*casa|autom[aá]tica)|dinheiro\s*f[aá]cil\s*sem\s*esfor[cç]o|lucro\s*(di[aá]rio|garantido|de\s*100%|de\s*\d+%))/i,
+        /(deposite\s*(r\$\s*)?\d+\s*e\s*receba\s*(r\$\s*)?\d+|investimento\s*com\s*retorno\s*(garantido|imediato))/i,
+        /(empr[eé]stimo\s*aprovado.*(pague|deposite|taxa\s*antecipada|libera[cç][aã]o))/i,
+        /(ganhe\s*dinheiro\s*assistindo\s*v[ií]deos|avalie\s*produtos\s*e\s*ganhe\s*(pix|dinheiro))/i
+    ];
+
+    for (const pattern of financialFraudPatterns) {
+        if (pattern.test(cleanText) || pattern.test(normalized)) {
+            return {
+                isSafe: false,
+                violation: {
+                    type: 'financial_scam',
+                    category: 'scam',
+                    reason: 'financial_fraud_pattern',
+                    message: 'Conteúdo bloqueado: identificamos padrão associado a tentativa de golpe ou fraude financeira (Segurança Global VORTEX 🛡️).'
+                }
+            };
+        }
+    }
+
+    // 2. Engenharia Social, Phishing e Roubo de Credenciais (PIN de 4 dígitos, senhas, SMS)
+    const phishingPatterns = [
+        /(suporte\s*(oficial\s*)?vortex.*(senha|token|c[oó]digo|confirme\s*sua\s*conta|envie\s*seu\s*acesso))/i,
+        /(recupera[cç][aã]o\s*de\s*conta.*(envie\s*(o|seu)?\s*c[oó]digo|passe\s*seu\s*c[oó]digo))/i,
+        /(sua\s*conta\s*(foi|est[aá]|ser[aá])\s*(suspensa|bloqueada|desativada).*(clique|acesse|confirme))/i,
+        /(envie\s*(?:o\s*|seu\s*|o\s*seu\s*)?(c[oó]digo|token|sms|pin)|passe\s*(?:o\s*|seu\s*|o\s*seu\s*)?c[oó]digo|c[oó]digo\s*(?:de\s*)?(?:6\s*d[ií]gitos|sms|de\s*ativa[cç][aã]o|de\s*confirma[cç][aã]o)|c[oó]digo.*por\s*sms|sms.*c[oó]digo)/i,
+        /(digite\s*seu\s*pin|informe\s*seu\s*pin|envie\s*seu\s*pin\s*de\s*4\s*d[ií]gitos|qual\s*([eé]|o)\s*seu\s*pin)/i,
+        /(atualize\s*seus\s*dados\s*de\s*acesso|valide\s*sua\s*identidade\s*enviando\s*sua\s*senha)/i
+    ];
+
+    for (const pattern of phishingPatterns) {
+        if (pattern.test(cleanText) || pattern.test(normalized)) {
+            return {
+                isSafe: false,
+                violation: {
+                    type: 'account_theft_phishing',
+                    category: 'phishing',
+                    reason: 'credential_harvesting_pattern',
+                    message: 'Ação bloqueada: por sua segurança, nunca compartilhe senhas, PIN de 4 dígitos ou códigos de acesso (Segurança Global VORTEX 🛡️).'
+                }
+            };
+        }
+    }
+
+    // 3. Falsas Promoções, Falsos Sorteios e Iscas de Resgate
+    const fakePromoPatterns = [
+        /(parab[eê]ns\s*voc[eê]\s*ganhou|voc[eê]\s*foi\s*(selecionado|sorteado)\s*(para\s*ganhar|para\s*receber))/i,
+        /(clique\s*(aqui\s*)?(para|e)\s*resgat(ar|e)\s*(seu\s*pr[eê]mio|iphone|voucher|pix))/i
+    ];
+
+    for (const pattern of fakePromoPatterns) {
+        if (pattern.test(cleanText) || pattern.test(normalized)) {
+            return {
+                isSafe: false,
+                violation: {
+                    type: 'fake_promotion',
+                    category: 'scam',
+                    reason: 'fake_promo_pattern',
+                    message: 'Publicação bloqueada: identificamos promoção falsa ou link de resgate fraudulento (Segurança Global VORTEX 🛡️).'
+                }
+            };
+        }
+    }
+
+    // 4. Links Maliciosos, IP Grabbers e Phishing Domains
+    const maliciousDomains = [
+        /(grabify\.link|iplogger\.(org|com)|2no\.co|blasze\.com|yip\.su|iplis\.ru|ezstat\.ru)/i,
+        /(vortex.*(login|suporte|auth|recuperar|premio)\.(tk|ml|ga|cf|gq|xyz|top|ru|click))/i,
+        /(whatsapp.*(premio|sorteio|recarga|seguran[cç]a)\.(tk|ml|ga|cf|gq|xyz|top|ru))/i
+    ];
+
+    for (const pattern of maliciousDomains) {
+        if (pattern.test(cleanText)) {
+            return {
+                isSafe: false,
+                violation: {
+                    type: 'malicious_link',
+                    category: 'malicious_link',
+                    reason: 'blacklisted_domain_tracker',
+                    message: 'Link perigoso bloqueado: o endereço informado é suspeito ou associado a rastreamento clandestino (Segurança Global VORTEX 🛡️).'
+                }
+            };
+        }
+    }
+
+    return { isSafe: true, violation: null };
+}
+
+export function validateProfileIdentitySecurity({
+    name = '',
+    surname = '',
+    username = '',
+    bio = '',
+    currentUser = null,
+    currentProfile = null
+}) {
+    const isStaff = isUserAdmin(currentUser, currentProfile);
+    if (isStaff) return { isValid: true };
+
+    const fullName = `${name} ${surname}`.trim().toLowerCase();
+    const cleanUsername = (username || '').replace(/^@+/, '').trim().toLowerCase();
+
+    // 1. Nomes e Usernames Reservados do Sistema (Anti-Impersonation)
+    const reservedTerms = [
+        'suporte_vortex', 'vortex_suporte', 'suportevortex', 'vortexsuporte',
+        'admin_vortex', 'vortex_admin', 'adminvortex', 'vortexadmin',
+        'vortex_oficial', 'vortexoficial', 'official_vortex', 'officialvortex',
+        'seguranca_vortex', 'vortex_seguranca', 'segurancavortex',
+        'atendimento_vortex', 'vortex_atendimento', 'atendimentovortex',
+        'vortex_security', 'vortexsecurity', 'moderador_vortex'
+    ];
+
+    for (const term of reservedTerms) {
+        if (cleanUsername === term || cleanUsername.includes(term)) {
+            return {
+                isValid: false,
+                error: 'Este nome de usuário é reservado exclusivamente para o sistema oficial (Anti-Fraude VORTEX 🛡️).'
+            };
+        }
+    }
+
+    const reservedNamePatterns = [
+        /\bsuporte\s*vortex\b/i,
+        /\bvortex\s*suporte\b/i,
+        /\bvortex\s*oficial\b/i,
+        /\badmin\s*vortex\b/i,
+        /\bvortex\s*admin\b/i,
+        /\bseguran[cç]a\s*vortex\b/i,
+        /\batendimento\s*vortex\b/i,
+        /\bequipe\s*vortex\b/i
+    ];
+
+    for (const pattern of reservedNamePatterns) {
+        if (pattern.test(fullName)) {
+            return {
+                isValid: false,
+                error: 'O nome escolhido é reservado para canais oficiais da plataforma (Anti-Fraude VORTEX 🛡️).'
+            };
+        }
+    }
+
+    // 2. Proteção contra Falsos Selos de Verificado no Nome (Emojis disfarçados)
+    const isVerified = checkIsVipUser(currentProfile) || checkIsCompanyUser(currentProfile);
+    if (!isVerified) {
+        const fakeBadgePatterns = /[✔️✅☑️🛡️⚡💎]/;
+        const fakeLabelPatterns = /\[(verificado|oficial|admin|vip)\]/i;
+        if (fakeBadgePatterns.test(name) || fakeBadgePatterns.test(surname) || fakeLabelPatterns.test(name) || fakeLabelPatterns.test(surname)) {
+            return {
+                isValid: false,
+                error: 'Não é permitido simular selos de verificação ou suporte oficial no nome de perfil (Anti-Fraude VORTEX 🛡️).'
+            };
+        }
+    }
+
+    // 3. Verificação da Bio contra Golpes
+    if (bio) {
+        const bioSec = checkGlobalContentSecurity(bio, { context: 'bio' });
+        if (!bioSec.isSafe) {
+            return {
+                isValid: false,
+                error: bioSec.violation.message
+            };
+        }
+    }
+
+    return { isValid: true };
+}
+
+export async function recordSecurityIncident({
+    uid,
+    category = 'fraud',
+    reason = 'detected_violation',
+    textSnippet = '',
+    targetId = null
+}) {
+    if (!uid) return;
+    const count = (globalFraudIncidents.userViolationCounts.get(uid) || 0) + 1;
+    globalFraudIncidents.userViolationCounts.set(uid, count);
+
+    const now = Date.now();
+    try {
+        await addDoc(collection(db, 'security_alerts'), {
+            uid,
+            category,
+            reason,
+            count,
+            textSnippet: String(textSnippet).substring(0, 200),
+            targetId: targetId || null,
+            severity: count >= 2 ? 'critical' : 'high',
+            createdAt: now
+        }).catch(() => {});
+    } catch (_) {}
+
+    if (count >= 2) {
+        try {
+            if (suspiciousTracker && suspiciousTracker.cooldowns) {
+                suspiciousTracker.cooldowns.set(uid, now + 120000);
+            }
+            notifyAdmins('🚨 Alerta de Fraude Global 🛡️', `Usuário ${uid} acumulou múltiplas tentativas de golpe/fraude. Bloqueio preventivo ativado.`);
+        } catch (_) {}
+    }
+}
+
+export function initGlobalSecurityUI() {
+    const openBtn = document.getElementById('open-security-tips-modal-btn');
+    const closeBtn = document.getElementById('close-global-security-tips-modal');
+    const confirmBtn = document.getElementById('confirm-security-tips-btn');
+    const modal = document.getElementById('global-security-tips-modal');
+
+    const openModal = () => {
+        if (modal) {
+            modal.style.display = 'flex';
+            modal.setAttribute('aria-hidden', 'false');
+            if (window.lucide && typeof window.lucide.createIcons === 'function') {
+                lucide.createIcons();
+            }
+        }
+    };
+
+    const closeModal = () => {
+        if (modal) {
+            modal.style.display = 'none';
+            modal.setAttribute('aria-hidden', 'true');
+        }
+    };
+
+    openBtn?.addEventListener('click', openModal);
+    closeBtn?.addEventListener('click', closeModal);
+    confirmBtn?.addEventListener('click', closeModal);
+}
+
 export function renderGroupMiniAdminPanel(group = managedGroup) {
     if (!group) return;
 
@@ -22930,6 +23198,26 @@ async function sendChatMessage(type = 'text', payload = {}) {
         if (suspCheck && suspCheck.isSuspicious) {
             showToast('Segurança VORTEX 🛡️', suspCheck.alertMessage, 'red');
             return;
+        }
+
+        // 🛡️ Sistema de Segurança Global contra Golpes e Fraudes (v1.0.232)
+        if (payload.text) {
+            const globalSecCheck = checkGlobalContentSecurity(payload.text, {
+                context: 'chat',
+                uid: currentUser.uid,
+                targetId: activeChatContact.uid
+            });
+            if (!globalSecCheck.isSafe) {
+                showToast('Segurança Global 🛡️', globalSecCheck.violation.message, 'red');
+                recordSecurityIncident({
+                    uid: currentUser.uid,
+                    category: globalSecCheck.violation.category,
+                    reason: globalSecCheck.violation.reason,
+                    textSnippet: payload.text,
+                    targetId: activeChatContact.uid
+                });
+                return;
+            }
         }
 
         if (!activeChatContact.isGroup) {
@@ -31023,6 +31311,26 @@ document.getElementById('publish-post-btn')?.addEventListener('click', async () 
         return;
     }
 
+    // 🛡️ Validação de Segurança Global do Post (Anti-Golpe e Fraude v1.0.232)
+    const postTitleVal = document.getElementById('post-title-input')?.value?.trim() || '';
+    const postCaptionVal = postCaptionInput?.value || '';
+    const bizUrlVal = document.getElementById('post-business-btn-url')?.value?.trim() || '';
+    const postContentToCheck = `${postTitleVal} ${postCaptionVal} ${bizUrlVal}`.trim();
+
+    if (postContentToCheck) {
+        const postSecCheck = checkGlobalContentSecurity(postContentToCheck, { context: 'feed_post', uid: currentUser.uid });
+        if (!postSecCheck.isSafe) {
+            showToast('Segurança Global 🛡️', postSecCheck.violation.message, 'red');
+            recordSecurityIncident({
+                uid: currentUser.uid,
+                category: postSecCheck.violation.category,
+                reason: postSecCheck.violation.reason,
+                textSnippet: postContentToCheck
+            });
+            return;
+        }
+    }
+
     const publishPostBtn = document.getElementById('publish-post-btn');
     if (publishPostBtn) {
         publishPostBtn.disabled = true;
@@ -32526,6 +32834,20 @@ document.getElementById('save-profile-btn')?.addEventListener('click', async () 
     const rawYoutube = document.getElementById('profile-youtube-input')?.value.trim() || '';
     const rawInstagram = document.getElementById('profile-instagram-input')?.value.trim() || '';
     const rawTiktok = document.getElementById('profile-tiktok-input')?.value.trim() || '';
+
+    // 🛡️ Validação de Segurança Global de Identidade do Perfil (Anti-Impersonation v1.0.232)
+    const identityCheck = validateProfileIdentitySecurity({
+        name,
+        surname,
+        username: usernameInputValue,
+        bio,
+        currentUser,
+        currentProfile
+    });
+    if (!identityCheck.isValid) {
+        showToast('Segurança do Perfil 🛡️', identityCheck.error, 'red');
+        return;
+    }
 
     const isBusiness = document.getElementById('profile-type-business')?.checked || false;
     const accountType = isBusiness ? 'business' : 'personal';
@@ -36254,6 +36576,11 @@ window.handleCallSwitchedToVideo = handleCallSwitchedToVideo;
     window.checkGroupBannedWords = checkGroupBannedWords;
     window.groupSecurityTracker = groupSecurityTracker;
     window.checkGroupSecurityViolation = checkGroupSecurityViolation;
+    window.checkGlobalContentSecurity = checkGlobalContentSecurity;
+    window.validateProfileIdentitySecurity = validateProfileIdentitySecurity;
+    window.recordSecurityIncident = recordSecurityIncident;
+    window.globalFraudIncidents = globalFraudIncidents;
+    window.initGlobalSecurityUI = initGlobalSecurityUI;
     window.renderGroupMiniAdminPanel = renderGroupMiniAdminPanel;
     window.approveGroupJoinRequest = approveGroupJoinRequest;
     window.rejectGroupJoinRequest = rejectGroupJoinRequest;
@@ -36751,6 +37078,7 @@ if (typeof window !== 'undefined') {
     initDailyChestControls();
     initCompanyChatbotControls();
     initPermissionsManager();
+    initGlobalSecurityUI();
 }
 
 

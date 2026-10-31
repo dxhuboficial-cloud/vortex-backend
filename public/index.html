@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.231">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.231">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.231">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.231">
-    <link rel="stylesheet" href="style.css?v=1.0.231">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.232">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.232">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.232">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.232">
+    <link rel="stylesheet" href="style.css?v=1.0.232">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.231" id="app-manifest-link">
+    <link rel="manifest" href="manifest.json?v=1.0.232" id="app-manifest-link">
     <meta name="theme-color" content="#39ff14" id="app-theme-color-meta">
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#39ff14" id="app-theme-color-meta-dark">
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#39ff14" id="app-theme-color-meta-light">
@@ -19,8 +19,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.231">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.231">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.232">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.232">
     <!-- Sincronização Dinâmica da Barra de Status e Barra de Navegação do Celular -->
     <script>
         (function() {
@@ -2136,7 +2136,7 @@
                     </div>
                 </div>
 
-                <!-- Card de Permissões do App (v1.0.231) -->
+                <!-- Card de Permissões do App (v1.0.232) -->
                 <div class="setting-item app-permissions-card-highlight" id="app-permissions-setting-item">
                     <div class="app-permissions-setting-inner">
                         <div class="app-permissions-header-row">
@@ -2357,14 +2357,42 @@
                     <button id="delete-account-btn" type="button" class="danger-btn delete-account-action-btn">Apagar Conta</button>
                 </div>
 
-                <!-- Card de Versão Oficial do App (v1.0.231) -->
+                <!-- Card da Central de Segurança Global VORTEX 🛡️ -->
+                <div class="global-security-card" id="global-security-info-card">
+                    <div class="global-security-header-row">
+                        <div class="global-security-title-wrap">
+                            <i data-lucide="shield-check" class="global-security-shield-icon"></i>
+                            <div class="global-security-title-col">
+                                <span class="global-security-title">Segurança Global VORTEX 🛡️</span>
+                                <small class="global-security-sub">Proteção ativa contra golpes, fraudes e phishing</small>
+                            </div>
+                        </div>
+                        <span class="global-security-active-pill"><i data-lucide="check-circle-2"></i> Protegido</span>
+                    </div>
+                    <div class="global-security-features-list">
+                        <div class="global-security-feat-item">
+                            <i data-lucide="lock"></i> <span>Criptografia e bloqueio de roubo de contas</span>
+                        </div>
+                        <div class="global-security-feat-item">
+                            <i data-lucide="alert-triangle"></i> <span>Filtro anti-golpe e chaves Pix suspeitas</span>
+                        </div>
+                        <div class="global-security-feat-item">
+                            <i data-lucide="link-2-off"></i> <span>Detecção de links maliciosos e IP loggers</span>
+                        </div>
+                    </div>
+                    <button type="button" class="global-security-tips-btn" id="open-security-tips-modal-btn">
+                        <i data-lucide="help-circle"></i> Ver Dicas de Prevenção a Golpes
+                    </button>
+                </div>
+
+                <!-- Card de Versão Oficial do App (v1.0.232) -->
                 <div class="app-version-card" id="app-version-info-footer">
                     <div class="app-version-header-row">
                         <div class="app-version-brand-wrap">
-                            <img src="icons/vortex-vip-192.png?v=1.0.231" alt="VORTEX VIP" class="app-version-icon-img" width="22" height="22">
+                            <img src="icons/vortex-vip-192.png?v=1.0.232" alt="VORTEX VIP" class="app-version-icon-img" width="22" height="22">
                             <span class="app-version-brand-name">VORTEX VIP Oficial</span>
                         </div>
-                        <span class="app-version-pill-badge" id="app-version-display-badge">v1.0.231 ⚡</span>
+                        <span class="app-version-pill-badge" id="app-version-display-badge">v1.0.232 ⚡</span>
                     </div>
                     <div class="app-version-status-row">
                         <span class="app-version-status-dot"></span>
@@ -3434,7 +3462,7 @@
             <div class="pwa-banner-glow-line"></div>
             <div class="pwa-banner-content">
                 <div class="pwa-banner-icon-box">
-                    <img src="icons/vortex-vip-192.png?v=1.0.231" alt="VORTEX VIP" class="pwa-banner-logo" width="44" height="44">
+                    <img src="icons/vortex-vip-192.png?v=1.0.232" alt="VORTEX VIP" class="pwa-banner-logo" width="44" height="44">
                 </div>
                 <div class="pwa-banner-text">
                     <div class="pwa-banner-title">Instalar VORTEX VIP ⚡</div>
@@ -3452,7 +3480,7 @@
             <div class="pwa-ios-content">
                 <div class="pwa-ios-header">
                     <div class="pwa-ios-icon-wrap">
-                        <img src="icons/vortex-vip-192.png?v=1.0.231" alt="VORTEX VIP" width="48" height="48">
+                        <img src="icons/vortex-vip-192.png?v=1.0.232" alt="VORTEX VIP" width="48" height="48">
                     </div>
                     <h3 class="pwa-ios-title">Instalar no iPhone / iPad 📲</h3>
                     <p class="pwa-ios-subtitle">Siga os 2 passos rápidos abaixo no Safari para ter o VORTEX VIP na sua tela de início:</p>
@@ -4920,7 +4948,7 @@
             </div>
         </div>
 
-        <!-- Modal da Central de Permissões do App (v1.0.231) -->
+        <!-- Modal da Central de Permissões do App (v1.0.232) -->
         <div id="app-permissions-modal" class="custom-modal-overlay app-permissions-overlay" style="display:none;" aria-hidden="true">
             <div class="custom-modal-card app-permissions-card">
                 <div class="panel-top-bar app-permissions-top-bar">
@@ -5168,8 +5196,70 @@
             </div>
         </div>
 
+        <!-- Modal da Central de Prevenção a Golpes e Fraudes VORTEX 🛡️ -->
+        <div id="global-security-tips-modal" class="custom-modal-overlay" style="display:none;" aria-hidden="true">
+            <div class="custom-modal-card global-security-modal-card">
+                <div class="panel-top-bar" style="padding:14px 18px;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <i data-lucide="shield-alert" style="color:var(--accent, #39ff14); width:20px; height:20px;"></i>
+                        <h3 class="modal-title" style="font-size:1.05rem;">Segurança & Prevenção a Golpes</h3>
+                    </div>
+                    <div class="header-icon-btn" id="close-global-security-tips-modal" title="Fechar" aria-label="Fechar">
+                        <i data-lucide="x"></i>
+                    </div>
+                </div>
+                <div class="global-security-modal-body">
+                    <div class="security-tip-alert-box">
+                        <i data-lucide="alert-octagon"></i>
+                        <div>
+                            <strong>Alerta Importante de Segurança</strong>
+                            <p>A equipe oficial do VORTEX VIP <strong>NUNCA</strong> solicita seu PIN de 4 dígitos, senha ou códigos de verificação por SMS ou mensagem privada.</p>
+                        </div>
+                    </div>
+
+                    <div class="security-tips-list">
+                        <div class="security-tip-item">
+                            <div class="security-tip-icon-wrap tip-green"><i data-lucide="badge-check"></i></div>
+                            <div class="security-tip-text-col">
+                                <strong>Verifique Selos de Autenticidade</strong>
+                                <span>Contas oficiais de Administrador possuem selo dourado exclusivo e empresas verificadas possuem o selo verde de lâmina. Nomes com emojis não substituem o selo oficial.</span>
+                            </div>
+                        </div>
+
+                        <div class="security-tip-item">
+                            <div class="security-tip-icon-wrap tip-yellow"><i data-lucide="dollar-sign"></i></div>
+                            <div class="security-tip-text-col">
+                                <strong>Cuidado com Promessas Financeiras</strong>
+                                <span>Desconfie imediatamente de mensagens oferecendo "Pix Premiado", "Urubu do Pix", "retorno de 100% garantido" ou tarefas pagas que exigem depósito prévio.</span>
+                            </div>
+                        </div>
+
+                        <div class="security-tip-item">
+                            <div class="security-tip-icon-wrap tip-red"><i data-lucide="shield-x"></i></div>
+                            <div class="security-tip-text-col">
+                                <strong>Não Clique em Links Suspeitos</strong>
+                                <span>Rastreadores e links encurtados podem tentar capturar seu IP ou simular páginas de login falsas. Nosso escudo bloqueia domínios maliciosos automaticamente.</span>
+                            </div>
+                        </div>
+
+                        <div class="security-tip-item">
+                            <div class="security-tip-icon-wrap tip-blue"><i data-lucide="flag"></i></div>
+                            <div class="security-tip-text-col">
+                                <strong>Denuncie Contatos Suspeitos</strong>
+                                <span>Se alguém tentar aplicar golpe ou tiver conduta fraudulenta, utilize o botão de Denunciar nos 3 pontinhos da conversa para ação imediata dos administradores.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn-primary-neon" id="confirm-security-tips-btn" style="width:100%; margin-top:10px;">
+                        <i data-lucide="check"></i> Entendi, estou protegido
+                    </button>
+                </div>
+            </div>
+        </div>
+
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.231" defer></script>
+    <script type="module" src="script.js?v=1.0.232" defer></script>
 </body>
 </html>
