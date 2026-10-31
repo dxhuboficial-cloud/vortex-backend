@@ -2681,31 +2681,68 @@ export function checkIsAdminUser(userOrData) {
     return false;
 }
 
+export function checkIsCompanyUser(userOrData) {
+    if (!userOrData) return false;
+    if (userOrData.accountType === 'business' || userOrData.accountType === 'company' || 
+        userOrData.isBusiness === true || userOrData.isCompany === true) {
+        return true;
+    }
+    if (userOrData.profile && (userOrData.profile.accountType === 'business' || userOrData.profile.accountType === 'company' || userOrData.profile.isBusiness === true || userOrData.profile.isCompany === true)) {
+        return true;
+    }
+    if (typeof currentProfile !== 'undefined' && currentProfile && (userOrData === currentProfile || (userOrData.uid && currentProfile.uid && userOrData.uid === currentProfile.uid))) {
+        return !!(currentProfile.accountType === 'business' || currentProfile.accountType === 'company' || currentProfile.isBusiness === true || currentProfile.isCompany === true);
+    }
+    return false;
+}
+
 export function updateVerifiedBadgeElement(badgeEl, userOrData) {
     if (!badgeEl) return;
     const isAdmin = !!(userOrData && checkIsAdminUser(userOrData));
-    const isVip = !!(userOrData && (checkIsVipUser(userOrData) || userOrData.isVip || userOrData.isVerified || isAdmin));
+    const isCompany = !isAdmin && !!(userOrData && checkIsCompanyUser(userOrData));
+    const isVip = !!(userOrData && (checkIsVipUser(userOrData) || userOrData.isVip || userOrData.isVerified || isAdmin || isCompany));
     const displayVal = (badgeEl.id === 'user-verified-badge' || badgeEl.id === 'story-verified-badge') ? 'inline-block' : 'inline-flex';
 
     if (isAdmin) {
         if (badgeEl.style) badgeEl.style.display = displayVal;
-        if (badgeEl.classList) badgeEl.classList.add('active', 'verified-badge-admin');
+        if (badgeEl.classList) {
+            badgeEl.classList.add('active', 'verified-badge-admin');
+            badgeEl.classList.remove('verified-badge-company');
+        }
         if (typeof badgeEl.setAttribute === 'function') {
             badgeEl.setAttribute('data-admin-badge', 'true');
+            badgeEl.removeAttribute?.('data-company-badge');
             badgeEl.setAttribute('title', '💥Admin⚡');
+        }
+    } else if (isCompany) {
+        if (badgeEl.style) badgeEl.style.display = displayVal;
+        if (badgeEl.classList) {
+            badgeEl.classList.add('active', 'verified-badge-company');
+            badgeEl.classList.remove('verified-badge-admin');
+        }
+        if (typeof badgeEl.setAttribute === 'function') {
+            badgeEl.setAttribute('data-company-badge', 'true');
+            badgeEl.removeAttribute?.('data-admin-badge');
+            badgeEl.setAttribute('title', '⚔️ Empresa Verificada ⚡');
         }
     } else if (isVip) {
         if (badgeEl.style) badgeEl.style.display = displayVal;
         if (badgeEl.classList) {
             badgeEl.classList.add('active');
-            badgeEl.classList.remove('verified-badge-admin');
+            badgeEl.classList.remove('verified-badge-admin', 'verified-badge-company');
         }
-        if (typeof badgeEl.removeAttribute === 'function') badgeEl.removeAttribute('data-admin-badge');
+        if (typeof badgeEl.removeAttribute === 'function') {
+            badgeEl.removeAttribute('data-admin-badge');
+            badgeEl.removeAttribute('data-company-badge');
+        }
         if (typeof badgeEl.setAttribute === 'function') badgeEl.setAttribute('title', 'Verificado VIP');
     } else {
         if (badgeEl.style) badgeEl.style.display = 'none';
-        if (badgeEl.classList) badgeEl.classList.remove('active', 'verified-badge-admin');
-        if (typeof badgeEl.removeAttribute === 'function') badgeEl.removeAttribute('data-admin-badge');
+        if (badgeEl.classList) badgeEl.classList.remove('active', 'verified-badge-admin', 'verified-badge-company');
+        if (typeof badgeEl.removeAttribute === 'function') {
+            badgeEl.removeAttribute('data-admin-badge');
+            badgeEl.removeAttribute('data-company-badge');
+        }
     }
 }
 
@@ -2731,6 +2768,62 @@ export function showAdminBadgeToast(event, element) {
             if (rect && (rect.width > 0 || rect.height > 0 || rect.top > 0 || rect.left > 0)) {
                 const winWidth = typeof window !== 'undefined' ? window.innerWidth : 360;
                 left = Math.max(55, Math.min(winWidth - 55, rect.left + rect.width / 2));
+                top = rect.top;
+            }
+        }
+
+        toast.style.left = `${left}px`;
+        toast.style.top = `${top}px`;
+
+        if (top < 55) {
+            toast.classList.add('position-below');
+        }
+
+        document.body.appendChild(toast);
+
+        if (typeof requestAnimationFrame === 'function') {
+            requestAnimationFrame(() => toast.classList.add('active'));
+        } else {
+            toast.classList.add('active');
+        }
+
+        if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+            try { navigator.vibrate([35, 25, 35]); } catch (_) {}
+        }
+
+        if (typeof playSound === 'function' && typeof clickSound !== 'undefined') {
+            try { playSound(clickSound); } catch (_) {}
+        }
+
+        setTimeout(() => {
+            toast.classList.remove('active');
+            setTimeout(() => toast.remove(), 250);
+        }, 2200);
+    }
+}
+
+export function showCompanyBadgeToast(event, element) {
+    if (event) {
+        event.stopPropagation();
+        if (event.cancelable) event.preventDefault?.();
+    }
+    
+    if (typeof document !== 'undefined') {
+        document.querySelectorAll('.company-badge-toast-green').forEach(el => el.remove());
+
+        const toast = document.createElement('div');
+        toast.className = 'company-badge-toast-green';
+        toast.setAttribute('role', 'alert');
+        toast.innerHTML = '<span>⚔️ Empresa Verificada ⚡</span>';
+
+        let left = typeof window !== 'undefined' ? window.innerWidth / 2 : 150;
+        let top = 60;
+
+        if (element && typeof element.getBoundingClientRect === 'function') {
+            const rect = element.getBoundingClientRect();
+            if (rect && (rect.width > 0 || rect.height > 0 || rect.top > 0 || rect.left > 0)) {
+                const winWidth = typeof window !== 'undefined' ? window.innerWidth : 360;
+                left = Math.max(70, Math.min(winWidth - 70, rect.left + rect.width / 2));
                 top = rect.top;
             }
         }
@@ -12644,7 +12737,7 @@ function listenToContacts() {
                     <div class="chat-header">
                         <span class="name">
                             <span class="name-text">${contact.name || 'Contato'}</span>
-                            <i data-lucide="badge-check" class="verified-badge chat-card-verified-badge${checkIsAdminUser(contact) ? ' verified-badge-admin' : ''}" id="chat-card-verified-badge-${contactUid}" ${checkIsAdminUser(contact) ? 'data-admin-badge="true" title="💥Admin⚡"' : ''} style="display:${(contact.isVip || contact.isVerified || checkIsVipUser(contact) || checkIsAdminUser(contact)) ? 'inline-flex' : 'none'};"></i>
+                            <i data-lucide="badge-check" class="verified-badge chat-card-verified-badge${checkIsAdminUser(contact) ? ' verified-badge-admin' : (checkIsCompanyUser(contact) ? ' verified-badge-company' : '')}" id="chat-card-verified-badge-${contactUid}" ${checkIsAdminUser(contact) ? 'data-admin-badge="true" title="💥Admin⚡"' : (checkIsCompanyUser(contact) ? 'data-company-badge="true" title="⚔️ Empresa Verificada ⚡"' : 'title="Verificado VIP"')} style="display:${(contact.isVip || contact.isVerified || checkIsVipUser(contact) || checkIsAdminUser(contact) || checkIsCompanyUser(contact)) ? 'inline-flex' : 'none'};"></i>
                             <span class="pinned-chat-badge" id="pinned-badge-${contactUid}" style="display:${isPinned ? 'inline-flex' : 'none'};" title="Conversa fixada">
                                 <i data-lucide="pin"></i>
                             </span>
@@ -15400,13 +15493,14 @@ function loadRealtimeMessages() {
             const contactAvatar = activeChatContact.avatar || '';
 
             const isIntroAdmin = checkIsAdminUser(activeContactUserData || activeChatContact);
+            const isIntroCompany = !isIntroAdmin && checkIsCompanyUser(activeContactUserData || activeChatContact);
             introCard.innerHTML = `
                 <div class="intro-avatar" style="background-image: url('${contactAvatar}');" role="button" tabindex="0" title="Ver dados do contato">
                     ${!contactAvatar ? contactName.charAt(0).toUpperCase() : ''}
                 </div>
                 <h3 class="intro-name" role="button" tabindex="0" title="Ver dados do contato">
                     <span>${contactName}</span>
-                    <i data-lucide="badge-check" class="verified-badge${isIntroAdmin ? ' verified-badge-admin' : ''}" ${isIntroAdmin ? 'data-admin-badge="true" title="💥Admin⚡"' : ''} style="display:${isVip ? 'inline-flex' : 'none'};"></i>
+                    <i data-lucide="badge-check" class="verified-badge${isIntroAdmin ? ' verified-badge-admin' : (isIntroCompany ? ' verified-badge-company' : '')}" ${isIntroAdmin ? 'data-admin-badge="true" title="💥Admin⚡"' : (isIntroCompany ? 'data-company-badge="true" title="⚔️ Empresa Verificada ⚡"' : 'title="Verificado VIP"')} style="display:${(isVip || isIntroAdmin || isIntroCompany) ? 'inline-flex' : 'none'};"></i>
                 </h3>
                 <span class="intro-username">${contactUsername}</span>
                 <div class="intro-bio-box" role="button" tabindex="0" title="Toque para ver os dados do contato">
@@ -15674,20 +15768,22 @@ function loadRealtimeMessages() {
                 if (isMe) {
                     const isMyVip = checkIsVipUser(currentProfile);
                     const isMyAdm = checkIsAdminUser(currentProfile);
+                    const isMyCompany = !isMyAdm && checkIsCompanyUser(currentProfile);
                     groupSenderHTML = `
                         <div class="group-sender-name group-sender-me" title="Enviado por você">
                             <span class="group-sender-name-text">${escapeHTML(resolvedName)} (Você)</span>
-                            <i data-lucide="badge-check" class="verified-badge${isMyAdm ? ' verified-badge-admin' : ''}" ${isMyAdm ? 'data-admin-badge="true" title="💥Admin⚡"' : ''} style="display:${isMyVip ? 'inline-flex' : 'none'};"></i>
+                            <i data-lucide="badge-check" class="verified-badge${isMyAdm ? ' verified-badge-admin' : (isMyCompany ? ' verified-badge-company' : '')}" ${isMyAdm ? 'data-admin-badge="true" title="💥Admin⚡"' : (isMyCompany ? 'data-company-badge="true" title="⚔️ Empresa Verificada ⚡"' : 'title="Verificado VIP"')} style="display:${(isMyVip || isMyAdm || isMyCompany) ? 'inline-flex' : 'none'};"></i>
                         </div>
                     `;
                 } else {
                     const color = getGroupSenderColor(msg.senderUid);
                     const isSenderAdm = checkIsAdminUser(msg);
-                    const isSenderVip = !!(msg.isVip || msg.isVerified || (msg.senderEmail && VORTEX_ADMIN_EMAILS.includes(msg.senderEmail.toLowerCase())) || (msg.senderUsername === 'dxhuboficial') || isSenderAdm);
+                    const isSenderCompany = !isSenderAdm && checkIsCompanyUser(msg);
+                    const isSenderVip = !!(msg.isVip || msg.isVerified || (msg.senderEmail && VORTEX_ADMIN_EMAILS.includes(msg.senderEmail.toLowerCase())) || (msg.senderUsername === 'dxhuboficial') || isSenderAdm || isSenderCompany);
                     groupSenderHTML = `
                         <div class="group-sender-name" style="color: ${color};" title="Enviado por ${escapeHTML(resolvedName)}">
                             <span class="group-sender-name-text">${escapeHTML(resolvedName)}</span>
-                            <i data-lucide="badge-check" class="verified-badge${isSenderAdm ? ' verified-badge-admin' : ''}" ${isSenderAdm ? 'data-admin-badge="true" title="💥Admin⚡"' : ''} style="display:${isSenderVip ? 'inline-flex' : 'none'};"></i>
+                            <i data-lucide="badge-check" class="verified-badge${isSenderAdm ? ' verified-badge-admin' : (isSenderCompany ? ' verified-badge-company' : '')}" ${isSenderAdm ? 'data-admin-badge="true" title="💥Admin⚡"' : (isSenderCompany ? 'data-company-badge="true" title="⚔️ Empresa Verificada ⚡"' : 'title="Verificado VIP"')} style="display:${(isSenderVip || isSenderAdm || isSenderCompany) ? 'inline-flex' : 'none'};"></i>
                         </div>
                     `;
                 }
@@ -20840,7 +20936,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.228';
+export const CURRENT_APP_VERSION = '1.0.229';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -21333,7 +21429,9 @@ if (typeof window !== 'undefined') {
     window.updateGroupChatHeaderStatus = updateGroupChatHeaderStatus;
     window.checkIsAdminUser = checkIsAdminUser;
     window.updateVerifiedBadgeElement = updateVerifiedBadgeElement;
+    window.checkIsCompanyUser = checkIsCompanyUser;
     window.showAdminBadgeToast = showAdminBadgeToast;
+    window.showCompanyBadgeToast = showCompanyBadgeToast;
     window.isAppInstalledPwa = isAppInstalledPwa;
     window.isIosSafari = isIosSafari;
     window.updateInstallUIVisibility = updateInstallUIVisibility;
@@ -21422,11 +21520,17 @@ export async function cleanStorageCache() {
 }
 document.getElementById('clean-storage-btn')?.addEventListener('click', cleanStorageCache);
 
-// Listener de toque e clique no Selo de Administrador VORTEX VIP (exibe balão amarelo 💥Admin⚡)
+// Listener de toque e clique no Selo de Administrador ou Empresa VORTEX VIP (💥Admin⚡ ou ⚔️ Empresa Verificada ⚡)
 document.addEventListener('click', (e) => {
     const adminBadge = e.target?.closest?.('.verified-badge-admin, [data-admin-badge="true"]');
     if (adminBadge) {
         showAdminBadgeToast(e, adminBadge);
+        return;
+    }
+    const companyBadge = e.target?.closest?.('.verified-badge-company, [data-company-badge="true"]');
+    if (companyBadge) {
+        showCompanyBadgeToast(e, companyBadge);
+        return;
     }
 });
 
@@ -26963,6 +27067,7 @@ export async function loadUsersForSearch(qText = '') {
             }
 
             const isUAdmin = checkIsAdminUser(u);
+            const isUCompany = !isUAdmin && checkIsCompanyUser(u);
             const userBio = (u.status && u.status.trim()) ? u.status.trim() : 'Disponível no VORTEX ⚡';
             return `
                 <div class="member-list-item">
@@ -26973,7 +27078,7 @@ export async function loadUsersForSearch(qText = '') {
                         <div>
                             <div style="display:flex; align-items:center; gap:4px;">
                                 <span style="font-size:0.88rem; font-weight:600; color:#fff;">${u.name} ${u.surname || ''}</span>
-                                <i data-lucide="badge-check" class="verified-badge${isUAdmin ? ' verified-badge-admin' : ''}" ${isUAdmin ? 'data-admin-badge="true" title="💥Admin⚡"' : ''} style="display:${(u.isVip || u.isVerified || checkIsVipUser(u)) ? 'inline-flex' : 'none'};"></i>
+                                <i data-lucide="badge-check" class="verified-badge${isUAdmin ? ' verified-badge-admin' : (isUCompany ? ' verified-badge-company' : '')}" ${isUAdmin ? 'data-admin-badge="true" title="💥Admin⚡"' : (isUCompany ? 'data-company-badge="true" title="⚔️ Empresa Verificada ⚡"' : 'title="Verificado VIP"')} style="display:${(u.isVip || u.isVerified || checkIsVipUser(u) || isUAdmin || isUCompany) ? 'inline-flex' : 'none'};"></i>
                             </div>
                             <div style="font-size:0.72rem; color:var(--accent-color);">${u.username || '@usuario'}</div>
                             <div class="search-user-bio">💬 "${userBio}"</div>
@@ -27073,6 +27178,7 @@ function listenToRequests() {
             listContainer.innerHTML = reqs.map(r => {
                 const reqBio = (r.fromBio && r.fromBio.trim()) ? r.fromBio.trim() : 'Disponível no VORTEX ⚡';
                 const isReqAdmin = checkIsAdminUser({ email: r.fromEmail, username: r.fromUsername, name: r.fromName, uid: r.fromUid });
+                const isReqCompany = !isReqAdmin && checkIsCompanyUser(r);
                 return `
                     <div class="member-list-item contact-request-item">
                         <div class="contact-request-info">
@@ -27082,7 +27188,7 @@ function listenToRequests() {
                             <div style="flex:1; min-width:0;">
                                 <div style="display:flex; align-items:center; gap:4px;">
                                     <span style="font-size:0.88rem; font-weight:600;">${r.fromName}</span>
-                                    <i data-lucide="badge-check" class="verified-badge${isReqAdmin ? ' verified-badge-admin' : ''}" ${isReqAdmin ? 'data-admin-badge="true" title="💥Admin⚡"' : ''} style="display:${(r.fromIsVip || r.fromIsVerified) ? 'inline-flex' : 'none'};"></i>
+                                    <i data-lucide="badge-check" class="verified-badge${isReqAdmin ? ' verified-badge-admin' : (isReqCompany ? ' verified-badge-company' : '')}" ${isReqAdmin ? 'data-admin-badge="true" title="💥Admin⚡"' : (isReqCompany ? 'data-company-badge="true" title="⚔️ Empresa Verificada ⚡"' : 'title="Verificado VIP"')} style="display:${(r.fromIsVip || r.fromIsVerified || isReqAdmin || isReqCompany) ? 'inline-flex' : 'none'};"></i>
                                 </div>
                                 <div style="font-size:0.7rem; color:var(--accent-color);">${r.fromUsername || '@usuario'}</div>
                                 <div class="search-user-bio">💬 "${reqBio}"</div>
@@ -27730,6 +27836,7 @@ window.getCurrentProfile = () => currentProfile;
 window.renderPostsFeed = renderPostsFeed;
 
 export const authorVipCache = new Map();
+const authorCompanyCache = new Map();
 export const authorAvatarCache = new Map();
 let cachedFeedPosts = [];
 export let currentFeedSearchQuery = '';
@@ -28769,6 +28876,7 @@ export function syncFeedAuthorsVipStatus(posts = []) {
                     const uData = snap.data();
                     const isVip = checkIsVipUser(uData);
                     authorVipCache.set(uid, isVip);
+                    authorCompanyCache.set(uid, checkIsCompanyUser(uData));
                     if (uData.avatar) {
                         updateAuthorAvatarsInDOM(uid, uData.avatar);
                     }
@@ -28847,6 +28955,7 @@ function renderPostsFeed(posts = []) {
                 const authorName = post.authorName || 'Usuário';
                 const isPostAuthorVip = isAuthorVipUser(post.authorUid, post);
                 const isPostAuthorAdmin = checkIsAdminUser({ uid: post.authorUid, name: authorName, email: post.authorEmail, username: post.authorUsername });
+                const isPostAuthorCompany = !isPostAuthorAdmin && checkIsCompanyUser(post);
                 const resolvedAvatar = getLiveAuthorAvatar(post.authorUid, post.authorAvatar);
                 const avatar = resolvedAvatar ? `style="background-image: url('${resolvedAvatar}')"` : '';
                 const likes = Array.isArray(post.likes) ? post.likes.length : 0;
@@ -28896,7 +29005,7 @@ function renderPostsFeed(posts = []) {
                                 <div>
                                     <div class="post-author-name">
                                         <span>${escapeHTML(authorName)}</span>
-                                        <i data-lucide="badge-check" class="verified-badge post-author-verified-badge${isPostAuthorAdmin ? ' verified-badge-admin' : ''}" data-author-uid="${post.authorUid || ''}" ${isPostAuthorAdmin ? 'data-admin-badge="true" title="💥Admin⚡"' : ''} style="display:${isPostAuthorVip ? 'inline-flex' : 'none'};"></i>
+                                        <i data-lucide="badge-check" class="verified-badge post-author-verified-badge${isPostAuthorAdmin ? ' verified-badge-admin' : (isPostAuthorCompany ? ' verified-badge-company' : '')}" data-author-uid="${post.authorUid || ''}" ${isPostAuthorAdmin ? 'data-admin-badge="true" title="💥Admin⚡"' : (isPostAuthorCompany ? 'data-company-badge="true" title="⚔️ Empresa Verificada ⚡"' : 'title="Verificado VIP"')} style="display:${(isPostAuthorVip || isPostAuthorCompany) ? 'inline-flex' : 'none'};"></i>
                                     </div>
                                     <div class="post-time">
                                         ${timeLabel}
@@ -29073,6 +29182,7 @@ function renderPostsFeed(posts = []) {
         const authorName = post.authorName || 'Usuário';
         const isPostAuthorVip = isAuthorVipUser(post.authorUid, post);
         const isPostAuthorAdmin = checkIsAdminUser({ uid: post.authorUid, name: authorName, email: post.authorEmail, username: post.authorUsername });
+        const isPostAuthorCompany = !isPostAuthorAdmin && checkIsCompanyUser(post);
         const resolvedAvatar = getLiveAuthorAvatar(post.authorUid, post.authorAvatar);
         const avatar = resolvedAvatar ? `style="background-image: url('${resolvedAvatar}')"` : '';
         const likes = Array.isArray(post.likes) ? post.likes.length : 0;
@@ -29124,7 +29234,7 @@ function renderPostsFeed(posts = []) {
                         <div>
                             <div class="feed-username">
                                 <span>${escapeHTML(authorName)}</span>
-                                <i data-lucide="badge-check" class="verified-badge post-author-verified-badge${isPostAuthorAdmin ? ' verified-badge-admin' : ''}" data-author-uid="${post.authorUid || ''}" ${isPostAuthorAdmin ? 'data-admin-badge="true" title="💥Admin⚡"' : ''} style="display:${isPostAuthorVip ? 'inline-flex' : 'none'};"></i>
+                                <i data-lucide="badge-check" class="verified-badge post-author-verified-badge${isPostAuthorAdmin ? ' verified-badge-admin' : (isPostAuthorCompany ? ' verified-badge-company' : '')}" data-author-uid="${post.authorUid || ''}" ${isPostAuthorAdmin ? 'data-admin-badge="true" title="💥Admin⚡"' : (isPostAuthorCompany ? 'data-company-badge="true" title="⚔️ Empresa Verificada ⚡"' : 'title="Verificado VIP"')} style="display:${(isPostAuthorVip || isPostAuthorCompany) ? 'inline-flex' : 'none'};"></i>
                             </div>
                             <div class="feed-time">
                                 ${timeLabel}
@@ -29234,7 +29344,7 @@ function renderPostsFeed(posts = []) {
                                         <div class="feed-comment-text-wrap">
                                             <div class="feed-comment-author-line">
                                                 <strong>${escapeHTML(comment.author || 'Usuário')}</strong>
-                                                <i data-lucide="badge-check" class="verified-badge comment-verified-badge${checkIsAdminUser({ uid: comment.authorUid, name: comment.author, email: comment.authorEmail, username: comment.authorUsername }) ? ' verified-badge-admin' : ''}" data-author-uid="${comment.authorUid || ''}" ${checkIsAdminUser({ uid: comment.authorUid, name: comment.author, email: comment.authorEmail, username: comment.authorUsername }) ? 'data-admin-badge="true" title="💥Admin⚡"' : ''} style="display:${isAuthorVipUser(comment.authorUid, comment) ? 'inline-flex' : 'none'};"></i>
+                                                <i data-lucide="badge-check" class="verified-badge comment-verified-badge${checkIsAdminUser({ uid: comment.authorUid, name: comment.author, email: comment.authorEmail, username: comment.authorUsername }) ? ' verified-badge-admin' : (checkIsCompanyUser(comment) ? ' verified-badge-company' : '')}" data-author-uid="${comment.authorUid || ''}" ${checkIsAdminUser({ uid: comment.authorUid, name: comment.author, email: comment.authorEmail, username: comment.authorUsername }) ? 'data-admin-badge="true" title="💥Admin⚡"' : (checkIsCompanyUser(comment) ? 'data-company-badge="true" title="⚔️ Empresa Verificada ⚡"' : 'title="Verificado VIP"')} style="display:${(isAuthorVipUser(comment.authorUid, comment) || checkIsCompanyUser(comment)) ? 'inline-flex' : 'none'};"></i>
                                                 <span>:</span>
                                                 ${isEdited ? `<span class="comment-edited-badge">(editado)</span>` : ''}
                                             </div>
@@ -29678,7 +29788,8 @@ export function openPostCommentModal(post) {
         const timeStr = new Date(post.createdAt || Date.now()).toLocaleString([], { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
         const isPostAuthorVip = isAuthorVipUser(post.authorUid, post);
         const isPostAuthorAdmin = checkIsAdminUser({ uid: post.authorUid, name: post.authorName, email: post.authorEmail, username: post.authorUsername });
-        meta.innerHTML = `<span style="display:inline-flex; align-items:center; gap:4px;"><span>${escapeHTML(post.authorName || 'Usuário')}</span><i data-lucide="badge-check" class="verified-badge post-author-verified-badge${isPostAuthorAdmin ? ' verified-badge-admin' : ''}" data-author-uid="${post.authorUid || ''}" ${isPostAuthorAdmin ? 'data-admin-badge="true" title="💥Admin⚡"' : ''} style="display:${isPostAuthorVip ? 'inline-flex' : 'none'};"></i></span> • ${timeStr}${post.caption ? ` • "${escapeHTML(post.caption)}"` : ''}`;
+        const isPostAuthorCompany = !isPostAuthorAdmin && checkIsCompanyUser(post);
+        meta.innerHTML = `<span style="display:inline-flex; align-items:center; gap:4px;"><span>${escapeHTML(post.authorName || 'Usuário')}</span><i data-lucide="badge-check" class="verified-badge post-author-verified-badge${isPostAuthorAdmin ? ' verified-badge-admin' : (isPostAuthorCompany ? ' verified-badge-company' : '')}" data-author-uid="${post.authorUid || ''}" ${isPostAuthorAdmin ? 'data-admin-badge="true" title="💥Admin⚡"' : (isPostAuthorCompany ? 'data-company-badge="true" title="⚔️ Empresa Verificada ⚡"' : 'title="Verificado VIP"')} style="display:${(isPostAuthorVip || isPostAuthorCompany) ? 'inline-flex' : 'none'};"></i></span> • ${timeStr}${post.caption ? ` • "${escapeHTML(post.caption)}"` : ''}`;
     }
 
     renderCommentsModalList();
@@ -29741,7 +29852,7 @@ export function renderCommentsModalList() {
                 <div style="flex: 1; min-width: 0;">
                     <div class="comment-item-header">
                         <strong>${escapeHTML(author)}</strong>
-                        <i data-lucide="badge-check" class="verified-badge comment-verified-badge${checkIsAdminUser({ uid: c.authorUid, name: author, email: c.authorEmail, username: c.authorUsername }) ? ' verified-badge-admin' : ''}" data-author-uid="${c.authorUid || ''}" ${checkIsAdminUser({ uid: c.authorUid, name: author, email: c.authorEmail, username: c.authorUsername }) ? 'data-admin-badge="true" title="💥Admin⚡"' : ''} style="display:${isCommentVip ? 'inline-flex' : 'none'};"></i>
+                        <i data-lucide="badge-check" class="verified-badge comment-verified-badge${checkIsAdminUser({ uid: c.authorUid, name: author, email: c.authorEmail, username: c.authorUsername }) ? ' verified-badge-admin' : (checkIsCompanyUser(c) ? ' verified-badge-company' : '')}" data-author-uid="${c.authorUid || ''}" ${checkIsAdminUser({ uid: c.authorUid, name: author, email: c.authorEmail, username: c.authorUsername }) ? 'data-admin-badge="true" title="💥Admin⚡"' : (checkIsCompanyUser(c) ? 'data-company-badge="true" title="⚔️ Empresa Verificada ⚡"' : 'title="Verificado VIP"')} style="display:${(isCommentVip || checkIsCompanyUser(c)) ? 'inline-flex' : 'none'};"></i>
                         <span>:</span>
                         ${isEdited ? `<span class="comment-edited-badge">(editado)</span>` : ''}
                     </div>
