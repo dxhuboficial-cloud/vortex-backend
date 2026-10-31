@@ -20936,7 +20936,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.230';
+export const CURRENT_APP_VERSION = '1.0.231';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -22272,6 +22272,218 @@ export function checkGroupBannedWords(group, text) {
     return false;
 }
 
+/* ==========================================================================
+   ALGORITMO DE SEGURANÇA DE CONVERSAS DE GRUPO 🛡️ (v1.0.231)
+   Proteção Inteligente: Anti-Spam, Anti-Golpes, Mídias Indesejadas e Links Maliciosos
+   ========================================================================== */
+
+export const groupSecurityTracker = {
+    messageTimestamps: new Map(), // groupId_uid -> number[]
+    mediaTimestamps: new Map(),   // groupId_uid -> number[]
+    recentMessages: new Map()     // groupId_uid -> { text: string, timestamp: number }[]
+};
+
+export function checkGroupSecurityViolation({
+    group,
+    currentUser,
+    type = 'text',
+    payload = {},
+    now = Date.now()
+}) {
+    if (!group || !currentUser) {
+        return { blocked: false };
+    }
+
+    // 1. Administradores e Moderadores do Grupo possuem isenção das travas automáticas
+    const isStaff = isUserGroupAdmin(group, currentUser) || isUserGroupModerator(group, currentUser);
+    if (isStaff) {
+        return { blocked: false, isStaff: true };
+    }
+
+    const uid = currentUser.uid || (currentUser.id ? currentUser.id : String(currentUser));
+    const groupId = group.groupId || group.uid || group.id || 'default_group';
+    const trackerKey = `${groupId}_${uid}`;
+
+    const isShieldEnabled = group.securityShieldEnabled !== false;
+    const isBlockMediaEnabled = !!group.blockMediaEnabled;
+    const isBlockLinksEnabled = !!group.blockLinksEnabled;
+
+    const rawText = (payload.text || '').trim();
+    const fileName = (payload.fileName || '').trim();
+    const isMedia = (type === 'image' || type === 'photo' || type === 'video' || type === 'file' || Boolean(payload.fileData));
+
+    // 2. Filtro de Mídia do Grupo: Bloqueio de fotos, vídeos e arquivos de membros comuns
+    if (isBlockMediaEnabled && isMedia) {
+        return {
+            blocked: true,
+            category: 'media',
+            reason: 'group_media_disabled',
+            message: 'O envio de fotos, vídeos e arquivos está restrito aos administradores neste grupo (Regras do Grupo 🛡️).'
+        };
+    }
+
+    // 3. Verificação de Arquivos Inseguros / Executáveis disfarçados
+    if (fileName) {
+        const dangerousExts = /\.(exe|scr|bat|cmd|apk|vbs|msi|js|pif|reg|hta|cpl|com|jar|wsf)$/i;
+        if (dangerousExts.test(fileName)) {
+            return {
+                blocked: true,
+                category: 'unsafe_file',
+                reason: 'dangerous_extension',
+                message: 'Arquivo com formato inseguro bloqueado por segurança do grupo 🛡️.'
+            };
+        }
+
+        // Títulos de arquivo com termos impróprios ou NSFW
+        const nsfwKeywords = /(nude|vazou|porn[oô]?|hentai|sexo|gore|trojan|hack(er)?|crackeado)/i;
+        if (nsfwKeywords.test(fileName)) {
+            return {
+                blocked: true,
+                category: 'media_content',
+                reason: 'group_media_nsfw',
+                message: 'Mídia com título ou formato impróprio bloqueada pela moderação do grupo 🛡️.'
+            };
+        }
+    }
+
+    // 4. Verificação com o Escudo de Segurança Ativado (padrão)
+    if (isShieldEnabled) {
+        // 4.1 Anti-Spam de Mídia: Flood de Mídia no Grupo (> 2 mídias em 8 segundos)
+        if (isMedia) {
+            const userMediaTimes = (groupSecurityTracker.mediaTimestamps.get(trackerKey) || []).filter(t => now - t < 8000);
+            userMediaTimes.push(now);
+            groupSecurityTracker.mediaTimestamps.set(trackerKey, userMediaTimes);
+
+            if (userMediaTimes.length > 2) {
+                return {
+                    blocked: true,
+                    category: 'media_flood',
+                    reason: 'group_media_flood',
+                    message: 'Envio de mídias em sequência rápida detectado! Aguarde alguns instantes (Proteção contra Spam de Mídia 🛡️).'
+                };
+            }
+        }
+
+        // 4.2 Anti-Spam: Flood de Mensagens no Grupo (> 3 mensagens em 3 segundos)
+        const userMsgTimes = (groupSecurityTracker.messageTimestamps.get(trackerKey) || []).filter(t => now - t < 3000);
+        userMsgTimes.push(now);
+        groupSecurityTracker.messageTimestamps.set(trackerKey, userMsgTimes);
+
+        if (userMsgTimes.length > 3) {
+            return {
+                blocked: true,
+                category: 'spam',
+                reason: 'group_spam_flood',
+                message: 'Envio muito rápido no grupo! Aguarde alguns instantes (Proteção Anti-Spam de Grupo 🛡️).'
+            };
+        }
+
+        // 4.3 Anti-Spam: Mensagens Repetidas / Bot (3 mensagens com texto idêntico em 25 segundos)
+        if (rawText) {
+            const userRecent = (groupSecurityTracker.recentMessages.get(trackerKey) || []).filter(m => now - m.timestamp < 25000);
+            userRecent.push({ text: rawText, timestamp: now });
+            groupSecurityTracker.recentMessages.set(trackerKey, userRecent);
+
+            const countIdentical = userRecent.filter(m => m.text.toLowerCase() === rawText.toLowerCase()).length;
+            if (countIdentical >= 3) {
+                return {
+                    blocked: true,
+                    category: 'spam',
+                    reason: 'group_spam_repeat',
+                    message: 'Envio repetitivo de mensagens idênticas detectado no grupo (Proteção Anti-Spam 🛡️).'
+                };
+            }
+        }
+
+        // 4.4 Anti-Golpes, Phishing e Engenharia Social no Grupo
+        if (rawText) {
+            const scamPatterns = [
+                // Golpes Financeiros / Pix falso / Retorno garantido
+                /(pix\s*premiado|urubu\s*do\s*pix|dobro\s*do\s*pix|multiplicador\s*de\s*pix|gerador\s*de\s*pix|tabela\s*do\s*pix)/i,
+                /(renda\s*extra\s*(f[aá]cil|garantida|sem\s*sair\s*de\s*casa|autom[aá]tica)|dinheiro\s*f[aá]cil\s*sem\s*esfor[cç]o|lucro\s*(di[aá]rio|garantido|de\s*100%|de\s*\d+%))/i,
+                /(deposite\s*(r\$\s*)?\d+\s*e\s*receba\s*(r\$\s*)?\d+|investimento\s*com\s*retorno\s*(garantido|imediato))/i,
+                // Roubo de Contas / Suporte Falso / Engenharia Social
+                /(suporte\s*(oficial\s*)?vortex.*(senha|token|c[oó]digo|confirme\s*sua\s*conta|envie\s*seu\s*acesso))/i,
+                /(recupera[cç][aã]o\s*de\s*conta.*(envie\s*(o|seu)?\s*c[oó]digo|passe\s*seu\s*c[oó]digo))/i,
+                /(sua\s*conta\s*(foi|est[aá]|ser[aá])\s*(suspensa|bloqueada|desativada).*(clique|acesse|confirme))/i,
+                /(envie\s*(o|seu)?\s*(c[oó]digo|token|sms|pin)\s*(de\s*6\s*d[ií]gitos|de\s*ativa[cç][aã]o)?)/i,
+                // Falsos Prêmios e Sorteios
+                /(parab[eê]ns\s*voc[eê]\s*ganhou|voc[eê]\s*foi\s*(selecionado|sorteado)\s*(para\s*ganhar|para\s*receber))/i,
+                /(clique\s*(aqui\s*)?(para|e)\s*resgat(ar|e)\s*(seu\s*pr[eê]mio|iphone|voucher|pix))/i
+            ];
+
+            for (const pattern of scamPatterns) {
+                if (pattern.test(rawText)) {
+                    return {
+                        blocked: true,
+                        category: 'scam',
+                        reason: 'group_scam_pattern',
+                        message: 'Mensagem bloqueada: identificamos conteúdo suspeito ou tentativa de golpe (Segurança do Grupo 🛡️).'
+                    };
+                }
+            }
+        }
+
+        // 4.5 Anti-Links Maliciosos e Rastreamento / IP Grabbers
+        if (rawText) {
+            const maliciousTrackers = /(grabify\.link|iplogger\.(org|com)|2no\.co|blasze\.com|yip\.su|iplis\.ru|ezstat\.ru)/i;
+            if (maliciousTrackers.test(rawText)) {
+                return {
+                    blocked: true,
+                    category: 'malicious_link',
+                    reason: 'ip_logger_grabber',
+                    message: 'Link malicioso ou rastreador não seguro detectado e bloqueado (Segurança do Grupo 🛡️).'
+                };
+            }
+
+            const phishingDomains = [
+                /(vortex.*(login|suporte|auth|recuperar|premio)\.(tk|ml|ga|cf|gq|xyz|top|ru|click))/i,
+                /(whatsapp.*(premio|sorteio|recarga|seguran[cç]a)\.(tk|ml|ga|cf|gq|xyz|top|ru))/i
+            ];
+            for (const pDomain of phishingDomains) {
+                if (pDomain.test(rawText)) {
+                    return {
+                        blocked: true,
+                        category: 'malicious_link',
+                        reason: 'phishing_domain',
+                        message: 'Link suspeito bloqueado por segurança (Segurança do Grupo 🛡️).'
+                    };
+                }
+            }
+        }
+    }
+
+    // 5. Verificação de Links Externos e Convites de outros Grupos
+    if (rawText) {
+        const linkPattern = /(https?:\/\/[^\s]+|www\.[^\s]+|\b[a-zA-Z0-9-]+\.(com|net|org|io|me|xyz|top|ru|tk|ml|ga|cf|gq|click|buzz|link|info)\b[^\s]*)/i;
+        const hasLink = linkPattern.test(rawText);
+
+        if (hasLink) {
+            if (isBlockLinksEnabled) {
+                return {
+                    blocked: true,
+                    category: 'link',
+                    reason: 'group_links_disabled',
+                    message: 'O envio de links externos está desativado para membros neste grupo (Regras do Grupo 🛡️).'
+                };
+            }
+
+            // Invasão de outros Grupos / Divulgação não autorizada
+            const invitePattern = /(chat\.whatsapp\.com\/|t\.me\/(joinchat\/|[a-zA-Z0-9_]+)|discord\.gg\/)/i;
+            if (invitePattern.test(rawText) && (group.blockInvitesEnabled !== false)) {
+                return {
+                    blocked: true,
+                    category: 'link',
+                    reason: 'external_group_invite',
+                    message: 'Divulgação de links de outros grupos não é permitida neste grupo (Segurança do Grupo 🛡️).'
+                };
+            }
+        }
+    }
+
+    return { blocked: false };
+}
+
 export function renderGroupMiniAdminPanel(group = managedGroup) {
     if (!group) return;
 
@@ -22352,6 +22564,24 @@ export function renderGroupMiniAdminPanel(group = managedGroup) {
     if (schedulePanel) schedulePanel.style.display = group.autoPauseEnabled ? 'block' : 'none';
     if (autoPauseTime) autoPauseTime.value = group.autoPauseTime || '22:00';
     if (autoUnpauseTime) autoUnpauseTime.value = group.autoUnpauseTime || '08:00';
+
+    // 4. Escudo de Segurança do Grupo (Anti-Spam & Anti-Golpe)
+    const securityShieldToggle = document.getElementById('group-security-shield-toggle');
+    if (securityShieldToggle) {
+        securityShieldToggle.checked = group.securityShieldEnabled !== false;
+    }
+
+    // 5. Bloqueio de Fotos e Vídeos por Membros
+    const blockMediaToggle = document.getElementById('group-block-media-toggle');
+    if (blockMediaToggle) {
+        blockMediaToggle.checked = !!group.blockMediaEnabled;
+    }
+
+    // 6. Bloqueio de Links Externos
+    const blockLinksToggle = document.getElementById('group-block-links-toggle');
+    if (blockLinksToggle) {
+        blockLinksToggle.checked = !!group.blockLinksEnabled;
+    }
 
     if (window.lucide) lucide.createIcons();
 }
@@ -22602,6 +22832,75 @@ export function initGroupMiniAdminControls() {
             showToast('Erro', 'Não foi possível salvar o horário.', 'red');
         }
     });
+
+    // 4. Toggle do Escudo de Segurança do Grupo
+    document.getElementById('group-security-shield-toggle')?.addEventListener('change', async function() {
+        if (!managedGroup || !isUserGroupAdmin(managedGroup, currentUser)) {
+            showToast('Sem permissão', 'Apenas administradores podem alterar o escudo de segurança.', 'red');
+            this.checked = !this.checked;
+            return;
+        }
+        const enabled = this.checked;
+        managedGroup.securityShieldEnabled = enabled;
+        try {
+            await updateDoc(doc(db, 'groups', managedGroup.groupId), {
+                securityShieldEnabled: enabled,
+                updatedAt: Date.now()
+            });
+            await syncGroupReferences(managedGroup);
+            showToast('Escudo de Segurança 🛡️', enabled ? 'Proteção anti-spam, anti-golpes e links maliciosos ativada.' : 'Escudo de segurança desativado no grupo.', enabled ? 'green' : 'orange');
+        } catch (e) {
+            console.error('Erro ao atualizar escudo de segurança:', e);
+            this.checked = !this.checked;
+            showToast('Erro', 'Não foi possível salvar a alteração.', 'red');
+        }
+    });
+
+    // 5. Toggle de Bloqueio de Fotos e Vídeos por Membros
+    document.getElementById('group-block-media-toggle')?.addEventListener('change', async function() {
+        if (!managedGroup || !isUserGroupAdmin(managedGroup, currentUser)) {
+            showToast('Sem permissão', 'Apenas administradores podem alterar o filtro de mídia.', 'red');
+            this.checked = !this.checked;
+            return;
+        }
+        const enabled = this.checked;
+        managedGroup.blockMediaEnabled = enabled;
+        try {
+            await updateDoc(doc(db, 'groups', managedGroup.groupId), {
+                blockMediaEnabled: enabled,
+                updatedAt: Date.now()
+            });
+            await syncGroupReferences(managedGroup);
+            showToast('Filtro de Mídia 📷', enabled ? 'Envio de fotos, vídeos e arquivos restrito aos administradores.' : 'Envio de mídias liberado para todos os membros.', enabled ? 'blue' : 'green');
+        } catch (e) {
+            console.error('Erro ao atualizar bloqueio de mídias:', e);
+            this.checked = !this.checked;
+            showToast('Erro', 'Não foi possível salvar a alteração.', 'red');
+        }
+    });
+
+    // 6. Toggle de Bloqueio de Links Externos
+    document.getElementById('group-block-links-toggle')?.addEventListener('change', async function() {
+        if (!managedGroup || !isUserGroupAdmin(managedGroup, currentUser)) {
+            showToast('Sem permissão', 'Apenas administradores podem alterar o filtro de links.', 'red');
+            this.checked = !this.checked;
+            return;
+        }
+        const enabled = this.checked;
+        managedGroup.blockLinksEnabled = enabled;
+        try {
+            await updateDoc(doc(db, 'groups', managedGroup.groupId), {
+                blockLinksEnabled: enabled,
+                updatedAt: Date.now()
+            });
+            await syncGroupReferences(managedGroup);
+            showToast('Filtro de Links 🔗', enabled ? 'Envio de links externos desativado para membros comuns.' : 'Envio de links liberado no grupo.', enabled ? 'blue' : 'green');
+        } catch (e) {
+            console.error('Erro ao atualizar bloqueio de links:', e);
+            this.checked = !this.checked;
+            showToast('Erro', 'Não foi possível salvar a alteração.', 'red');
+        }
+    });
 }
 
 async function sendChatMessage(type = 'text', payload = {}) {
@@ -22667,6 +22966,18 @@ async function sendChatMessage(type = 'text', payload = {}) {
 
             const targetGrp = activeGroupDoc || activeChatContact;
 
+            // 🛡️ Algoritmo de Segurança de Conversas de Grupo (v1.0.231)
+            const groupSecCheck1 = checkGroupSecurityViolation({
+                group: targetGrp,
+                currentUser,
+                type,
+                payload
+            });
+            if (groupSecCheck1 && groupSecCheck1.blocked) {
+                showToast('Segurança do Grupo 🛡️', groupSecCheck1.message, 'red');
+                return;
+            }
+
             // Checagem de Horário Programado de Silêncio (Pausa Automática)
             if (!isStaff && checkGroupScheduledPause(targetGrp)) {
                 const pTime = targetGrp.autoPauseTime || '22:00';
@@ -22723,6 +23034,18 @@ async function sendChatMessage(type = 'text', payload = {}) {
                     showToast('Palavra Proibida 🚫', `Sua mensagem contém palavras proibidas pelas regras do grupo ("${bannedCheck.word}").`, 'red');
                     return;
                 }
+            }
+
+            // 🛡️ Algoritmo de Segurança de Conversas de Grupo com dados do Firestore (v1.0.231)
+            const groupSecCheck2 = checkGroupSecurityViolation({
+                group: gData,
+                currentUser,
+                type,
+                payload
+            });
+            if (groupSecCheck2 && groupSecCheck2.blocked) {
+                showToast('Segurança do Grupo 🛡️', groupSecCheck2.message, 'red');
+                return;
             }
         }
         const chatId = getActiveChatId();
@@ -35929,6 +36252,8 @@ window.handleCallSwitchedToVideo = handleCallSwitchedToVideo;
     window.isWithinScheduledPauseWindow = isWithinScheduledPauseWindow;
     window.checkGroupScheduledPause = checkGroupScheduledPause;
     window.checkGroupBannedWords = checkGroupBannedWords;
+    window.groupSecurityTracker = groupSecurityTracker;
+    window.checkGroupSecurityViolation = checkGroupSecurityViolation;
     window.renderGroupMiniAdminPanel = renderGroupMiniAdminPanel;
     window.approveGroupJoinRequest = approveGroupJoinRequest;
     window.rejectGroupJoinRequest = rejectGroupJoinRequest;

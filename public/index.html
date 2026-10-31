@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.230">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.230">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.230">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.230">
-    <link rel="stylesheet" href="style.css?v=1.0.230">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.231">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.231">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.231">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.231">
+    <link rel="stylesheet" href="style.css?v=1.0.231">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.230" id="app-manifest-link">
+    <link rel="manifest" href="manifest.json?v=1.0.231" id="app-manifest-link">
     <meta name="theme-color" content="#39ff14" id="app-theme-color-meta">
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#39ff14" id="app-theme-color-meta-dark">
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#39ff14" id="app-theme-color-meta-light">
@@ -19,8 +19,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.230">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.230">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.231">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.231">
     <!-- Sincronização Dinâmica da Barra de Status e Barra de Navegação do Celular -->
     <script>
         (function() {
@@ -1858,6 +1858,48 @@
                                 <small class="group-rule-hint">💡 Entre o horário de pausa e despausa, apenas administradores e moderadores podem falar.</small>
                             </div>
                         </div>
+
+                        <!-- 4. Escudo de Segurança do Grupo (Anti-Spam & Anti-Golpe) -->
+                        <div class="group-rule-card" id="group-rule-security-shield-card">
+                            <div class="group-rule-header">
+                                <label for="group-security-shield-toggle" class="group-rule-label">
+                                    <span class="group-rule-name"><i data-lucide="shield-alert"></i> Escudo de Segurança do Grupo</span>
+                                    <small class="group-rule-desc">Bloquear automaticamente spam, golpes e links maliciosos</small>
+                                </label>
+                                <label class="switch schedule-switch" for="group-security-shield-toggle" title="Ativar escudo de segurança">
+                                    <input type="checkbox" id="group-security-shield-toggle" aria-label="Ativar escudo de segurança do grupo" checked>
+                                    <span class="slider schedule-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- 5. Filtro de Mídia: Bloquear Fotos e Vídeos de Membros -->
+                        <div class="group-rule-card" id="group-rule-block-media-card">
+                            <div class="group-rule-header">
+                                <label for="group-block-media-toggle" class="group-rule-label">
+                                    <span class="group-rule-name"><i data-lucide="image-off"></i> Bloquear Fotos e Vídeos de Membros</span>
+                                    <small class="group-rule-desc">Apenas administradores podem enviar fotos, vídeos e arquivos</small>
+                                </label>
+                                <label class="switch schedule-switch" for="group-block-media-toggle" title="Bloquear envio de mídias por membros">
+                                    <input type="checkbox" id="group-block-media-toggle" aria-label="Bloquear envio de mídias por membros">
+                                    <span class="slider schedule-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- 6. Filtro de Links: Bloqueio de Links Externos -->
+                        <div class="group-rule-card" id="group-rule-block-links-card">
+                            <div class="group-rule-header">
+                                <label for="group-block-links-toggle" class="group-rule-label">
+                                    <span class="group-rule-name"><i data-lucide="link-2-off"></i> Bloquear Links Externos</span>
+                                    <small class="group-rule-desc">Impedir membros de enviarem links externos e convites de grupos</small>
+                                </label>
+                                <label class="switch schedule-switch" for="group-block-links-toggle" title="Bloquear envio de links por membros">
+                                    <input type="checkbox" id="group-block-links-toggle" aria-label="Bloquear envio de links por membros">
+                                    <span class="slider schedule-slider"></span>
+                                </label>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -2094,7 +2136,7 @@
                     </div>
                 </div>
 
-                <!-- Card de Permissões do App (v1.0.230) -->
+                <!-- Card de Permissões do App (v1.0.231) -->
                 <div class="setting-item app-permissions-card-highlight" id="app-permissions-setting-item">
                     <div class="app-permissions-setting-inner">
                         <div class="app-permissions-header-row">
@@ -2315,14 +2357,14 @@
                     <button id="delete-account-btn" type="button" class="danger-btn delete-account-action-btn">Apagar Conta</button>
                 </div>
 
-                <!-- Card de Versão Oficial do App (v1.0.230) -->
+                <!-- Card de Versão Oficial do App (v1.0.231) -->
                 <div class="app-version-card" id="app-version-info-footer">
                     <div class="app-version-header-row">
                         <div class="app-version-brand-wrap">
-                            <img src="icons/vortex-vip-192.png?v=1.0.230" alt="VORTEX VIP" class="app-version-icon-img" width="22" height="22">
+                            <img src="icons/vortex-vip-192.png?v=1.0.231" alt="VORTEX VIP" class="app-version-icon-img" width="22" height="22">
                             <span class="app-version-brand-name">VORTEX VIP Oficial</span>
                         </div>
-                        <span class="app-version-pill-badge" id="app-version-display-badge">v1.0.230 ⚡</span>
+                        <span class="app-version-pill-badge" id="app-version-display-badge">v1.0.231 ⚡</span>
                     </div>
                     <div class="app-version-status-row">
                         <span class="app-version-status-dot"></span>
@@ -3392,7 +3434,7 @@
             <div class="pwa-banner-glow-line"></div>
             <div class="pwa-banner-content">
                 <div class="pwa-banner-icon-box">
-                    <img src="icons/vortex-vip-192.png?v=1.0.230" alt="VORTEX VIP" class="pwa-banner-logo" width="44" height="44">
+                    <img src="icons/vortex-vip-192.png?v=1.0.231" alt="VORTEX VIP" class="pwa-banner-logo" width="44" height="44">
                 </div>
                 <div class="pwa-banner-text">
                     <div class="pwa-banner-title">Instalar VORTEX VIP ⚡</div>
@@ -3410,7 +3452,7 @@
             <div class="pwa-ios-content">
                 <div class="pwa-ios-header">
                     <div class="pwa-ios-icon-wrap">
-                        <img src="icons/vortex-vip-192.png?v=1.0.230" alt="VORTEX VIP" width="48" height="48">
+                        <img src="icons/vortex-vip-192.png?v=1.0.231" alt="VORTEX VIP" width="48" height="48">
                     </div>
                     <h3 class="pwa-ios-title">Instalar no iPhone / iPad 📲</h3>
                     <p class="pwa-ios-subtitle">Siga os 2 passos rápidos abaixo no Safari para ter o VORTEX VIP na sua tela de início:</p>
@@ -4878,7 +4920,7 @@
             </div>
         </div>
 
-        <!-- Modal da Central de Permissões do App (v1.0.230) -->
+        <!-- Modal da Central de Permissões do App (v1.0.231) -->
         <div id="app-permissions-modal" class="custom-modal-overlay app-permissions-overlay" style="display:none;" aria-hidden="true">
             <div class="custom-modal-card app-permissions-card">
                 <div class="panel-top-bar app-permissions-top-bar">
@@ -5128,6 +5170,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.230" defer></script>
+    <script type="module" src="script.js?v=1.0.231" defer></script>
 </body>
 </html>
