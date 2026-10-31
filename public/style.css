@@ -24715,3 +24715,401 @@ video::-internal-media-controls-download-button {
     color: var(--text-dim, #94a3b8);
     line-height: 1.4;
 }
+
+/* ==========================================================================
+   VORTEX VIP v1.0.233: Links & Score de Risco da Plataforma + Justificativa
+   ========================================================================== */
+
+/* Badges de Nível / Score de Risco */
+.link-risk-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.link-risk-badge.high {
+    background: rgba(255, 59, 48, 0.18);
+    border: 1px solid rgba(255, 59, 48, 0.55);
+    color: #ff4d4d;
+    box-shadow: 0 0 10px rgba(255, 59, 48, 0.25);
+}
+
+.link-risk-badge.medium {
+    background: rgba(255, 204, 0, 0.18);
+    border: 1px solid rgba(255, 204, 0, 0.55);
+    color: #ffcc00;
+    box-shadow: 0 0 10px rgba(255, 204, 0, 0.2);
+}
+
+.link-risk-badge.low {
+    background: rgba(57, 255, 20, 0.15);
+    border: 1px solid rgba(57, 255, 20, 0.5);
+    color: #39ff14;
+    box-shadow: 0 0 10px rgba(57, 255, 20, 0.2);
+}
+
+/* Card de Link no Painel ADM */
+.admin-link-card {
+    background: rgba(22, 22, 28, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: all 0.2s ease;
+}
+
+.admin-link-card:hover {
+    border-color: rgba(255, 255, 255, 0.18);
+    background: rgba(26, 26, 34, 0.95);
+}
+
+.admin-link-card.high-risk {
+    border-left: 4px solid #ff3b30;
+}
+
+.admin-link-card.medium-risk {
+    border-left: 4px solid #ffcc00;
+}
+
+.admin-link-card.low-risk {
+    border-left: 4px solid #39ff14;
+}
+
+.admin-link-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.admin-link-author-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.admin-link-source-tag {
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-dim, #94a3b8);
+}
+
+.admin-link-url-box {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    word-break: break-all;
+}
+
+.admin-link-url-text {
+    color: #00f3ff;
+    font-family: monospace;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.admin-link-url-text:hover {
+    text-decoration: underline;
+}
+
+.admin-link-reasons-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.admin-link-reason-pill {
+    font-size: 0.7rem;
+    color: #e2e8f0;
+    background: rgba(255, 59, 48, 0.1);
+    border: 1px solid rgba(255, 59, 48, 0.25);
+    padding: 2px 7px;
+    border-radius: 6px;
+}
+
+/* Status do Link */
+.admin-link-status-badge {
+    font-size: 0.74rem;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 8px;
+    width: fit-content;
+}
+
+.admin-link-status-badge.pending {
+    background: rgba(255, 204, 0, 0.15);
+    color: #ffcc00;
+    border: 1px solid rgba(255, 204, 0, 0.3);
+}
+
+.admin-link-status-badge.warning {
+    background: rgba(255, 120, 0, 0.18);
+    color: #ff9100;
+    border: 1px solid rgba(255, 120, 0, 0.4);
+}
+
+.admin-link-status-badge.approved {
+    background: rgba(57, 255, 20, 0.15);
+    color: #39ff14;
+    border: 1px solid rgba(57, 255, 20, 0.3);
+}
+
+.admin-link-status-badge.restricted {
+    background: rgba(255, 59, 48, 0.18);
+    color: #ff4d4d;
+    border: 1px solid rgba(255, 59, 48, 0.35);
+}
+
+/* Box da Justificativa Recebida do Usuário */
+.admin-justification-review-card {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 204, 0, 0.25);
+    border-radius: 10px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.admin-justification-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    color: #ffcc00;
+    font-weight: 700;
+}
+
+.admin-justification-field {
+    font-size: 0.78rem;
+    color: #e2e8f0;
+}
+
+.admin-justification-field .justification-label-dim {
+    color: var(--text-dim, #94a3b8);
+    margin-right: 4px;
+}
+
+.admin-justification-desc-quote {
+    margin: 4px 0 0 0;
+    font-style: italic;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 6px 10px;
+    border-radius: 6px;
+    border-left: 2px solid #ffcc00;
+    color: #fff;
+    word-break: break-word;
+    white-space: pre-wrap;
+}
+
+/* Ações do Admin para Links */
+.admin-link-actions-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+}
+
+.btn-solicitar-justificativa {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: linear-gradient(135deg, rgba(255, 59, 48, 0.2), rgba(255, 149, 0, 0.25));
+    border: 1px solid rgba(255, 59, 48, 0.6);
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 6px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-solicitar-justificativa:hover {
+    background: linear-gradient(135deg, rgba(255, 59, 48, 0.35), rgba(255, 149, 0, 0.4));
+    box-shadow: 0 0 10px rgba(255, 59, 48, 0.35);
+}
+
+.btn-admin-link-approve {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(57, 255, 20, 0.15);
+    border: 1px solid rgba(57, 255, 20, 0.5);
+    color: #39ff14;
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 6px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-admin-link-approve:hover {
+    background: rgba(57, 255, 20, 0.3);
+    box-shadow: 0 0 10px rgba(57, 255, 20, 0.3);
+}
+
+.btn-admin-link-restrict {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(255, 59, 48, 0.15);
+    border: 1px solid rgba(255, 59, 48, 0.5);
+    color: #ff4d4d;
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 6px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-admin-link-restrict:hover {
+    background: rgba(255, 59, 48, 0.3);
+    box-shadow: 0 0 10px rgba(255, 59, 48, 0.3);
+}
+
+.btn-admin-link-last-warning {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(255, 149, 0, 0.15);
+    border: 1px solid rgba(255, 149, 0, 0.5);
+    color: #ff9500;
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 6px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-admin-link-last-warning:hover {
+    background: rgba(255, 149, 0, 0.3);
+    box-shadow: 0 0 10px rgba(255, 149, 0, 0.3);
+}
+
+/* Modal de Justificativa de Link */
+.link-justification-modal-card {
+    max-width: 480px;
+    width: 95%;
+    max-height: 90vh;
+    overflow-y: auto;
+    border-radius: 16px;
+    background: #101015;
+    border: 1px solid rgba(255, 59, 48, 0.35);
+    box-shadow: 0 0 30px rgba(0, 0, 0, 0.8), 0 0 15px rgba(255, 59, 48, 0.15);
+}
+
+.link-justification-header-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.link-justification-icon-badge {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: rgba(255, 59, 48, 0.15);
+    border: 1px solid rgba(255, 59, 48, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ff3b30;
+    flex-shrink: 0;
+}
+
+.link-justification-body {
+    padding: 0 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.link-risk-alert-box {
+    background: rgba(255, 59, 48, 0.08);
+    border: 1px solid rgba(255, 59, 48, 0.25);
+    border-radius: 12px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.link-risk-alert-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+
+.link-risk-source-pill {
+    font-size: 0.72rem;
+    font-weight: 700;
+    background: rgba(255, 255, 255, 0.08);
+    padding: 2px 8px;
+    border-radius: 6px;
+    color: var(--text-dim, #94a3b8);
+}
+
+.link-risk-url-preview {
+    font-family: monospace;
+    font-size: 0.78rem;
+    color: #00f3ff;
+    background: rgba(0, 0, 0, 0.4);
+    padding: 6px 10px;
+    border-radius: 6px;
+    word-break: break-all;
+}
+
+.link-risk-alert-text {
+    font-size: 0.84rem;
+    line-height: 1.45;
+    color: #f1f5f9;
+    margin: 0;
+}
+
+/* Botão de Justificativa na Notificação */
+.notif-link-justification-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 8px;
+    padding: 7px 12px;
+    background: linear-gradient(135deg, rgba(255, 59, 48, 0.25), rgba(255, 149, 0, 0.3));
+    border: 1px solid rgba(255, 59, 48, 0.6);
+    border-radius: 8px;
+    color: #ffffff;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.notif-link-justification-btn:hover {
+    background: linear-gradient(135deg, rgba(255, 59, 48, 0.4), rgba(255, 149, 0, 0.5));
+    box-shadow: 0 0 12px rgba(255, 59, 48, 0.4);
+    transform: translateY(-1px);
+}
+

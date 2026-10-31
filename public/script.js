@@ -2290,6 +2290,7 @@ export function renderNotifications() {
         const isComment = !isGroupPromote && (type === 'comment_post' || type === 'comment' || /comentou/i.test(titleRaw) || /comentou na sua publica/i.test(msgRaw));
         const isGroupAdd = !isGroupPromote && (type === 'group_add' || /adicionado a um grupo|adicionado ao grupo/i.test(titleRaw) || /adicionado ao grupo/i.test(msgRaw));
         const isSecurityAdmin = (n.toUid === 'admin' || n.forAdmin || /Seguran[çc]a IA/i.test(titleRaw) || /algoritmo de den[úu]ncia/i.test(msgRaw) || /algoritmo de seguran[çc]a/i.test(msgRaw));
+        const isLinkRisk = type === 'link_risk_warning' || n.hasJustificationAction || /taxa de risco enorme em links/i.test(msgRaw) || /taxa de risco enorme/i.test(titleRaw);
 
         let typeClass = 'warning';
         let badgeText = 'AVISO ⚠️';
@@ -2304,6 +2305,10 @@ export function renderNotifications() {
             typeClass = isAlert ? 'alert' : 'warning';
             badgeText = 'MODERAÇÃO 🛡️';
             iconHTML = isAlert ? '<i data-lucide="shield-alert"></i>' : '<i data-lucide="shield"></i>';
+        } else if (isLinkRisk) {
+            typeClass = 'alert';
+            badgeText = 'RISCO DE LINK 🛡️';
+            iconHTML = '<i data-lucide="shield-alert"></i>';
         } else if (isAlert) {
             typeClass = 'alert';
             badgeText = 'ALERTA 🔴';
@@ -2376,6 +2381,11 @@ export function renderNotifications() {
                             <span class="notification-badge ${typeClass}">${badgeText}</span>
                         </div>
                         <div class="notification-card-text">${escapeHTML(n.message || '')}</div>
+                        ${isLinkRisk ? `
+                            <button type="button" class="notif-link-justification-btn" onclick="openLinkJustificationModal('${n.linkId || ''}', '${escapeHTML(n.linkUrl || '')}', ${n.riskScore || 87})">
+                                <i data-lucide="file-edit"></i> Preencher Formulário de Justificativa 📝
+                            </button>
+                        ` : ''}
                         <div class="notification-card-time">
                             <i data-lucide="clock" style="width:11px; height:11px;"></i> ${timeStr}
                         </div>
@@ -19058,6 +19068,9 @@ export function switchAdminTab(tabName) {
     if (tabName === 'withdrawals') {
         loadAdminWithdrawals().then(() => renderAdminWithdrawals());
     }
+    if (tabName === 'links') {
+        loadAdminLinks().then(() => renderAdminLinks());
+    }
     if (window.lucide) lucide.createIcons();
 }
 
@@ -20952,7 +20965,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.232';
+export const CURRENT_APP_VERSION = '1.0.233';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -22751,6 +22764,788 @@ export function initGlobalSecurityUI() {
     closeBtn?.addEventListener('click', closeModal);
     confirmBtn?.addEventListener('click', closeModal);
 }
+
+/* ==========================================================================
+   VORTEX VIP v1.0.233: SISTEMA DE SEGURANÇA E ANÁLISE DE LINKS & JUSTIFICATIVAS
+   ========================================================================== */
+
+export const adminLinksList = [];
+export const platformLinksMap = new Map();
+let currentAdminLinksFilter = 'all';
+
+/**
+ * Analisa uma URL e retorna score de risco (0-100%), nível e motivos técnicos.
+ */
+export function analyzeUrlSecurity(url = '') {
+    if (!url || typeof url !== 'string') {
+        return {
+            url: '',
+            hostname: '',
+            riskScore: 0,
+            riskLevel: 'low',
+            riskReasons: [],
+            isAllowed: true
+        };
+    }
+
+    let cleanUrl = url.trim();
+    cleanUrl = cleanUrl.replace(/^https?:\/\/https?:\/\//i, 'https://');
+    let protocol = 'https:';
+    if (/^http:\/\//i.test(cleanUrl)) {
+        protocol = 'http:';
+    }
+    if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(cleanUrl)) {
+        cleanUrl = 'https://' + cleanUrl;
+    }
+
+    let hostname = '';
+    let path = '';
+
+    const UrlClass = (typeof URL === 'function' ? URL : (typeof window !== 'undefined' && typeof window.URL === 'function' ? window.URL : (typeof globalThis !== 'undefined' ? globalThis.URL : null)));
+    if (UrlClass) {
+        try {
+            const u = new UrlClass(cleanUrl);
+            hostname = u.hostname ? u.hostname.toLowerCase() : '';
+            protocol = u.protocol ? u.protocol.toLowerCase() : protocol;
+            path = ((u.pathname || '') + (u.search || '') + (u.hash || '')).toLowerCase();
+        } catch (_) {
+            hostname = cleanUrl.toLowerCase().replace(/^[a-z]+:\/\//, '').split('/')[0];
+            path = cleanUrl.toLowerCase().replace(/^[a-z]+:\/\/[^\/]+/, '');
+        }
+    } else {
+        hostname = cleanUrl.toLowerCase().replace(/^[a-z]+:\/\//, '').split('/')[0];
+        path = cleanUrl.toLowerCase().replace(/^[a-z]+:\/\/[^\/]+/, '');
+    }
+
+    let riskScore = 8;
+    const reasons = [];
+
+    // 1. Ausência de HTTPS (Conexão Não Criptografada)
+    if (protocol === 'http:') {
+        riskScore += 25;
+        reasons.push('Conexão HTTP não criptografada (sem SSL/TLS)');
+    }
+
+    // 2. IP numérico direto (ex: http://192.168.1.1 ou http://45.33.22.11)
+    if (/^(\d{1,3}\.){3}\d{1,3}$/.test(hostname)) {
+        riskScore = Math.max(riskScore, 90);
+        reasons.push('URL utiliza endereço IP numérico direto em vez de domínio registrado');
+    }
+
+    // 3. Rastreadores clandestinos e IP grabbers conhecidos
+    if (/(grabify\.link|iplogger\.(org|com)|2no\.co|blasze\.com|yip\.su|iplis\.ru|ezstat\.ru)/i.test(hostname)) {
+        riskScore = 99;
+        reasons.push('Rastreador de IP ou link de espionagem clandestina detectado');
+    }
+
+    // 4. Extensões / TLDs com alta taxa de risco e abuso (87% de risco)
+    const highRiskTlds = /(\.xyz|\.top|\.tk|\.ml|\.ga|\.cf|\.gq|\.ru|\.click|\.fit|\.surf|\.work|\.buzz|\.rest|\.cam|\.icu|\.live|\.monster)$/i;
+    if (highRiskTlds.test(hostname)) {
+        riskScore = Math.max(riskScore, 87);
+        reasons.push('Extensão de domínio (TLD) com alto índice de abuso e risco de segurança (87% de risco)');
+    }
+
+    // 5. Palavras de Phishing ou Usurpação de Marcas
+    const phishingPatterns = /(vortex.*(login|suporte|auth|recuperar|premio|senha|admin)|pix.*(premiado|urubu|tabela|gerador|dobro)|sorteio.*(iphone|premio)|recarga.*gratis|whatsapp.*(premio|suporte|atualizar))/i;
+    if (phishingPatterns.test(hostname) || phishingPatterns.test(path)) {
+        riskScore = Math.max(riskScore, 92);
+        reasons.push('Padrão suspeito de phishing, engenharia social ou falsa representação');
+    }
+
+    // 6. Encurtadores de links (Destino Oculto)
+    const shorteners = /(bit\.ly|tinyurl\.com|t\.co|cutt\.ly|is\.gd|goo\.gl|rebrand\.ly|ow\.ly|encurtador\.com\.br)/i;
+    if (shorteners.test(hostname)) {
+        riskScore = Math.max(riskScore, 55);
+        reasons.push('Encurtador de URL: destino final mascarado');
+    }
+
+    // 7. Múltiplos subdomínios (técnica de camuflagem)
+    const dotCount = (hostname.match(/\./g) || []).length;
+    if (dotCount > 3) {
+        riskScore += 15;
+        reasons.push('Múltiplos subdomínios encadeados (técnica de camuflagem)');
+    }
+
+    // Normalização 5 - 100
+    riskScore = Math.min(100, Math.max(5, riskScore));
+
+    let riskLevel = 'low';
+    if (riskScore >= 70) riskLevel = 'high';
+    else if (riskScore >= 30) riskLevel = 'medium';
+
+    if (reasons.length === 0) {
+        reasons.push('Domínio com certificado seguro e reputação regular');
+    }
+
+    return {
+        url: cleanUrl,
+        hostname,
+        riskScore,
+        riskLevel,
+        riskReasons: reasons,
+        isAllowed: riskScore < 98 // apenas bloqueia links 98-100 como IP grabbers diretos
+    };
+}
+
+/**
+ * Registra o link na base da plataforma para auditoria e controle do painel ADM.
+ */
+export async function registerPlatformLink({
+    url,
+    title = '',
+    source = 'custom_link',
+    ownerUid,
+    ownerName,
+    ownerUsername
+}) {
+    if (!url) return null;
+    const analysis = analyzeUrlSecurity(url);
+
+    const targetUid = ownerUid || (currentUser ? currentUser.uid : 'anonymous');
+    const targetName = ownerName || (currentProfile ? currentProfile.name : 'Membro Vortex');
+    const targetUsername = ownerUsername || (currentProfile ? currentProfile.username : '@usuario');
+
+    // Identificador único estável ou temporal
+    const linkId = 'link_' + (targetUid ? `${targetUid}_` : '') + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 6);
+
+    const record = {
+        id: linkId,
+        url: analysis.url,
+        hostname: analysis.hostname,
+        title: title || (source === 'company_button' ? 'Botão Comercial' : 'Site Oficial'),
+        source: source,
+        ownerUid: targetUid,
+        ownerName: targetName,
+        ownerUsername: targetUsername,
+        riskScore: analysis.riskScore,
+        riskLevel: analysis.riskLevel,
+        riskReasons: analysis.riskReasons,
+        status: 'active', // active | pending_justification | justification_submitted | approved | restricted | last_warning
+        justification: null,
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+    };
+
+    // Armazenar localmente
+    adminLinksList.unshift(record);
+    platformLinksMap.set(linkId, record);
+
+    // Persistir no Firestore se disponível
+    try {
+        if (typeof db !== 'undefined' && db && typeof setDoc === 'function' && typeof doc === 'function') {
+            await setDoc(doc(db, 'platformLinks', linkId), record).catch(() => {});
+        }
+    } catch (e) {
+        console.warn('Erro ao salvar platformLink no Firestore:', e);
+    }
+
+    updateAdminLinksBadge();
+    return record;
+}
+
+export function updateAdminLinksBadge() {
+    const badge = document.getElementById('admin-links-badge');
+    if (!badge) return;
+    const count = adminLinksList.filter(l => l.riskScore >= 70 || l.status === 'justification_submitted' || l.status === 'pending_justification').length;
+    if (count > 0) {
+        badge.innerText = count;
+        badge.style.display = 'inline-block';
+    } else {
+        badge.style.display = 'none';
+    }
+}
+
+export async function loadAdminLinks() {
+    try {
+        if (typeof db !== 'undefined' && db && typeof getDocs === 'function' && typeof collection === 'function') {
+            const snap = await getDocs(collection(db, 'platformLinks')).catch(() => null);
+            if (snap && !snap.empty) {
+                const loaded = [];
+                snap.forEach(d => {
+                    const data = { id: d.id, ...d.data() };
+                    const existing = platformLinksMap.get(d.id);
+                    if (existing) {
+                        Object.assign(existing, data);
+                        loaded.push(existing);
+                    } else {
+                        loaded.push(data);
+                        platformLinksMap.set(d.id, data);
+                    }
+                });
+                loaded.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+                adminLinksList.length = 0;
+                adminLinksList.push(...loaded);
+            }
+        }
+    } catch (err) {
+        console.warn('Erro ao carregar links da plataforma:', err);
+    }
+    updateAdminLinksBadge();
+}
+
+export function renderAdminLinks(filter = currentAdminLinksFilter, searchQuery = '') {
+    currentAdminLinksFilter = filter;
+    const container = document.getElementById('admin-links-list');
+    if (!container) return;
+
+    let list = [...adminLinksList];
+
+    if (filter === 'high') {
+        list = list.filter(l => (l.riskScore >= 70));
+    } else if (filter === 'medium') {
+        list = list.filter(l => (l.riskScore >= 30 && l.riskScore < 70));
+    } else if (filter === 'low') {
+        list = list.filter(l => (l.riskScore < 30));
+    } else if (filter === 'justifications') {
+        list = list.filter(l => (l.status === 'justification_submitted' || l.status === 'pending_justification' || l.status === 'last_warning'));
+    }
+
+    if (searchQuery) {
+        const q = searchQuery.toLowerCase().trim();
+        list = list.filter(l =>
+            (l.url && l.url.toLowerCase().includes(q)) ||
+            (l.hostname && l.hostname.toLowerCase().includes(q)) ||
+            (l.title && l.title.toLowerCase().includes(q)) ||
+            (l.ownerName && l.ownerName.toLowerCase().includes(q)) ||
+            (l.ownerUsername && l.ownerUsername.toLowerCase().includes(q))
+        );
+    }
+
+    if (list.length === 0) {
+        container.innerHTML = `
+            <div class="admin-empty-state">
+                <i data-lucide="shield-check" class="empty-state-icon"></i>
+                <p>Nenhum link encontrado nesta categoria.</p>
+                <small>Links adicionados no botão interativo ou no perfil aparecerão aqui com seus respectivos scores de risco.</small>
+            </div>
+        `;
+        if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+        return;
+    }
+
+    container.innerHTML = list.map(link => {
+        const score = link.riskScore || 5;
+        let riskBadgeClass = 'low';
+        let riskBadgeText = `Baixo Risco (${score}%)`;
+
+        if (score >= 70) {
+            riskBadgeClass = 'high';
+            riskBadgeText = `Alto Risco (${score}%) 🔴`;
+        } else if (score >= 30) {
+            riskBadgeClass = 'medium';
+            riskBadgeText = `Médio Risco (${score}%) 🟡`;
+        } else {
+            riskBadgeText = `Baixo Risco (${score}%) 🟢`;
+        }
+
+        const sourceLabel = link.source === 'company_button' ? 'Botão Comercial' : (link.source === 'profile_website' ? 'Sites Oficiais' : 'Link Externo');
+        const authorName = escapeHTML(link.ownerName || 'Membro Vortex');
+        const authorUsername = escapeHTML(link.ownerUsername || '@usuario');
+        const reasonsHTML = (link.riskReasons || []).map(r => `<span class="admin-link-reason-pill">${escapeHTML(r)}</span>`).join('');
+
+        // Status badge
+        let statusBadgeHTML = '';
+        if (link.status === 'pending_justification') {
+            statusBadgeHTML = `<div class="admin-link-status-badge pending">⏳ Justificativa Solicitada (Aguardando Usuário)</div>`;
+        } else if (link.status === 'last_warning') {
+            statusBadgeHTML = `<div class="admin-link-status-badge warning">⚠️ Último Aviso Enviado ao Usuário</div>`;
+        } else if (link.status === 'approved') {
+            statusBadgeHTML = `<div class="admin-link-status-badge approved">✅ Link Aprovado pela Administração</div>`;
+        } else if (link.status === 'restricted') {
+            statusBadgeHTML = `<div class="admin-link-status-badge restricted">⛔ Link Restrito / Bloqueado pela Moderação</div>`;
+        }
+
+        // Justification box (se houver)
+        let justificationBoxHTML = '';
+        if (link.justification && (link.status === 'justification_submitted' || link.status === 'approved' || link.status === 'restricted' || link.status === 'last_warning')) {
+            justificationBoxHTML = `
+                <div class="admin-justification-review-card">
+                    <div class="admin-justification-header">
+                        <i data-lucide="file-text"></i>
+                        <strong>Justificativa Recebida do Usuário:</strong>
+                    </div>
+                    <div class="admin-justification-field">
+                        <span class="justification-label-dim">Nome Completo:</span>
+                        <strong>${escapeHTML(link.justification.fullName || '')}</strong>
+                    </div>
+                    <div class="admin-justification-field">
+                        <span class="justification-label-dim">Data de Nascimento:</span>
+                        <span>${escapeHTML(link.justification.birthDate || '')}</span>
+                    </div>
+                    <div class="admin-justification-field">
+                        <span class="justification-label-dim">Descrição do Motivo:</span>
+                        <p class="admin-justification-desc-quote">"${escapeHTML(link.justification.description || '')}"</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Ações do Administrador
+        let actionsHTML = '';
+        if (link.status === 'justification_submitted') {
+            // "Para o administrador que receber ficar assim, aprovar, restringir, solicitar última"
+            actionsHTML = `
+                <div class="admin-link-actions-row">
+                    <button type="button" class="btn-admin-link-approve" onclick="adminApproveLink('${link.id}')">
+                        <i data-lucide="check-circle"></i> <span>Aprovar</span>
+                    </button>
+                    <button type="button" class="btn-admin-link-restrict" onclick="adminRestrictLink('${link.id}')">
+                        <i data-lucide="ban"></i> <span>Restringir</span>
+                    </button>
+                    <button type="button" class="btn-admin-link-last-warning" onclick="adminRequestLastJustification('${link.id}')">
+                        <i data-lucide="alert-octagon"></i> <span>Solicitar última</span>
+                    </button>
+                </div>
+            `;
+        } else if (link.status !== 'approved' && link.status !== 'restricted') {
+            // Botão "Solicitar Justificativa" sobre esse link com alto nível de risco
+            actionsHTML = `
+                <div class="admin-link-actions-row">
+                    <button type="button" class="btn-solicitar-justificativa" onclick="adminRequestLinkJustification('${link.id}')">
+                        <i data-lucide="help-circle"></i> <span>Solicitar Justificativa</span>
+                    </button>
+                </div>
+            `;
+        }
+
+        return `
+            <div class="admin-link-card ${riskBadgeClass}-risk" data-link-id="${link.id}">
+                <div class="admin-link-header-row">
+                    <div class="admin-link-author-info">
+                        <span class="admin-link-source-tag">${sourceLabel}</span>
+                        <strong style="color:#fff; font-size:0.86rem;">${authorName}</strong>
+                        <span style="color:var(--text-dim, #888); font-size:0.75rem;">${authorUsername}</span>
+                    </div>
+                    <span class="link-risk-badge ${riskBadgeClass}">${riskBadgeText}</span>
+                </div>
+
+                <div class="admin-link-url-box">
+                    <a href="${escapeHTML(link.url)}" target="_blank" rel="noopener noreferrer" class="admin-link-url-text" title="Abrir link com segurança">
+                        ${escapeHTML(link.url)}
+                    </a>
+                    <span style="font-size:0.75rem; color:#888;">${escapeHTML(link.title || '')}</span>
+                </div>
+
+                ${reasonsHTML ? `<div class="admin-link-reasons-list">${reasonsHTML}</div>` : ''}
+
+                ${statusBadgeHTML}
+                ${justificationBoxHTML}
+                ${actionsHTML}
+            </div>
+        `;
+    }).join('');
+
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+    }
+}
+
+/**
+ * Solicita justificativa de um link de alto risco.
+ * Envia notificação ao usuário:
+ * "Você recebeu uma taxa de risco enorme em links no Vortex VIP clique no botão abaixo para preencher o formulário sobre o motivo desses links 👇"
+ */
+export async function adminRequestLinkJustification(linkId) {
+    if (!linkId) return;
+    const link = platformLinksMap.get(linkId) || adminLinksList.find(l => l.id === linkId);
+    if (!link) {
+        showToast('Link não encontrado', 'O link solicitado não pôde ser localizado.', 'red');
+        return;
+    }
+
+    link.status = 'pending_justification';
+    link.justificationRequestedAt = Date.now();
+    link.updatedAt = Date.now();
+
+    // Persistir atualização no Firestore
+    try {
+        if (typeof db !== 'undefined' && db && typeof updateDoc === 'function' && typeof doc === 'function') {
+            await updateDoc(doc(db, 'platformLinks', link.id), {
+                status: 'pending_justification',
+                justificationRequestedAt: link.justificationRequestedAt,
+                updatedAt: link.updatedAt
+            }).catch(() => {});
+        }
+    } catch (_) {}
+
+    // Enviar notificação oficial com texto exato requerido pelo usuário
+    try {
+        const notifPayload = {
+            toUid: link.ownerUid,
+            type: 'link_risk_warning',
+            title: '⚠️ Risco Enorme em Link Detectado',
+            message: 'Você recebeu uma taxa de risco enorme em links no Vortex VIP clique no botão abaixo para preencher o formulário sobre o motivo desses links 👇',
+            linkId: link.id,
+            linkUrl: link.url,
+            riskScore: link.riskScore || 87,
+            hasJustificationAction: true,
+            read: false,
+            createdAt: Date.now(),
+            author: 'Administração VORTEX VIP'
+        };
+
+        if (typeof db !== 'undefined' && db && typeof addDoc === 'function' && typeof collection === 'function') {
+            await addDoc(collection(db, 'notifications'), notifPayload).catch(() => {});
+        }
+
+        // Adiciona à lista local de notificações para visualização imediata se for o próprio usuário
+        if (typeof allNotifications !== 'undefined' && Array.isArray(allNotifications)) {
+            allNotifications.unshift({ id: 'notif_' + Date.now(), ...notifPayload });
+            if (typeof renderNotifications === 'function') renderNotifications();
+        }
+    } catch (e) {
+        console.warn('Erro ao disparar notificação de justificativa:', e);
+    }
+
+    showToast('Justificativa Solicitada', 'Notificação enviada com sucesso para o usuário preencher o formulário.', 'orange');
+    renderAdminLinks();
+    updateAdminLinksBadge();
+}
+
+/**
+ * Abre o modal com o formulário de justificativa
+ */
+export function openLinkJustificationModal(linkId, linkUrl = '', riskScore = 87) {
+    const modal = document.getElementById('link-risk-justification-modal');
+    if (!modal) return;
+
+    const link = (linkId ? platformLinksMap.get(linkId) : null) || (linkId ? adminLinksList.find(l => l.id === linkId) : null);
+
+    const finalUrl = link ? link.url : (linkUrl || 'https://link-sob-analise.com');
+    const finalScore = link ? link.riskScore : (riskScore || 87);
+    const finalSource = link ? (link.source === 'company_button' ? 'Botão Comercial' : 'Sites Oficiais') : 'Link da Plataforma';
+
+    const idInput = document.getElementById('justification-target-link-id');
+    const scoreDisplay = document.getElementById('justification-risk-score-display');
+    const sourceDisplay = document.getElementById('justification-source-display');
+    const urlPreview = document.getElementById('justification-url-preview');
+    const nameInput = document.getElementById('justification-fullname-input');
+    const dateInput = document.getElementById('justification-birthdate-input');
+    const descInput = document.getElementById('justification-desc-input');
+    const charCounter = document.getElementById('justification-desc-char-count');
+    const errorBox = document.getElementById('justification-form-error');
+
+    if (idInput) idInput.value = linkId || (link ? link.id : '');
+    if (scoreDisplay) scoreDisplay.innerText = `${finalScore}%`;
+    if (sourceDisplay) sourceDisplay.innerText = finalSource;
+    if (urlPreview) urlPreview.innerText = finalUrl;
+    if (nameInput) nameInput.value = (currentProfile && currentProfile.name) ? currentProfile.name : '';
+    if (dateInput) dateInput.value = '';
+    if (descInput) descInput.value = '';
+    if (charCounter) charCounter.innerText = '300 caracteres restantes';
+    if (errorBox) {
+        errorBox.style.display = 'none';
+        errorBox.innerText = '';
+    }
+
+    modal.style.display = 'flex';
+    modal.setAttribute('aria-hidden', 'false');
+    if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+}
+
+export function closeLinkJustificationModal() {
+    const modal = document.getElementById('link-risk-justification-modal');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.setAttribute('aria-hidden', 'true');
+    }
+}
+
+/**
+ * Envia o formulário preenchido para análise do administrador.
+ */
+export async function submitLinkJustification() {
+    const idInput = document.getElementById('justification-target-link-id');
+    const nameInput = document.getElementById('justification-fullname-input');
+    const dateInput = document.getElementById('justification-birthdate-input');
+    const descInput = document.getElementById('justification-desc-input');
+    const errorBox = document.getElementById('justification-form-error');
+    const submitBtn = document.getElementById('submit-link-justification-btn');
+
+    const showError = (msg) => {
+        if (errorBox) {
+            errorBox.innerText = msg;
+            errorBox.style.display = 'block';
+        }
+        showToast('Atenção', msg, 'orange');
+    };
+
+    const linkId = idInput?.value;
+    const fullName = (nameInput?.value || '').trim();
+    const birthDate = (dateInput?.value || '').trim();
+    const description = (descInput?.value || '').trim().slice(0, 300);
+
+    if (!fullName || fullName.length < 3) {
+        showError('Por favor, digite seu nome completo.');
+        nameInput?.focus();
+        return;
+    }
+
+    if (!birthDate) {
+        showError('Por favor, informe sua data de nascimento.');
+        dateInput?.focus();
+        return;
+    }
+
+    if (!description || description.length < 5) {
+        showError('Por favor, forneça uma breve descrição (motivo do link).');
+        descInput?.focus();
+        return;
+    }
+
+    const justificationData = {
+        fullName,
+        birthDate,
+        description,
+        submittedAt: Date.now(),
+        userUid: currentUser ? currentUser.uid : 'anonymous'
+    };
+
+    let link = platformLinksMap.get(linkId) || adminLinksList.find(l => l.id === linkId);
+    if (!link) {
+        link = {
+            id: linkId || ('link_' + Date.now()),
+            url: document.getElementById('justification-url-preview')?.innerText || 'https://vortex-link.com',
+            riskScore: 87,
+            riskLevel: 'high',
+            source: 'company_button',
+            ownerUid: currentUser?.uid,
+            ownerName: fullName,
+            ownerUsername: currentProfile?.username || '@usuario',
+            createdAt: Date.now()
+        };
+        adminLinksList.unshift(link);
+        platformLinksMap.set(link.id, link);
+    }
+
+    link.status = 'justification_submitted';
+    link.justification = justificationData;
+    link.updatedAt = Date.now();
+
+    const originalBtnHTML = submitBtn ? submitBtn.innerHTML : '';
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i data-lucide="loader-2" class="spin"></i> Enviando...';
+        if (window.lucide) lucide.createIcons();
+    }
+
+    try {
+        if (typeof db !== 'undefined' && db && typeof updateDoc === 'function' && typeof doc === 'function') {
+            await updateDoc(doc(db, 'platformLinks', link.id), {
+                status: 'justification_submitted',
+                justification: justificationData,
+                updatedAt: link.updatedAt
+            }).catch(() => {});
+        }
+
+        // Salvar cópia na coleção de justificativas para auditoria
+        if (typeof db !== 'undefined' && db && typeof addDoc === 'function' && typeof collection === 'function') {
+            await addDoc(collection(db, 'linkJustifications'), {
+                linkId: link.id,
+                url: link.url,
+                ...justificationData
+            }).catch(() => {});
+        }
+
+        closeLinkJustificationModal();
+        showToast('Justificativa Enviada! 🚀', 'Sua justificativa foi enviada para análise da moderação.', 'green');
+        renderAdminLinks();
+        updateAdminLinksBadge();
+    } catch (e) {
+        console.error('Erro ao enviar justificativa:', e);
+        showError('Erro ao enviar. Tente novamente em instantes.');
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalBtnHTML;
+            if (window.lucide) lucide.createIcons();
+        }
+    }
+}
+
+/**
+ * Ações do Administrador:
+ * 1. Aprovar
+ */
+export async function adminApproveLink(linkId) {
+    if (!linkId) return;
+    const link = platformLinksMap.get(linkId) || adminLinksList.find(l => l.id === linkId);
+    if (!link) return;
+
+    link.status = 'approved';
+    link.updatedAt = Date.now();
+
+    try {
+        if (typeof db !== 'undefined' && db && typeof updateDoc === 'function' && typeof doc === 'function') {
+            await updateDoc(doc(db, 'platformLinks', link.id), {
+                status: 'approved',
+                updatedAt: link.updatedAt
+            }).catch(() => {});
+        }
+
+        // Notificar o usuário da aprovação
+        if (typeof db !== 'undefined' && db && typeof addDoc === 'function' && typeof collection === 'function') {
+            await addDoc(collection(db, 'notifications'), {
+                toUid: link.ownerUid,
+                type: 'vip',
+                title: 'Link Aprovado! ✅',
+                message: `Sua justificativa sobre o link "${link.url}" foi aprovada pela administração do VORTEX VIP. O link está seguro e liberado!`,
+                read: false,
+                createdAt: Date.now(),
+                author: 'Administração VORTEX VIP'
+            }).catch(() => {});
+        }
+    } catch (_) {}
+
+    showToast('Link Aprovado', 'O link foi liberado e o usuário foi notificado.', 'green');
+    renderAdminLinks();
+    updateAdminLinksBadge();
+}
+
+/**
+ * Ações do Administrador:
+ * 2. Restringir
+ */
+export async function adminRestrictLink(linkId) {
+    if (!linkId) return;
+    const link = platformLinksMap.get(linkId) || adminLinksList.find(l => l.id === linkId);
+    if (!link) return;
+
+    link.status = 'restricted';
+    link.updatedAt = Date.now();
+
+    try {
+        if (typeof db !== 'undefined' && db && typeof updateDoc === 'function' && typeof doc === 'function') {
+            await updateDoc(doc(db, 'platformLinks', link.id), {
+                status: 'restricted',
+                updatedAt: link.updatedAt
+            }).catch(() => {});
+        }
+
+        // Notificar o usuário da restrição
+        if (typeof db !== 'undefined' && db && typeof addDoc === 'function' && typeof collection === 'function') {
+            await addDoc(collection(db, 'notifications'), {
+                toUid: link.ownerUid,
+                type: 'alert',
+                title: 'Link Restrito pela Moderação ⛔',
+                message: `O seu link "${link.url}" foi restrito pela moderação devido ao alto risco de segurança e não poderá ser divulgado na plataforma.`,
+                read: false,
+                createdAt: Date.now(),
+                author: 'Administração VORTEX VIP'
+            }).catch(() => {});
+        }
+    } catch (_) {}
+
+    showToast('Link Restrito', 'O link foi bloqueado na plataforma e o usuário notificado.', 'red');
+    renderAdminLinks();
+    updateAdminLinksBadge();
+}
+
+/**
+ * Ações do Administrador:
+ * 3. Solicitar última
+ */
+export async function adminRequestLastJustification(linkId) {
+    if (!linkId) return;
+    const link = platformLinksMap.get(linkId) || adminLinksList.find(l => l.id === linkId);
+    if (!link) return;
+
+    link.status = 'last_warning';
+    link.updatedAt = Date.now();
+
+    try {
+        if (typeof db !== 'undefined' && db && typeof updateDoc === 'function' && typeof doc === 'function') {
+            await updateDoc(doc(db, 'platformLinks', link.id), {
+                status: 'last_warning',
+                updatedAt: link.updatedAt
+            }).catch(() => {});
+        }
+
+        // Notificar o usuário com aviso derradeiro e opção de justificar novamente
+        if (typeof db !== 'undefined' && db && typeof addDoc === 'function' && typeof collection === 'function') {
+            await addDoc(collection(db, 'notifications'), {
+                toUid: link.ownerUid,
+                type: 'link_risk_warning',
+                title: '⚠️ ÚLTIMO AVISO SOBRE LINK',
+                message: 'Você recebeu uma última oportunidade sobre links no Vortex VIP: clique no botão abaixo para preencher o formulário final sobre o motivo desses links 👇',
+                linkId: link.id,
+                linkUrl: link.url,
+                riskScore: link.riskScore || 87,
+                hasJustificationAction: true,
+                read: false,
+                createdAt: Date.now(),
+                author: 'Administração VORTEX VIP'
+            }).catch(() => {});
+        }
+
+        if (typeof allNotifications !== 'undefined' && Array.isArray(allNotifications)) {
+            allNotifications.unshift({
+                id: 'notif_last_' + Date.now(),
+                toUid: link.ownerUid,
+                type: 'link_risk_warning',
+                title: '⚠️ ÚLTIMO AVISO SOBRE LINK',
+                message: 'Você recebeu uma última oportunidade sobre links no Vortex VIP: clique no botão abaixo para preencher o formulário final sobre o motivo desses links 👇',
+                linkId: link.id,
+                linkUrl: link.url,
+                riskScore: link.riskScore || 87,
+                hasJustificationAction: true,
+                read: false,
+                createdAt: Date.now()
+            });
+            if (typeof renderNotifications === 'function') renderNotifications();
+        }
+    } catch (_) {}
+
+    showToast('Último Aviso Enviado', 'O usuário recebeu uma última solicitação antes da restrição definitiva.', 'orange');
+    renderAdminLinks();
+    updateAdminLinksBadge();
+}
+
+/**
+ * Inicializa os ouvintes do modal e filtros de links
+ */
+export function initLinkSecurityUI() {
+    // Fechar modal de justificativa
+    document.getElementById('close-link-justification-modal')?.addEventListener('click', closeLinkJustificationModal);
+    document.getElementById('cancel-link-justification-btn')?.addEventListener('click', closeLinkJustificationModal);
+    document.getElementById('link-risk-justification-modal')?.addEventListener('click', (e) => {
+        if (e.target && e.target.id === 'link-risk-justification-modal') closeLinkJustificationModal();
+    });
+
+    // Envio do formulário
+    document.getElementById('submit-link-justification-btn')?.addEventListener('click', submitLinkJustification);
+
+    // Contador de 300 caracteres no textarea
+    const descTextarea = document.getElementById('justification-desc-input');
+    const charCounter = document.getElementById('justification-desc-char-count');
+    descTextarea?.addEventListener('input', () => {
+        const remaining = 300 - (descTextarea.value || '').length;
+        if (charCounter) {
+            charCounter.innerText = `${Math.max(0, remaining)} caracteres restantes`;
+            charCounter.style.color = remaining < 20 ? '#ff4444' : '#888888';
+        }
+    });
+
+    // Filtros e busca no painel ADM
+    document.getElementById('admin-tab-links-btn')?.addEventListener('click', () => {
+        switchAdminTab('links');
+    });
+
+    document.querySelectorAll('#admin-view-links .admin-pill').forEach(pill => {
+        pill.addEventListener('click', () => {
+            document.querySelectorAll('#admin-view-links .admin-pill').forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+            const filter = pill.dataset.filter || 'all';
+            const searchVal = document.getElementById('admin-links-search-input')?.value || '';
+            renderAdminLinks(filter, searchVal);
+        });
+    });
+
+    document.getElementById('admin-links-search-input')?.addEventListener('input', (e) => {
+        renderAdminLinks(currentAdminLinksFilter, e.target.value);
+    });
+}
+
 
 export function renderGroupMiniAdminPanel(group = managedGroup) {
     if (!group) return;
@@ -26150,6 +26945,27 @@ export async function sendCompanyButtonMessage() {
                 return;
             }
         }
+    }
+
+    // Verificação de Segurança de Link (v1.0.233)
+    const linkAnalysis = analyzeUrlSecurity(url);
+    if (!linkAnalysis.isAllowed) {
+        showError('Este link foi bloqueado por representar alto risco à segurança da plataforma VORTEX VIP (ex: rastreadores ou espionagem).', linkInput);
+        return;
+    }
+
+    // Registra o link na auditoria da plataforma
+    await registerPlatformLink({
+        url: linkAnalysis.url,
+        title: title,
+        source: 'company_button',
+        ownerUid: currentUser.uid,
+        ownerName: currentProfile?.name || 'Membro Vortex',
+        ownerUsername: currentProfile?.username || '@usuario'
+    });
+
+    if (linkAnalysis.riskLevel === 'high') {
+        showToast('Link em Análise de Segurança', 'Identificamos uma taxa de risco de 87% neste link. A moderação poderá solicitar justificativa.', 'orange');
     }
 
     // Se houver imagem Base64 muito grande, comprimir com segurança
@@ -32901,6 +33717,34 @@ document.getElementById('save-profile-btn')?.addEventListener('click', async () 
     const website2Title = rawWebsite2Title.slice(0, 30);
     const website3Title = rawWebsite3Title.slice(0, 30);
 
+    // VORTEX VIP v1.0.233: Verificação de Segurança de Links nos Sites Oficiais do Perfil
+    const profileWebsitesToVerify = [
+        { url: website1, title: website1Title, label: 'Site Oficial 1' },
+        { url: website2, title: website2Title, label: 'Site Oficial 2' },
+        { url: website3, title: website3Title, label: 'Site Oficial 3' }
+    ];
+
+    for (const site of profileWebsitesToVerify) {
+        if (site.url) {
+            const analysis = analyzeUrlSecurity(site.url);
+            if (!analysis.isAllowed) {
+                showToast(`Link de ${site.label} Bloqueado`, 'Este link foi classificado como malicioso e bloqueado pela segurança global.', 'red');
+                return;
+            }
+            await registerPlatformLink({
+                url: analysis.url,
+                title: site.title || site.label,
+                source: 'profile_website',
+                ownerUid: currentUser.uid,
+                ownerName: currentProfile?.name || 'Membro Vortex',
+                ownerUsername: currentProfile?.username || '@usuario'
+            });
+            if (analysis.riskLevel === 'high') {
+                showToast('Aviso de Segurança de Link', `O link ${site.label} possui alta taxa de risco (${analysis.riskScore}%). Ele foi submetido à auditoria do Painel ADM.`, 'orange');
+            }
+        }
+    }
+
     const usernameKey = normalizeUsername(usernameInputValue);
     const usernameError = usernameValidationMessage(usernameKey);
 
@@ -36581,6 +37425,22 @@ window.handleCallSwitchedToVideo = handleCallSwitchedToVideo;
     window.recordSecurityIncident = recordSecurityIncident;
     window.globalFraudIncidents = globalFraudIncidents;
     window.initGlobalSecurityUI = initGlobalSecurityUI;
+    // Links & Risco da Plataforma (v1.0.233)
+    window.analyzeUrlSecurity = analyzeUrlSecurity;
+    window.registerPlatformLink = registerPlatformLink;
+    window.adminLinksList = adminLinksList;
+    window.platformLinksMap = platformLinksMap;
+    window.loadAdminLinks = loadAdminLinks;
+    window.renderAdminLinks = renderAdminLinks;
+    window.updateAdminLinksBadge = updateAdminLinksBadge;
+    window.adminRequestLinkJustification = adminRequestLinkJustification;
+    window.openLinkJustificationModal = openLinkJustificationModal;
+    window.closeLinkJustificationModal = closeLinkJustificationModal;
+    window.submitLinkJustification = submitLinkJustification;
+    window.adminApproveLink = adminApproveLink;
+    window.adminRestrictLink = adminRestrictLink;
+    window.adminRequestLastJustification = adminRequestLastJustification;
+    window.initLinkSecurityUI = initLinkSecurityUI;
     window.renderGroupMiniAdminPanel = renderGroupMiniAdminPanel;
     window.approveGroupJoinRequest = approveGroupJoinRequest;
     window.rejectGroupJoinRequest = rejectGroupJoinRequest;
@@ -37079,6 +37939,7 @@ if (typeof window !== 'undefined') {
     initCompanyChatbotControls();
     initPermissionsManager();
     initGlobalSecurityUI();
+    initLinkSecurityUI();
 }
 
 

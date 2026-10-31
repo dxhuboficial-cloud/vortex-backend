@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>VORTEX VIP - Mensagens em Tempo Real</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.232">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.232">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.232">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.232">
-    <link rel="stylesheet" href="style.css?v=1.0.232">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.233">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.233">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.233">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.233">
+    <link rel="stylesheet" href="style.css?v=1.0.233">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.232" id="app-manifest-link">
+    <link rel="manifest" href="manifest.json?v=1.0.233" id="app-manifest-link">
     <meta name="theme-color" content="#39ff14" id="app-theme-color-meta">
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#39ff14" id="app-theme-color-meta-dark">
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#39ff14" id="app-theme-color-meta-light">
@@ -19,8 +19,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.232">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.232">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.233">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.233">
     <!-- Sincronização Dinâmica da Barra de Status e Barra de Navegação do Celular -->
     <script>
         (function() {
@@ -2385,14 +2385,14 @@
                     </button>
                 </div>
 
-                <!-- Card de Versão Oficial do App (v1.0.232) -->
+                <!-- Card de Versão Oficial do App (v1.0.233) -->
                 <div class="app-version-card" id="app-version-info-footer">
                     <div class="app-version-header-row">
                         <div class="app-version-brand-wrap">
-                            <img src="icons/vortex-vip-192.png?v=1.0.232" alt="VORTEX VIP" class="app-version-icon-img" width="22" height="22">
+                            <img src="icons/vortex-vip-192.png?v=1.0.233" alt="VORTEX VIP" class="app-version-icon-img" width="22" height="22">
                             <span class="app-version-brand-name">VORTEX VIP Oficial</span>
                         </div>
-                        <span class="app-version-pill-badge" id="app-version-display-badge">v1.0.232 ⚡</span>
+                        <span class="app-version-pill-badge" id="app-version-display-badge">v1.0.233 ⚡</span>
                     </div>
                     <div class="app-version-status-row">
                         <span class="app-version-status-dot"></span>
@@ -2487,6 +2487,11 @@
                     <i data-lucide="wallet" class="admin-tab-icon"></i>
                     <span>Saques Baú</span>
                     <span id="admin-withdrawals-badge" class="admin-tab-badge" style="display: none;">0</span>
+                </button>
+                <button type="button" class="admin-tab-btn" data-tab="links" id="admin-tab-links-btn">
+                    <i data-lucide="shield-alert" class="admin-tab-icon"></i>
+                    <span>Links &amp; Risco</span>
+                    <span id="admin-links-badge" class="admin-tab-badge" style="display: none;">0</span>
                 </button>
             </div>
 
@@ -2670,6 +2675,30 @@
                             <i data-lucide="wallet" class="empty-state-icon"></i>
                             <p>Nenhuma solicitação de saque no momento.</p>
                             <small>Quando os membros atingirem a meta de R$ 1,00 e solicitarem o saque, aparecerão aqui.</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Aba de Análise de Links & Score de Risco da Plataforma (v1.0.233) -->
+                <div id="admin-view-links" class="admin-view">
+                    <div class="admin-filter-bar">
+                        <div class="admin-search-wrapper">
+                            <i data-lucide="search"></i>
+                            <input type="text" id="admin-links-search-input" placeholder="Buscar por link, @usuário, título..." aria-label="Buscar links">
+                        </div>
+                        <div class="admin-status-filters" id="admin-links-status-filters">
+                            <button type="button" class="admin-pill active" data-filter="all">Todos</button>
+                            <button type="button" class="admin-pill" data-filter="high">Alto Risco (87%+)</button>
+                            <button type="button" class="admin-pill" data-filter="medium">Médio Risco</button>
+                            <button type="button" class="admin-pill" data-filter="low">Baixo Risco</button>
+                            <button type="button" class="admin-pill" data-filter="justifications">Justificativas</button>
+                        </div>
+                    </div>
+                    <div id="admin-links-list" class="admin-cards-list">
+                        <div class="admin-empty-state">
+                            <i data-lucide="shield-check" class="empty-state-icon"></i>
+                            <p>Nenhum link registrado no momento.</p>
+                            <small>Os links adicionados em botões interativos e perfis serão analisados e listados aqui com seus respectivos scores de risco.</small>
                         </div>
                     </div>
                 </div>
@@ -3462,7 +3491,7 @@
             <div class="pwa-banner-glow-line"></div>
             <div class="pwa-banner-content">
                 <div class="pwa-banner-icon-box">
-                    <img src="icons/vortex-vip-192.png?v=1.0.232" alt="VORTEX VIP" class="pwa-banner-logo" width="44" height="44">
+                    <img src="icons/vortex-vip-192.png?v=1.0.233" alt="VORTEX VIP" class="pwa-banner-logo" width="44" height="44">
                 </div>
                 <div class="pwa-banner-text">
                     <div class="pwa-banner-title">Instalar VORTEX VIP ⚡</div>
@@ -3480,7 +3509,7 @@
             <div class="pwa-ios-content">
                 <div class="pwa-ios-header">
                     <div class="pwa-ios-icon-wrap">
-                        <img src="icons/vortex-vip-192.png?v=1.0.232" alt="VORTEX VIP" width="48" height="48">
+                        <img src="icons/vortex-vip-192.png?v=1.0.233" alt="VORTEX VIP" width="48" height="48">
                     </div>
                     <h3 class="pwa-ios-title">Instalar no iPhone / iPad 📲</h3>
                     <p class="pwa-ios-subtitle">Siga os 2 passos rápidos abaixo no Safari para ter o VORTEX VIP na sua tela de início:</p>
@@ -5258,8 +5287,83 @@
             </div>
         </div>
 
+        <!-- Modal de Formulário de Justificativa de Link de Alto Risco (v1.0.233) -->
+        <div id="link-risk-justification-modal" class="custom-modal-overlay" style="display:none;" aria-hidden="true">
+            <div class="custom-modal-card link-justification-modal-card">
+                <div class="panel-top-bar" style="padding:14px 16px;">
+                    <div class="link-justification-header-wrap">
+                        <div class="link-justification-icon-badge">
+                            <i data-lucide="shield-alert"></i>
+                        </div>
+                        <div>
+                            <h3 class="modal-title" style="font-size:1.05rem; margin:0;">Justificativa de Link</h3>
+                            <small style="color:var(--text-dim, #888); font-size:0.75rem;">Segurança Global VORTEX VIP 🛡️</small>
+                        </div>
+                    </div>
+                    <div class="header-icon-btn" id="close-link-justification-modal" title="Fechar" aria-label="Fechar">
+                        <i data-lucide="x"></i>
+                    </div>
+                </div>
+
+                <div class="link-justification-body">
+                    <!-- Banner de Alerta da Notificação -->
+                    <div class="link-risk-alert-box">
+                        <div class="link-risk-alert-top">
+                            <span class="link-risk-badge high">Taxa de Risco: <strong id="justification-risk-score-display">87%</strong> 🔴</span>
+                            <span class="link-risk-source-pill" id="justification-source-display">Botão Comercial</span>
+                        </div>
+                        <div class="link-risk-url-preview" id="justification-url-preview">https://...</div>
+                        <p class="link-risk-alert-text">
+                            ⚠️ <strong>Você recebeu uma taxa de risco enorme em links no Vortex VIP</strong> clique no botão abaixo para preencher o formulário sobre o motivo desses links 👇
+                        </p>
+                    </div>
+
+                    <!-- Formulário -->
+                    <form id="link-justification-form" onsubmit="event.preventDefault();">
+                        <input type="hidden" id="justification-target-link-id" value="">
+
+                        <!-- 1. Nome Completo -->
+                        <div class="company-btn-input-group">
+                            <label for="justification-fullname-input" class="company-btn-field-label">
+                                <span class="company-btn-label-title">Seu nome completo <span class="required-star" style="color:#ff4444;">*</span></span>
+                            </label>
+                            <input type="text" id="justification-fullname-input" class="company-btn-text-input" placeholder="Ex: Carlos Eduardo da Silva" maxlength="80" required>
+                        </div>
+
+                        <!-- 2. Data de Nascimento -->
+                        <div class="company-btn-input-group">
+                            <label for="justification-birthdate-input" class="company-btn-field-label">
+                                <span class="company-btn-label-title">Data de nascimento <span class="required-star" style="color:#ff4444;">*</span></span>
+                            </label>
+                            <input type="date" id="justification-birthdate-input" class="company-btn-text-input" required>
+                        </div>
+
+                        <!-- 3. Breve descrição com limite de 300 caracteres -->
+                        <div class="company-btn-input-group">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                                <label for="justification-desc-input" class="company-btn-field-label" style="margin-bottom:0;">
+                                    <span class="company-btn-label-title">Uma Breve descrição <span class="required-star" style="color:#ff4444;">*</span></span>
+                                </label>
+                                <span id="justification-desc-char-count" class="justification-char-counter" style="font-size:0.75rem; color:#888;">300 caracteres restantes</span>
+                            </div>
+                            <textarea id="justification-desc-input" class="company-btn-textarea-input" rows="4" maxlength="300" placeholder="Descreva o motivo desse link, a empresa/serviço correspondente e a finalidade legítima de uso..." required></textarea>
+                        </div>
+
+                        <div id="justification-form-error" class="company-btn-error-banner" style="display:none;"></div>
+
+                        <div class="company-button-modal-actions" style="margin-top:14px;">
+                            <button type="button" id="cancel-link-justification-btn" class="close-btn modal-cancel-btn">Cancelar</button>
+                            <button type="button" id="submit-link-justification-btn" class="danger-btn link-justification-submit-action">
+                                <i data-lucide="send"></i> <span>Enviar para Análise</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.232" defer></script>
+    <script type="module" src="script.js?v=1.0.233" defer></script>
 </body>
 </html>
