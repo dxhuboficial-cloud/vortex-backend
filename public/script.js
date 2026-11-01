@@ -10795,51 +10795,12 @@ export function renderViewersSheetTab(tab = 'views', story) {
         }).join('');
     }
 
-    // Ao clicar em uma linha, abrir conversa com o contato correspondente
-    listEl.querySelectorAll('.viewer-row-item').forEach(row => {
-        row.style.cursor = 'pointer';
-        row.addEventListener('click', () => {
-            const targetUid = row.dataset.uid;
-            if (targetUid && currentUser && targetUid !== currentUser.uid && targetUid !== 'anonymous') {
-                if (typeof openChatByChatIdOrUid === 'function') {
-                    closeViewersSheet();
-                    closeStoryViewer();
-                    openChatByChatIdOrUid(null, targetUid);
-                }
-            }
-        });
-    });
-
     if (window.lucide) lucide.createIcons();
 }
 
-// Espelhar interação (reação ou resposta) do story na conversa privada direta
+// As interações de stories ficam restritas exclusivamente aos stories, sem enviar para conversas
 export async function sendStoryInteractionToChat(story, interaction = {}) {
-    if (!story || !story.authorUid || !currentUser || story.authorUid === currentUser.uid) {
-        return;
-    }
-    try {
-        const directChatId = [currentUser.uid, story.authorUid].sort().join('_');
-        const now = Date.now();
-        const fullName = (currentProfile?.name || 'Contato') + (currentProfile?.surname ? ' ' + currentProfile.surname : '');
-        const interactionMsg = {
-            senderUid: currentUser.uid,
-            senderName: fullName,
-            senderAvatar: currentProfile?.avatar || '',
-            type: interaction.type === 'story_reaction' ? 'story_reaction' : 'story_reply',
-            text: interaction.text || '',
-            emoji: interaction.emoji || '',
-            storyId: story.id,
-            storyMedia: story.mediaUrl || story.imageUrl || story.videoUrl || '',
-            createdAt: now
-        };
-
-        if (typeof addDoc === 'function' && typeof collection === 'function') {
-            await addDoc(collection(db, 'chats', directChatId, 'messages'), interactionMsg);
-        }
-    } catch (err) {
-        console.warn('Erro ao espelhar interação do story na conversa:', err);
-    }
+    return Promise.resolve();
 }
 
 // Resposta ao Story (Exclusivamente para a janelinha do Story)
@@ -10880,14 +10841,6 @@ async function sendStoryReply(text) {
         if (activeStoryList[currentStoryIndex] && activeStoryList[currentStoryIndex].id === story.id) {
             activeStoryList[currentStoryIndex].replies = currentReplies;
             updateStoryViewersUI(activeStoryList[currentStoryIndex]);
-        }
-
-        // Espelhar na conversa privada se não for anônimo
-        if (story.authorUid && story.authorUid !== currentUser.uid && !isAnon) {
-            sendStoryInteractionToChat(story, {
-                type: 'story_reply',
-                text: cleanText
-            });
         }
 
         playSound(replySendSound);
@@ -11249,13 +11202,6 @@ document.querySelectorAll('.story-emoji-btn').forEach(btn => {
                         senderName: currentProfile?.name || 'Alguém',
                         senderAvatar: currentProfile?.avatar || '',
                         emoji
-                    });
-
-                    // Espelhar na conversa privada para que as reações e mensagens se misturem no chat
-                    sendStoryInteractionToChat(story, {
-                        type: 'story_reaction',
-                        emoji: emoji,
-                        text: `${emoji} Reagiu ao seu status`
                     });
                 }
             } catch (err) {
@@ -21543,7 +21489,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.237';
+export const CURRENT_APP_VERSION = '1.0.238';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
