@@ -25251,3 +25251,141 @@ video::-internal-media-controls-download-button {
     background: rgba(255, 68, 68, 0.14);
     border: 1px solid rgba(255, 68, 68, 0.45);
 }
+
+/* ==========================================================================
+   VORTEX VIP ⚡ - ANIMAÇÕES E EFEITOS SONOROS DE EMOJIS DO STORY (v1.0.235)
+   ========================================================================== */
+
+/* Container de explosão de emojis sobre o Story Viewer */
+.story-emoji-burst-container {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 60;
+}
+
+/* Animação de pop & glow no botão de emoji clicado */
+.story-emoji-btn.story-emoji-pop {
+    animation: storyEmojiBtnBounce 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.35) forwards;
+}
+
+@keyframes storyEmojiBtnBounce {
+    0% { transform: scale(1); }
+    35% { transform: scale(1.65) translateY(-8px); filter: drop-shadow(0 0 14px rgba(255, 255, 255, 0.85)); }
+    70% { transform: scale(0.92) translateY(0); }
+    100% { transform: scale(1); }
+}
+
+/* Emoji Herói Central em Destaque */
+.story-hero-emoji {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%) scale(0.2);
+    font-size: 5.5rem;
+    pointer-events: none;
+    z-index: 65;
+    opacity: 0;
+    animation: storyHeroEmojiPop 0.9s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
+    filter: drop-shadow(0 0 25px rgba(0, 0, 0, 0.7)) drop-shadow(0 0 20px rgba(255, 255, 255, 0.5));
+    -webkit-user-select: none;
+    user-select: none;
+    line-height: 1;
+}
+
+@keyframes storyHeroEmojiPop {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.2) rotate(-15deg);
+    }
+    30% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1.5) rotate(0deg);
+    }
+    60% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1.68) rotate(6deg);
+    }
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -60%) scale(2.1) rotate(12deg);
+    }
+}
+
+/* Partículas flutuantes ascendentes pelo Story */
+.story-burst-particle {
+    position: absolute;
+    bottom: 75px;
+    font-size: var(--font-size, 2.2rem);
+    pointer-events: none;
+    opacity: 0;
+    -webkit-user-select: none;
+    user-select: none;
+    will-change: transform, opacity;
+    animation: storyParticleFloat var(--anim-duration, 1.5s) cubic-bezier(0.22, 1, 0.36, 1) var(--anim-delay, 0s) forwards;
+    filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.45));
+    line-height: 1;
+}
+
+@keyframes storyParticleFloat {
+    0% {
+        opacity: 0;
+        transform: translate3d(0, 0, 0) scale(0.5) rotate(var(--rot-start, 0deg));
+    }
+    15% {
+        opacity: 1;
+        transform: translate3d(calc(var(--drift-x, 0px) * 0.25), calc(var(--drift-y, -65vh) * 0.2), 0) scale(1.25) rotate(calc(var(--rot-start, 0deg) * 0.5));
+    }
+    75% {
+        opacity: 0.95;
+        transform: translate3d(calc(var(--drift-x, 0px) * 0.8), calc(var(--drift-y, -65vh) * 0.75), 0) scale(1) rotate(var(--rot-end, 15deg));
+    }
+    100% {
+        opacity: 0;
+        transform: translate3d(var(--drift-x, 0px), var(--drift-y, -65vh), 0) scale(0.85) rotate(var(--rot-end, 15deg));
+    }
+}
+
+/* Brilho de Aura Ambiental do Story no momento da reação */
+.story-viewer.story-aura-heart {
+    box-shadow: inset 0 0 70px rgba(255, 45, 85, 0.5) !important;
+    transition: box-shadow 0.25s ease;
+}
+.story-viewer.story-aura-laugh {
+    box-shadow: inset 0 0 70px rgba(255, 214, 10, 0.5) !important;
+    transition: box-shadow 0.25s ease;
+}
+.story-viewer.story-aura-wow {
+    box-shadow: inset 0 0 70px rgba(175, 82, 222, 0.5) !important;
+    transition: box-shadow 0.25s ease;
+}
+.story-viewer.story-aura-sad {
+    box-shadow: inset 0 0 70px rgba(10, 132, 255, 0.5) !important;
+    transition: box-shadow 0.25s ease;
+}
+.story-viewer.story-aura-clap {
+    box-shadow: inset 0 0 70px rgba(52, 199, 89, 0.5) !important;
+    transition: box-shadow 0.25s ease;
+}
+.story-viewer.story-aura-fire {
+    box-shadow: inset 0 0 80px rgba(255, 69, 0, 0.6) !important;
+    transition: box-shadow 0.25s ease;
+}
+
+/* Badge de Emojis na aba de Reações com micro animação */
+.viewer-emoji-tag {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    padding: 3px 6px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    cursor: default;
+}
+
+.viewer-emoji-tag:hover {
+    transform: scale(1.3) rotate(5deg);
+}

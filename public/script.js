@@ -10754,11 +10754,283 @@ document.getElementById('story-reply-input')?.addEventListener('keydown', (e) =>
     }
 });
 
+/* ==========================================================================
+   EFEITOS SONOROS E ANIMAÇÕES DE EMOJIS DO STORY (v1.0.235)
+   ========================================================================== */
+
+export function playStoryEmojiSound(emoji) {
+    if (typeof window === 'undefined') return Promise.resolve();
+    if (typeof currentProfile !== 'undefined' && currentProfile && currentProfile.soundEnabled === false) {
+        return Promise.resolve();
+    }
+    try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return Promise.resolve();
+        if (!window.__vortexAudioCtx) {
+            window.__vortexAudioCtx = new AudioCtx();
+        }
+        const ctx = window.__vortexAudioCtx;
+        if (ctx.state === 'suspended') {
+            ctx.resume().catch(() => {});
+        }
+        const now = ctx.currentTime;
+
+        if (emoji === '❤️') {
+            // ❤️ Coração: Duplo batimento cardíaco doce (lub-dub) + acorde afetuoso
+            const osc1 = ctx.createOscillator();
+            const gain1 = ctx.createGain();
+            osc1.type = 'sine';
+            osc1.frequency.setValueAtTime(140, now);
+            osc1.frequency.exponentialRampToValueAtTime(70, now + 0.08);
+            gain1.gain.setValueAtTime(0.18, now);
+            gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+            osc1.connect(gain1);
+            gain1.connect(ctx.destination);
+            osc1.start(now);
+            osc1.stop(now + 0.09);
+
+            const osc2 = ctx.createOscillator();
+            const gain2 = ctx.createGain();
+            osc2.type = 'sine';
+            osc2.frequency.setValueAtTime(175, now + 0.12);
+            osc2.frequency.exponentialRampToValueAtTime(80, now + 0.22);
+            gain2.gain.setValueAtTime(0.15, now + 0.12);
+            gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
+            osc2.connect(gain2);
+            gain2.connect(ctx.destination);
+            osc2.start(now + 0.12);
+            osc2.stop(now + 0.24);
+
+            const oscH = ctx.createOscillator();
+            const gainH = ctx.createGain();
+            oscH.type = 'triangle';
+            oscH.frequency.setValueAtTime(523.25, now + 0.05);
+            oscH.frequency.exponentialRampToValueAtTime(659.25, now + 0.18);
+            gainH.gain.setValueAtTime(0.001, now);
+            gainH.gain.linearRampToValueAtTime(0.09, now + 0.08);
+            gainH.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+            oscH.connect(gainH);
+            gainH.connect(ctx.destination);
+            oscH.start(now + 0.05);
+            oscH.stop(now + 0.35);
+
+        } else if (emoji === '😂') {
+            // 😂 Risada: Trill saltitante alegre de 4 notas ascendentes staccato
+            const notes = [659.25, 783.99, 987.77, 1318.51];
+            notes.forEach((freq, idx) => {
+                const t = now + (idx * 0.065);
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(freq, t);
+                osc.frequency.exponentialRampToValueAtTime(freq * 1.08, t + 0.05);
+                gain.gain.setValueAtTime(0.12, t);
+                gain.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(t);
+                osc.stop(t + 0.06);
+            });
+
+        } else if (emoji === '😮') {
+            // 😮 Surpresa: Glissando expressivo e ressonante subindo
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(320, now);
+            osc.frequency.exponentialRampToValueAtTime(920, now + 0.22);
+            gain.gain.setValueAtTime(0.01, now);
+            gain.gain.linearRampToValueAtTime(0.14, now + 0.08);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.35);
+
+        } else if (emoji === '😢') {
+            // 😢 Tristeza: Lágrima melódica suave descendente
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(740, now);
+            osc.frequency.exponentialRampToValueAtTime(440, now + 0.18);
+            osc.frequency.exponentialRampToValueAtTime(330, now + 0.32);
+            gain.gain.setValueAtTime(0.12, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.33);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.33);
+
+        } else if (emoji === '👏') {
+            // 👏 Palmas: 3 estalos percussivos rítmicos de aplausos
+            [0, 0.08, 0.16].forEach((delay, i) => {
+                const t = now + delay;
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(900 + (i * 120), t);
+                osc.frequency.exponentialRampToValueAtTime(260, t + 0.04);
+                gain.gain.setValueAtTime(0.16, t);
+                gain.gain.exponentialRampToValueAtTime(0.001, t + 0.045);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(t);
+                osc.stop(t + 0.045);
+            });
+
+        } else if (emoji === '🔥') {
+            // 🔥 Fogo: Swoosh dinâmico potente com harmônicos crepitantes
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(220, now);
+            osc.frequency.exponentialRampToValueAtTime(780, now + 0.15);
+            osc.frequency.exponentialRampToValueAtTime(1100, now + 0.26);
+            gain.gain.setValueAtTime(0.02, now);
+            gain.gain.linearRampToValueAtTime(0.14, now + 0.06);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.28);
+
+        } else {
+            // Fallback genérico para qualquer outro emoji
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(500, now);
+            osc.frequency.exponentialRampToValueAtTime(900, now + 0.12);
+            gain.gain.setValueAtTime(0.1, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.18);
+        }
+    } catch (_) {}
+    return Promise.resolve();
+}
+
+export function triggerStoryEmojiAnimation(emoji, sourceBtn) {
+    if (!emoji) return;
+
+    // 1. Tocar efeito sonoro exclusivo sintetizado do emoji
+    playStoryEmojiSound(emoji);
+
+    // 2. Animar botão clicado com efeito pop
+    if (sourceBtn) {
+        sourceBtn.classList.remove('story-emoji-pop');
+        if (typeof sourceBtn.offsetWidth !== 'undefined') void sourceBtn.offsetWidth;
+        sourceBtn.classList.add('story-emoji-pop');
+        setTimeout(() => {
+            sourceBtn.classList.remove('story-emoji-pop');
+        }, 500);
+    }
+
+    // Feedback tátil em smartphones
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        try { navigator.vibrate([15, 30, 20]); } catch (_) {}
+    }
+
+    const viewer = document.getElementById('story-viewer');
+    if (!viewer) return;
+
+    let container = document.getElementById('story-emoji-burst-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'story-emoji-burst-container';
+        container.className = 'story-emoji-burst-container';
+        container.setAttribute('aria-hidden', 'true');
+        viewer.appendChild(container);
+    }
+
+    // 3. Aura ambiental colorida na borda do Story
+    const auraClasses = {
+        '❤️': 'story-aura-heart',
+        '😂': 'story-aura-laugh',
+        '😮': 'story-aura-wow',
+        '😢': 'story-aura-sad',
+        '👏': 'story-aura-clap',
+        '🔥': 'story-aura-fire'
+    };
+    const auraClass = auraClasses[emoji];
+    if (auraClass) {
+        viewer.classList.remove('story-aura-heart', 'story-aura-laugh', 'story-aura-wow', 'story-aura-sad', 'story-aura-clap', 'story-aura-fire');
+        viewer.classList.add(auraClass);
+        setTimeout(() => {
+            viewer.classList.remove(auraClass);
+        }, 650);
+    }
+
+    // 4. Emoji Herói Central com zoom dinâmico e rotação
+    const hero = document.createElement('div');
+    hero.className = 'story-hero-emoji';
+    hero.innerText = emoji;
+    container.appendChild(hero);
+    setTimeout(() => {
+        hero.remove();
+    }, 950);
+
+    // 5. Partículas flutuantes ascendentes pelo Story
+    const originX = sourceBtn
+        ? (sourceBtn.offsetLeft + (sourceBtn.offsetWidth / 2) || (viewer.offsetWidth / 2))
+        : (viewer.offsetWidth / 2);
+
+    const particleCount = 14;
+    for (let i = 0; i < particleCount; i++) {
+        const particle = document.createElement('span');
+        particle.className = 'story-burst-particle';
+        particle.innerText = emoji;
+
+        // Variações aleatórias orgânicas para visual natural e dinâmico
+        const spreadX = (Math.random() - 0.5) * 160;
+        const driftX = (Math.random() - 0.5) * 140;
+        const driftY = -(55 + Math.random() * 30);
+        const rotStart = (Math.random() - 0.5) * 30;
+        const rotEnd = (Math.random() - 0.5) * 70;
+        const fontSize = (1.6 + Math.random() * 1.6).toFixed(2);
+        const animDuration = (1.2 + Math.random() * 0.6).toFixed(2);
+        const animDelay = (Math.random() * 0.22).toFixed(2);
+
+        const leftPos = Math.max(10, Math.min((viewer.offsetWidth || 360) - 50, originX + spreadX));
+        particle.style.left = `${leftPos}px`;
+        if (typeof particle.style.setProperty === 'function') {
+            particle.style.setProperty('--drift-x', `${driftX}px`);
+            particle.style.setProperty('--drift-y', `${driftY}vh`);
+            particle.style.setProperty('--rot-start', `${rotStart}deg`);
+            particle.style.setProperty('--rot-end', `${rotEnd}deg`);
+            particle.style.setProperty('--font-size', `${fontSize}rem`);
+            particle.style.setProperty('--anim-duration', `${animDuration}s`);
+            particle.style.setProperty('--anim-delay', `${animDelay}s`);
+        } else {
+            particle.style['--drift-x'] = `${driftX}px`;
+            particle.style['--drift-y'] = `${driftY}vh`;
+            particle.style['--rot-start'] = `${rotStart}deg`;
+            particle.style['--rot-end'] = `${rotEnd}deg`;
+            particle.style['--font-size'] = `${fontSize}rem`;
+            particle.style['--anim-duration'] = `${animDuration}s`;
+            particle.style['--anim-delay'] = `${animDelay}s`;
+        }
+
+        container.appendChild(particle);
+
+        setTimeout(() => {
+            particle.remove();
+        }, 2200);
+    }
+}
+
 // Reação com Emojis (Exclusivamente para a aba Reações do Story)
 document.querySelectorAll('.story-emoji-btn').forEach(btn => {
     btn.addEventListener('click', async (e) => {
         e.stopPropagation();
         const emoji = btn.dataset.emoji;
+
+        // Efeito sonoro e animação visual instantânea de emojis no Story (v1.0.235)
+        triggerStoryEmojiAnimation(emoji, btn);
+
         const story = activeStoryList[currentStoryIndex];
         
         if (story && currentUser) {
@@ -10776,7 +11048,6 @@ document.querySelectorAll('.story-emoji-btn').forEach(btn => {
                 }
             }, { merge: true })
             .then(() => {
-                playSound(replySendSound);
                 showToast("Reação Enviada", `Reagiu com ${emoji}!`, "green");
                 // Notificar o dono do story sobre a reação (se não for o próprio)
                 if (story.authorUid && story.authorUid !== currentUser.uid) {
@@ -21071,7 +21342,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.234';
+export const CURRENT_APP_VERSION = '1.0.235';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -37607,6 +37878,8 @@ window.handleCallSwitchedToVideo = handleCallSwitchedToVideo;
     window.initLinkSecurityUI = initLinkSecurityUI;
     window.setupCompanyButtonLinkValidation = setupCompanyButtonLinkValidation;
     window.setupProfileWebsitesLinkValidation = setupProfileWebsitesLinkValidation;
+    window.playStoryEmojiSound = playStoryEmojiSound;
+    window.triggerStoryEmojiAnimation = triggerStoryEmojiAnimation;
     window.renderGroupMiniAdminPanel = renderGroupMiniAdminPanel;
     window.approveGroupJoinRequest = approveGroupJoinRequest;
     window.rejectGroupJoinRequest = rejectGroupJoinRequest;
