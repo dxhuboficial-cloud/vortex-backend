@@ -21489,7 +21489,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.239';
+export const CURRENT_APP_VERSION = '1.0.240';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -33159,6 +33159,10 @@ document.getElementById('profile-btn')?.addEventListener('click', () => {
     if (businessFields) {
         businessFields.style.display = isBusiness ? 'flex' : 'none';
     }
+    const storeToggleSetting = document.getElementById('profile-store-toggle-setting');
+    if (storeToggleSetting) {
+        storeToggleSetting.style.display = isBusiness ? 'flex' : 'none';
+    }
 
     // Campos de Empresa
     const whatsappInp = document.getElementById('profile-whatsapp-input');
@@ -33203,6 +33207,10 @@ const handleAccountTypeChange = () => {
     const bFields = document.getElementById('profile-business-fields');
     if (bFields) {
         bFields.style.display = isBiz ? 'flex' : 'none';
+    }
+    const storeToggleSetting = document.getElementById('profile-store-toggle-setting');
+    if (storeToggleSetting) {
+        storeToggleSetting.style.display = isBiz ? 'flex' : 'none';
     }
     if (typeof window !== 'undefined' && window.lucide) {
         window.lucide.createIcons();
@@ -34325,9 +34333,11 @@ document.getElementById('save-profile-btn')?.addEventListener('click', async () 
 
     const isBusiness = document.getElementById('profile-type-business')?.checked || false;
     const accountType = isBusiness ? 'business' : 'personal';
-    const isStoreEnabled = document.getElementById('profile-store-enabled-toggle')
-        ? Boolean(document.getElementById('profile-store-enabled-toggle').checked)
-        : (currentProfile.isStoreEnabled !== false && currentProfile.storeEnabled !== false);
+    const isStoreEnabled = isBusiness
+        ? (document.getElementById('profile-store-enabled-toggle')
+            ? Boolean(document.getElementById('profile-store-enabled-toggle').checked)
+            : (currentProfile.isStoreEnabled !== false && currentProfile.storeEnabled !== false))
+        : false;
 
     const rawWhatsapp = document.getElementById('profile-whatsapp-input')?.value.trim() || '';
     const rawFacebook = document.getElementById('profile-facebook-input')?.value.trim() || '';
