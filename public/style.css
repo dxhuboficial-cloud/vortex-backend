@@ -23920,43 +23920,48 @@ video::-internal-media-controls-download-button {
    VORTEX VIP ⚡ - CENTRAL DE PERMISSÕES DO APP (v1.0.222)
    ========================================================================== */
 
-/* Card de Permissões no Painel de Configurações */
+/* Card de Permissões no Painel de Configurações (v1.0.241) */
 .app-permissions-card-highlight {
-    background: linear-gradient(135deg, rgba(0, 229, 255, 0.08), rgba(0, 255, 102, 0.05)) !important;
-    border: 1px solid rgba(0, 229, 255, 0.25) !important;
-    border-radius: 14px;
-    padding: 14px 16px;
+    background: linear-gradient(135deg, rgba(0, 229, 255, 0.08) 0%, rgba(0, 255, 102, 0.05) 100%) !important;
+    border: 1px solid rgba(0, 229, 255, 0.28) !important;
+    border-radius: 14px !important;
+    padding: 12px 14px !important;
     margin-bottom: 12px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4), inset 0 0 12px rgba(0, 229, 255, 0.04) !important;
     transition: all 0.25s ease;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 12px !important;
 }
 
 .app-permissions-card-highlight:hover {
-    border-color: rgba(0, 229, 255, 0.5) !important;
-    box-shadow: 0 6px 20px rgba(0, 229, 255, 0.15);
+    border-color: rgba(0, 229, 255, 0.55) !important;
+    box-shadow: 0 6px 22px rgba(0, 229, 255, 0.18), inset 0 0 16px rgba(0, 229, 255, 0.08) !important;
 }
 
-.app-permissions-setting-inner {
-    width: 100%;
+.app-permissions-setting-info {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 5px;
+    flex: 1;
+    min-width: 0;
 }
 
-.app-permissions-header-row {
+.app-permissions-title-line {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 10px;
+    gap: 8px;
+    flex-wrap: wrap;
 }
 
 .app-permissions-highlight-text {
     font-size: 0.95rem;
     font-weight: 700;
     color: #e0f2fe;
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: 7px;
     letter-spacing: 0.3px;
 }
 
@@ -23965,6 +23970,39 @@ video::-internal-media-controls-download-button {
     height: 18px;
     color: #00e5ff;
     filter: drop-shadow(0 0 6px rgba(0, 229, 255, 0.6));
+    flex-shrink: 0;
+}
+
+.app-permissions-setting-badge {
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    background: rgba(0, 229, 255, 0.15);
+    color: #00e5ff;
+    border: 1px solid rgba(0, 229, 255, 0.35);
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+}
+
+.app-permissions-setting-badge.all-granted {
+    background: rgba(0, 255, 102, 0.15);
+    color: #00ff66;
+    border-color: rgba(0, 255, 102, 0.45);
+    box-shadow: 0 0 8px rgba(0, 255, 102, 0.25);
+}
+
+.app-permissions-quick-summary {
+    font-size: 0.76rem;
+    color: var(--text-dim, #94a3b8);
+    line-height: 1.35;
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .app-permissions-open-action-btn {
@@ -23976,13 +24014,14 @@ video::-internal-media-controls-download-button {
     color: #000;
     font-weight: 700;
     font-size: 0.8rem;
-    padding: 6px 14px;
+    padding: 7px 14px;
     border-radius: 20px;
     border: none;
     cursor: pointer;
     box-shadow: 0 0 10px rgba(0, 229, 255, 0.35);
     transition: all 0.2s ease;
     white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .app-permissions-open-action-btn:hover {
@@ -23996,39 +24035,20 @@ video::-internal-media-controls-download-button {
     height: 14px;
 }
 
+/* Compatibilidade retroativa com seletores internos legados */
+.app-permissions-setting-inner {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.app-permissions-header-row,
 .app-permissions-status-row {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 10px;
-    flex-wrap: wrap;
-}
-
-.app-permissions-setting-badge {
-    font-size: 0.72rem;
-    font-weight: 700;
-    padding: 3px 8px;
-    border-radius: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.4px;
-    background: rgba(0, 229, 255, 0.15);
-    color: #00e5ff;
-    border: 1px solid rgba(0, 229, 255, 0.35);
-}
-
-.app-permissions-setting-badge.all-granted {
-    background: rgba(0, 255, 102, 0.15);
-    color: #00ff66;
-    border-color: rgba(0, 255, 102, 0.4);
-    box-shadow: 0 0 8px rgba(0, 255, 102, 0.25);
-}
-
-.app-permissions-quick-summary {
-    font-size: 0.75rem;
-    color: var(--text-dim, #94a3b8);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    max-width: 320px;
 }
 
 /* Modal Central de Permissões */
@@ -24454,12 +24474,26 @@ video::-internal-media-controls-download-button {
 }
 
 @media (max-width: 380px) {
+    .app-permissions-card-highlight {
+        padding: 10px 12px !important;
+        gap: 8px !important;
+    }
+
     .app-permissions-highlight-text {
-        font-size: 0.82rem;
+        font-size: 0.84rem;
+    }
+
+    .app-permissions-setting-badge {
+        font-size: 0.62rem;
+        padding: 1px 6px;
+    }
+
+    .app-permissions-quick-summary {
+        font-size: 0.70rem;
     }
 
     .app-permissions-open-action-btn {
-        padding: 5px 10px;
+        padding: 6px 10px;
         font-size: 0.72rem;
     }
 
