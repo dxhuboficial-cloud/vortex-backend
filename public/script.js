@@ -21342,7 +21342,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.235';
+export const CURRENT_APP_VERSION = '1.0.236';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -21865,11 +21865,84 @@ if (typeof window !== 'undefined') {
     window.applyUserTheme = applyUserTheme;
     window.updateSystemThemeColor = updateSystemThemeColor;
     window.getSystemThemeColorForProfile = getSystemThemeColorForProfile;
+    window.shareVortexApp = shareVortexApp;
 }
 
-// Listeners de Instalação PWA
+// Compartilhamento Oficial do Link do App VORTEX VIP (com Preview da Logo no WhatsApp/Instagram/Facebook)
+export async function shareVortexApp(options = {}) {
+    const url = 'https://menssagem-dx.web.app/';
+    const title = 'VORTEX VIP - Mensagens em Tempo Real & Plataforma Exclusiva';
+    const text = '⚡ Conecte-se comigo no VORTEX VIP: mensagens instantâneas com máxima segurança, chamadas de voz e vídeo HD, stories e recursos VIP exclusivos!';
+
+    if (options.platform === 'whatsapp') {
+        const shareLink = `https://api.whatsapp.com/send?text=${encodeURIComponent(text + '\n' + url)}`;
+        if (typeof window !== 'undefined') window.open(shareLink, '_blank');
+        return { success: true, method: 'whatsapp', url };
+    }
+
+    if (options.platform === 'facebook') {
+        const shareLink = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
+        if (typeof window !== 'undefined') window.open(shareLink, '_blank', 'noopener,noreferrer');
+        return { success: true, method: 'facebook', url };
+    }
+
+    if (options.platform === 'telegram') {
+        const shareLink = `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`;
+        if (typeof window !== 'undefined') window.open(shareLink, '_blank');
+        return { success: true, method: 'telegram', url };
+    }
+
+    if (options.platform === 'x') {
+        const shareLink = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+        if (typeof window !== 'undefined') window.open(shareLink, '_blank');
+        return { success: true, method: 'x', url };
+    }
+
+    // Compartilhamento Nativo (Web Share API) no Celular (WhatsApp, Instagram, etc.)
+    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+        try {
+            await navigator.share({
+                title: title,
+                text: text,
+                url: url
+            });
+            if (typeof showToast === 'function') {
+                showToast('VORTEX VIP Compartilhado!', 'Link oficial com preview da logo compartilhado com sucesso ⚡', 'green');
+            }
+            return { success: true, method: 'native', url };
+        } catch (err) {
+            if (err && err.name === 'AbortError') {
+                return { success: false, method: 'cancelled' };
+            }
+        }
+    }
+
+    // Fallback: Copiar para Área de Transferência
+    try {
+        if (typeof navigator !== 'undefined' && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+            await navigator.clipboard.writeText(url);
+        } else if (typeof document !== 'undefined') {
+            const tempInput = document.createElement('input');
+            tempInput.value = url;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+        }
+        if (typeof showToast === 'function') {
+            showToast('Link do VORTEX VIP Copiado! ⚡', 'Cole no WhatsApp, Instagram ou Facebook para exibir o preview com a logo.', 'green');
+        }
+        return { success: true, method: 'clipboard', url };
+    } catch (err) {
+        console.error('Erro ao copiar link do app:', err);
+        return { success: false, method: 'error', error: err?.message };
+    }
+}
+
+// Listeners de Instalação PWA e Compartilhamento do App
 document.getElementById('install-app-header-btn')?.addEventListener('click', triggerPwaInstall);
 document.getElementById('install-pwa-btn')?.addEventListener('click', triggerPwaInstall);
+document.getElementById('share-vortex-app-btn')?.addEventListener('click', () => shareVortexApp());
 document.getElementById('pwa-banner-install-btn')?.addEventListener('click', triggerPwaInstall);
 document.getElementById('pwa-banner-dismiss-btn')?.addEventListener('click', dismissPwaInstallBanner);
 document.getElementById('close-pwa-ios-btn')?.addEventListener('click', closePwaIosModal);
@@ -32168,11 +32241,10 @@ export function closePostShareModal() {
 
 export function shareToWhatsApp(post) {
     const p = post || activeSharePost;
-    if (!p) return;
-    const url = getPostShareUrl(p.id);
-    const text = getPostShareText(p);
+    const url = p ? getPostShareUrl(p.id) : 'https://menssagem-dx.web.app/';
+    const text = p ? getPostShareText(p) : '⚡ Conecte-se comigo no VORTEX VIP: mensagens instantâneas com máxima segurança, chamadas de voz e vídeo HD, stories e recursos VIP exclusivos!';
     const shareLink = `https://api.whatsapp.com/send?text=${encodeURIComponent(text + '\n' + url)}`;
-    window.open(shareLink, '_blank');
+    if (typeof window !== 'undefined') window.open(shareLink, '_blank');
 }
 
 export async function shareToInstagram(post) {

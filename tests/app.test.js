@@ -7559,7 +7559,7 @@ test('Correção dos Títulos e Campos do Catálogo (v1.0.125): agrupamento com 
   // 44. Limite de 90 Caracteres na Legenda do Story e Link com Botão CTA para Conta Empresa (v1.0.165)
   // 45. Categorias de Conteúdo para Conta Empresa e Posts Temporários de 24h (v1.0.166)
   // 46. Etiqueta de Anúncio e Opção Anúncio vs Normal para Stories e Posts (v1.0.167)
-  assert.ok(['1.0.166', '1.0.167', '1.0.233', '1.0.234', '1.0.235'].includes(versionJson.version) || parseInt(versionJson.version.split('.')[2], 10) >= 166, 'version.json deve ser 1.0.167');
+  assert.ok(['1.0.166', '1.0.167', '1.0.233', '1.0.234', '1.0.235', '1.0.236'].includes(versionJson.version) || parseInt(versionJson.version.split('.')[2], 10) >= 166, 'version.json deve ser 1.0.167');
 });
 
 test('Formulários Comerciais para Conta Empresa: Permissões, templates, card interativo no chat e preenchimento de respostas (v1.0.142)', () => {
@@ -9409,7 +9409,7 @@ test('Limite de 90 Caracteres na Legenda do Story e Link com Botão CTA para Con
   const win = env.sandbox.window;
 
   // 1. Integridade de Versionamento (v1.0.165+)
-  assert.ok(['1.0.165', '1.0.166', '1.0.233', '1.0.234', '1.0.235'].includes(win.CURRENT_APP_VERSION) || parseInt(win.CURRENT_APP_VERSION.split('.')[2], 10) >= 165, 'script.js deve ter versão compatível');
+  assert.ok(['1.0.165', '1.0.166', '1.0.233', '1.0.234', '1.0.235', '1.0.236'].includes(win.CURRENT_APP_VERSION) || parseInt(win.CURRENT_APP_VERSION.split('.')[2], 10) >= 165, 'script.js deve ter versão compatível');
   assert.ok(htmlContent.includes(`script.js?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar script.js com a versão atual');
   assert.ok(htmlContent.includes(`style.css?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar style.css com a versão atual');
 
@@ -9616,7 +9616,7 @@ test('Categorias de Conteúdo para Conta Empresa e Posts Temporários de 24h (v1
   const win = env.sandbox.window;
 
   // 1. Integridade de Versionamento (v1.0.166+)
-  assert.ok(['1.0.166', '1.0.167', '1.0.233', '1.0.234', '1.0.235'].includes(win.CURRENT_APP_VERSION) || parseInt(win.CURRENT_APP_VERSION.split('.')[2], 10) >= 166, 'script.js deve ter versão compatível');
+  assert.ok(['1.0.166', '1.0.167', '1.0.233', '1.0.234', '1.0.235', '1.0.236'].includes(win.CURRENT_APP_VERSION) || parseInt(win.CURRENT_APP_VERSION.split('.')[2], 10) >= 166, 'script.js deve ter versão compatível');
   assert.ok(htmlContent.includes(`script.js?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar script.js com a versão atual');
   assert.ok(htmlContent.includes(`style.css?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar style.css com a versão atual');
 
@@ -9756,7 +9756,7 @@ test('Etiqueta de Anúncio e Opção Anúncio vs Conteúdo Normal para Stories e
   const win = env.sandbox.window;
 
   // 1. Integridade de Versionamento (v1.0.167+)
-  assert.ok(['1.0.167', '1.0.168', '1.0.233', '1.0.234', '1.0.235'].includes(win.CURRENT_APP_VERSION) || parseInt(win.CURRENT_APP_VERSION.split('.')[2], 10) >= 167, 'script.js deve ter versão compatível');
+  assert.ok(['1.0.167', '1.0.168', '1.0.233', '1.0.234', '1.0.235', '1.0.236'].includes(win.CURRENT_APP_VERSION) || parseInt(win.CURRENT_APP_VERSION.split('.')[2], 10) >= 167, 'script.js deve ter versão compatível');
   assert.ok(htmlContent.includes(`script.js?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar script.js com a versão atual');
   assert.ok(htmlContent.includes(`style.css?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar style.css com a versão atual');
 
@@ -9906,7 +9906,7 @@ test('Permissões e Ferramentas para Administradores Promovidos em Grupos (v1.0.
   const win = env.sandbox.window;
 
   // 1. Integridade de Versionamento (v1.0.168+)
-  assert.ok(['1.0.168', '1.0.169', '1.0.233', '1.0.234', '1.0.235'].includes(win.CURRENT_APP_VERSION) || parseInt(win.CURRENT_APP_VERSION.split('.')[2], 10) >= 168, 'script.js deve ter versão compatível');
+  assert.ok(['1.0.168', '1.0.169', '1.0.233', '1.0.234', '1.0.235', '1.0.236'].includes(win.CURRENT_APP_VERSION) || parseInt(win.CURRENT_APP_VERSION.split('.')[2], 10) >= 168, 'script.js deve ter versão compatível');
   assert.ok(htmlContent.includes(`script.js?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar script.js com a versão atual');
   assert.ok(htmlContent.includes(`style.css?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar style.css com a versão atual');
 
@@ -10013,7 +10013,7 @@ test('Notificação de Promoção a Admin de Grupo: Ícone de capelo, amarelo vi
   const win = env.sandbox.window;
 
   // 1. Integridade de Versionamento (v1.0.169+)
-  assert.ok(['1.0.169', '1.0.170', '1.0.233', '1.0.234', '1.0.235'].includes(win.CURRENT_APP_VERSION) || parseInt(win.CURRENT_APP_VERSION.split('.')[2], 10) >= 169, 'script.js deve ter versão compatível');
+  assert.ok(['1.0.169', '1.0.170', '1.0.233', '1.0.234', '1.0.235', '1.0.236'].includes(win.CURRENT_APP_VERSION) || parseInt(win.CURRENT_APP_VERSION.split('.')[2], 10) >= 169, 'script.js deve ter versão compatível');
   assert.ok(htmlContent.includes(`script.js?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar script.js com a versão atual');
   assert.ok(htmlContent.includes(`style.css?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar style.css com a versão atual');
 
@@ -10105,7 +10105,7 @@ test('Algoritmo de Segurança de Denúncia Multi-Tipo VORTEX VIP (v1.0.170)', as
   const win = env.sandbox.window;
 
   // 1. Integridade de Versionamento (v1.0.170+)
-  assert.ok(['1.0.170', '1.0.171', '1.0.233', '1.0.234', '1.0.235'].includes(win.CURRENT_APP_VERSION) || parseInt(win.CURRENT_APP_VERSION.split('.')[2], 10) >= 170, 'script.js deve ter versão 1.0.170+');
+  assert.ok(['1.0.170', '1.0.171', '1.0.233', '1.0.234', '1.0.235', '1.0.236'].includes(win.CURRENT_APP_VERSION) || parseInt(win.CURRENT_APP_VERSION.split('.')[2], 10) >= 170, 'script.js deve ter versão 1.0.170+');
   assert.ok(htmlContent.includes(`script.js?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar script.js com a versão atual');
   assert.ok(htmlContent.includes(`style.css?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar style.css com a versão atual');
 
@@ -10283,9 +10283,9 @@ test('Notificações Exclusivas para Administradores da Plataforma (Segurança I
   const win = env.sandbox.window;
 
   // 1. Integridade de Versionamento (v1.0.171+)
-  assert.ok(['1.0.171', '1.0.172', '1.0.233', '1.0.234', '1.0.235'].includes(win.CURRENT_APP_VERSION) || parseInt(win.CURRENT_APP_VERSION.split('.')[2], 10) >= 171, 'script.js deve ter versão 1.0.171+');
+  assert.ok(['1.0.171', '1.0.172', '1.0.233', '1.0.234', '1.0.235', '1.0.236'].includes(win.CURRENT_APP_VERSION) || parseInt(win.CURRENT_APP_VERSION.split('.')[2], 10) >= 171, 'script.js deve ter versão 1.0.171+');
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
-  assert.ok(['1.0.171', '1.0.172', '1.0.233', '1.0.234', '1.0.235'].includes(versionJson.version) || parseInt(versionJson.version.split('.')[2], 10) >= 171, 'version.json deve ter versão 1.0.171+');
+  assert.ok(['1.0.171', '1.0.172', '1.0.233', '1.0.234', '1.0.235', '1.0.236'].includes(versionJson.version) || parseInt(versionJson.version.split('.')[2], 10) >= 171, 'version.json deve ter versão 1.0.171+');
   assert.ok(htmlContent.includes(`script.js?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar script.js com a versão atual');
   assert.ok(htmlContent.includes(`style.css?v=${win.CURRENT_APP_VERSION}`), 'index.html deve referenciar style.css com a versão atual');
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
@@ -13566,8 +13566,8 @@ test('Correção do Fluxo de Envio do Botão Comercial: Persistência de Dados, 
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
 
   // 1. Integridade de Versionamento (v1.0.208+)
-  assert.ok(['1.0.208', '1.0.209', '1.0.210', '1.0.211', '1.0.212', '1.0.213', '1.0.214', '1.0.215', '1.0.216', '1.0.217', '1.0.218', '1.0.219', '1.0.220', '1.0.221', '1.0.222', '1.0.223', '1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.233', '1.0.234', '1.0.235'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão compatível');
-  assert.ok(['1.0.208', '1.0.209', '1.0.210', '1.0.211', '1.0.212', '1.0.213', '1.0.214', '1.0.215', '1.0.216', '1.0.217', '1.0.218', '1.0.219', '1.0.220', '1.0.221', '1.0.222', '1.0.223', '1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.233', '1.0.234', '1.0.235'].includes(versionJson.version), 'version.json deve ter versão compatível');
+  assert.ok(['1.0.208', '1.0.209', '1.0.210', '1.0.211', '1.0.212', '1.0.213', '1.0.214', '1.0.215', '1.0.216', '1.0.217', '1.0.218', '1.0.219', '1.0.220', '1.0.221', '1.0.222', '1.0.223', '1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.233', '1.0.234', '1.0.235', '1.0.236'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão compatível');
+  assert.ok(['1.0.208', '1.0.209', '1.0.210', '1.0.211', '1.0.212', '1.0.213', '1.0.214', '1.0.215', '1.0.216', '1.0.217', '1.0.218', '1.0.219', '1.0.220', '1.0.221', '1.0.222', '1.0.223', '1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.233', '1.0.234', '1.0.235', '1.0.236'].includes(versionJson.version), 'version.json deve ter versão compatível');
   assert.ok(/script\.js\?v=1\.0\.\d+/.test(html), 'index.html deve referenciar script.js');
   assert.ok(/style\.css\?v=1\.0\.\d+/.test(html), 'index.html deve referenciar style.css');
   assert.ok(/vortex-vip-v1\.0\.\d+/.test(swContent), 'sw.js deve conter cache');
@@ -13648,8 +13648,8 @@ test('Centralização do Título (Texto) com o Ícone no Botão de Publicação 
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
 
   // 1. Integridade de Versionamento (v1.0.209+)
-  assert.ok(['1.0.209', '1.0.210', '1.0.211', '1.0.212', '1.0.213', '1.0.214', '1.0.215', '1.0.216', '1.0.217', '1.0.218', '1.0.219', '1.0.220', '1.0.221', '1.0.222', '1.0.223', '1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.233', '1.0.234', '1.0.235'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão compatível');
-  assert.ok(['1.0.209', '1.0.210', '1.0.211', '1.0.212', '1.0.213', '1.0.214', '1.0.215', '1.0.216', '1.0.217', '1.0.218', '1.0.219', '1.0.220', '1.0.221', '1.0.222', '1.0.223', '1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.233', '1.0.234', '1.0.235'].includes(versionJson.version), 'version.json deve ter versão compatível');
+  assert.ok(['1.0.209', '1.0.210', '1.0.211', '1.0.212', '1.0.213', '1.0.214', '1.0.215', '1.0.216', '1.0.217', '1.0.218', '1.0.219', '1.0.220', '1.0.221', '1.0.222', '1.0.223', '1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.233', '1.0.234', '1.0.235', '1.0.236'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão compatível');
+  assert.ok(['1.0.209', '1.0.210', '1.0.211', '1.0.212', '1.0.213', '1.0.214', '1.0.215', '1.0.216', '1.0.217', '1.0.218', '1.0.219', '1.0.220', '1.0.221', '1.0.222', '1.0.223', '1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.233', '1.0.234', '1.0.235', '1.0.236'].includes(versionJson.version), 'version.json deve ter versão compatível');
   assert.ok(/script\.js\?v=1\.0\.\d+/.test(html), 'index.html deve referenciar script.js');
   assert.ok(/style\.css\?v=1\.0\.\d+/.test(html), 'index.html deve referenciar style.css');
   assert.ok(/vortex-vip-v1\.0\.\d+/.test(swContent), 'sw.js deve conter cache');
@@ -13682,8 +13682,8 @@ test('Botão para Ativar e Desativar a Loja no Catálogo e no Editar Perfil (v1.
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
 
   // 1. Integridade de Versionamento (v1.0.210)
-  assert.ok(['1.0.210', '1.0.211', '1.0.212', '1.0.213', '1.0.214', '1.0.215', '1.0.216', '1.0.217', '1.0.218', '1.0.219', '1.0.220', '1.0.221', '1.0.222', '1.0.223', '1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.233', '1.0.234', '1.0.235'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão compatível');
-  assert.ok(['1.0.210', '1.0.211', '1.0.212', '1.0.213', '1.0.214', '1.0.215', '1.0.216', '1.0.217', '1.0.218', '1.0.219', '1.0.220', '1.0.221', '1.0.222', '1.0.223', '1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.233', '1.0.234', '1.0.235'].includes(versionJson.version), 'version.json deve ter versão compatível');
+  assert.ok(['1.0.210', '1.0.211', '1.0.212', '1.0.213', '1.0.214', '1.0.215', '1.0.216', '1.0.217', '1.0.218', '1.0.219', '1.0.220', '1.0.221', '1.0.222', '1.0.223', '1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.233', '1.0.234', '1.0.235', '1.0.236'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão compatível');
+  assert.ok(['1.0.210', '1.0.211', '1.0.212', '1.0.213', '1.0.214', '1.0.215', '1.0.216', '1.0.217', '1.0.218', '1.0.219', '1.0.220', '1.0.221', '1.0.222', '1.0.223', '1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.233', '1.0.234', '1.0.235', '1.0.236'].includes(versionJson.version), 'version.json deve ter versão compatível');
   assert.ok(/script\.js\?v=1\.0\.\d+/.test(html), 'index.html deve referenciar script.js compatível');
   assert.ok(/style\.css\?v=1\.0\.\d+/.test(html), 'index.html deve referenciar style.css compatível');
   assert.ok(/vortex-vip-v1\.0\.\d+/.test(swContent), 'sw.js deve conter cache compatível');
@@ -13788,8 +13788,8 @@ test('Bloqueio Anti-Roubo de Imagens e Vídeos nos Posts e Contatos (v1.0.211)',
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
 
   // 1. Integridade de Versionamento (v1.0.211)
-  assert.ok(['1.0.211', '1.0.212', '1.0.213', '1.0.214', '1.0.215', '1.0.216', '1.0.217', '1.0.218', '1.0.219', '1.0.220', '1.0.221', '1.0.222', '1.0.223', '1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.233', '1.0.234', '1.0.235'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão compatível');
-  assert.ok(['1.0.211', '1.0.212', '1.0.213', '1.0.214', '1.0.215', '1.0.216', '1.0.217', '1.0.218', '1.0.219', '1.0.220', '1.0.221', '1.0.222', '1.0.223', '1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.233', '1.0.234', '1.0.235'].includes(versionJson.version), 'version.json deve ter versão compatível');
+  assert.ok(['1.0.211', '1.0.212', '1.0.213', '1.0.214', '1.0.215', '1.0.216', '1.0.217', '1.0.218', '1.0.219', '1.0.220', '1.0.221', '1.0.222', '1.0.223', '1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.233', '1.0.234', '1.0.235', '1.0.236'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão compatível');
+  assert.ok(['1.0.211', '1.0.212', '1.0.213', '1.0.214', '1.0.215', '1.0.216', '1.0.217', '1.0.218', '1.0.219', '1.0.220', '1.0.221', '1.0.222', '1.0.223', '1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.233', '1.0.234', '1.0.235', '1.0.236'].includes(versionJson.version), 'version.json deve ter versão compatível');
   assert.ok(/script\.js\?v=1\.0\.\d+/.test(html), 'index.html deve referenciar script.js compatível');
   assert.ok(/style\.css\?v=1\.0\.\d+/.test(html), 'index.html deve referenciar style.css compatível');
   assert.ok(/vortex-vip-v1\.0\.\d+/.test(swContent), 'sw.js deve conter cache compatível');
@@ -13902,8 +13902,8 @@ test('Reprodutor de Vídeo e Menu de Velocidade no Tema VORTEX VIP (v1.0.212)', 
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
 
   // 1. Integridade de Versionamento (v1.0.212)
-  assert.ok(['1.0.212', '1.0.213', '1.0.214', '1.0.215', '1.0.216', '1.0.217', '1.0.218', '1.0.219', '1.0.220', '1.0.221', '1.0.222', '1.0.223', '1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.233', '1.0.234', '1.0.235'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão compatível');
-  assert.ok(['1.0.212', '1.0.213', '1.0.214', '1.0.215', '1.0.216', '1.0.217', '1.0.218', '1.0.219', '1.0.220', '1.0.221', '1.0.222', '1.0.223', '1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.233', '1.0.234', '1.0.235'].includes(versionJson.version), 'version.json deve ter versão compatível');
+  assert.ok(['1.0.212', '1.0.213', '1.0.214', '1.0.215', '1.0.216', '1.0.217', '1.0.218', '1.0.219', '1.0.220', '1.0.221', '1.0.222', '1.0.223', '1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.233', '1.0.234', '1.0.235', '1.0.236'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão compatível');
+  assert.ok(['1.0.212', '1.0.213', '1.0.214', '1.0.215', '1.0.216', '1.0.217', '1.0.218', '1.0.219', '1.0.220', '1.0.221', '1.0.222', '1.0.223', '1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.233', '1.0.234', '1.0.235', '1.0.236'].includes(versionJson.version), 'version.json deve ter versão compatível');
   assert.ok(/script\.js\?v=1\.0\.\d+/.test(html), 'index.html deve referenciar script.js');
   assert.ok(/style\.css\?v=1\.0\.\d+/.test(html), 'index.html deve referenciar style.css');
   assert.ok(/vortex-vip-v1\.0\.\d+/.test(swContent), 'sw.js deve conter cache');
@@ -13997,8 +13997,8 @@ test('Correção ReferenceError isMyStory e Otimização do Quota Exceeded (429)
   const scriptContent = fs.readFileSync('public/script.js', 'utf8');
 
   // 1. Integridade de Versionamento (v1.0.213+)
-  assert.ok(['1.0.213', '1.0.214', '1.0.215', '1.0.216', '1.0.217', '1.0.218', '1.0.219', '1.0.220', '1.0.221', '1.0.222', '1.0.223', '1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.233', '1.0.234', '1.0.235'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão compatível');
-  assert.ok(['1.0.213', '1.0.214', '1.0.215', '1.0.216', '1.0.217', '1.0.218', '1.0.219', '1.0.220', '1.0.221', '1.0.222', '1.0.223', '1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.233', '1.0.234', '1.0.235'].includes(versionJson.version), 'version.json deve ter versão compatível');
+  assert.ok(['1.0.213', '1.0.214', '1.0.215', '1.0.216', '1.0.217', '1.0.218', '1.0.219', '1.0.220', '1.0.221', '1.0.222', '1.0.223', '1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.233', '1.0.234', '1.0.235', '1.0.236'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão compatível');
+  assert.ok(['1.0.213', '1.0.214', '1.0.215', '1.0.216', '1.0.217', '1.0.218', '1.0.219', '1.0.220', '1.0.221', '1.0.222', '1.0.223', '1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.233', '1.0.234', '1.0.235', '1.0.236'].includes(versionJson.version), 'version.json deve ter versão compatível');
   assert.ok(/script\.js\?v=1\.0\.\d+/.test(html), 'index.html deve referenciar script.js');
   assert.ok(/style\.css\?v=1\.0\.\d+/.test(html), 'index.html deve referenciar style.css');
   assert.ok(/vortex-vip-v1\.0\.\d+/.test(swContent), 'sw.js deve conter cache');
@@ -14062,8 +14062,8 @@ test('Sistema de Baú Diário, Moedas e Saque Pix no Tema VORTEX VIP (v1.0.215)'
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
 
   // 1. Integridade de Versionamento (v1.0.215)
-  assert.ok(['1.0.215', '1.0.216', '1.0.217', '1.0.218', '1.0.219', '1.0.220', '1.0.221', '1.0.222', '1.0.223', '1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.233', '1.0.234', '1.0.235'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão compatível');
-  assert.ok(['1.0.215', '1.0.216', '1.0.217', '1.0.218', '1.0.219', '1.0.220', '1.0.221', '1.0.222', '1.0.223', '1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.233', '1.0.234', '1.0.235'].includes(versionJson.version), 'version.json deve ter versão compatível');
+  assert.ok(['1.0.215', '1.0.216', '1.0.217', '1.0.218', '1.0.219', '1.0.220', '1.0.221', '1.0.222', '1.0.223', '1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.233', '1.0.234', '1.0.235', '1.0.236'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão compatível');
+  assert.ok(['1.0.215', '1.0.216', '1.0.217', '1.0.218', '1.0.219', '1.0.220', '1.0.221', '1.0.222', '1.0.223', '1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.233', '1.0.234', '1.0.235', '1.0.236'].includes(versionJson.version), 'version.json deve ter versão compatível');
   assert.ok(/script\.js\?v=1\.0\.\d+/.test(html), 'index.html deve referenciar script.js');
   assert.ok(/style\.css\?v=1\.0\.\d+/.test(html), 'index.html deve referenciar style.css');
   assert.ok(/vortex-vip-v1\.0\.\d+/.test(swContent), 'sw.js deve conter cache');
@@ -14202,8 +14202,8 @@ test('Correção de Upload de Foto como Papel de Parede no Fundo da Conversa (v1
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
 
   // 1. Integridade de Versionamento (v1.0.216)
-  assert.ok(['1.0.216', '1.0.217', '1.0.218', '1.0.219', '1.0.220', '1.0.221', '1.0.222', '1.0.223', '1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.233', '1.0.234', '1.0.235'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão 1.0.216 ou 1.0.217');
-  assert.ok(['1.0.216', '1.0.217', '1.0.218', '1.0.219', '1.0.220', '1.0.221', '1.0.222', '1.0.223', '1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.233', '1.0.234', '1.0.235'].includes(versionJson.version), 'version.json deve ter versão 1.0.216 ou 1.0.217');
+  assert.ok(['1.0.216', '1.0.217', '1.0.218', '1.0.219', '1.0.220', '1.0.221', '1.0.222', '1.0.223', '1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.233', '1.0.234', '1.0.235', '1.0.236'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão 1.0.216 ou 1.0.217');
+  assert.ok(['1.0.216', '1.0.217', '1.0.218', '1.0.219', '1.0.220', '1.0.221', '1.0.222', '1.0.223', '1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.233', '1.0.234', '1.0.235', '1.0.236'].includes(versionJson.version), 'version.json deve ter versão 1.0.216 ou 1.0.217');
   assert.ok(/script\.js\?v=1\.0\.\d+/.test(html), 'index.html deve referenciar script.js');
   assert.ok(/style\.css\?v=1\.0\.\d+/.test(html), 'index.html deve referenciar style.css');
   assert.ok(/vortex-vip-v1\.0\.\d+/.test(swContent), 'sw.js deve conter cache');
@@ -14266,8 +14266,8 @@ test('Organização Responsiva do Modal do Baú Diário para Telas Menores de Ce
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
 
   // 1. Integridade de Versionamento v1.0.217
-  assert.ok(['1.0.217', '1.0.218', '1.0.219', '1.0.220', '1.0.221', '1.0.222', '1.0.223', '1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.233', '1.0.234', '1.0.235'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão 1.0.217 ou superior');
-  assert.ok(['1.0.217', '1.0.218', '1.0.219', '1.0.220', '1.0.221', '1.0.222', '1.0.223', '1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.233', '1.0.234', '1.0.235'].includes(versionJson.version), 'version.json deve ter versão 1.0.217 ou superior');
+  assert.ok(['1.0.217', '1.0.218', '1.0.219', '1.0.220', '1.0.221', '1.0.222', '1.0.223', '1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.233', '1.0.234', '1.0.235', '1.0.236'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão 1.0.217 ou superior');
+  assert.ok(['1.0.217', '1.0.218', '1.0.219', '1.0.220', '1.0.221', '1.0.222', '1.0.223', '1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.233', '1.0.234', '1.0.235', '1.0.236'].includes(versionJson.version), 'version.json deve ter versão 1.0.217 ou superior');
   assert.ok(/script\.js\?v=1\.0\.\d+/.test(html), 'index.html deve referenciar script.js');
   assert.ok(/style\.css\?v=1\.0\.\d+/.test(html), 'index.html deve referenciar style.css');
   assert.ok(/vortex-vip-v1\.0\.\d+/.test(swContent), 'sw.js deve conter cache vortex-vip');
@@ -14322,8 +14322,8 @@ test('Sistema de Chatbot para Resposta Automática da Conta Empresa (v1.0.218)',
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
 
   // 1. Integridade de Versionamento v1.0.218
-  assert.ok(['1.0.218', '1.0.219', '1.0.220', '1.0.221', '1.0.222', '1.0.223', '1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.233', '1.0.234', '1.0.235'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão 1.0.218 ou superior');
-  assert.ok(['1.0.218', '1.0.219', '1.0.220', '1.0.221', '1.0.222', '1.0.223', '1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.233', '1.0.234', '1.0.235'].includes(versionJson.version), 'version.json deve ter versão 1.0.218 ou superior');
+  assert.ok(['1.0.218', '1.0.219', '1.0.220', '1.0.221', '1.0.222', '1.0.223', '1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.233', '1.0.234', '1.0.235', '1.0.236'].includes(win.CURRENT_APP_VERSION), 'script.js deve ter versão 1.0.218 ou superior');
+  assert.ok(['1.0.218', '1.0.219', '1.0.220', '1.0.221', '1.0.222', '1.0.223', '1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.233', '1.0.234', '1.0.235', '1.0.236'].includes(versionJson.version), 'version.json deve ter versão 1.0.218 ou superior');
   assert.ok(/script\.js\?v=1\.0\.\d+/.test(html), 'index.html deve referenciar script.js');
   assert.ok(/style\.css\?v=1\.0\.\d+/.test(html), 'index.html deve referenciar style.css');
   assert.ok(/vortex-vip-v1\.0\.\d+/.test(swContent), 'sw.js deve conter cache vortex-vip');
@@ -14648,9 +14648,9 @@ test('Central de Solicitação de Permissões do App (v1.0.222)', async () => {
 
   // 4. Versionamento 1.0.222
   const currentVer = sandbox.CURRENT_APP_VERSION || sandbox.window.CURRENT_APP_VERSION;
-  assert.ok(['1.0.222', '1.0.223', '1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.233', '1.0.234', '1.0.235'].includes(currentVer), 'Versão do script deve ser compatível');
+  assert.ok(['1.0.222', '1.0.223', '1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.233', '1.0.234', '1.0.235', '1.0.236'].includes(currentVer), 'Versão do script deve ser compatível');
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
-  assert.ok(['1.0.222', '1.0.223', '1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.233', '1.0.234', '1.0.235'].includes(versionJson.version), 'version.json deve ser compatível');
+  assert.ok(['1.0.222', '1.0.223', '1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.233', '1.0.234', '1.0.235', '1.0.236'].includes(versionJson.version), 'version.json deve ser compatível');
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
   assert.ok(/vortex-vip-v1\.0\.\d+/.test(swContent), 'sw.js deve conter cache 1.0.222');
 });
@@ -14676,9 +14676,9 @@ test('Organização Visual do Card de Versão Oficial do App (v1.0.224)', async 
 
   // 3. Versão 1.0.224 consistente
   const manifest = JSON.parse(fs.readFileSync('public/manifest.json', 'utf8'));
-  assert.ok(['1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.233', '1.0.234', '1.0.235'].includes(manifest.version), 'manifest.json deve ter versão compatível');
+  assert.ok(['1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.230', '1.0.230', '1.0.230', '1.0.230', '1.0.233', '1.0.234', '1.0.235', '1.0.236'].includes(manifest.version), 'manifest.json deve ter versão compatível');
   const ver = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
-  assert.ok(['1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.233', '1.0.234', '1.0.235'].includes(ver.version), 'version.json deve ter versão compatível');
+  assert.ok(['1.0.224', '1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.233', '1.0.234', '1.0.235', '1.0.236'].includes(ver.version), 'version.json deve ter versão compatível');
 });
 
 
@@ -14703,8 +14703,8 @@ test('Organização Visual e Compactação do Dropdown de Correspondência do Ch
   assert.ok(css.includes('.chatbot-match-hint-box'), 'CSS deve definir estilo do chatbot-match-hint-box');
 
   // 4. Versão 1.0.225
-  assert.ok(['1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.230', '1.0.230', '1.0.230', '1.0.233', '1.0.234', '1.0.235'].includes(manifest.version), 'manifest.json deve ser 1.0.225 ou superior');
-  assert.ok(['1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.230', '1.0.230', '1.0.230', '1.0.233', '1.0.234', '1.0.235'].includes(versionJson.version), 'version.json deve ser 1.0.225 ou superior');
+  assert.ok(['1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.230', '1.0.230', '1.0.230', '1.0.233', '1.0.234', '1.0.235', '1.0.236'].includes(manifest.version), 'manifest.json deve ser 1.0.225 ou superior');
+  assert.ok(['1.0.225', '1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.231', '1.0.231', '1.0.231', '1.0.231', '1.0.230', '1.0.230', '1.0.230', '1.0.233', '1.0.234', '1.0.235', '1.0.236'].includes(versionJson.version), 'version.json deve ser 1.0.225 ou superior');
 });
 
 test('Organização Responsiva Mobile do Modal do Chatbot Empresa para Celulares (v1.0.226)', async () => {
@@ -14715,8 +14715,8 @@ test('Organização Responsiva Mobile do Modal do Chatbot Empresa para Celulares
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
   // 1. Integridade de Versionamento v1.0.226
-  assert.ok(['1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.231', '1.0.231', '1.0.231', '1.0.230', '1.0.230', '1.0.233', '1.0.234', '1.0.235'].includes(manifest.version), 'manifest.json deve ser 1.0.226 ou superior');
-  assert.ok(['1.0.226', '1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.231', '1.0.231', '1.0.231', '1.0.230', '1.0.230', '1.0.233', '1.0.234', '1.0.235'].includes(versionJson.version), 'version.json deve ser 1.0.226 ou superior');
+  assert.ok(parseInt(manifest.version.split('.')[2], 10) >= 226, 'manifest.json deve ser 1.0.226 ou superior');
+  assert.ok(parseInt(versionJson.version.split('.')[2], 10) >= 226, 'version.json deve ser 1.0.226 ou superior');
   assert.ok(/vortex-vip-v1\.0\.\d+/.test(swContent), 'sw.js deve conter cache vortex-vip-v1.0.226');
   assert.ok(/script\.js\?v=1\.0\.\d+/.test(html), 'index.html deve referenciar script.js');
   assert.ok(/style\.css\?v=1\.0\.\d+/.test(html), 'index.html deve referenciar style.css');
@@ -14743,8 +14743,8 @@ test('Sincronização Dinâmica do Tema do App na Barra de Status e Barra de Nav
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
   // 1. Integridade de Versionamento v1.0.227
-  assert.ok(['1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.231', '1.0.231', '1.0.230', '1.0.233', '1.0.234', '1.0.235'].includes(manifest.version), 'manifest.json deve ser 1.0.227 ou 1.0.228');
-  assert.ok(['1.0.227', '1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.232', '1.0.232', '1.0.232', '1.0.231', '1.0.231', '1.0.230', '1.0.233', '1.0.234', '1.0.235'].includes(versionJson.version), 'version.json deve ser 1.0.227 ou 1.0.228');
+  assert.ok(parseInt(manifest.version.split('.')[2], 10) >= 227, 'manifest.json deve ser 1.0.227 ou superior');
+  assert.ok(parseInt(versionJson.version.split('.')[2], 10) >= 227, 'version.json deve ser 1.0.227 ou superior');
   assert.ok(/vortex-vip-v1\.0\.\d+/.test(swContent), 'sw.js deve conter cache vortex-vip-v1.0.227');
   assert.ok(/script\.js\?v=1\.0\.\d+/.test(html), 'index.html deve referenciar script.js');
   assert.ok(/style\.css\?v=1\.0\.\d+/.test(html), 'index.html deve referenciar style.css');
@@ -14792,8 +14792,8 @@ test('Sincronização da Barra de Navegação Inferior do Celular Android e Mani
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
   // 1. Integridade de Versionamento v1.0.228
-  assert.ok(['1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.233', '1.0.234', '1.0.235'].includes(manifest.version), 'manifest.json deve ser 1.0.228 ou superior');
-  assert.ok(['1.0.228', '1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.233', '1.0.234', '1.0.235'].includes(versionJson.version), 'version.json deve ser 1.0.228 ou superior');
+  assert.ok(parseInt(manifest.version.split('.')[2], 10) >= 228, 'manifest.json deve ser 1.0.228 ou superior');
+  assert.ok(parseInt(versionJson.version.split('.')[2], 10) >= 228, 'version.json deve ser 1.0.228 ou superior');
   assert.ok(/vortex-vip-v1\.0\.\d+/.test(swContent), 'sw.js deve conter cache vortex-vip-v1.0.228 ou superior');
   assert.ok(/script\.js\?v=1\.0\.\d+/.test(html), 'index.html deve referenciar script.js');
   assert.ok(/style\.css\?v=1\.0\.\d+/.test(html), 'index.html deve referenciar style.css');
@@ -14834,9 +14834,9 @@ test('Selo de Verificado Único para Conta Empresa (Verde Neon - Efeito Luz de L
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
   // 1. Integridade de Versionamento v1.0.229 ou v1.0.230
-  assert.ok(['1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.233', '1.0.234', '1.0.235'].includes(manifest.version), 'manifest.json deve ser 1.0.229 ou superior');
-  assert.ok(['1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.233', '1.0.234', '1.0.235'].includes(versionJson.version), 'version.json deve ser 1.0.229 ou superior');
-  assert.ok(['1.0.229', '1.0.230', '1.0.231', '1.0.232', '1.0.233', '1.0.234', '1.0.235'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.229 ou superior');
+  assert.ok(parseInt(manifest.version.split('.')[2], 10) >= 229, 'manifest.json deve ser 1.0.229 ou superior');
+  assert.ok(parseInt(versionJson.version.split('.')[2], 10) >= 229, 'version.json deve ser 1.0.229 ou superior');
+  assert.ok(parseInt(win.CURRENT_APP_VERSION.split('.')[2], 10) >= 229, 'CURRENT_APP_VERSION deve ser 1.0.229 ou superior');
   assert.ok(/vortex-vip-v1\.0\.\d+/.test(swContent), 'sw.js deve conter cache vortex-vip-v1.0.229');
   assert.ok(/script\.js\?v=1\.0\.\d+/.test(html), 'index.html deve referenciar script.js');
   assert.ok(/style\.css\?v=1\.0\.\d+/.test(html), 'index.html deve referenciar style.css');
@@ -14910,9 +14910,9 @@ test('Correção Bilateral da Troca de Chamada de Áudio para Vídeo e Ativaçã
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
   // 1. Integridade de Versionamento v1.0.230 ou v1.0.231
-  assert.ok(['1.0.230', '1.0.231', '1.0.232', '1.0.233', '1.0.234', '1.0.235'].includes(manifest.version), 'manifest.json deve ser 1.0.230 ou superior');
-  assert.ok(['1.0.230', '1.0.231', '1.0.232', '1.0.233', '1.0.234', '1.0.235'].includes(versionJson.version), 'version.json deve ser 1.0.230 ou superior');
-  assert.ok(['1.0.230', '1.0.231', '1.0.232', '1.0.233', '1.0.234', '1.0.235'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.230 ou superior');
+  assert.ok(parseInt(manifest.version.split('.')[2], 10) >= 230, 'manifest.json deve ser 1.0.230 ou superior');
+  assert.ok(parseInt(versionJson.version.split('.')[2], 10) >= 230, 'version.json deve ser 1.0.230 ou superior');
+  assert.ok(parseInt(win.CURRENT_APP_VERSION.split('.')[2], 10) >= 230, 'CURRENT_APP_VERSION deve ser 1.0.230 ou superior');
   assert.ok(/vortex-vip-v1\.0\.\d+/.test(swContent), 'sw.js deve conter cache');
   assert.ok(/script\.js\?v=1\.0\.\d+/.test(html), 'index.html deve referenciar script.js');
   assert.ok(/style\.css\?v=1\.0\.\d+/.test(html), 'index.html deve referenciar style.css');
@@ -14987,9 +14987,9 @@ test('Algoritmo de Segurança de Conversas de Grupo (Anti-Spam, Anti-Golpes, Mí
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
   // 1. Integridade de Versionamento v1.0.231 ou v1.0.232
-  assert.ok(['1.0.231', '1.0.232', '1.0.233', '1.0.234', '1.0.235'].includes(manifest.version), 'manifest.json deve ser 1.0.231 ou superior');
-  assert.ok(['1.0.231', '1.0.232', '1.0.233', '1.0.234', '1.0.235'].includes(versionJson.version), 'version.json deve ser 1.0.231 ou superior');
-  assert.ok(['1.0.231', '1.0.232', '1.0.233', '1.0.234', '1.0.235'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.231 ou superior');
+  assert.ok(parseInt(manifest.version.split('.')[2], 10) >= 231, 'manifest.json deve ser 1.0.231 ou superior');
+  assert.ok(parseInt(versionJson.version.split('.')[2], 10) >= 231, 'version.json deve ser 1.0.231 ou superior');
+  assert.ok(parseInt(win.CURRENT_APP_VERSION.split('.')[2], 10) >= 231, 'CURRENT_APP_VERSION deve ser 1.0.231 ou superior');
   assert.ok(/vortex-vip-v1\.0\.\d+/.test(swContent), 'sw.js deve conter cache vortex-vip');
   assert.ok(/script\.js\?v=1\.0\.\d+/.test(html), 'index.html deve referenciar script.js');
   assert.ok(/style\.css\?v=1\.0\.\d+/.test(html), 'index.html deve referenciar style.css');
@@ -15272,9 +15272,9 @@ test('Sistema de Segurança Global contra Golpe e Fraude VORTEX Shield (Chat, Fe
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
   // 1. Integridade de Versionamento v1.0.232
-  assert.ok(['1.0.232', '1.0.233', '1.0.234', '1.0.235'].includes(manifest.version), 'manifest.json deve ser 1.0.232 ou superior');
-  assert.ok(['1.0.232', '1.0.233', '1.0.234', '1.0.235'].includes(versionJson.version), 'version.json deve ser 1.0.232 ou superior');
-  assert.ok(['1.0.232', '1.0.233', '1.0.234', '1.0.235'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.232 ou superior');
+  assert.ok(parseInt(manifest.version.split('.')[2], 10) >= 232, 'manifest.json deve ser 1.0.232 ou superior');
+  assert.ok(parseInt(versionJson.version.split('.')[2], 10) >= 232, 'version.json deve ser 1.0.232 ou superior');
+  assert.ok(parseInt(win.CURRENT_APP_VERSION.split('.')[2], 10) >= 232, 'CURRENT_APP_VERSION deve ser 1.0.232 ou superior');
   assert.ok(/vortex-vip-v1\.0\.\d+/.test(swContent), 'sw.js deve conter cache vortex-vip');
   assert.ok(/script\.js\?v=1\.0\.\d+/.test(html), 'index.html deve referenciar script.js');
   assert.ok(/style\.css\?v=1\.0\.\d+/.test(html), 'index.html deve referenciar style.css');
@@ -15452,9 +15452,9 @@ test('Sistema de Segurança de Links, Análise de Risco (87%) no Painel ADM e Fo
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
   // 1. Integridade de Versionamento v1.0.233
-  assert.ok(['1.0.233', '1.0.234', '1.0.235'].includes(manifest.version), 'manifest.json deve ser 1.0.233 ou superior');
-  assert.ok(['1.0.233', '1.0.234', '1.0.235'].includes(versionJson.version), 'version.json deve ser 1.0.233 ou superior');
-  assert.ok(['1.0.233', '1.0.234', '1.0.235'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.233 ou superior');
+  assert.ok(parseInt(manifest.version.split('.')[2], 10) >= 233, 'manifest.json deve ser 1.0.233 ou superior');
+  assert.ok(parseInt(versionJson.version.split('.')[2], 10) >= 233, 'version.json deve ser 1.0.233 ou superior');
+  assert.ok(parseInt(win.CURRENT_APP_VERSION.split('.')[2], 10) >= 233, 'CURRENT_APP_VERSION deve ser 1.0.233 ou superior');
   assert.ok(/vortex-vip-v1\.0\.\d+/.test(swContent), 'sw.js deve conter cache vortex-vip');
   assert.ok(/script\.js\?v=1\.0\.\d+/.test(html), 'index.html deve referenciar script.js');
   assert.ok(/style\.css\?v=1\.0\.\d+/.test(html), 'index.html deve referenciar style.css');
@@ -15609,13 +15609,13 @@ test('Verificado Completo em todo o VORTEX e Aviso Vermelho para Links Não Reco
   const html = fs.readFileSync('public/index.html', 'utf8');
 
   // 1. Integridade de Versionamento v1.0.234
-  assert.ok(['1.0.234', '1.0.235'].includes(manifest.version), 'manifest.json deve ser 1.0.234 ou 1.0.235');
-  assert.ok(['1.0.234', '1.0.235'].includes(versionJson.version), 'version.json deve ser 1.0.234 ou 1.0.235');
-  assert.ok(['1.0.234', '1.0.235'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.234 ou 1.0.235');
-  assert.ok(swContent.includes('vortex-vip-v1.0.234') || swContent.includes('vortex-vip-v1.0.235'), 'sw.js deve conter cache vortex-vip-v1.0.234 ou 1.0.235');
-  assert.ok(html.includes('script.js?v=1.0.234') || html.includes('script.js?v=1.0.235'), 'index.html deve referenciar script.js?v=1.0.234 ou 1.0.235');
-  assert.ok(html.includes('style.css?v=1.0.234') || html.includes('style.css?v=1.0.235'), 'index.html deve referenciar style.css?v=1.0.234 ou 1.0.235');
-  assert.ok(html.includes('v1.0.234 ⚡') || html.includes('v1.0.235 ⚡'), 'index.html deve exibir pill de versão v1.0.234 ou 1.0.235 ⚡');
+  assert.ok(parseInt(manifest.version.split('.')[2], 10) >= 234, 'manifest.json deve ser 1.0.234 ou superior');
+  assert.ok(parseInt(versionJson.version.split('.')[2], 10) >= 234, 'version.json deve ser 1.0.234 ou superior');
+  assert.ok(parseInt(win.CURRENT_APP_VERSION.split('.')[2], 10) >= 234, 'CURRENT_APP_VERSION deve ser 1.0.234 ou superior');
+  assert.ok(/vortex-vip-v1\.0\.\d+/.test(swContent), 'sw.js deve conter cache vortex-vip');
+  assert.ok(/script\.js\?v=1\.0\.\d+/.test(html), 'index.html deve referenciar script.js');
+  assert.ok(/style\.css\?v=1\.0\.\d+/.test(html), 'index.html deve referenciar style.css');
+  assert.ok(/v1\.0\.\d+\s*⚡/.test(html), 'index.html deve exibir pill de versão');
 
   // 2. Elementos de Feedback no DOM em index.html
   assert.ok(html.includes('id="company-btn-link-feedback"'), 'index.html deve conter #company-btn-link-feedback sob o input do botão');
@@ -15737,13 +15737,13 @@ test('Efeitos Sonoros e Animações dos Emojis do Story v1.0.235', async () => {
   const css = fs.readFileSync('public/style.css', 'utf8');
 
   // 1. Integridade de Versionamento v1.0.235
-  assert.strictEqual(manifest.version, '1.0.235', 'manifest.json deve ser 1.0.235');
-  assert.strictEqual(versionJson.version, '1.0.235', 'version.json deve ser 1.0.235');
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.235', 'CURRENT_APP_VERSION deve ser 1.0.235');
-  assert.ok(swContent.includes('vortex-vip-v1.0.235'), 'sw.js deve conter cache vortex-vip-v1.0.235');
-  assert.ok(html.includes('script.js?v=1.0.235'), 'index.html deve referenciar script.js?v=1.0.235');
-  assert.ok(html.includes('style.css?v=1.0.235'), 'index.html deve referenciar style.css?v=1.0.235');
-  assert.ok(html.includes('v1.0.235 ⚡'), 'index.html deve exibir pill de versão v1.0.235 ⚡');
+  assert.ok(parseInt(manifest.version.split('.')[2], 10) >= 235, 'manifest.json deve ser 1.0.235 ou superior');
+  assert.ok(parseInt(versionJson.version.split('.')[2], 10) >= 235, 'version.json deve ser 1.0.235 ou superior');
+  assert.ok(parseInt(win.CURRENT_APP_VERSION.split('.')[2], 10) >= 235, 'CURRENT_APP_VERSION deve ser 1.0.235 ou superior');
+  assert.ok(/vortex-vip-v1\.0\.\d+/.test(swContent), 'sw.js deve conter cache vortex-vip');
+  assert.ok(/script\.js\?v=1\.0\.\d+/.test(html), 'index.html deve referenciar script.js');
+  assert.ok(/style\.css\?v=1\.0\.\d+/.test(html), 'index.html deve referenciar style.css');
+  assert.ok(/v1\.0\.\d+\s*⚡/.test(html), 'index.html deve exibir pill de versão');
 
   // 2. Elementos no DOM em index.html e Estilos em style.css
   assert.ok(html.includes('id="story-emoji-burst-container"'), 'index.html deve conter #story-emoji-burst-container');
@@ -15810,4 +15810,94 @@ test('Efeitos Sonoros e Animações dos Emojis do Story v1.0.235', async () => {
   const heroHeart = burstContainer.children.find(c => c.className && c.className.includes('story-hero-emoji') && c.innerText === '❤️');
   assert.ok(heroHeart, 'Deve criar emoji herói com coração ❤️');
   assert.strictEqual(heroHeart.innerText, '❤️');
+});
+
+test('Preview da Logo e Metadados Open Graph para Compartilhamento em Redes Sociais (WhatsApp, Instagram, Facebook, Telegram e Twitter) v1.0.236', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+  const doc = win.document;
+
+  const manifest = JSON.parse(fs.readFileSync('public/manifest.json', 'utf8'));
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+  const html = fs.readFileSync('public/index.html', 'utf8');
+  const css = fs.readFileSync('public/style.css', 'utf8');
+
+  // 1. Integridade de Versionamento v1.0.236
+  assert.strictEqual(manifest.version, '1.0.236', 'manifest.json deve ser 1.0.236');
+  assert.strictEqual(versionJson.version, '1.0.236', 'version.json deve ser 1.0.236');
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.236', 'CURRENT_APP_VERSION deve ser 1.0.236');
+  assert.ok(swContent.includes('vortex-vip-v1.0.236'), 'sw.js deve conter cache vortex-vip-v1.0.236');
+  assert.ok(html.includes('script.js?v=1.0.236'), 'index.html deve referenciar script.js?v=1.0.236');
+  assert.ok(html.includes('style.css?v=1.0.236'), 'index.html deve referenciar style.css?v=1.0.236');
+  assert.ok(html.includes('v1.0.236 ⚡'), 'index.html deve exibir pill de versão v1.0.236 ⚡');
+
+  // 2. Metadados Open Graph em index.html (Exigidos pelo WhatsApp, Instagram, Facebook, Telegram)
+  assert.ok(html.includes('property="og:site_name" content="VORTEX VIP"'), 'Deve conter og:site_name VORTEX VIP');
+  assert.ok(html.includes('property="og:title" content="VORTEX VIP - Mensagens em Tempo Real & Plataforma Exclusiva"'), 'Deve conter og:title');
+  assert.ok(html.includes('property="og:type" content="website"'), 'Deve conter og:type website');
+  assert.ok(html.includes('property="og:url" content="https://menssagem-dx.web.app/"'), 'Deve conter og:url absoluto');
+  assert.ok(html.includes('property="og:image" content="https://menssagem-dx.web.app/icons/vortex-vip-512.png"'), 'Deve conter og:image absoluto com a logo 512');
+  assert.ok(html.includes('property="og:image:secure_url" content="https://menssagem-dx.web.app/icons/vortex-vip-512.png"'), 'Deve conter og:image:secure_url HTTPS');
+  assert.ok(html.includes('property="og:image:type" content="image/png"'), 'Deve conter og:image:type image/png');
+  assert.ok(html.includes('property="og:image:width" content="512"'), 'Deve conter og:image:width 512');
+  assert.ok(html.includes('property="og:image:height" content="512"'), 'Deve conter og:image:height 512');
+  assert.ok(html.includes('property="og:locale" content="pt_BR"'), 'Deve conter og:locale pt_BR');
+
+  // 3. Metadados Twitter / X Card
+  assert.ok(html.includes('name="twitter:card" content="summary"'), 'Deve conter twitter:card summary');
+  assert.ok(html.includes('name="twitter:title" content="VORTEX VIP - Mensagens em Tempo Real & Plataforma Exclusiva"'), 'Deve conter twitter:title');
+  assert.ok(html.includes('name="twitter:image" content="https://menssagem-dx.web.app/icons/vortex-vip-512.png"'), 'Deve conter twitter:image');
+
+  // 4. Schema.org Microdata, Canonical e image_src
+  assert.ok(html.includes('itemprop="image" content="https://menssagem-dx.web.app/icons/vortex-vip-512.png"'), 'Deve conter itemprop="image" para scrapers e Google');
+  assert.ok(html.includes('rel="image_src" type="image/png" href="https://menssagem-dx.web.app/icons/vortex-vip-512.png"'), 'Deve conter link rel="image_src" para suporte legado do WhatsApp');
+  assert.ok(html.includes('rel="canonical" href="https://menssagem-dx.web.app/"'), 'Deve conter link canonical');
+  assert.ok(html.includes('name="description"'), 'Deve conter meta description');
+
+  // 5. Validação da Imagem da Logo no Disco (Ícone 512 Otimizado < 300KB para WhatsApp)
+  assert.ok(fs.existsSync('public/icons/vortex-vip-512.png'), 'vortex-vip-512.png deve existir');
+  const logoStats = fs.statSync('public/icons/vortex-vip-512.png');
+  assert.ok(logoStats.size > 100000, 'Logo deve ter alta definição (>100KB)');
+  assert.ok(logoStats.size < 307200, 'Logo deve ter tamanho menor que 300KB para compatibilidade total com o crawler do WhatsApp');
+
+  // 6. Elementos no DOM e Estilos CSS para Compartilhar App
+  assert.ok(html.includes('id="share-app-setting-item"'), 'index.html deve conter #share-app-setting-item');
+  assert.ok(html.includes('id="share-vortex-app-btn"'), 'index.html deve conter botão #share-vortex-app-btn');
+  assert.ok(css.includes('.share-app-setting-item'), 'style.css deve estilizar .share-app-setting-item');
+  assert.ok(css.includes('.share-app-action-btn'), 'style.css deve estilizar .share-app-action-btn');
+
+  // 7. Teste Funcional da Função shareVortexApp
+  assert.strictEqual(typeof win.shareVortexApp, 'function', 'shareVortexApp deve estar exportada no window');
+
+  // Simular compartilhamento direto para WhatsApp
+  let openedUrl = '';
+  win.open = (u) => { openedUrl = u; };
+  const waResult = await win.shareVortexApp({ platform: 'whatsapp' });
+  assert.strictEqual(waResult.success, true);
+  assert.strictEqual(waResult.method, 'whatsapp');
+  assert.ok(openedUrl.includes('api.whatsapp.com/send?text='), 'Deve gerar URL da API do WhatsApp');
+  assert.ok(openedUrl.includes('https%3A%2F%2Fmenssagem-dx.web.app%2F'), 'Deve conter o link oficial codificado');
+
+  // Simular compartilhamento para Facebook
+  const fbResult = await win.shareVortexApp({ platform: 'facebook' });
+  assert.strictEqual(fbResult.success, true);
+  assert.ok(openedUrl.includes('facebook.com/sharer/sharer.php?u='), 'Deve gerar link do Facebook');
+
+  // Simular compartilhamento para Telegram
+  const tgResult = await win.shareVortexApp({ platform: 'telegram' });
+  assert.strictEqual(tgResult.success, true);
+  assert.ok(openedUrl.includes('t.me/share/url?url='), 'Deve gerar link do Telegram');
+
+  // Simular compartilhamento para X (Twitter)
+  const xResult = await win.shareVortexApp({ platform: 'x' });
+  assert.strictEqual(xResult.success, true);
+  assert.ok(openedUrl.includes('twitter.com/intent/tweet?text='), 'Deve gerar link do X/Twitter');
+
+  // Testar clique no botão #share-vortex-app-btn
+  const shareBtn = doc.getElementById('share-vortex-app-btn');
+  assert.ok(shareBtn, '#share-vortex-app-btn deve existir');
+  assert.doesNotThrow(() => {
+    shareBtn.click();
+  }, 'Clicar no botão de compartilhar não deve disparar erros');
 });
