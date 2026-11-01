@@ -2876,8 +2876,37 @@ header h1 span {
 }
 
 .setting-info { display: flex; flex-direction: column; gap: 3px; }
-.setting-info span { font-size: 0.92rem; font-weight: 500; color: #ffffff; }
+.setting-info span { font-size: 0.92rem; font-weight: 500; color: #ffffff; display: inline-flex; align-items: center; gap: 8px; }
+.setting-info span i,
+.setting-info span svg { width: 18px; height: 18px; vertical-align: middle; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .setting-info small { color: var(--text-dim); font-size: 0.75rem; }
+
+/* Centralização do Título com Ícone em Armazenamento e Cache (v1.0.242) */
+.storage-cleaner-title,
+#storage-cleaner-setting-item .setting-info span {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    font-size: 0.92rem !important;
+    font-weight: 500 !important;
+    color: #ffffff !important;
+    line-height: 1 !important;
+    vertical-align: middle !important;
+}
+
+.storage-cleaner-icon,
+#storage-cleaner-setting-item .setting-info span i,
+#storage-cleaner-setting-item .setting-info span svg {
+    width: 18px !important;
+    height: 18px !important;
+    vertical-align: middle !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+    margin: 0 !important;
+    color: var(--text-main, #ffffff) !important;
+}
 
 .setting-item input[type="text"],
 .setting-item input[type="tel"],
