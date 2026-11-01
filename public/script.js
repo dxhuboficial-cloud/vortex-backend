@@ -10268,12 +10268,31 @@ async function displayCurrentStory() {
     }
 }
 
-function updateStoryViewersUI(storyData) {
+export function getStoryReactionsList(storyData) {
+    if (!storyData) return [];
+    if (Array.isArray(storyData.reactionsList)) {
+        return storyData.reactionsList;
+    }
+    if (Array.isArray(storyData.reactions)) {
+        return storyData.reactions;
+    }
+    if (storyData.reactions && typeof storyData.reactions === 'object') {
+        return Object.values(storyData.reactions);
+    }
+    return [];
+}
+
+export function updateStoryViewersUI(storyData) {
+    if (!storyData) return;
     const views = storyData.views || {};
-    const reactions = storyData.reactions || {};
-    const replies = storyData.replies || [];
+    const reactionsList = getStoryReactionsList(storyData);
+    const repliesList = storyData.replies || [];
 
     const totalViews = Object.keys(views).length;
+    const totalReactions = reactionsList.length;
+    const totalReplies = repliesList.length;
+    const totalAll = totalReactions + totalReplies;
+
     const viewsCountText = document.getElementById('story-views-count-text');
     const totalViewsText = document.getElementById('sheet-total-views-text');
 
@@ -10283,10 +10302,12 @@ function updateStoryViewersUI(storyData) {
     const pillViews = document.getElementById('pill-views-count');
     const pillReactions = document.getElementById('pill-reactions-count');
     const pillReplies = document.getElementById('pill-replies-count');
+    const pillAll = document.getElementById('pill-all-count');
 
-    if (pillViews) pillViews.innerText = totalViews;
-    if (pillReactions) pillReactions.innerText = Object.keys(reactions).length;
-    if (pillReplies) pillReplies.innerText = replies.length;
+    if (pillViews) pillViews.innerText = String(totalViews);
+    if (pillReactions) pillReactions.innerText = String(totalReactions);
+    if (pillReplies) pillReplies.innerText = String(totalReplies);
+    if (pillAll) pillAll.innerText = String(totalAll);
 
     const sheet = document.getElementById('story-viewers-sheet');
     if (sheet && sheet.classList.contains('active')) {
@@ -10601,18 +10622,20 @@ document.querySelectorAll('.tab-pill-btn').forEach(btn => {
     });
 });
 
-function renderViewersSheetTab(tab, story) {
+export function renderViewersSheetTab(tab = 'views', story) {
     const listEl = document.getElementById('viewers-sheet-list');
     if (!listEl) return;
+    if (!story) story = activeStoryList[currentStoryIndex];
+    if (!story) return;
 
     if (tab === 'views') {
         const views = story.views || {};
         const entries = Object.values(views).sort((a, b) => (b.viewedAt || 0) - (a.viewedAt || 0));
         if (entries.length === 0) {
             listEl.innerHTML = `
-                <div style="text-align: center; padding: 35px 15px; color: var(--text-dim);">
-                    <i data-lucide="eye-off" style="width: 40px; height: 40px; margin-bottom: 8px;"></i>
-                    <p style="font-size: 0.9rem; color: #fff; font-weight: 600;">Nenhuma visualização ainda</p>
+                <div class="viewer-empty-state">
+                    <i data-lucide="eye-off"></i>
+                    <p>Nenhuma visualização ainda</p>
                     <small>Quando seus contatos visualizarem este status, eles aparecerão aqui ao vivo.</small>
                 </div>
             `;
@@ -10622,13 +10645,16 @@ function renderViewersSheetTab(tab, story) {
 
         listEl.innerHTML = entries.map(v => {
             const timeStr = v.viewedAt ? formatLastSeen(v.viewedAt) : 'Visualizado recentemente';
+            const avatarUrl = v.avatar || '';
+            const fullName = (v.name || 'Contato') + (v.surname ? ' ' + v.surname : '');
+            const username = v.username ? (v.username.startsWith('@') ? v.username : '@' + v.username) : '@usuario';
             return `
-                <div class="viewer-row-item">
+                <div class="viewer-row-item" data-uid="${v.uid || ''}">
                     <div class="viewer-user-box">
-                        <div class="avatar sm" style="background-image: url('${v.avatar || ''}');"></div>
+                        <div class="avatar sm viewer-avatar" style="background-image: url('${avatarUrl}');"></div>
                         <div class="viewer-user-names">
-                            <span class="viewer-name-text">${v.name} ${v.surname || ''}</span>
-                            <span class="viewer-handle-text">${v.username || '@usuario'}</span>
+                            <span class="viewer-name-text">${fullName}</span>
+                            <span class="viewer-handle-text">${username}</span>
                         </div>
                     </div>
                     <span class="viewer-time-text">${timeStr}</span>
@@ -10637,13 +10663,14 @@ function renderViewersSheetTab(tab, story) {
         }).join('');
 
     } else if (tab === 'reactions') {
-        const reactions = story.reactions || {};
-        const entries = Object.values(reactions).sort((a, b) => (b.reactedAt || 0) - (a.reactedAt || 0));
+        const reactionsList = getStoryReactionsList(story);
+        // Exibe todas as reações individuais ordenadas da mais recente para a mais antiga
+        const entries = reactionsList.slice().sort((a, b) => (b.reactedAt || 0) - (a.reactedAt || 0));
         if (entries.length === 0) {
             listEl.innerHTML = `
-                <div style="text-align: center; padding: 35px 15px; color: var(--text-dim);">
-                    <i data-lucide="smile" style="width: 40px; height: 40px; margin-bottom: 8px;"></i>
-                    <p style="font-size: 0.9rem; color: #fff; font-weight: 600;">Nenhuma reação ainda</p>
+                <div class="viewer-empty-state">
+                    <i data-lucide="smile"></i>
+                    <p>Nenhuma reação ainda</p>
                     <small>As reações com emojis enviadas ao seu status aparecerão aqui em tempo real.</small>
                 </div>
             `;
@@ -10651,26 +10678,33 @@ function renderViewersSheetTab(tab, story) {
             return;
         }
 
-        listEl.innerHTML = entries.map(r => `
-            <div class="viewer-row-item">
-                <div class="viewer-user-box">
-                    <div class="avatar sm" style="background-image: url('${r.avatar || ''}');"></div>
-                    <div class="viewer-user-names">
-                        <span class="viewer-name-text">${r.name}</span>
-                        <span class="viewer-handle-text">${r.reactedAt ? formatLastSeen(r.reactedAt) : 'Reagiu'}</span>
+        listEl.innerHTML = entries.map(r => {
+            const timeStr = r.reactedAt ? formatLastSeen(r.reactedAt) : 'hoje';
+            const avatarUrl = r.avatar || '';
+            const fullName = r.name || 'Contato';
+            return `
+                <div class="viewer-row-item" data-uid="${r.uid || ''}">
+                    <div class="viewer-user-box">
+                        <div class="avatar sm viewer-avatar" style="background-image: url('${avatarUrl}');"></div>
+                        <div class="viewer-user-names">
+                            <span class="viewer-name-text">${fullName}</span>
+                            <span class="viewer-time-subtext">${timeStr}</span>
+                        </div>
+                    </div>
+                    <div class="viewer-reaction-badge" title="Reagiu com ${r.emoji}">
+                        <span>${r.emoji}</span>
                     </div>
                 </div>
-                <span class="viewer-emoji-tag">${r.emoji}</span>
-            </div>
-        `).join('');
+            `;
+        }).join('');
 
     } else if (tab === 'replies') {
-        const replies = (story.replies || []).slice().reverse();
+        const replies = (story.replies || []).slice().sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
         if (replies.length === 0) {
             listEl.innerHTML = `
-                <div style="text-align: center; padding: 35px 15px; color: var(--text-dim);">
-                    <i data-lucide="message-circle-dashed" style="width: 40px; height: 40px; margin-bottom: 8px;"></i>
-                    <p style="font-size: 0.9rem; color: #fff; font-weight: 600;">Nenhuma mensagem de resposta</p>
+                <div class="viewer-empty-state">
+                    <i data-lucide="message-square"></i>
+                    <p>Nenhuma mensagem de resposta</p>
                     <small>Comentários enviados a este status aparecerão nesta aba em tempo real.</small>
                 </div>
             `;
@@ -10678,21 +10712,134 @@ function renderViewersSheetTab(tab, story) {
             return;
         }
 
-        listEl.innerHTML = replies.map(rep => `
-            <div class="viewer-row-item">
-                <div class="viewer-user-box">
-                    <div class="avatar sm" style="background-image: url('${rep.senderAvatar || ''}');"></div>
-                    <div class="viewer-user-names">
-                        <span class="viewer-name-text">${rep.senderName}</span>
-                        <span class="viewer-handle-text">${rep.createdAt ? formatLastSeen(rep.createdAt) : ''}</span>
+        listEl.innerHTML = replies.map(rep => {
+            const timeStr = rep.createdAt ? formatLastSeen(rep.createdAt) : 'hoje';
+            const avatarUrl = rep.senderAvatar || '';
+            const fullName = rep.senderName || 'Contato';
+            return `
+                <div class="viewer-row-item" data-uid="${rep.senderUid || ''}">
+                    <div class="viewer-user-box">
+                        <div class="avatar sm viewer-avatar" style="background-image: url('${avatarUrl}');"></div>
+                        <div class="viewer-user-names">
+                            <span class="viewer-name-text">${fullName}</span>
+                            <span class="viewer-comment-subtext">${rep.text}</span>
+                        </div>
                     </div>
+                    <span class="viewer-time-text">${timeStr}</span>
                 </div>
-                <div class="viewer-msg-tag">"${rep.text}"</div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
+
+    } else if (tab === 'all') {
+        // Aba "Todas" misturando Reações e Mensagens em ordem cronológica (mais recentes primeiro)
+        const reactionsList = getStoryReactionsList(story).map(r => ({
+            ...r,
+            itemType: 'reaction',
+            timestamp: r.reactedAt || 0
+        }));
+        const repliesList = (story.replies || []).map(rep => ({
+            ...rep,
+            itemType: 'reply',
+            timestamp: rep.createdAt || 0
+        }));
+
+        const mixedItems = [...reactionsList, ...repliesList].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+        if (mixedItems.length === 0) {
+            listEl.innerHTML = `
+                <div class="viewer-empty-state">
+                    <i data-lucide="layers"></i>
+                    <p>Nenhuma atividade ainda</p>
+                    <small>Quando seus contatos reagirem ou comentarem, todas as reações e mensagens aparecerão misturadas aqui.</small>
+                </div>
+            `;
+            if (window.lucide) lucide.createIcons();
+            return;
+        }
+
+        listEl.innerHTML = mixedItems.map(item => {
+            const timeStr = item.timestamp ? formatLastSeen(item.timestamp) : 'hoje';
+            if (item.itemType === 'reaction') {
+                const avatarUrl = item.avatar || '';
+                const fullName = item.name || 'Contato';
+                return `
+                    <div class="viewer-row-item" data-uid="${item.uid || ''}">
+                        <div class="viewer-user-box">
+                            <div class="avatar sm viewer-avatar" style="background-image: url('${avatarUrl}');"></div>
+                            <div class="viewer-user-names">
+                                <span class="viewer-name-text">${fullName}</span>
+                                <span class="viewer-time-subtext">${timeStr}</span>
+                            </div>
+                        </div>
+                        <div class="viewer-reaction-badge" title="Reagiu com ${item.emoji}">
+                            <span>${item.emoji}</span>
+                        </div>
+                    </div>
+                `;
+            } else {
+                const avatarUrl = item.senderAvatar || '';
+                const fullName = item.senderName || 'Contato';
+                return `
+                    <div class="viewer-row-item" data-uid="${item.senderUid || ''}">
+                        <div class="viewer-user-box">
+                            <div class="avatar sm viewer-avatar" style="background-image: url('${avatarUrl}');"></div>
+                            <div class="viewer-user-names">
+                                <span class="viewer-name-text">${fullName}</span>
+                                <span class="viewer-comment-subtext">${item.text}</span>
+                            </div>
+                        </div>
+                        <span class="viewer-time-text">${timeStr}</span>
+                    </div>
+                `;
+            }
+        }).join('');
     }
 
+    // Ao clicar em uma linha, abrir conversa com o contato correspondente
+    listEl.querySelectorAll('.viewer-row-item').forEach(row => {
+        row.style.cursor = 'pointer';
+        row.addEventListener('click', () => {
+            const targetUid = row.dataset.uid;
+            if (targetUid && currentUser && targetUid !== currentUser.uid && targetUid !== 'anonymous') {
+                if (typeof openChatByChatIdOrUid === 'function') {
+                    closeViewersSheet();
+                    closeStoryViewer();
+                    openChatByChatIdOrUid(null, targetUid);
+                }
+            }
+        });
+    });
+
     if (window.lucide) lucide.createIcons();
+}
+
+// Espelhar interação (reação ou resposta) do story na conversa privada direta
+export async function sendStoryInteractionToChat(story, interaction = {}) {
+    if (!story || !story.authorUid || !currentUser || story.authorUid === currentUser.uid) {
+        return;
+    }
+    try {
+        const directChatId = [currentUser.uid, story.authorUid].sort().join('_');
+        const now = Date.now();
+        const fullName = (currentProfile?.name || 'Contato') + (currentProfile?.surname ? ' ' + currentProfile.surname : '');
+        const interactionMsg = {
+            senderUid: currentUser.uid,
+            senderName: fullName,
+            senderAvatar: currentProfile?.avatar || '',
+            type: interaction.type === 'story_reaction' ? 'story_reaction' : 'story_reply',
+            text: interaction.text || '',
+            emoji: interaction.emoji || '',
+            storyId: story.id,
+            storyMedia: story.mediaUrl || story.imageUrl || story.videoUrl || '',
+            createdAt: now
+        };
+
+        if (typeof addDoc === 'function' && typeof collection === 'function') {
+            await addDoc(collection(db, 'chats', directChatId, 'messages'), interactionMsg);
+        }
+    } catch (err) {
+        console.warn('Erro ao espelhar interação do story na conversa:', err);
+    }
 }
 
 // Resposta ao Story (Exclusivamente para a janelinha do Story)
@@ -10705,10 +10852,13 @@ async function sendStoryReply(text) {
     const storyRef = doc(db, 'stories', story.id);
 
     const isAnon = Boolean(story.hasAnonymousQuestion);
+    const fullName = (currentProfile.name || 'Contato') + (currentProfile.surname ? ' ' + currentProfile.surname : '');
+    const username = currentProfile.username ? (currentProfile.username.startsWith('@') ? currentProfile.username : '@' + currentProfile.username) : '';
     const replyItem = {
         id: 'rep_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
         senderUid: isAnon ? 'anonymous' : currentUser.uid,
-        senderName: isAnon ? 'Anônimo 🤫' : (currentProfile.name || 'Contato'),
+        senderName: isAnon ? 'Anônimo 🤫' : fullName,
+        senderUsername: isAnon ? '' : username,
         senderAvatar: isAnon ? '' : (currentProfile.avatar || ''),
         isAnonymous: isAnon,
         text: cleanText,
@@ -10719,10 +10869,26 @@ async function sendStoryReply(text) {
         const storySnap = await getDoc(storyRef);
         let currentReplies = [];
         if (storySnap.exists() && storySnap.data().replies) {
-            currentReplies = storySnap.data().replies;
+            currentReplies = [...storySnap.data().replies];
+        } else if (story.replies) {
+            currentReplies = [...story.replies];
         }
         currentReplies.push(replyItem);
         await setDoc(storyRef, { replies: currentReplies }, { merge: true });
+
+        // Atualiza em memória imediatamente
+        if (activeStoryList[currentStoryIndex] && activeStoryList[currentStoryIndex].id === story.id) {
+            activeStoryList[currentStoryIndex].replies = currentReplies;
+            updateStoryViewersUI(activeStoryList[currentStoryIndex]);
+        }
+
+        // Espelhar na conversa privada se não for anônimo
+        if (story.authorUid && story.authorUid !== currentUser.uid && !isAnon) {
+            sendStoryInteractionToChat(story, {
+                type: 'story_reply',
+                text: cleanText
+            });
+        }
 
         playSound(replySendSound);
         if (isAnon) {
@@ -11035,20 +11201,47 @@ document.querySelectorAll('.story-emoji-btn').forEach(btn => {
         
         if (story && currentUser) {
             const storyRef = doc(db, 'stories', story.id);
+            const reactionId = 'rx_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+            const fullName = (currentProfile.name || 'Contato') + (currentProfile.surname ? ' ' + currentProfile.surname : '');
+            const username = currentProfile.username ? (currentProfile.username.startsWith('@') ? currentProfile.username : '@' + currentProfile.username) : '';
             const reactionData = {
+                id: reactionId,
                 uid: currentUser.uid,
                 emoji: emoji,
-                name: currentProfile.name || 'Contato',
+                name: fullName,
+                username: username,
                 avatar: currentProfile.avatar || '',
                 reactedAt: Date.now()
             };
-            setDoc(storyRef, {
-                reactions: {
-                    [currentUser.uid]: reactionData
+
+            try {
+                // Recuperar reações existentes preservando todas as reações individuais (mesmo usuário pode reagir múltiplas vezes)
+                const storySnap = await getDoc(storyRef);
+                let currentReactions = [];
+                if (storySnap.exists()) {
+                    const sData = storySnap.data();
+                    currentReactions = getStoryReactionsList(sData).slice();
+                } else if (story) {
+                    currentReactions = getStoryReactionsList(story).slice();
                 }
-            }, { merge: true })
-            .then(() => {
+
+                currentReactions.push(reactionData);
+
+                // Persistir histórico completo de reações
+                await setDoc(storyRef, {
+                    reactions: currentReactions,
+                    reactionsList: currentReactions
+                }, { merge: true });
+
+                // Atualizar objeto local em memória para atualização instantânea da UI
+                if (activeStoryList[currentStoryIndex] && activeStoryList[currentStoryIndex].id === story.id) {
+                    activeStoryList[currentStoryIndex].reactions = currentReactions;
+                    activeStoryList[currentStoryIndex].reactionsList = currentReactions;
+                    updateStoryViewersUI(activeStoryList[currentStoryIndex]);
+                }
+
                 showToast("Reação Enviada", `Reagiu com ${emoji}!`, "green");
+
                 // Notificar o dono do story sobre a reação (se não for o próprio)
                 if (story.authorUid && story.authorUid !== currentUser.uid) {
                     sendActivityNotification(story.authorUid, 'like_story', {
@@ -11057,9 +11250,17 @@ document.querySelectorAll('.story-emoji-btn').forEach(btn => {
                         senderAvatar: currentProfile?.avatar || '',
                         emoji
                     });
+
+                    // Espelhar na conversa privada para que as reações e mensagens se misturem no chat
+                    sendStoryInteractionToChat(story, {
+                        type: 'story_reaction',
+                        emoji: emoji,
+                        text: `${emoji} Reagiu ao seu status`
+                    });
                 }
-            })
-            .catch((err) => console.error("Erro ao registrar reação:", err));
+            } catch (err) {
+                console.error("Erro ao registrar reação:", err);
+            }
         }
     });
 });
@@ -21342,7 +21543,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.236';
+export const CURRENT_APP_VERSION = '1.0.237';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -21866,6 +22067,10 @@ if (typeof window !== 'undefined') {
     window.updateSystemThemeColor = updateSystemThemeColor;
     window.getSystemThemeColorForProfile = getSystemThemeColorForProfile;
     window.shareVortexApp = shareVortexApp;
+    window.getStoryReactionsList = getStoryReactionsList;
+    window.updateStoryViewersUI = updateStoryViewersUI;
+    window.renderViewersSheetTab = renderViewersSheetTab;
+    window.sendStoryInteractionToChat = sendStoryInteractionToChat;
 }
 
 // Compartilhamento Oficial do Link do App VORTEX VIP (com Preview da Logo no WhatsApp/Instagram/Facebook)
