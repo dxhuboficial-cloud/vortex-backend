@@ -24655,6 +24655,38 @@ video::-internal-media-controls-download-button {
         min-width: 62px;
         text-align: center;
     }
+
+    .global-security-card {
+        padding: 12px 14px;
+        gap: 8px;
+    }
+
+    .global-security-header-row {
+        gap: 8px;
+    }
+
+    .global-security-title-wrap {
+        gap: 7px;
+    }
+
+    .global-security-shield-icon {
+        width: 19px;
+        height: 19px;
+    }
+
+    .global-security-title {
+        font-size: 0.86rem;
+    }
+
+    .global-security-active-pill {
+        font-size: 0.64rem;
+        padding: 2.5px 7px;
+        gap: 4px;
+    }
+
+    .global-security-sub {
+        font-size: 0.70rem;
+    }
 }
 
 @media (max-width: 380px) {
@@ -24805,6 +24837,29 @@ video::-internal-media-controls-download-button {
         min-width: 54px;
         text-align: center;
     }
+
+    .global-security-card {
+        padding: 10px 12px;
+        gap: 8px;
+    }
+
+    .global-security-shield-icon {
+        width: 17px;
+        height: 17px;
+    }
+
+    .global-security-title {
+        font-size: 0.80rem;
+    }
+
+    .global-security-active-pill {
+        font-size: 0.58rem;
+        padding: 2px 6px;
+    }
+
+    .global-security-sub {
+        font-size: 0.66rem;
+    }
 }
 
 /* Card de Versão Oficial nas Configurações (v1.0.224) */
@@ -24929,6 +24984,7 @@ video::-internal-media-controls-download-button {
    SEGURANÇA GLOBAL VORTEX SHIELD 🛡️ (v1.0.232)
    ========================================================================== */
 
+/* Card de Segurança Global nas Configurações (v1.0.245) */
 .global-security-card {
     background: linear-gradient(135deg, rgba(20, 20, 32, 0.95), rgba(10, 25, 18, 0.95));
     border: 1px solid rgba(57, 255, 20, 0.35);
@@ -24936,7 +24992,7 @@ video::-internal-media-controls-download-button {
     padding: 14px 16px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35), 0 0 10px rgba(57, 255, 20, 0.1);
     box-sizing: border-box;
     width: 100%;
@@ -24946,59 +25002,75 @@ video::-internal-media-controls-download-button {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
+    gap: 8px;
+    width: 100%;
 }
 
 .global-security-title-wrap {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
+    min-width: 0;
+    flex: 1;
 }
 
 .global-security-shield-icon {
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
     color: var(--accent, #39ff14);
     filter: drop-shadow(0 0 6px var(--accent, #39ff14));
-}
-
-.global-security-title-col {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
+    flex-shrink: 0;
 }
 
 .global-security-title {
-    font-size: 0.94rem;
+    font-size: 0.92rem;
     font-weight: 700;
     color: #fff;
-    letter-spacing: 0.3px;
-}
-
-.global-security-sub {
-    font-size: 0.74rem;
-    color: var(--text-dim, #94a3b8);
+    letter-spacing: 0.2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
 }
 
 .global-security-active-pill {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
+    gap: 4px;
     background: rgba(57, 255, 20, 0.15);
     border: 1px solid rgba(57, 255, 20, 0.4);
     color: var(--accent, #39ff14);
-    padding: 3px 9px;
+    padding: 3px 8px;
     border-radius: 20px;
-    font-size: 0.72rem;
-    font-weight: 700;
+    font-size: 0.68rem;
+    font-weight: 800;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.4px;
+    box-shadow: 0 0 10px rgba(57, 255, 20, 0.2);
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .global-security-active-pill i,
 .global-security-active-pill svg {
     width: 12px;
     height: 12px;
+    flex-shrink: 0;
+}
+
+.global-security-title-col {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: 100%;
+}
+
+.global-security-sub {
+    font-size: 0.74rem;
+    color: var(--text-dim, #94a3b8);
+    line-height: 1.35;
+    margin: 0;
+    display: block;
 }
 
 .global-security-features-list {
