@@ -26164,7 +26164,8 @@ video::-internal-media-controls-download-button {
 .btn-secondary-glass {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    justify-content: center;
+    gap: 8px;
     background: rgba(255, 255, 255, 0.06);
     border: 1px solid rgba(255, 255, 255, 0.15);
     color: var(--text-main, #f1f5f9);
@@ -26174,11 +26175,88 @@ video::-internal-media-controls-download-button {
     font-weight: 700;
     cursor: pointer;
     transition: all 0.2s ease;
+    text-align: center;
+    line-height: 1;
+    white-space: nowrap;
 }
 
 .btn-secondary-glass:hover {
     background: rgba(255, 255, 255, 0.12);
     border-color: rgba(255, 255, 255, 0.3);
+}
+
+.btn-secondary-glass i,
+.btn-secondary-glass svg,
+.btn-secondary-glass .lucide {
+    width: 16px !important;
+    height: 16px !important;
+    flex-shrink: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    vertical-align: middle !important;
+}
+
+.btn-secondary-glass span {
+    display: inline-flex !important;
+    align-items: center !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+}
+
+/* Botão Primário Neon dos Modais: Centralização do Título com Ícone (v1.0.247) */
+.btn-primary-neon {
+    background: linear-gradient(135deg, #39ff14 0%, #00cc44 100%) !important;
+    color: #000000 !important;
+    font-weight: 800 !important;
+    font-size: 0.85rem !important;
+    padding: 10px 18px !important;
+    border-radius: 10px !important;
+    border: none !important;
+    cursor: pointer !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    box-shadow: 0 2px 14px rgba(57, 255, 20, 0.4) !important;
+    transition: all 0.2s ease !important;
+    text-align: center !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+    box-sizing: border-box !important;
+}
+
+.btn-primary-neon:hover {
+    transform: translateY(-1px) scale(1.02) !important;
+    box-shadow: 0 4px 22px rgba(57, 255, 20, 0.65) !important;
+}
+
+.btn-primary-neon:active {
+    transform: translateY(0) scale(0.98) !important;
+}
+
+.btn-primary-neon i,
+.btn-primary-neon svg,
+.btn-primary-neon .lucide {
+    width: 17px !important;
+    height: 17px !important;
+    min-width: 17px !important;
+    min-height: 17px !important;
+    flex-shrink: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    color: #000000 !important;
+    stroke-width: 2.5px !important;
+    vertical-align: middle !important;
+}
+
+.btn-primary-neon span {
+    display: inline-flex !important;
+    align-items: center !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+    font-weight: 800 !important;
 }
 
 .privacy-modal-actions-footer .btn-primary-neon {
