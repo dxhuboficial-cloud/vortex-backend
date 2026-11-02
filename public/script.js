@@ -21489,7 +21489,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.245';
+export const CURRENT_APP_VERSION = '1.0.246';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -23364,6 +23364,74 @@ export function initGlobalSecurityUI() {
     openBtn?.addEventListener('click', openModal);
     closeBtn?.addEventListener('click', closeModal);
     confirmBtn?.addEventListener('click', closeModal);
+}
+
+/* ==========================================================================
+   VORTEX VIP v1.0.246: POLÍTICA DE PRIVACIDADE OFICIAL (LGPD & TRANSPARÊNCIA)
+   ========================================================================== */
+
+export function openPrivacyPolicyModal() {
+    const modal = document.getElementById('privacy-policy-modal');
+    if (modal) {
+        modal.style.display = 'flex';
+        modal.setAttribute('aria-hidden', 'false');
+        if (window.lucide && typeof window.lucide.createIcons === 'function') {
+            window.lucide.createIcons();
+        }
+    }
+}
+
+export function closePrivacyPolicyModal() {
+    const modal = document.getElementById('privacy-policy-modal');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.setAttribute('aria-hidden', 'true');
+    }
+}
+
+export function initPrivacyPolicyUI() {
+    const openBtn = document.getElementById('open-privacy-policy-modal-btn');
+    const closeBtn = document.getElementById('close-privacy-policy-modal');
+    const confirmBtn = document.getElementById('confirm-privacy-policy-btn');
+    const authLink = document.getElementById('auth-privacy-policy-link');
+    const modal = document.getElementById('privacy-policy-modal');
+
+    openBtn?.addEventListener('click', (e) => {
+        e.preventDefault();
+        openPrivacyPolicyModal();
+    });
+
+    closeBtn?.addEventListener('click', (e) => {
+        e.preventDefault();
+        closePrivacyPolicyModal();
+    });
+
+    confirmBtn?.addEventListener('click', (e) => {
+        e.preventDefault();
+        closePrivacyPolicyModal();
+    });
+
+    // Abrir modal in-app pelo link da tela de login se for clique comum
+    authLink?.addEventListener('click', (e) => {
+        if (!e.ctrlKey && !e.metaKey && modal) {
+            e.preventDefault();
+            openPrivacyPolicyModal();
+        }
+    });
+
+    // Fechar ao clicar fora do card
+    modal?.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            closePrivacyPolicyModal();
+        }
+    });
+
+    // Fechar com a tecla ESC
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal && modal.style.display !== 'none') {
+            closePrivacyPolicyModal();
+        }
+    });
 }
 
 /* ==========================================================================
@@ -38093,6 +38161,9 @@ window.handleCallSwitchedToVideo = handleCallSwitchedToVideo;
     window.recordSecurityIncident = recordSecurityIncident;
     window.globalFraudIncidents = globalFraudIncidents;
     window.initGlobalSecurityUI = initGlobalSecurityUI;
+    window.openPrivacyPolicyModal = openPrivacyPolicyModal;
+    window.closePrivacyPolicyModal = closePrivacyPolicyModal;
+    window.initPrivacyPolicyUI = initPrivacyPolicyUI;
     // Links & Risco da Plataforma (v1.0.233)
     window.analyzeUrlSecurity = analyzeUrlSecurity;
     window.registerPlatformLink = registerPlatformLink;
@@ -38613,6 +38684,7 @@ if (typeof window !== 'undefined') {
     initCompanyChatbotControls();
     initPermissionsManager();
     initGlobalSecurityUI();
+    initPrivacyPolicyUI();
     initLinkSecurityUI();
 }
 

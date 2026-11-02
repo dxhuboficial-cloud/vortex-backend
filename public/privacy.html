@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Política de Privacidade Oficial | VORTEX VIP ⚡</title>
+    
+    <!-- Meta Tags e SEO -->
+    <meta name="description" content="Política de Privacidade Oficial do VORTEX VIP. Conheça nossos termos de segurança, proteção de dados e conformidade com a LGPD (Lei 13.709/2018).">
+    <meta name="author" content="DxHub Tecnologia">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://menssagem-dx.web.app/privacy.html">
+
+    <!-- Open Graph & Social Cards -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://menssagem-dx.web.app/privacy.html">
+    <meta property="og:title" content="Política de Privacidade | VORTEX VIP ⚡">
+    <meta property="og:description" content="Proteção de dados, transparência e segurança de nível quântico. Saiba como seus dados são protegidos no VORTEX VIP.">
+    <meta property="og:image" content="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
+    <meta name="theme-color" content="#0d0f17">
+
+    <!-- Favicon e Ícones -->
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.246">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.246">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.246">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+
+    <style>
+        :root {
+            --bg-base: #0a0c14;
+            --bg-card: rgba(18, 22, 36, 0.85);
+            --bg-card-border: rgba(57, 255, 20, 0.22);
+            --bg-card-hover: rgba(26, 32, 52, 0.95);
+            --accent: #39ff14;
+            --accent-glow: rgba(57, 255, 20, 0.35);
+            --accent-cyan: #00f5ff;
+            --accent-yellow: #fff01f;
+            --accent-red: #ff3b30;
+            --text-main: #f1f5f9;
+            --text-dim: #94a3b8;
+            --text-muted: #64748b;
+            --font-main: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background: var(--bg-base);
+            color: var(--text-main);
+            line-height: 1.65;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 15% 15%, rgba(57, 255, 20, 0.08) 0%, transparent 40%),
+                radial-gradient(circle at 85% 75%, rgba(0, 245, 255, 0.06) 0%, transparent 40%),
+                radial-gradient(circle at 50% 50%, rgba(10, 12, 20, 0.98) 0%, #0a0c14 100%);
+            background-attachment: fixed;
+        }
+
+        /* Top Navigation Header */
+        .site-header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            background: rgba(10, 12, 20, 0.82);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 14px 24px;
+        }
+
+        .header-container {
+            max-width: 1080px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .brand-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .brand-logo-img {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            box-shadow: 0 0 12px rgba(57, 255, 20, 0.35);
+        }
+
+        .brand-text-col {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .brand-name {
+            font-size: 1.15rem;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .brand-name span {
+            color: var(--accent);
+            text-shadow: 0 0 8px var(--accent-glow);
+        }
+
+        .brand-sub {
+            font-size: 0.72rem;
+            color: var(--text-dim);
+            font-weight: 500;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: 10px;
+            font-size: 0.84rem;
+            font-weight: 700;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .header-btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: var(--text-main);
+        }
+
+        .header-btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.25);
+        }
+
+        .header-btn-primary {
+            background: var(--accent);
+            color: #000;
+            border: none;
+            box-shadow: 0 0 14px var(--accent-glow);
+        }
+
+        .header-btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 0 20px rgba(57, 255, 20, 0.6);
+        }
+
+        /* Main Content Layout */
+        .page-main {
+            flex: 1;
+            max-width: 1080px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 40px 24px 60px;
+            display: grid;
+            grid-template-columns: 260px 1fr;
+            gap: 36px;
+        }
+
+        /* Sidebar / Table of Contents */
+        .privacy-sidebar {
+            position: sticky;
+            top: 90px;
+            align-self: start;
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 20px;
+            backdrop-filter: blur(12px);
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .sidebar-title {
+            font-size: 0.82rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .toc-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .toc-link {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-dim);
+            text-decoration: none;
+            font-size: 0.82rem;
+            font-weight: 600;
+            padding: 6px 10px;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .toc-link:hover {
+            color: var(--accent);
+            background: rgba(57, 255, 20, 0.08);
+        }
+
+        .sidebar-compliance-badge {
+            margin-top: 10px;
+            padding: 12px;
+            background: rgba(57, 255, 20, 0.06);
+            border: 1px solid rgba(57, 255, 20, 0.2);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            font-size: 0.74rem;
+            color: var(--text-dim);
+        }
+
+        .sidebar-compliance-badge strong {
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Content Area */
+        .privacy-content {
+            display: flex;
+            flex-direction: column;
+            gap: 32px;
+        }
+
+        /* Hero Banner */
+        .hero-banner {
+            background: linear-gradient(135deg, rgba(20, 26, 46, 0.95), rgba(10, 28, 20, 0.95));
+            border: 1px solid var(--bg-card-border);
+            border-radius: 20px;
+            padding: 32px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4), 0 0 20px rgba(57, 255, 20, 0.08);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-banner::after {
+            content: '';
+            position: absolute;
+            top: -50px;
+            right: -50px;
+            width: 160px;
+            height: 160px;
+            background: radial-gradient(circle, rgba(57, 255, 20, 0.25) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .hero-pill-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(57, 255, 20, 0.15);
+            border: 1px solid rgba(57, 255, 20, 0.4);
+            color: var(--accent);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            margin-bottom: 14px;
+        }
+
+        .hero-title {
+            font-size: 2rem;
+            font-weight: 800;
+            line-height: 1.25;
+            margin-bottom: 12px;
+            color: #ffffff;
+        }
+
+        .hero-title span {
+            color: var(--accent);
+            text-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        .hero-desc {
+            font-size: 0.96rem;
+            color: var(--text-dim);
+            max-width: 680px;
+            margin-bottom: 18px;
+        }
+
+        .hero-meta-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            padding-top: 14px;
+        }
+
+        .hero-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .hero-meta-item strong {
+            color: var(--text-main);
+        }
+
+        /* Privacy Cards & Sections */
+        .policy-card {
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 18px;
+            padding: 28px;
+            backdrop-filter: blur(12px);
+            transition: border-color 0.2s ease;
+        }
+
+        .policy-card:hover {
+            border-color: rgba(57, 255, 20, 0.3);
+        }
+
+        .card-header-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 18px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            padding-bottom: 14px;
+        }
+
+        .card-icon-wrap {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: rgba(57, 255, 20, 0.12);
+            border: 1px solid rgba(57, 255, 20, 0.3);
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            box-shadow: 0 0 10px rgba(57, 255, 20, 0.15);
+        }
+
+        .card-icon-wrap.cyan {
+            background: rgba(0, 245, 255, 0.12);
+            border-color: rgba(0, 245, 255, 0.3);
+            color: var(--accent-cyan);
+            box-shadow: 0 0 10px rgba(0, 245, 255, 0.15);
+        }
+
+        .card-icon-wrap.yellow {
+            background: rgba(255, 240, 31, 0.12);
+            border-color: rgba(255, 240, 31, 0.3);
+            color: var(--accent-yellow);
+            box-shadow: 0 0 10px rgba(255, 240, 31, 0.15);
+        }
+
+        .card-icon-wrap.red {
+            background: rgba(255, 59, 48, 0.12);
+            border-color: rgba(255, 59, 48, 0.3);
+            color: var(--accent-red);
+            box-shadow: 0 0 10px rgba(255, 59, 48, 0.15);
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #ffffff;
+            letter-spacing: 0.2px;
+        }
+
+        .card-body p {
+            margin-bottom: 14px;
+            font-size: 0.92rem;
+            color: var(--text-dim);
+            line-height: 1.65;
+        }
+
+        .card-body p:last-child {
+            margin-bottom: 0;
+        }
+
+        .card-body ul, .card-body ol {
+            margin: 12px 0 18px 22px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            font-size: 0.91rem;
+            color: var(--text-dim);
+        }
+
+        .card-body li strong {
+            color: var(--text-main);
+        }
+
+        /* Highlight Grid */
+        .highlight-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 14px;
+            margin: 18px 0;
+        }
+
+        .highlight-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            border-radius: 12px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .highlight-item-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.88rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .highlight-item-header i {
+            color: var(--accent);
+            width: 18px;
+            height: 18px;
+        }
+
+        .highlight-item-desc {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            line-height: 1.45;
+        }
+
+        /* Callout Box */
+        .callout-box {
+            background: rgba(57, 255, 20, 0.06);
+            border-left: 4px solid var(--accent);
+            border-radius: 0 12px 12px 0;
+            padding: 14px 18px;
+            margin: 16px 0;
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+
+        .callout-box.danger {
+            background: rgba(255, 59, 48, 0.08);
+            border-left-color: var(--accent-red);
+        }
+
+        .callout-box i {
+            color: var(--accent);
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .callout-box.danger i {
+            color: var(--accent-red);
+        }
+
+        .callout-text {
+            font-size: 0.86rem;
+            color: var(--text-dim);
+            line-height: 1.5;
+        }
+
+        .callout-text strong {
+            color: var(--text-main);
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        /* Table styles */
+        .policy-table-wrap {
+            overflow-x: auto;
+            margin: 18px 0;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .policy-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            text-align: left;
+        }
+
+        .policy-table th {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--accent);
+            font-weight: 700;
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            white-space: nowrap;
+        }
+
+        .policy-table td {
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: var(--text-dim);
+            vertical-align: top;
+        }
+
+        .policy-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .policy-table td strong {
+            color: var(--text-main);
+        }
+
+        /* Contact DPO Card */
+        .dpo-card {
+            background: linear-gradient(135deg, rgba(26, 32, 54, 0.9), rgba(15, 20, 35, 0.9));
+            border: 1px solid rgba(0, 245, 255, 0.3);
+            border-radius: 16px;
+            padding: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .dpo-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .dpo-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .dpo-email {
+            font-family: var(--font-mono);
+            color: var(--accent-cyan);
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .dpo-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--accent-cyan);
+            color: #000;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            box-shadow: 0 0 12px rgba(0, 245, 255, 0.3);
+        }
+
+        .dpo-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 18px rgba(0, 245, 255, 0.5);
+        }
+
+        /* Footer */
+        .site-footer {
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(10, 12, 20, 0.95);
+            padding: 30px 24px;
+            margin-top: auto;
+        }
+
+        .footer-container {
+            max-width: 1080px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .footer-links {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .footer-link {
+            color: var(--text-dim);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .footer-link:hover {
+            color: var(--accent);
+        }
+
+        /* Print styles */
+        @media print {
+            body {
+                background: #fff;
+                color: #000;
+            }
+            .site-header, .privacy-sidebar, .site-footer, .header-actions {
+                display: none !important;
+            }
+            .page-main {
+                display: block;
+                max-width: 100%;
+                padding: 0;
+            }
+            .policy-card, .hero-banner {
+                border: 1px solid #ccc;
+                box-shadow: none;
+                background: #fff;
+                color: #000;
+                break-inside: avoid;
+            }
+            .card-title, .hero-title {
+                color: #000;
+            }
+            .card-body p, .card-body li {
+                color: #333;
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 860px) {
+            .page-main {
+                grid-template-columns: 1fr;
+                padding: 24px 16px 40px;
+                gap: 24px;
+            }
+
+            .privacy-sidebar {
+                position: relative;
+                top: 0;
+                display: none; /* Hide sticky sidebar on mobile */
+            }
+
+            .hero-title {
+                font-size: 1.5rem;
+            }
+
+            .hero-banner {
+                padding: 22px 18px;
+            }
+
+            .policy-card {
+                padding: 20px 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header de Navegação -->
+    <header class="site-header">
+        <div class="header-container">
+            <a href="/" class="brand-link" title="Voltar ao VORTEX VIP">
+                <img src="icons/vortex-vip-192.png?v=1.0.246" alt="VORTEX VIP" class="brand-logo-img">
+                <div class="brand-text-col">
+                    <span class="brand-name">VORTEX <span>VIP</span> ⚡</span>
+                    <span class="brand-sub">Rede Segura & Quântica</span>
+                </div>
+            </a>
+
+            <div class="header-actions">
+                <button type="button" class="header-btn header-btn-secondary" onclick="window.print()" title="Imprimir ou Salvar em PDF">
+                    <i data-lucide="printer"></i> <span>Imprimir</span>
+                </button>
+                <a href="/" class="header-btn header-btn-primary" title="Abrir o App">
+                    <i data-lucide="arrow-left"></i> <span>Voltar ao App</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Conteúdo Principal -->
+    <main class="page-main">
+
+        <!-- Barra Lateral de Sumário Rápido -->
+        <aside class="privacy-sidebar">
+            <div class="sidebar-title">
+                <i data-lucide="list"></i> Sumário da Política
+            </div>
+            <ul class="toc-list">
+                <li><a href="#controlador" class="toc-link"><i data-lucide="building"></i> 1. O Controlador</a></li>
+                <li><a href="#dados-coletados" class="toc-link"><i data-lucide="database"></i> 2. Dados Coletados</a></li>
+                <li><a href="#permissoes" class="toc-link"><i data-lucide="key"></i> 3. Permissões de Aparelho</a></li>
+                <li><a href="#finalidade" class="toc-link"><i data-lucide="target"></i> 4. Finalidade do Uso</a></li>
+                <li><a href="#seguranca" class="toc-link"><i data-lucide="shield-check"></i> 5. Segurança & Criptografia</a></li>
+                <li><a href="#ferramentas" class="toc-link"><i data-lucide="eye-off"></i> 6. Ferramentas Nativas</a></li>
+                <li><a href="#compartilhamento" class="toc-link"><i data-lucide="share-2"></i> 7. Compartilhamento</a></li>
+                <li><a href="#direitos-lgpd" class="toc-link"><i data-lucide="user-check"></i> 8. Direitos LGPD</a></li>
+                <li><a href="#exclusao" class="toc-link"><i data-lucide="trash-2"></i> 9. Exclusão de Dados</a></li>
+                <li><a href="#contato-dpo" class="toc-link"><i data-lucide="mail"></i> 10. Contato do DPO</a></li>
+            </ul>
+
+            <div class="sidebar-compliance-badge">
+                <strong><i data-lucide="check-circle-2"></i> Conformidade LGPD</strong>
+                <span>Esta política atende integralmente à Lei Geral de Proteção de Dados (Lei nº 13.709/2018).</span>
+            </div>
+        </aside>
+
+        <!-- Corpo do Documento -->
+        <div class="privacy-content">
+
+            <!-- Hero Banner -->
+            <section class="hero-banner">
+                <div class="hero-pill-badge">
+                    <i data-lucide="shield"></i> Documento Oficial de Privacidade
+                </div>
+                <h1 class="hero-title">Política de Privacidade <span>VORTEX VIP</span> ⚡</h1>
+                <p class="hero-desc">
+                    Sua privacidade é inegociável. Esta Política descreve com transparência e clareza como coletamos, protegemos, tratamos e descartamos suas informações em conformidade com a legislação brasileira (LGPD) e as melhores práticas globais de cibersegurança.
+                </p>
+                <div class="hero-meta-row">
+                    <div class="hero-meta-item">
+                        <i data-lucide="calendar"></i> Última Atualização: <strong>Novembro de 2026</strong>
+                    </div>
+                    <div class="hero-meta-item">
+                        <i data-lucide="tag"></i> Versão Oficial: <strong>v1.0.246 ⚡</strong>
+                    </div>
+                    <div class="hero-meta-item">
+                        <i data-lucide="globe"></i> Jurisdição: <strong>República Federativa do Brasil</strong>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 1. Controlador e Informações Institucionais -->
+            <section class="policy-card" id="controlador">
+                <div class="card-header-row">
+                    <div class="card-icon-wrap">
+                        <i data-lucide="building"></i>
+                    </div>
+                    <h2 class="card-title">1. Identificação do Controlador</h2>
+                </div>
+                <div class="card-body">
+                    <p>
+                        O aplicativo e plataforma <strong>VORTEX VIP</strong> ("Plataforma", "Serviço", "Nós") é gerido e controlado pela <strong>DxHub Tecnologia & Inovação</strong>, com sede no Brasil, atuando como <strong>Controladora de Dados Pessoais</strong> nos termos do artigo 5º, inciso VI, da Lei Geral de Proteção de Dados Pessoais (Lei nº 13.709/2018 - "LGPD").
+                    </p>
+                    <p>
+                        Para qualquer esclarecimento, exercício de direitos ou dúvidas sobre suas informações pessoais, nosso canal oficial de comunicação com o Encarregado pelo Tratamento de Dados (DPO) é: <strong>dxhub.oficial@gmail.com</strong>.
+                    </p>
+                </div>
+            </section>
+
+            <!-- 2. Dados Coletados -->
+            <section class="policy-card" id="dados-coletados">
+                <div class="card-header-row">
+                    <div class="card-icon-wrap cyan">
+                        <i data-lucide="database"></i>
+                    </div>
+                    <h2 class="card-title">2. Dados Pessoais que Coletamos</h2>
+                </div>
+                <div class="card-body">
+                    <p>
+                        Praticamos o princípio da <strong>minimização de dados</strong>: coletamos apenas os dados estritamente fundamentais para viabilizar as funcionalidades da plataforma de mensagens, stories, feeds e proteção anti-golpes:
+                    </p>
+
+                    <div class="policy-table-wrap">
+                        <table class="policy-table">
+                            <thead>
+                                <tr>
+                                    <th>Categoria</th>
+                                    <th>Dados Coletados</th>
+                                    <th>Finalidade</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>Autenticação Google</strong></td>
+                                    <td>Nome, e-mail e URL do avatar fornecidos via Google OAuth 2.0.</td>
+                                    <td>Criação e login seguro da conta sem necessidade de armazenar senhas em texto puro.</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Perfil do Usuário</strong></td>
+                                    <td>@username exclusivo, biografia, foto de perfil personalizada e status online.</td>
+                                    <td>Identificação nas conversas, busca entre contatos e personalização do perfil.</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Comunicações</strong></td>
+                                    <td>Mensagens de texto, mensagens de voz (áudios), mídias (fotos/vídeos), arquivos e enquetes.</td>
+                                    <td>Transmissão instantânea bilateral e em grupos com criptografia em trânsito e repouso.</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Stories & Posts</strong></td>
+                                    <td>Fotos/vídeos temporários de 24h, legendas, reações e comentários no feed.</td>
+                                    <td>Interação social. Stories são automaticamente descartados após expiração.</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Conta Comercial (Opcional)</strong></td>
+                                    <td>Chave Pix voluntária, links de redes sociais (WhatsApp/site) e catálogo de produtos.</td>
+                                    <td>Exibição pública facilitada para transações legítimas autorizadas pelo titular.</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Segurança & Logs</strong></td>
+                                    <td>Endereço IP e hash de integridade das requisições via VORTEX Shield 🛡️.</td>
+                                    <td>Prevenção ativa contra ataques DDoS, sequestro de contas, fraudes e links maliciosos.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="callout-box">
+                        <i data-lucide="shield-alert"></i>
+                        <div class="callout-text">
+                            <strong>Mensagens de Visualização Única (View-Once)</strong>
+                            Mídias enviadas na modalidade de visualização única são destruídas permanentemente da memória e da tela imediatamente após a visualização pelo destinatário, sem permanência em cache.
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 3. Permissões de Aparelho -->
+            <section class="policy-card" id="permissoes">
+                <div class="card-header-row">
+                    <div class="card-icon-wrap yellow">
+                        <i data-lucide="key"></i>
+                    </div>
+                    <h2 class="card-title">3. Permissões de Dispositivo Solicitadas</h2>
+                </div>
+                <div class="card-body">
+                    <p>
+                        Para operar como um aplicativo completo de comunicação, o VORTEX VIP solicita permissões específicas no seu navegador ou sistema operacional. Nenhuma dessas permissões é utilizada silenciosamente em segundo plano:
+                    </p>
+
+                    <div class="highlight-grid">
+                        <div class="highlight-item">
+                            <div class="highlight-item-header">
+                                <i data-lucide="camera"></i> Câmera
+                            </div>
+                            <span class="highlight-item-desc">Tirar fotos instantâneas, gravar vídeos para stories e chamadas de vídeo em tempo real.</span>
+                        </div>
+
+                        <div class="highlight-item">
+                            <div class="highlight-item-header">
+                                <i data-lucide="mic"></i> Microfone
+                            </div>
+                            <span class="highlight-item-desc">Gravar mensagens de áudio com cancelamento por deslize e realizar chamadas de voz.</span>
+                        </div>
+
+                        <div class="highlight-item">
+                            <div class="highlight-item-header">
+                                <i data-lucide="bell"></i> Notificações
+                            </div>
+                            <span class="highlight-item-desc">Avisar imediatamente sobre novas mensagens, solicitações de amizade e chamadas recebidas.</span>
+                        </div>
+
+                        <div class="highlight-item">
+                            <div class="highlight-item-header">
+                                <i data-lucide="image"></i> Fotos / Arquivos
+                            </div>
+                            <span class="highlight-item-desc">Permitir que você escolha mídias da sua galeria ou envie documentos voluntariamente no chat.</span>
+                        </div>
+
+                        <div class="highlight-item">
+                            <div class="highlight-item-header">
+                                <i data-lucide="phone"></i> Telefone
+                            </div>
+                            <span class="highlight-item-desc">Gerenciamento de chamadas e controle de áudio durante chamadas de voz e vídeo.</span>
+                        </div>
+
+                        <div class="highlight-item">
+                            <div class="highlight-item-header">
+                                <i data-lucide="fingerprint"></i> Biometria Local
+                            </div>
+                            <span class="highlight-item-desc">Desbloqueio rápido por impressão digital/Face ID via WebAuthn, sem envio dos dados biométricos aos nossos servidores.</span>
+                        </div>
+                    </div>
+
+                    <p style="font-size: 0.85rem; color: var(--text-dim); margin-top: 10px;">
+                        <em>Você pode revogar ou alterar qualquer uma dessas permissões a qualquer instante na Central de Permissões das Configurações do VORTEX VIP ou nas configurações do seu sistema operacional.</em>
+                    </p>
+                </div>
+            </section>
+
+            <!-- 4. Finalidade do Uso -->
+            <section class="policy-card" id="finalidade">
+                <div class="card-header-row">
+                    <div class="card-icon-wrap">
+                        <i data-lucide="target"></i>
+                    </div>
+                    <h2 class="card-title">4. Bases Legais e Finalidades do Tratamento</h2>
+                </div>
+                <div class="card-body">
+                    <p>
+                        Todo tratamento de dados realizado pelo VORTEX VIP apoia-se em bases legais legítimas previstas expressamente no artigo 7º da LGPD:
+                    </p>
+                    <ul>
+                        <li><strong>Execução de Contrato e Termos de Uso (Art. 7º, V):</strong> Viabilizar a criação de contas, autenticação, entrega de mensagens em tempo real, sincronização de contatos, processamento de pagamentos de assinaturas VIP e funcionamento do PWA.</li>
+                        <li><strong>Legítimo Interesse e Prevenção à Fraude (Art. 7º, IX e Art. 11, II, g):</strong> Proteção contra fraudes financeiras (como golpes do falso Pix), detecção de links maliciosos e phishing pelo VORTEX Shield 🛡️, bloqueio de contas comprometidas e moderação de abusos.</li>
+                        <li><strong>Cumprimento de Obrigação Legal (Art. 7º, II):</strong> Armazenamento de registros de conexão e acesso a aplicações conforme determinação do Marco Civil da Internet (Lei nº 12.965/2014, Art. 15).</li>
+                        <li><strong>Consentimento do Titular (Art. 7º, I):</strong> Ativação de recursos opcionais como Conta Comercial, exibição voluntária de Chave Pix no perfil e notificações push.</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- 5. Segurança & Criptografia -->
+            <section class="policy-card" id="seguranca">
+                <div class="card-header-row">
+                    <div class="card-icon-wrap cyan">
+                        <i data-lucide="shield-check"></i>
+                    </div>
+                    <h2 class="card-title">5. Segurança da Informação e Criptografia</h2>
+                </div>
+                <div class="card-body">
+                    <p>
+                        O VORTEX VIP foi desenhado com arquitetura de <strong>Security by Design</strong>. Implementamos medidas técnicas e administrativas rigorosas para salvaguardar suas informações:
+                    </p>
+                    <ul>
+                        <li><strong>Criptografia em Trânsito:</strong> Todo tráfego de dados é protegido com criptografia TLS 1.3 de ponta a ponta com certificados de alta segurança (HTTPS e WSS).</li>
+                        <li><strong>Infraestrutura de Nuvem de Nível Bancário:</strong> Nossos bancos de dados e serviços de hospedagem residem em data centers certificados do <em>Google Cloud Platform / Firebase</em> (ISO/IEC 27001, SOC 1/2/3).</li>
+                        <li><strong>Proteção Contra Links Maliciosos:</strong> O algoritmo de segurança VORTEX Shield analisa proativamente todas as URLs compartilhadas, bloqueando rastreadores de IP, domínios maliciosos e páginas fraudulentas.</li>
+                        <li><strong>Regras Restritivas de Acesso (Security Rules):</strong> O acesso aos documentos no Firestore é rigidamente isolado por regras que garantem que apenas os participantes autorizados de uma conversa tenham acesso às suas respectivas mensagens.</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- 6. Ferramentas Nativas de Privacidade -->
+            <section class="policy-card" id="ferramentas">
+                <div class="card-header-row">
+                    <div class="card-icon-wrap yellow">
+                        <i data-lucide="eye-off"></i>
+                    </div>
+                    <h2 class="card-title">6. Ferramentas Exclusivas de Privacidade do Usuário</h2>
+                </div>
+                <div class="card-body">
+                    <p>
+                        Diferente de outras plataformas, colocamos o controle absoluto da privacidade nas mãos do usuário diretamente no menu de configurações do app:
+                    </p>
+
+                    <div class="highlight-grid">
+                        <div class="highlight-item">
+                            <div class="highlight-item-header">
+                                <i data-lucide="ghost"></i> Modo Fantasma
+                            </div>
+                            <span class="highlight-item-desc">Oculta sua presença online e seu status de "visto por último" em tempo real de todos os contatos.</span>
+                        </div>
+
+                        <div class="highlight-item">
+                            <div class="highlight-item-header">
+                                <i data-lucide="eye-off"></i> Privacidade Máxima
+                            </div>
+                            <span class="highlight-item-desc">Aplica borrão visual nas conversas, revelando o texto apenas quando você passar o mouse ou tocar na mensagem.</span>
+                        </div>
+
+                        <div class="highlight-item">
+                            <div class="highlight-item-header">
+                                <i data-lucide="lock"></i> Bloqueio por PIN
+                            </div>
+                            <span class="highlight-item-desc">Exige senha numérica de 4 dígitos ou biometria para abrir o app, impedindo acessos não autorizados.</span>
+                        </div>
+
+                        <div class="highlight-item">
+                            <div class="highlight-item-header">
+                                <i data-lucide="shield"></i> Conta Privada
+                            </div>
+                            <span class="highlight-item-desc">Oculta seu perfil e seu @username nas buscas públicas da plataforma, permitindo contato apenas com quem você autorizar.</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 7. Compartilhamento com Terceiros -->
+            <section class="policy-card" id="compartilhamento">
+                <div class="card-header-row">
+                    <div class="card-icon-wrap">
+                        <i data-lucide="share-2"></i>
+                    </div>
+                    <h2 class="card-title">7. Compartilhamento de Dados</h2>
+                </div>
+                <div class="card-body">
+                    <div class="callout-box">
+                        <i data-lucide="check-shield"></i>
+                        <div class="callout-text">
+                            <strong>NÃO VENDEMOS SEUS DADOS PESSOAIS</strong>
+                            O VORTEX VIP nunca comercializou, não comercializa e jamais comercializará dados pessoais, listas de contatos ou mensagens com corretores de dados (data brokers) ou empresas de publicidade terceiras.
+                        </div>
+                    </div>
+
+                    <p>
+                        O compartilhamento ocorre unicamente com prestadores de serviço de infraestrutura estritamente essenciais para a operação do sistema:
+                    </p>
+                    <ul>
+                        <li><strong>Google LLC (Firebase / Google Cloud):</strong> Infraestrutura de banco de dados (Firestore), autenticação (Google Identity) e armazenamento em nuvem (Cloud Storage).</li>
+                        <li><strong>Mercado Pago:</strong> Processamento seguro de pagamentos e assinaturas VORTEX VIP, sob rígidos protocolos de conformidade PCI-DSS.</li>
+                        <li><strong>Autoridades Judiciais:</strong> Apenas mediante ordem judicial expressa e fundamentada expedida por juiz competente no âmbito da legislação brasileira.</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- 8. Direitos do Titular de Dados (LGPD) -->
+            <section class="policy-card" id="direitos-lgpd">
+                <div class="card-header-row">
+                    <div class="card-icon-wrap cyan">
+                        <i data-lucide="user-check"></i>
+                    </div>
+                    <h2 class="card-title">8. Seus Direitos como Titular de Dados (Art. 18 LGPD)</h2>
+                </div>
+                <div class="card-body">
+                    <p>
+                        Você possui direitos garantidos por lei sobre seus dados pessoais, que podem ser exercidos diretamente no aplicativo ou mediante contato com nosso DPO:
+                    </p>
+                    <ol>
+                        <li><strong>Confirmação e Acesso:</strong> Saber se tratamos seus dados e solicitar cópia integral das suas informações.</li>
+                        <li><strong>Correção:</strong> Retificar dados incompletos, inexatos ou desatualizados diretamente no painel "Editar Perfil".</li>
+                        <li><strong>Anonimização, Bloqueio ou Eliminação:</strong> Solicitar o expurgo de dados desnecessários ou tratados em desconformidade com a lei.</li>
+                        <li><strong>Portabilidade dos Dados:</strong> Obter seus dados em formato estruturado e legível por máquina.</li>
+                        <li><strong>Revogação do Consentimento:</strong> Desativar funcionalidades opcionais a qualquer instante nas configurações.</li>
+                    </ol>
+                </div>
+            </section>
+
+            <!-- 9. Exclusão Definitiva de Conta e Dados -->
+            <section class="policy-card" id="exclusao">
+                <div class="card-header-row">
+                    <div class="card-icon-wrap red">
+                        <i data-lucide="trash-2"></i>
+                    </div>
+                    <h2 class="card-title">9. Exclusão Definitiva de Conta e Retenção</h2>
+                </div>
+                <div class="card-body">
+                    <p>
+                        Garantimos a você o <strong>direito ao esquecimento total</strong>. Disponibilizamos no menu de configurações a funcionalidade nativa <strong>"Apagar Minha Conta"</strong>.
+                    </p>
+                    
+                    <div class="callout-box danger">
+                        <i data-lucide="alert-octagon"></i>
+                        <div class="callout-text">
+                            <strong>Como funciona a exclusão total imediata:</strong>
+                            Ao clicar em "Apagar Minha Conta" e confirmar sua intenção, o sistema apaga de forma permanente e irreversível seu perfil, fotos de avatar, mensagens enviadas, histórico de stories, catálogo comercial e chave Pix cadastrada.
+                        </div>
+                    </div>
+
+                    <p>
+                        Após a confirmação da exclusão, nenhum dado pessoal ativo permanece retido, excetuando-se estritamente os logs de conexão de internet pelo prazo legal de 6 meses exigido pelo artigo 15 da Lei nº 12.965/2014 (Marco Civil da Internet), findo o qual são sumariamente eliminados.
+                    </p>
+                </div>
+            </section>
+
+            <!-- 10. Contato do DPO / Encarregado -->
+            <section class="policy-card" id="contato-dpo">
+                <div class="card-header-row">
+                    <div class="card-icon-wrap cyan">
+                        <i data-lucide="mail"></i>
+                    </div>
+                    <h2 class="card-title">10. Canal de Comunicação com o DPO</h2>
+                </div>
+                <div class="card-body">
+                    <p>
+                        Para exercer qualquer um dos seus direitos de titular, formalizar denúncias sobre privacidade ou esclarecer dúvidas sobre o tratamento de informações, entre em contato direto com o nosso Encarregado de Proteção de Dados:
+                    </p>
+
+                    <div class="dpo-card">
+                        <div class="dpo-info">
+                            <span class="dpo-title"><i data-lucide="shield-check" style="color:var(--accent-cyan);"></i> Encarregado de Proteção de Dados (DPO)</span>
+                            <span style="font-size: 0.82rem; color: var(--text-dim);">DxHub Tecnologia & Inovação</span>
+                            <span class="dpo-email">dxhub.oficial@gmail.com</span>
+                        </div>
+                        <a href="mailto:dxhub.oficial@gmail.com?subject=Privacidade%20VORTEX%20VIP%20-%20Solicita%C3%A7%C3%A3o%20LGPD" class="dpo-btn" title="Enviar e-mail para o DPO">
+                            <i data-lucide="send"></i> Falar com o DPO
+                        </a>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- Rodapé -->
+    <footer class="site-footer">
+        <div class="footer-container">
+            <div class="footer-brand">
+                <span>© 2026 VORTEX VIP ⚡ — Todos os direitos reservados. DxHub Tecnologia.</span>
+            </div>
+            <div class="footer-links">
+                <a href="/" class="footer-link">Início</a>
+                <a href="privacy.html" class="footer-link" style="color:var(--accent);">Privacidade</a>
+                <a href="#contato-dpo" class="footer-link">Contato DPO</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Script de Inicialização dos Ícones -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            if (window.lucide && typeof window.lucide.createIcons === 'function') {
+                lucide.createIcons();
+            }
+        });
+    </script>
+</body>
+</html>

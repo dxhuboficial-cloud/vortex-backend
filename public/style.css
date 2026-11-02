@@ -25944,3 +25944,268 @@ video::-internal-media-controls-download-button {
     transform: translateY(-1px) scale(1.03) !important;
     box-shadow: 0 4px 20px rgba(57, 255, 20, 0.6) !important;
 }
+
+/* ==========================================================================
+   POLÍTICA DE PRIVACIDADE VORTEX VIP (v1.0.246)
+   ========================================================================== */
+
+/* Link no rodapé do card de autenticação */
+.auth-legal-footer {
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: 0.76rem;
+    color: var(--text-dim, #94a3b8);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    text-align: center;
+    width: 100%;
+}
+
+.auth-privacy-link {
+    color: var(--accent, #39ff14);
+    text-decoration: none;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 8px;
+    background: rgba(57, 255, 20, 0.08);
+    border: 1px solid rgba(57, 255, 20, 0.2);
+    transition: all 0.2s ease;
+}
+
+.auth-privacy-link:hover {
+    background: rgba(57, 255, 20, 0.16);
+    border-color: rgba(57, 255, 20, 0.4);
+    box-shadow: 0 0 10px rgba(57, 255, 20, 0.25);
+}
+
+.auth-privacy-link i,
+.auth-privacy-link svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* Item de Configuração: Política de Privacidade */
+.privacy-policy-setting-row {
+    background: linear-gradient(135deg, rgba(20, 24, 38, 0.8) 0%, rgba(10, 20, 30, 0.8) 100%) !important;
+    border: 1px solid rgba(0, 245, 255, 0.25) !important;
+    border-radius: 14px !important;
+    padding: 12px 14px !important;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.privacy-policy-setting-row:hover {
+    border-color: rgba(0, 245, 255, 0.5) !important;
+    box-shadow: 0 4px 16px rgba(0, 245, 255, 0.15) !important;
+}
+
+.privacy-policy-open-btn {
+    background: linear-gradient(135deg, rgba(0, 245, 255, 0.15) 0%, rgba(0, 245, 255, 0.25) 100%) !important;
+    color: #00f5ff !important;
+    border: 1px solid rgba(0, 245, 255, 0.4) !important;
+    font-weight: 700 !important;
+    font-size: 0.8rem !important;
+    padding: 7px 14px !important;
+    border-radius: 8px !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    flex-shrink: 0;
+}
+
+.privacy-policy-open-btn:hover {
+    background: rgba(0, 245, 255, 0.3) !important;
+    box-shadow: 0 0 12px rgba(0, 245, 255, 0.35) !important;
+    transform: translateY(-1px);
+}
+
+/* Modal In-App de Política de Privacidade */
+.privacy-policy-modal-card {
+    max-width: 620px;
+    width: 95%;
+    max-height: 88vh;
+    display: flex;
+    flex-direction: column;
+    border-radius: 20px;
+    background: linear-gradient(135deg, rgba(16, 20, 34, 0.98), rgba(10, 14, 24, 0.98));
+    border: 1px solid rgba(57, 255, 20, 0.35);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7), 0 0 24px rgba(57, 255, 20, 0.15);
+    overflow: hidden;
+}
+
+.privacy-policy-modal-body {
+    padding: 16px 20px 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    max-height: calc(88vh - 70px);
+}
+
+.privacy-policy-modal-badge-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.privacy-modal-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 9px;
+    border-radius: 16px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    background: rgba(57, 255, 20, 0.12);
+    border: 1px solid rgba(57, 255, 20, 0.3);
+    color: var(--accent, #39ff14);
+}
+
+.privacy-modal-pill.cyan {
+    background: rgba(0, 245, 255, 0.12);
+    border-color: rgba(0, 245, 255, 0.3);
+    color: #00f5ff;
+}
+
+.privacy-modal-pill.yellow {
+    background: rgba(255, 240, 31, 0.12);
+    border-color: rgba(255, 240, 31, 0.3);
+    color: #fff01f;
+}
+
+.privacy-modal-pill i,
+.privacy-modal-pill svg {
+    width: 12px;
+    height: 12px;
+}
+
+.privacy-policy-card-intro {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 0.85rem;
+    color: var(--text-dim, #94a3b8);
+    line-height: 1.5;
+}
+
+.privacy-modal-sections-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.privacy-modal-sec-item {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.privacy-modal-sec-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.88rem;
+    color: #ffffff;
+}
+
+.privacy-modal-sec-header i,
+.privacy-modal-sec-header svg {
+    width: 16px;
+    height: 16px;
+    color: var(--accent, #39ff14);
+}
+
+.privacy-modal-sec-item p {
+    font-size: 0.81rem;
+    color: var(--text-dim, #94a3b8);
+    line-height: 1.45;
+    margin: 0;
+}
+
+.privacy-modal-sec-item p strong {
+    color: #ffffff;
+}
+
+.privacy-modal-sec-item code {
+    background: rgba(0, 245, 255, 0.1);
+    color: #00f5ff;
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-family: monospace;
+}
+
+.privacy-modal-actions-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 6px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    flex-wrap: wrap;
+}
+
+.btn-secondary-glass {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: var(--text-main, #f1f5f9);
+    padding: 10px 16px;
+    border-radius: 10px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-secondary-glass:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.privacy-modal-actions-footer .btn-primary-neon {
+    flex: 1;
+    min-width: 160px;
+}
+
+@media (max-width: 480px) {
+    .privacy-policy-modal-card {
+        width: 100%;
+        max-height: 94vh;
+        border-radius: 16px 16px 0 0;
+        margin-top: auto;
+    }
+
+    .privacy-policy-modal-body {
+        padding: 12px 14px 16px;
+    }
+
+    .privacy-modal-actions-footer {
+        flex-direction: column-reverse;
+    }
+
+    .privacy-modal-actions-footer .btn-secondary-glass,
+    .privacy-modal-actions-footer .btn-primary-neon {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
