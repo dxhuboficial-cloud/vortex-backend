@@ -22937,12 +22937,12 @@ video::-internal-media-controls-download-button {
    11. CHATBOT DE RESPOSTAS AUTOMÁTICAS - CONTA EMPRESA (v1.0.219)
    ========================================================================== */
 
-/* Card de Destaque nas Configurações */
+/* Card de Destaque nas Configurações (v1.0.243) */
 .company-chatbot-card-highlight {
     background: linear-gradient(135deg, rgba(0, 229, 255, 0.08) 0%, rgba(0, 119, 255, 0.04) 100%) !important;
     border: 1px solid rgba(0, 229, 255, 0.28) !important;
     border-radius: 14px;
-    padding: 12px 14px;
+    padding: 14px 16px;
     box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4), inset 0 0 12px rgba(0, 229, 255, 0.06);
     display: flex !important;
     flex-direction: column !important;
@@ -22955,7 +22955,7 @@ video::-internal-media-controls-download-button {
 .company-chatbot-setting-inner {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
     width: 100%;
 }
 
@@ -23017,18 +23017,22 @@ video::-internal-media-controls-download-button {
 .company-chatbot-open-action-btn {
     background: linear-gradient(135deg, #00e5ff, #0099ff) !important;
     color: #000000 !important;
-    font-weight: 800;
-    font-size: 0.8rem;
-    padding: 7px 13px;
-    border-radius: 9px;
+    font-weight: 700;
+    font-size: 0.88rem;
+    padding: 10px 16px;
+    border-radius: 10px;
     border: none;
     cursor: pointer;
-    display: inline-flex;
+    display: flex !important;
     align-items: center;
-    gap: 6px;
-    flex-shrink: 0;
+    justify-content: center;
+    gap: 8px;
+    width: 100% !important;
+    min-height: 40px;
     box-shadow: 0 4px 12px rgba(0, 229, 255, 0.3);
     transition: all 0.2s ease;
+    box-sizing: border-box;
+    margin-top: 4px;
 }
 
 .company-chatbot-open-action-btn:hover {
@@ -23890,8 +23894,10 @@ video::-internal-media-controls-download-button {
     }
 
     .company-chatbot-open-action-btn {
-        padding: 6px 10px;
-        font-size: 0.75rem;
+        width: 100% !important;
+        padding: 9px 12px;
+        font-size: 0.84rem;
+        min-height: 38px;
     }
 
     .profile-chatbot-header-row .profile-field-title {
@@ -23949,19 +23955,22 @@ video::-internal-media-controls-download-button {
    VORTEX VIP ⚡ - CENTRAL DE PERMISSÕES DO APP (v1.0.222)
    ========================================================================== */
 
-/* Card de Permissões no Painel de Configurações (v1.0.241) */
+/* Card de Permissões no Painel de Configurações (v1.0.243) */
 .app-permissions-card-highlight {
     background: linear-gradient(135deg, rgba(0, 229, 255, 0.08) 0%, rgba(0, 255, 102, 0.05) 100%) !important;
     border: 1px solid rgba(0, 229, 255, 0.28) !important;
     border-radius: 14px !important;
-    padding: 12px 14px !important;
+    padding: 14px 16px !important;
     margin-bottom: 12px;
     box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4), inset 0 0 12px rgba(0, 229, 255, 0.04) !important;
     transition: all 0.25s ease;
     display: flex !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    gap: 12px !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+    gap: 10px !important;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .app-permissions-card-highlight:hover {
@@ -23973,7 +23982,7 @@ video::-internal-media-controls-download-button {
     display: flex;
     flex-direction: column;
     gap: 5px;
-    flex: 1;
+    width: 100%;
     min-width: 0;
 }
 
@@ -24031,26 +24040,29 @@ video::-internal-media-controls-download-button {
     margin: 0;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
+    white-space: normal;
 }
 
 .app-permissions-open-action-btn {
-    display: inline-flex;
+    display: flex !important;
     align-items: center;
     justify-content: center;
-    gap: 6px;
+    gap: 8px;
+    width: 100% !important;
+    min-height: 40px;
     background: linear-gradient(135deg, #00e5ff, #0088ff);
     color: #000;
     font-weight: 700;
-    font-size: 0.8rem;
-    padding: 7px 14px;
-    border-radius: 20px;
+    font-size: 0.88rem;
+    padding: 10px 16px;
+    border-radius: 10px;
     border: none;
     cursor: pointer;
     box-shadow: 0 0 10px rgba(0, 229, 255, 0.35);
     transition: all 0.2s ease;
     white-space: nowrap;
-    flex-shrink: 0;
+    box-sizing: border-box;
+    margin-top: 4px;
 }
 
 .app-permissions-open-action-btn:hover {
@@ -24060,8 +24072,8 @@ video::-internal-media-controls-download-button {
 }
 
 .app-permissions-open-action-btn i {
-    width: 14px;
-    height: 14px;
+    width: 16px;
+    height: 16px;
 }
 
 /* Compatibilidade retroativa com seletores internos legados */
@@ -24522,8 +24534,10 @@ video::-internal-media-controls-download-button {
     }
 
     .app-permissions-open-action-btn {
-        padding: 6px 10px;
-        font-size: 0.72rem;
+        width: 100% !important;
+        padding: 9px 12px;
+        font-size: 0.84rem;
+        min-height: 38px;
     }
 
     .permission-item-name-row {
