@@ -1899,8 +1899,9 @@ onAuthStateChanged(auth, async (user) => {
                 checkBannedAccountState();
                 updateAdminUIVisibility();
                 if (typeof updateChatPinUI === 'function') updateChatPinUI();
-    if (typeof updateActiveChatMuteUI === 'function') updateActiveChatMuteUI();
+                if (typeof updateActiveChatMuteUI === 'function') updateActiveChatMuteUI();
                 if (typeof applyPinnedSortToChatList === 'function') applyPinnedSortToChatList();
+                if (typeof checkUserPendingWithdrawalFromProfile === 'function') checkUserPendingWithdrawalFromProfile();
             }
         });
 
@@ -1920,6 +1921,7 @@ onAuthStateChanged(auth, async (user) => {
         listenToAdminReports();
         listenToDeletedUsers();
         loadUserFavoriteTracks();
+        if (typeof checkUserPendingWithdrawal === 'function') checkUserPendingWithdrawal();
         showToast("Conectado", `Bem-vindo, ${currentProfile.name}!`, "green");
     } else {
         currentUser = null;
@@ -1927,6 +1929,7 @@ onAuthStateChanged(auth, async (user) => {
         if (authScreen) authScreen.classList.remove('unlocked');
         detachListeners();
         updateAdminUIVisibility();
+        if (typeof hideWithdrawalUnderReviewScreen === 'function') hideWithdrawalUnderReviewScreen();
     }
 });
 
@@ -21496,7 +21499,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.248';
+export const CURRENT_APP_VERSION = '1.0.249';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -38241,6 +38244,11 @@ window.handleCallSwitchedToVideo = handleCallSwitchedToVideo;
     window.canClaimDailyChest = canClaimDailyChest;
     window.canWithdrawDailyChest = canWithdrawDailyChest;
     window.adminMarkWithdrawalPaid = adminMarkWithdrawalPaid;
+    window.showWithdrawalUnderReviewScreen = showWithdrawalUnderReviewScreen;
+    window.hideWithdrawalUnderReviewScreen = hideWithdrawalUnderReviewScreen;
+    window.checkUserPendingWithdrawal = checkUserPendingWithdrawal;
+    window.handleWithdrawalPaidRealtime = handleWithdrawalPaidRealtime;
+    window.listenToPendingWithdrawal = listenToPendingWithdrawal;
     window.loadAdminWithdrawals = loadAdminWithdrawals;
     window.renderAdminWithdrawals = renderAdminWithdrawals;
     window.initDailyChestControls = initDailyChestControls;
@@ -39059,7 +39067,8 @@ export async function submitChestWithdrawal() {
             createdDate: today
         };
 
-        await addDoc(collection(db, 'withdrawals'), withdrawalData);
+        const docRef = await addDoc(collection(db, 'withdrawals'), withdrawalData);
+        withdrawalData.id = docRef ? docRef.id : `wd_${Date.now()}`;
 
         // Regra atualizada: Se tiver R$ 2,00 ou mais, NÃO zera!
         // O valor restante permanece na conta até que o usuário saque tudo (limite de 1 saque por dia se o valor for alto).
@@ -39068,22 +39077,37 @@ export async function submitChestWithdrawal() {
         currentProfile.rewardCoinsBalance = remainingBalance;
         currentProfile.lastWithdrawalDate = today;
         currentProfile.lastWithdrawalTimestamp = Date.now();
+        currentProfile.pendingWithdrawal = withdrawalData;
+        currentProfile.hasPendingWithdrawal = true;
 
-        await updateDoc(doc(db, 'users', currentUser.uid), {
-            rewardCoinsBalance: remainingBalance,
-            lastWithdrawalDate: today,
-            lastWithdrawalTimestamp: Date.now()
-        });
+        if (typeof updateDoc === 'function' && typeof db !== 'undefined' && currentUser && currentUser.uid) {
+            await updateDoc(doc(db, 'users', currentUser.uid), {
+                rewardCoinsBalance: remainingBalance,
+                lastWithdrawalDate: today,
+                lastWithdrawalTimestamp: Date.now(),
+                pendingWithdrawal: withdrawalData,
+                hasPendingWithdrawal: true
+            }).catch(e => console.warn('[VORTEX] Erro ao sincronizar saque no user:', e));
+        }
+
+        try {
+            if (typeof localStorage !== 'undefined') {
+                localStorage.setItem('vortex_pending_withdrawal', JSON.stringify(withdrawalData));
+            }
+        } catch (_) {}
 
         updateDailyChestUI();
         closeDailyChestWithdrawModal();
         closeDailyChestModal();
 
+        showWithdrawalUnderReviewScreen(withdrawalData);
+        listenToPendingWithdrawal(withdrawalData.id);
+
         const successMsg = remainingBalance > 0
             ? ('Seu saque de R$ 1,00 foi solicitado via Pix! O saldo restante de ' + formatBRLCurrency(remainingBalance) + ' continua seguro na sua conta e poderá ser sacado amanhã (1 saque/dia).')
-            : 'Seu saque de R$ 1,00 foi enviado ao ADM e será processado via Pix.';
+            : 'Seu saque de R$ 1,00 foi enviado ao ADM e está em análise.';
 
-        showToast('Saque Solicitado! 💸', successMsg, 'green');
+        showToast('Saque em Análise ⏳', successMsg, 'green');
     } catch (err) {
         console.error('Erro ao registrar saque:', err);
         if (errorBanner) {
@@ -39222,21 +39246,44 @@ export function renderAdminWithdrawals(filter = 'all', searchQuery = '') {
 export async function adminMarkWithdrawalPaid(withdrawalId, userUid) {
     if (!withdrawalId) return;
     try {
-        await updateDoc(doc(db, 'withdrawals', withdrawalId), {
-            status: 'concluido',
-            paidAt: Date.now()
-        });
+        if (typeof updateDoc === 'function' && typeof db !== 'undefined') {
+            await updateDoc(doc(db, 'withdrawals', withdrawalId), {
+                status: 'concluido',
+                paidAt: Date.now()
+            });
 
-        if (userUid) {
-            await addDoc(collection(db, 'notifications'), {
-                toUid: userUid,
-                type: 'withdrawal_paid',
-                title: 'Saque Pix Pago! 💸',
-                message: 'Seu saque de R$ 1,00 do Baú Diário foi pago com sucesso pela administração da VORTEX VIP!',
-                read: false,
-                createdAt: Date.now(),
-                author: 'Administração VORTEX VIP'
-            }).catch(e => console.warn('Erro ao notificar saque pago:', e));
+            if (userUid) {
+                await updateDoc(doc(db, 'users', userUid), {
+                    pendingWithdrawal: null,
+                    hasPendingWithdrawal: false,
+                    lastPaidWithdrawalId: withdrawalId,
+                    lastPaidWithdrawalAt: Date.now()
+                }).catch(e => console.warn('Erro ao atualizar user pendingWithdrawal:', e));
+
+                await addDoc(collection(db, 'notifications'), {
+                    toUid: userUid,
+                    type: 'withdrawal_paid',
+                    title: 'Saque Pix Pago! 💸',
+                    message: 'Seu saque de R$ 1,00 do Baú Diário foi pago com sucesso pela administração da VORTEX VIP!',
+                    read: false,
+                    createdAt: Date.now(),
+                    author: 'Administração VORTEX VIP'
+                }).catch(e => console.warn('Erro ao notificar saque pago:', e));
+            }
+        }
+
+        // Se o usuário da sessão atual for o beneficiário do saque:
+        if ((currentUser && currentUser.uid === userUid) || (currentProfile && currentProfile.pendingWithdrawal && currentProfile.pendingWithdrawal.id === withdrawalId)) {
+            if (currentProfile) {
+                currentProfile.pendingWithdrawal = null;
+                currentProfile.hasPendingWithdrawal = false;
+            }
+            try {
+                if (typeof localStorage !== 'undefined') {
+                    localStorage.removeItem('vortex_pending_withdrawal');
+                }
+            } catch (_) {}
+            handleWithdrawalPaidRealtime({ id: withdrawalId, amount: 1.00 });
         }
 
         const found = adminWithdrawalsList.find(w => w.id === withdrawalId);
@@ -39250,6 +39297,220 @@ export async function adminMarkWithdrawalPaid(withdrawalId, userUid) {
     } catch (err) {
         console.error('Erro ao pagar saque:', err);
         showToast('Erro', 'Não foi possível marcar o saque como pago.', 'red');
+    }
+}
+
+// --------------------------------------------------------------------------
+// TELA DE SAQUE EM ANÁLISE (v1.0.249)
+// --------------------------------------------------------------------------
+export let pendingWithdrawalUnsubscribe = null;
+
+export function showWithdrawalUnderReviewScreen(data = {}) {
+    const screen = document.getElementById('withdrawal-under-review-screen');
+    if (!screen) return;
+
+    const valEl = document.getElementById('withdrawal-review-val');
+    const pixKeyEl = document.getElementById('withdrawal-review-pix-key');
+    const pixTypeEl = document.getElementById('withdrawal-review-pix-type');
+    const dateEl = document.getElementById('withdrawal-review-datetime');
+    const protocolEl = document.getElementById('withdrawal-review-protocol');
+    const badgeTextEl = document.getElementById('withdrawal-review-status-badge-text');
+    const titleEl = document.getElementById('withdrawal-review-title');
+    const subtitleEl = document.getElementById('withdrawal-review-subtitle');
+    const subBadge = document.getElementById('withdrawal-review-sub-badge');
+    const adminActions = document.getElementById('withdrawal-review-admin-actions');
+    const cardEl = screen.querySelector('.withdrawal-review-card');
+
+    if (cardEl) cardEl.classList.remove('paid');
+
+    const amount = Number(data.amount) || 1.00;
+    if (valEl) valEl.textContent = formatBRLCurrency(amount);
+    if (pixKeyEl) pixKeyEl.textContent = data.pixKey || (currentProfile && currentProfile.pixKey) || 'Chave Pix informada';
+    if (pixTypeEl) pixTypeEl.textContent = (data.pixKeyType || 'pix').toUpperCase();
+
+    const timeVal = data.createdAt ? new Date(data.createdAt).toLocaleString('pt-BR') : new Date().toLocaleString('pt-BR');
+    if (dateEl) dateEl.textContent = timeVal;
+
+    const protoId = data.id ? `#PIX-${String(data.id).slice(0, 8).toUpperCase()}` : '#SAQUE-VORTEX';
+    if (protocolEl) protocolEl.textContent = protoId;
+
+    if (badgeTextEl) badgeTextEl.textContent = 'STATUS: EM ANÁLISE ⏳';
+    if (titleEl) titleEl.textContent = '💠Saque em Análise⏳';
+    if (subtitleEl) subtitleEl.textContent = 'Sua solicitação de saque via Pix foi enviada à administração e está sendo processada.';
+    if (subBadge) subBadge.innerHTML = '<i data-lucide="hourglass" class="withdrawal-review-sub-icon"></i>';
+
+    const isCurrentAdmin = (typeof isAdmin !== 'undefined' && isAdmin) || (currentUser && currentUser.email === 'dxhub.oficial@gmail.com');
+    if (adminActions) {
+        adminActions.style.display = isCurrentAdmin ? 'block' : 'none';
+    }
+
+    screen.style.display = 'flex';
+    screen.setAttribute('aria-hidden', 'false');
+
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+    }
+}
+
+export function hideWithdrawalUnderReviewScreen() {
+    const screen = document.getElementById('withdrawal-under-review-screen');
+    if (!screen) return;
+    screen.style.display = 'none';
+    screen.setAttribute('aria-hidden', 'true');
+}
+
+export function listenToPendingWithdrawal(withdrawalId) {
+    if (!withdrawalId || typeof onSnapshot !== 'function' || typeof db === 'undefined') return;
+    if (typeof pendingWithdrawalUnsubscribe === 'function') {
+        try { pendingWithdrawalUnsubscribe(); } catch (_) {}
+        pendingWithdrawalUnsubscribe = null;
+    }
+
+    try {
+        pendingWithdrawalUnsubscribe = onSnapshot(doc(db, 'withdrawals', withdrawalId), (snap) => {
+            if (!snap || !snap.exists()) return;
+            const data = snap.data();
+            if (data && data.status === 'concluido') {
+                handleWithdrawalPaidRealtime({ id: snap.id, ...data });
+                if (typeof pendingWithdrawalUnsubscribe === 'function') {
+                    pendingWithdrawalUnsubscribe();
+                    pendingWithdrawalUnsubscribe = null;
+                }
+            }
+        }, (err) => {
+            console.warn('[VORTEX] Erro ao monitorar saque pendente:', err);
+        });
+    } catch (err) {
+        console.warn('[VORTEX] Exceção ao registrar listener de saque pendente:', err);
+    }
+}
+
+export function handleWithdrawalPaidRealtime(withdrawalData = {}) {
+    const screen = document.getElementById('withdrawal-under-review-screen');
+    if (!screen) return;
+
+    if (currentProfile) {
+        currentProfile.pendingWithdrawal = null;
+        currentProfile.hasPendingWithdrawal = false;
+    }
+    try {
+        if (typeof localStorage !== 'undefined') {
+            localStorage.removeItem('vortex_pending_withdrawal');
+        }
+    } catch (_) {}
+
+    if (typeof playCoinRewardSound === 'function') {
+        playCoinRewardSound();
+    }
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        try { navigator.vibrate([100, 50, 100, 50, 200]); } catch (_) {}
+    }
+
+    const cardEl = screen.querySelector('.withdrawal-review-card');
+    if (cardEl) cardEl.classList.add('paid');
+
+    const badgeTextEl = document.getElementById('withdrawal-review-status-badge-text');
+    const titleEl = document.getElementById('withdrawal-review-title');
+    const subtitleEl = document.getElementById('withdrawal-review-subtitle');
+    const subBadge = document.getElementById('withdrawal-review-sub-badge');
+
+    if (badgeTextEl) badgeTextEl.textContent = 'PAGAMENTO CONCLUÍDO ✅';
+    if (titleEl) titleEl.innerHTML = '✅ Saque Pix Pago! 💸';
+    if (subtitleEl) subtitleEl.textContent = 'Seu saque de R$ 1,00 foi pago com sucesso pela administração da VORTEX VIP!';
+    if (subBadge) subBadge.innerHTML = '<i data-lucide="check"></i>';
+
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+    }
+
+    setTimeout(() => {
+        hideWithdrawalUnderReviewScreen();
+        if (typeof updateDailyChestUI === 'function') {
+            updateDailyChestUI();
+        }
+        if (typeof showToast === 'function') {
+            showToast('Saque Pix Pago! 💸', 'O valor de R$ 1,00 foi transferido com sucesso!', 'green');
+        }
+    }, 2500);
+}
+
+export async function checkUserPendingWithdrawal() {
+    if (!currentUser) return;
+
+    // 1. Verifica no currentProfile
+    if (currentProfile && currentProfile.pendingWithdrawal && currentProfile.pendingWithdrawal.status === 'pendente') {
+        showWithdrawalUnderReviewScreen(currentProfile.pendingWithdrawal);
+        if (currentProfile.pendingWithdrawal.id) {
+            listenToPendingWithdrawal(currentProfile.pendingWithdrawal.id);
+        }
+        return;
+    }
+
+    // 2. Verifica no localStorage
+    try {
+        if (typeof localStorage !== 'undefined') {
+            const saved = localStorage.getItem('vortex_pending_withdrawal');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                if (parsed && parsed.uid === currentUser.uid && parsed.status === 'pendente') {
+                    showWithdrawalUnderReviewScreen(parsed);
+                    if (parsed.id) {
+                        listenToPendingWithdrawal(parsed.id);
+                    }
+                }
+            }
+        }
+    } catch (_) {}
+
+    // 3. Consulta Firestore se disponível
+    if (typeof query === 'function' && typeof collection === 'function' && typeof db !== 'undefined' && currentUser && currentUser.uid) {
+        try {
+            const q = query(collection(db, 'withdrawals'), where('uid', '==', currentUser.uid), where('status', '==', 'pendente'), limit(1));
+            const snap = await getDocs(q);
+            if (!snap.empty) {
+                const first = snap.docs[0];
+                const data = { id: first.id, ...first.data() };
+                if (currentProfile) {
+                    currentProfile.pendingWithdrawal = data;
+                    currentProfile.hasPendingWithdrawal = true;
+                }
+                try {
+                    if (typeof localStorage !== 'undefined') {
+                        localStorage.setItem('vortex_pending_withdrawal', JSON.stringify(data));
+                    }
+                } catch (_) {}
+                showWithdrawalUnderReviewScreen(data);
+                listenToPendingWithdrawal(first.id);
+            } else {
+                if (currentProfile) {
+                    currentProfile.pendingWithdrawal = null;
+                    currentProfile.hasPendingWithdrawal = false;
+                }
+                try {
+                    if (typeof localStorage !== 'undefined') {
+                        localStorage.removeItem('vortex_pending_withdrawal');
+                    }
+                } catch (_) {}
+                hideWithdrawalUnderReviewScreen();
+            }
+        } catch (err) {
+            console.warn('[VORTEX] Erro ao consultar saques pendentes:', err);
+        }
+    }
+}
+
+export function checkUserPendingWithdrawalFromProfile() {
+    if (!currentProfile) return;
+    if (currentProfile.hasPendingWithdrawal && currentProfile.pendingWithdrawal && currentProfile.pendingWithdrawal.status === 'pendente') {
+        showWithdrawalUnderReviewScreen(currentProfile.pendingWithdrawal);
+        if (currentProfile.pendingWithdrawal.id) {
+            listenToPendingWithdrawal(currentProfile.pendingWithdrawal.id);
+        }
+    } else if (!currentProfile.hasPendingWithdrawal && !currentProfile.pendingWithdrawal) {
+        const screen = document.getElementById('withdrawal-under-review-screen');
+        if (screen && screen.style.display !== 'none' && !screen.querySelector('.withdrawal-review-card')?.classList.contains('paid')) {
+            handleWithdrawalPaidRealtime();
+        }
     }
 }
 
@@ -39277,6 +39538,26 @@ export function initDailyChestControls() {
     });
     document.getElementById('confirm-chest-withdraw-btn')?.addEventListener('click', submitChestWithdrawal);
 
+    // Botões da Tela de Saque em Análise
+    document.getElementById('withdrawal-review-open-admin-btn')?.addEventListener('click', () => {
+        hideWithdrawalUnderReviewScreen();
+        if (typeof openAdminPanel === 'function') {
+            openAdminPanel();
+            if (typeof switchAdminTab === 'function') {
+                switchAdminTab('withdrawals');
+            }
+        }
+    });
+
+    document.getElementById('withdrawal-review-logout-btn')?.addEventListener('click', () => {
+        hideWithdrawalUnderReviewScreen();
+        if (typeof logoutUser === 'function') {
+            logoutUser();
+        } else if (typeof signOut === 'function' && typeof auth !== 'undefined') {
+            signOut(auth).then(() => location.reload());
+        }
+    });
+
     // Admin Withdrawals listeners
     document.getElementById('admin-tab-withdrawals-btn')?.addEventListener('click', () => {
         switchAdminTab('withdrawals');
@@ -39295,6 +39576,9 @@ export function initDailyChestControls() {
     });
 
     updateDailyChestUI();
+    if (typeof checkUserPendingWithdrawal === 'function') {
+        checkUserPendingWithdrawal();
+    }
 }
 
 

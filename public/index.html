@@ -35,13 +35,13 @@
     <meta itemprop="image" content="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
     <link rel="image_src" type="image/png" href="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
 
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.248">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.248">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.248">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.248">
-    <link rel="stylesheet" href="style.css?v=1.0.248">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.249">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.249">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.249">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.249">
+    <link rel="stylesheet" href="style.css?v=1.0.249">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.248" id="app-manifest-link">
+    <link rel="manifest" href="manifest.json?v=1.0.249" id="app-manifest-link">
     <meta name="theme-color" content="#39ff14" id="app-theme-color-meta">
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#39ff14" id="app-theme-color-meta-dark">
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#39ff14" id="app-theme-color-meta-light">
@@ -50,8 +50,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.248">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.248">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.249">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.249">
     <!-- Sincronização Dinâmica da Barra de Status e Barra de Navegação do Celular -->
     <script>
         (function() {
@@ -2450,14 +2450,14 @@
                     </button>
                 </div>
 
-                <!-- Card de Versão Oficial do App (v1.0.248) -->
+                <!-- Card de Versão Oficial do App (v1.0.249) -->
                 <div class="app-version-card" id="app-version-info-footer">
                     <div class="app-version-header-row">
                         <div class="app-version-brand-wrap">
-                            <img src="icons/vortex-vip-192.png?v=1.0.248" alt="VORTEX VIP" class="app-version-icon-img" width="22" height="22">
+                            <img src="icons/vortex-vip-192.png?v=1.0.249" alt="VORTEX VIP" class="app-version-icon-img" width="22" height="22">
                             <span class="app-version-brand-name">VORTEX VIP Oficial</span>
                         </div>
-                        <span class="app-version-pill-badge" id="app-version-display-badge">v1.0.248 ⚡</span>
+                        <span class="app-version-pill-badge" id="app-version-display-badge">v1.0.249 ⚡</span>
                     </div>
                     <div class="app-version-status-row">
                         <span class="app-version-status-dot"></span>
@@ -4930,6 +4930,86 @@
             </div>
         </div>
 
+        <!-- Tela de Saque em Análise (v1.0.249) -->
+        <div id="withdrawal-under-review-screen" class="withdrawal-under-review-screen" style="display:none;" aria-hidden="true">
+            <div class="withdrawal-review-card">
+                <!-- Top Status Badge -->
+                <div class="withdrawal-review-header-badge">
+                    <span class="withdrawal-review-pulse-dot"></span>
+                    <span id="withdrawal-review-status-badge-text">STATUS: EM ANÁLISE ⏳</span>
+                </div>
+
+                <!-- Radar Luminous Animation com Ícone de Carteira & Diamante -->
+                <div class="withdrawal-review-radar-wrap">
+                    <div class="withdrawal-review-radar-ring ring-1"></div>
+                    <div class="withdrawal-review-radar-ring ring-2"></div>
+                    <div class="withdrawal-review-radar-ring ring-3"></div>
+                    <div class="withdrawal-review-radar-center" id="withdrawal-review-radar-center">
+                        <img src="icons/pix-wallet-paid.png?v=1.0.249" alt="Saque Pix Pago" class="withdrawal-review-wallet-img" id="withdrawal-review-icon-img" width="56" height="56">
+                        <div class="withdrawal-review-sub-badge" id="withdrawal-review-sub-badge">
+                            <i data-lucide="hourglass" class="withdrawal-review-sub-icon"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Título Solicitado Exato -->
+                <h2 class="withdrawal-review-title" id="withdrawal-review-title">💠Saque em Análise⏳</h2>
+                <p class="withdrawal-review-subtitle" id="withdrawal-review-subtitle">
+                    Sua solicitação de saque via Pix foi enviada à administração e está sendo processada.
+                </p>
+
+                <!-- Card de Detalhes da Solicitação -->
+                <div class="withdrawal-review-details-box">
+                    <div class="withdrawal-review-detail-row">
+                        <span class="detail-label"><i data-lucide="banknote"></i> Valor Solicitado:</span>
+                        <span class="detail-value highlight-amount" id="withdrawal-review-val">R$ 1,00</span>
+                    </div>
+                    <div class="withdrawal-review-detail-row">
+                        <span class="detail-label"><i data-lucide="qr-code"></i> Chave Pix:</span>
+                        <span class="detail-value" id="withdrawal-review-pix-key">Carregando...</span>
+                    </div>
+                    <div class="withdrawal-review-detail-row">
+                        <span class="detail-label"><i data-lucide="tag"></i> Tipo de Chave:</span>
+                        <span class="detail-value" id="withdrawal-review-pix-type">CPF</span>
+                    </div>
+                    <div class="withdrawal-review-detail-row">
+                        <span class="detail-label"><i data-lucide="calendar"></i> Data / Hora:</span>
+                        <span class="detail-value" id="withdrawal-review-datetime">Hoje</span>
+                    </div>
+                    <div class="withdrawal-review-detail-row">
+                        <span class="detail-label"><i data-lucide="shield-check"></i> Protocolo:</span>
+                        <span class="detail-value code" id="withdrawal-review-protocol">#SAQUE-VORTEX</span>
+                    </div>
+                </div>
+
+                <!-- Alerta Informativo de Tempo Real -->
+                <div class="withdrawal-review-info-notice" id="withdrawal-review-info-notice">
+                    <div class="notice-icon"><i data-lucide="sparkles"></i></div>
+                    <div class="notice-text">
+                        <strong>Liberação Automática:</strong> Assim que a administração confirmar o pagamento pelo <strong>Painel Admin</strong>, esta tela sumirá automaticamente e o valor constará pago! ⚡
+                    </div>
+                </div>
+
+                <!-- Indicador de Sincronização em Tempo Real -->
+                <div class="withdrawal-review-sync-status">
+                    <span class="sync-spinner"></span>
+                    <span class="sync-text">Sincronizado em tempo real com o servidor VORTEX VIP</span>
+                </div>
+
+                <!-- Ações de Suporte e Admin -->
+                <div class="withdrawal-review-footer-actions">
+                    <div id="withdrawal-review-admin-actions" class="withdrawal-review-admin-actions" style="display:none;">
+                        <button type="button" id="withdrawal-review-open-admin-btn" class="withdrawal-review-admin-btn">
+                            <i data-lucide="shield"></i> <span>Abrir Painel Admin para Aprovar</span>
+                        </button>
+                    </div>
+                    <button type="button" id="withdrawal-review-logout-btn" class="withdrawal-review-logout-link" title="Encerrar sessão temporariamente">
+                        <i data-lucide="log-out"></i> Encerrar Sessão
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Modal do Chatbot de Respostas Automáticas (Conta Empresa - v1.0.218) -->
         <div id="company-chatbot-modal" class="custom-modal-overlay company-chatbot-overlay" style="display:none;" aria-hidden="true">
             <div class="custom-modal-card company-chatbot-card">
@@ -5528,6 +5608,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.248" defer></script>
+    <script type="module" src="script.js?v=1.0.249" defer></script>
 </body>
 </html>
