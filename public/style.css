@@ -5175,6 +5175,17 @@ body.theme-cyberpunk .feed-search-icon {
     box-shadow: 0 0 20px rgba(255, 230, 0, 0.22);
 }
 
+.notification-card.card-withdrawal-paid {
+    border-left: 3.5px solid #ff9500;
+    background: linear-gradient(90deg, rgba(255, 149, 0, 0.08) 0%, #141418 35%);
+}
+
+.notification-card.card-withdrawal-paid.unread {
+    border-color: #ffaa00;
+    background: linear-gradient(90deg, rgba(255, 170, 0, 0.14) 0%, #181a20 40%);
+    box-shadow: 0 0 16px rgba(255, 170, 0, 0.15);
+}
+
 .notification-icon-box {
     width: 36px;
     height: 36px;
@@ -5258,6 +5269,32 @@ body.theme-cyberpunk .feed-search-icon {
     display: block;
 }
 
+.notification-icon-box.withdrawal-paid {
+    background: rgba(255, 149, 0, 0.16);
+    border: 1px solid rgba(255, 149, 0, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    box-shadow: 0 0 10px rgba(255, 149, 0, 0.2);
+}
+
+.notif-wallet-icon-img {
+    width: 28px;
+    height: 28px;
+    max-width: 28px;
+    max-height: 28px;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.5));
+    display: block;
+    border-radius: 4px;
+    transition: transform 0.2s ease;
+}
+
+.notification-card:hover .notif-wallet-icon-img {
+    transform: scale(1.1);
+}
+
 .notification-card-content {
     flex: 1;
     min-width: 0;
@@ -5336,6 +5373,13 @@ body.theme-cyberpunk .feed-search-icon {
     box-shadow: 0 0 10px rgba(255, 230, 0, 0.35);
     font-weight: 800;
     letter-spacing: 0.6px;
+}
+
+.notification-badge.withdrawal-paid {
+    background: rgba(255, 149, 0, 0.2);
+    color: #ffaa00;
+    border: 1px solid rgba(255, 149, 0, 0.5);
+    box-shadow: 0 0 8px rgba(255, 149, 0, 0.25);
 }
 
 /* ===== ANIMAÇÕES: Notificação de Admin Promovido (Semexe e para a cada 3s) ===== */

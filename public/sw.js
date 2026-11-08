@@ -2,14 +2,14 @@
    VORTEX VIP ⚡ - Service Worker Oficial PWA
    ========================================================================== */
 
-const CACHE_NAME = 'vortex-vip-v1.0.247';
+const CACHE_NAME = 'vortex-vip-v1.0.248';
 
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
   '/privacy.html',
-  '/style.css?v=1.0.247',
-  '/script.js?v=1.0.247',
+  '/style.css?v=1.0.248',
+  '/script.js?v=1.0.248',
   '/manifest.json',
   '/icons/vortex-vip-192.png',
   '/icons/vortex-vip-512.png',
@@ -19,6 +19,7 @@ const PRECACHE_ASSETS = [
   '/icons/icon-512.png',
   '/icons/icon-maskable-512.png',
   '/icons/icon.svg',
+  '/icons/pix-wallet-paid.png',
   '/favicon.ico',
   '/sounds/ringtone.mp3',
   '/sounds/notification.mp3',
