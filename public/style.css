@@ -26783,3 +26783,525 @@ video::-internal-media-controls-download-button {
     color: #ff3b30;
 }
 
+/* ==========================================================================
+   CATEGORIA DE JOGOS & ROLETA DA SORTE (v1.0.252)
+   ========================================================================== */
+
+.games-category-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 12px 14px 90px;
+    width: 100%;
+    box-sizing: border-box;
+    animation: fadeInGames 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fadeInGames {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.games-category-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(0, 255, 136, 0.25);
+    border-radius: 16px;
+    padding: 12px 14px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), inset 0 0 15px rgba(0, 255, 136, 0.03);
+    flex-wrap: wrap;
+}
+
+.games-category-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.games-category-icon-badge {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    background: rgba(0, 255, 136, 0.12);
+    border: 1px solid rgba(0, 255, 136, 0.45);
+    color: #00ff88;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    box-shadow: 0 0 16px rgba(0, 255, 136, 0.25);
+    flex-shrink: 0;
+}
+
+.games-category-title {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: #ffffff;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.games-category-subtitle {
+    font-size: 0.78rem;
+    color: var(--text-dim, #888);
+    margin: 2px 0 0;
+}
+
+.games-category-balance-badge {
+    background: rgba(255, 170, 0, 0.12);
+    border: 1px solid rgba(255, 170, 0, 0.45);
+    border-radius: 20px;
+    padding: 6px 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    color: #ffaa00;
+    font-weight: 700;
+    box-shadow: 0 0 12px rgba(255, 170, 0, 0.2);
+    margin-left: auto;
+}
+
+.games-category-balance-badge .games-balance-label {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.75rem;
+}
+
+.games-category-balance-badge .games-balance-value {
+    color: #34c759;
+    font-weight: 800;
+}
+
+.games-category-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+}
+
+.vortex-game-card {
+    background: linear-gradient(135deg, rgba(21, 21, 30, 0.95) 0%, rgba(13, 13, 20, 0.98) 100%);
+    border: 1.5px solid rgba(0, 255, 136, 0.35);
+    border-radius: 20px;
+    padding: 0;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), 0 0 25px rgba(0, 255, 136, 0.12);
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.vortex-game-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(0, 255, 136, 0.65);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55), 0 0 35px rgba(0, 255, 136, 0.22);
+}
+
+.game-card-badge {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    z-index: 5;
+    background: rgba(0, 0, 0, 0.8);
+    border: 1px solid rgba(0, 255, 136, 0.55);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    color: #00ff88;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.6px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.game-badge-pulse {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #00ff88;
+    box-shadow: 0 0 8px #00ff88;
+    animation: pulseGames 1.5s infinite;
+}
+
+@keyframes pulseGames {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+.game-card-banner {
+    width: 100%;
+    height: 135px;
+    background: radial-gradient(circle at center, rgba(0, 255, 136, 0.22) 0%, rgba(10, 10, 16, 0.95) 75%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.game-banner-wheel-graphic {
+    font-size: 4rem;
+    filter: drop-shadow(0 0 25px rgba(0, 255, 136, 0.65));
+    animation: floatWheel 3.5s ease-in-out infinite;
+    user-select: none;
+}
+
+@keyframes floatWheel {
+    0%, 100% { transform: scale(1) rotate(0deg); }
+    50% { transform: scale(1.08) rotate(8deg); }
+}
+
+.game-card-content {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.game-card-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.game-card-title {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #ffffff;
+    margin: 0;
+}
+
+.game-card-tag-free {
+    background: rgba(52, 199, 89, 0.16);
+    border: 1px solid rgba(52, 199, 89, 0.45);
+    color: #34c759;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 10px;
+}
+
+.game-card-desc {
+    font-size: 0.85rem;
+    color: var(--text-dim, #aaa);
+    line-height: 1.45;
+    margin: 0;
+}
+
+.game-card-perks-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 2px;
+}
+
+.game-perk-pill {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--text-dim, #ccc);
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.game-perk-pill i,
+.game-perk-pill svg {
+    width: 13px;
+    height: 13px;
+    color: #00ff88;
+}
+
+.btn-play-game {
+    width: 100%;
+    padding: 12px 18px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #00ff88 0%, #00cc66 100%);
+    color: #000;
+    font-weight: 800;
+    font-size: 0.92rem;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    margin-top: 4px;
+    outline: none;
+}
+
+.btn-play-game:hover {
+    transform: scale(1.02);
+    box-shadow: 0 0 30px rgba(0, 255, 136, 0.65);
+}
+
+.btn-play-game:active {
+    transform: scale(0.98);
+}
+
+/* Modal da Roleta da Sorte */
+.lucky-wheel-card {
+    max-width: 440px;
+    width: 95%;
+    max-height: 92vh;
+    overflow-y: auto;
+    border-radius: 24px;
+    background: linear-gradient(180deg, #15151e 0%, #0d0d14 100%);
+    border: 1.5px solid rgba(0, 255, 136, 0.4);
+    box-shadow: 0 0 60px rgba(0, 255, 136, 0.2);
+    padding: 0;
+}
+
+.lucky-wheel-top-bar {
+    padding: 14px 18px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.lucky-wheel-modal-title-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.lucky-wheel-icon-badge {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: rgba(0, 255, 136, 0.12);
+    border: 1px solid rgba(0, 255, 136, 0.4);
+    color: #00ff88;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.lucky-wheel-modal-sub {
+    font-size: 0.72rem;
+    color: var(--text-dim, #888);
+    display: block;
+    margin-top: 1px;
+}
+
+.lucky-wheel-modal-body {
+    padding: 16px 20px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    text-align: center;
+}
+
+.lucky-wheel-status-bar {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    padding: 8px 12px;
+    box-sizing: border-box;
+    font-size: 0.8rem;
+}
+
+.lucky-wheel-status-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-dim, #aaa);
+}
+
+.lucky-wheel-status-item i,
+.lucky-wheel-status-item svg {
+    width: 15px;
+    height: 15px;
+    color: #00ff88;
+}
+
+.lucky-wheel-status-item.highlight {
+    color: #ffaa00;
+}
+
+.lucky-wheel-container {
+    position: relative;
+    width: 310px;
+    height: 310px;
+    margin: 8px auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.lucky-wheel-pointer-wrap {
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 25;
+    filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.7));
+}
+
+.lucky-wheel-pointer {
+    width: 0;
+    height: 0;
+    border-left: 14px solid transparent;
+    border-right: 14px solid transparent;
+    border-top: 26px solid #ff3b30;
+}
+
+.lucky-wheel-disk-wrap {
+    width: 300px;
+    height: 300px;
+    border-radius: 50%;
+    border: 6px solid #1a1a2e;
+    box-shadow: 0 0 35px rgba(0, 255, 136, 0.35), inset 0 0 25px rgba(0, 0, 0, 0.7);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.lucky-wheel-canvas {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    display: block;
+    transform: rotate(0deg);
+}
+
+.lucky-wheel-center-btn {
+    position: absolute;
+    width: 66px;
+    height: 66px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #222230 0%, #111118 100%);
+    border: 3px solid #00ff88;
+    color: #00ff88;
+    font-weight: 900;
+    font-size: 0.78rem;
+    letter-spacing: 0.6px;
+    z-index: 15;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 22px rgba(0, 255, 136, 0.55);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    outline: none;
+    padding: 0;
+}
+
+.lucky-wheel-center-btn:hover {
+    transform: scale(1.08);
+    box-shadow: 0 0 30px rgba(0, 255, 136, 0.8);
+    border-color: #39ff14;
+    color: #ffffff;
+}
+
+.lucky-wheel-center-btn:active {
+    transform: scale(0.94);
+}
+
+.lucky-wheel-result-banner {
+    width: 100%;
+    border-radius: 14px;
+    background: rgba(0, 255, 136, 0.12);
+    border: 1.5px solid rgba(0, 255, 136, 0.55);
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 0 25px rgba(0, 255, 136, 0.3);
+    animation: popWheelResult 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    box-sizing: border-box;
+}
+
+@keyframes popWheelResult {
+    0% { opacity: 0; transform: scale(0.88); }
+    100% { opacity: 1; transform: scale(1); }
+}
+
+.result-banner-icon {
+    font-size: 2rem;
+    flex-shrink: 0;
+}
+
+.result-banner-content {
+    text-align: left;
+}
+
+.result-banner-content h4 {
+    margin: 0;
+    font-size: 0.95rem;
+    color: #00ff88;
+    font-weight: 800;
+}
+
+.result-banner-content p {
+    margin: 2px 0 0;
+    font-size: 0.82rem;
+    color: #e0e0e0;
+}
+
+.lucky-wheel-spin-action {
+    width: 100%;
+    padding: 13px 20px;
+    font-size: 0.95rem;
+    font-weight: 800;
+}
+
+.lucky-wheel-rules-note {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    padding: 10px 12px;
+    text-align: left;
+    box-sizing: border-box;
+}
+
+.rules-note-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 0.74rem;
+    color: var(--text-dim, #999);
+    line-height: 1.35;
+}
+
+.rules-note-item i,
+.rules-note-item svg {
+    width: 14px;
+    height: 14px;
+    color: #00ff88;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+

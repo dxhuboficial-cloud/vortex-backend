@@ -35,13 +35,13 @@
     <meta itemprop="image" content="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
     <link rel="image_src" type="image/png" href="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
 
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.251">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.251">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.251">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.251">
-    <link rel="stylesheet" href="style.css?v=1.0.251">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.252">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.252">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.252">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.252">
+    <link rel="stylesheet" href="style.css?v=1.0.252">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.251" id="app-manifest-link">
+    <link rel="manifest" href="manifest.json?v=1.0.252" id="app-manifest-link">
     <meta name="theme-color" content="#39ff14" id="app-theme-color-meta">
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#39ff14" id="app-theme-color-meta-dark">
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#39ff14" id="app-theme-color-meta-light">
@@ -50,8 +50,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.251">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.251">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.252">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.252">
     <!-- Sincronização Dinâmica da Barra de Status e Barra de Navegação do Celular -->
     <script>
         (function() {
@@ -274,14 +274,68 @@
 
             <!-- Filtros Rápidos -->
             <div class="filters">
-                <span class="filter-pill active" data-filter="todos">Todos</span>
-                <span class="filter-pill" data-filter="nao-lidas">Não lidas</span>
-                <span class="filter-pill" data-filter="grupos">Grupos</span>
-                <span class="filter-pill" data-filter="vips">VIPs</span>
+                <span class="filter-pill active" id="filter-pill-todos" data-filter="todos">Todos</span>
+                <span class="filter-pill" id="filter-pill-nao-lidas" data-filter="nao-lidas">Não lidas</span>
+                <span class="filter-pill" id="filter-pill-grupos" data-filter="grupos">Grupos</span>
+                <span class="filter-pill" id="filter-pill-vips" data-filter="vips">VIPs</span>
+                <span class="filter-pill" id="filter-pill-jogos" data-filter="jogos">jogos</span>
             </div>
 
             <!-- Lista de Conversas em Tempo Real -->
             <main class="chat-list" id="chat-conversations-list">
+                <!-- Seção da Categoria de Jogos (v1.0.252) -->
+                <div id="games-category-container" class="games-category-container" style="display:none;">
+                    <div class="games-category-header">
+                        <div class="games-category-title-wrap">
+                            <div class="games-category-icon-badge">
+                                <i data-lucide="gamepad-2"></i>
+                            </div>
+                            <div>
+                                <h3 class="games-category-title">Jogos VORTEX VIP 🎮</h3>
+                                <p class="games-category-subtitle">Divirta-se e ganhe recompensas diárias para resgatar no Baú!</p>
+                            </div>
+                        </div>
+                        <div class="games-category-balance-badge" id="games-category-balance-badge">
+                            <span class="games-balance-label">Saldo:</span>
+                            <span class="games-balance-value" id="games-user-balance-val">R$ 0,00</span>
+                        </div>
+                    </div>
+
+                    <!-- Grid de Jogos da Categoria -->
+                    <div class="games-category-grid" id="games-category-grid">
+                        <!-- Card do Jogo 1: Roleta da Sorte 🎡 -->
+                        <div class="vortex-game-card" id="game-card-lucky-wheel">
+                            <div class="game-card-badge">
+                                <span class="game-badge-pulse"></span>
+                                <span>🎡 1º JOGO • PRÊMIOS PIX</span>
+                            </div>
+                            <div class="game-card-banner">
+                                <div class="game-banner-wheel-graphic">
+                                    <div class="mini-wheel-center">🎡</div>
+                                </div>
+                                <div class="game-banner-glow"></div>
+                            </div>
+                            <div class="game-card-content">
+                                <div class="game-card-title-row">
+                                    <h4 class="game-card-title">Roleta da Sorte 🎡</h4>
+                                    <span class="game-card-tag-free">1 Giro Grátis/Dia</span>
+                                </div>
+                                <p class="game-card-desc">
+                                    Gire a roleta diária e concorra a prêmios em moedas Pix de até <strong>R$ 0,50</strong>, giros extras e bônus para acumular e sacar no Baú Diário!
+                                </p>
+                                <div class="game-card-perks-row">
+                                    <span class="game-perk-pill"><i data-lucide="sparkles"></i> 100% Grátis</span>
+                                    <span class="game-perk-pill"><i data-lucide="coins"></i> Moedas Pix</span>
+                                    <span class="game-perk-pill"><i data-lucide="zap"></i> Sorteio Imediato</span>
+                                </div>
+                                <button type="button" class="btn-play-game" id="open-lucky-wheel-btn">
+                                    <i data-lucide="play"></i> <span>Jogar Roleta da Sorte</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div id="empty-chat-state" class="gallery-empty-state">
                     <i data-lucide="message-square-dashed" class="empty-state-icon"></i>
                     <p>Nenhuma conversa ainda.</p>
@@ -2450,14 +2504,14 @@
                     </button>
                 </div>
 
-                <!-- Card de Versão Oficial do App (v1.0.251) -->
+                <!-- Card de Versão Oficial do App (v1.0.252) -->
                 <div class="app-version-card" id="app-version-info-footer">
                     <div class="app-version-header-row">
                         <div class="app-version-brand-wrap">
-                            <img src="icons/vortex-vip-192.png?v=1.0.251" alt="VORTEX VIP" class="app-version-icon-img" width="22" height="22">
+                            <img src="icons/vortex-vip-192.png?v=1.0.252" alt="VORTEX VIP" class="app-version-icon-img" width="22" height="22">
                             <span class="app-version-brand-name">VORTEX VIP Oficial</span>
                         </div>
-                        <span class="app-version-pill-badge" id="app-version-display-badge">v1.0.251 ⚡</span>
+                        <span class="app-version-pill-badge" id="app-version-display-badge">v1.0.252 ⚡</span>
                     </div>
                     <div class="app-version-status-row">
                         <span class="app-version-status-dot"></span>
@@ -4930,7 +4984,7 @@
             </div>
         </div>
 
-        <!-- Tela de Saque em Análise (v1.0.251) -->
+        <!-- Tela de Saque em Análise (v1.0.252) -->
         <div id="withdrawal-under-review-screen" class="withdrawal-under-review-screen" style="display:none;" aria-hidden="true">
             <div class="withdrawal-review-card">
                 <!-- Botão Fechar (X) -->
@@ -4950,7 +5004,7 @@
                     <div class="withdrawal-review-radar-ring ring-2"></div>
                     <div class="withdrawal-review-radar-ring ring-3"></div>
                     <div class="withdrawal-review-radar-center" id="withdrawal-review-radar-center">
-                        <img src="icons/pix-wallet-paid.png?v=1.0.251" alt="Saque Pix Pago" class="withdrawal-review-wallet-img" id="withdrawal-review-icon-img" width="56" height="56">
+                        <img src="icons/pix-wallet-paid.png?v=1.0.252" alt="Saque Pix Pago" class="withdrawal-review-wallet-img" id="withdrawal-review-icon-img" width="56" height="56">
                         <div class="withdrawal-review-sub-badge" id="withdrawal-review-sub-badge">
                             <i data-lucide="hourglass" class="withdrawal-review-sub-icon"></i>
                         </div>
@@ -5611,8 +5665,87 @@
             </div>
         </div>
 
+        <!-- Modal do Jogo: Roleta da Sorte (v1.0.252) -->
+        <div id="lucky-wheel-modal" class="custom-modal-overlay lucky-wheel-overlay" style="display:none;" aria-hidden="true">
+            <div class="custom-modal-card lucky-wheel-card">
+                <!-- Top bar do Modal -->
+                <div class="panel-top-bar lucky-wheel-top-bar">
+                    <div class="lucky-wheel-modal-title-row">
+                        <div class="lucky-wheel-icon-badge">
+                            <i data-lucide="sparkles"></i>
+                        </div>
+                        <div>
+                            <h3 class="modal-title">Roleta da Sorte 🎡</h3>
+                            <span class="lucky-wheel-modal-sub">Gire e ganhe moedas para o seu Baú Pix!</span>
+                        </div>
+                    </div>
+                    <div class="header-icon-btn" id="close-lucky-wheel-modal" title="Fechar" aria-label="Fechar">
+                        <i data-lucide="x"></i>
+                    </div>
+                </div>
+
+                <div class="lucky-wheel-modal-body">
+                    <!-- Informação de Giros e Saldo -->
+                    <div class="lucky-wheel-status-bar">
+                        <div class="lucky-wheel-status-item">
+                            <i data-lucide="disc"></i>
+                            <span id="lucky-wheel-spins-left-text">Giros disponíveis: <strong>1</strong></span>
+                        </div>
+                        <div class="lucky-wheel-status-item highlight">
+                            <i data-lucide="coins"></i>
+                            <span id="lucky-wheel-balance-display">Saldo: <strong>R$ 0,00</strong></span>
+                        </div>
+                    </div>
+
+                    <!-- Container da Roleta Giratória -->
+                    <div class="lucky-wheel-container">
+                        <!-- Ponteiro Indicador do Topo -->
+                        <div class="lucky-wheel-pointer-wrap">
+                            <div class="lucky-wheel-pointer"></div>
+                        </div>
+
+                        <!-- Canvas da Roleta com Borda de Neon -->
+                        <div class="lucky-wheel-disk-wrap" id="lucky-wheel-disk-wrap">
+                            <canvas id="lucky-wheel-canvas" width="320" height="320" class="lucky-wheel-canvas"></canvas>
+                            <!-- Botão Central de Girar -->
+                            <button type="button" id="lucky-wheel-center-btn" class="lucky-wheel-center-btn" title="Girar a Roleta">
+                                <span class="center-btn-pulse"></span>
+                                <span class="center-btn-text">GIRAR</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Caixa de Resultado do Prêmio (Animada) -->
+                    <div id="lucky-wheel-result-banner" class="lucky-wheel-result-banner" style="display:none;">
+                        <div class="result-banner-icon" id="wheel-result-icon">🎉</div>
+                        <div class="result-banner-content">
+                            <h4 id="wheel-result-title">Parabéns!</h4>
+                            <p id="wheel-result-msg">Você ganhou +R$ 0,10!</p>
+                        </div>
+                    </div>
+
+                    <!-- Botão de Ação Principal -->
+                    <button type="button" id="lucky-wheel-spin-btn" class="btn-primary-neon lucky-wheel-spin-action">
+                        <i data-lucide="play"></i> <span id="lucky-wheel-spin-btn-text">Girar Roleta da Sorte 🎲</span>
+                    </button>
+
+                    <!-- Dica e Regras da Roleta -->
+                    <div class="lucky-wheel-rules-note">
+                        <div class="rules-note-item">
+                            <i data-lucide="gift"></i>
+                            <span>Você ganha <strong>1 giro grátis</strong> todos os dias. Volte diariamente!</span>
+                        </div>
+                        <div class="rules-note-item">
+                            <i data-lucide="wallet"></i>
+                            <span>Os prêmios em moedas acumulam no seu <strong>Baú Diário</strong> para você sacar via Pix de R$ 1,00.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.251" defer></script>
+    <script type="module" src="script.js?v=1.0.252" defer></script>
 </body>
 </html>
