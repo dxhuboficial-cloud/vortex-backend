@@ -21540,7 +21540,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.250';
+export const CURRENT_APP_VERSION = '1.0.251';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -37919,6 +37919,9 @@ export function initBackNavigation() {
     });
 }
 
+export let userDismissedWithdrawalReview = false;
+export let pendingWithdrawalUnsubscribe = null;
+
 if (typeof window !== 'undefined') {
     window.clearChatForCurrentUser = clearChatForCurrentUser;
     window.copyMessageText = copyMessageText;
@@ -38453,6 +38456,17 @@ window.handleCallSwitchedToVideo = handleCallSwitchedToVideo;
     window.adminMarkWithdrawalPaid = adminMarkWithdrawalPaid;
     window.showWithdrawalUnderReviewScreen = showWithdrawalUnderReviewScreen;
     window.hideWithdrawalUnderReviewScreen = hideWithdrawalUnderReviewScreen;
+    try {
+        Object.defineProperty(window, 'userDismissedWithdrawalReview', {
+            get: () => userDismissedWithdrawalReview,
+            set: (v) => { userDismissedWithdrawalReview = Boolean(v); },
+            configurable: true
+        });
+    } catch (_) {
+        window.userDismissedWithdrawalReview = userDismissedWithdrawalReview;
+    }
+    window.getUserDismissedWithdrawalReview = () => userDismissedWithdrawalReview;
+    window.setUserDismissedWithdrawalReview = (v) => { userDismissedWithdrawalReview = Boolean(v); };
     window.checkUserPendingWithdrawal = checkUserPendingWithdrawal;
     window.handleWithdrawalPaidRealtime = handleWithdrawalPaidRealtime;
     window.listenToPendingWithdrawal = listenToPendingWithdrawal;
@@ -39307,7 +39321,8 @@ export async function submitChestWithdrawal() {
         closeDailyChestWithdrawModal();
         closeDailyChestModal();
 
-        showWithdrawalUnderReviewScreen(withdrawalData);
+        userDismissedWithdrawalReview = false;
+        showWithdrawalUnderReviewScreen(withdrawalData, true);
         listenToPendingWithdrawal(withdrawalData.id);
 
         const successMsg = remainingBalance > 0
@@ -39508,11 +39523,10 @@ export async function adminMarkWithdrawalPaid(withdrawalId, userUid) {
 }
 
 // --------------------------------------------------------------------------
-// TELA DE SAQUE EM ANÁLISE (v1.0.249)
+// TELA DE SAQUE EM ANÁLISE (v1.0.251)
 // --------------------------------------------------------------------------
-export let pendingWithdrawalUnsubscribe = null;
-
-export function showWithdrawalUnderReviewScreen(data = {}) {
+export function showWithdrawalUnderReviewScreen(data = {}, force = false) {
+    if (userDismissedWithdrawalReview && !force) return;
     const screen = document.getElementById('withdrawal-under-review-screen');
     if (!screen) return;
 
@@ -39593,6 +39607,7 @@ export function listenToPendingWithdrawal(withdrawalId) {
 }
 
 export function handleWithdrawalPaidRealtime(withdrawalData = {}) {
+    userDismissedWithdrawalReview = false;
     const screen = document.getElementById('withdrawal-under-review-screen');
     if (!screen) return;
 
@@ -39746,6 +39761,17 @@ export function initDailyChestControls() {
     document.getElementById('confirm-chest-withdraw-btn')?.addEventListener('click', submitChestWithdrawal);
 
     // Botões da Tela de Saque em Análise
+    document.getElementById('close-withdrawal-review-btn')?.addEventListener('click', () => {
+        userDismissedWithdrawalReview = true;
+        hideWithdrawalUnderReviewScreen();
+    });
+    document.getElementById('withdrawal-under-review-screen')?.addEventListener('click', (e) => {
+        if (e.target && e.target.id === 'withdrawal-under-review-screen') {
+            userDismissedWithdrawalReview = true;
+            hideWithdrawalUnderReviewScreen();
+        }
+    });
+
     document.getElementById('withdrawal-review-open-admin-btn')?.addEventListener('click', () => {
         hideWithdrawalUnderReviewScreen();
         if (typeof openAdminPanel === 'function') {
