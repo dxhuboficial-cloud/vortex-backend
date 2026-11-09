@@ -28326,6 +28326,13 @@ video::-internal-media-controls-download-button {
     max-width: 440px;
     margin: 0 auto;
     box-sizing: border-box;
+    overflow: hidden;
+}
+
+@media (max-width: 440px) {
+    .diamante-game-card {
+        padding: 16px 12px 20px;
+    }
 }
 
 .diamond-badge {
@@ -28543,7 +28550,7 @@ video::-internal-media-controls-download-button {
 
 .mine-tile {
     aspect-ratio: 1;
-    min-height: 52px;
+    min-height: 42px;
     background: linear-gradient(145deg, #18284c, #101c36);
     border: 1.5px solid rgba(0, 245, 255, 0.3);
     border-radius: 12px;
@@ -28556,6 +28563,8 @@ video::-internal-media-controls-download-button {
     user-select: none;
     position: relative;
     padding: 0;
+    min-width: 0;
+    box-sizing: border-box;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
 }
 
@@ -28622,6 +28631,7 @@ video::-internal-media-controls-download-button {
     width: 100%;
     max-width: 380px;
     box-sizing: border-box;
+    min-width: 0;
 }
 
 .mines-difficulty-row {
@@ -28630,6 +28640,8 @@ video::-internal-media-controls-download-button {
     gap: 6px;
     text-align: left;
     width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
 }
 
 .mines-control-label {
@@ -28642,23 +28654,43 @@ video::-internal-media-controls-download-button {
 
 .mines-difficulty-chips {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 6px;
     width: 100%;
+    box-sizing: border-box;
 }
 
 .mines-diff-chip {
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 10px;
-    padding: 8px 6px;
-    font-size: 0.78rem;
-    font-weight: 700;
-    color: rgba(255, 255, 255, 0.85);
+    padding: 7px 3px;
     cursor: pointer;
     transition: all 0.2s ease;
-    white-space: nowrap;
     text-align: center;
+    min-width: 0;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.mines-diff-chip .diff-title {
+    font-size: clamp(0.70rem, 2.5vw, 0.78rem);
+    font-weight: 800;
+    line-height: 1.15;
+    white-space: nowrap;
+}
+
+.mines-diff-chip .diff-subtitle {
+    font-size: clamp(0.58rem, 2.0vw, 0.66rem);
+    font-weight: 600;
+    opacity: 0.75;
+    line-height: 1;
+    white-space: nowrap;
 }
 
 .mines-diff-chip:hover:not(:disabled) {
@@ -28797,18 +28829,27 @@ video::-internal-media-controls-download-button {
 
 .mines-actions-row {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
+    grid-template-columns: 1fr;
+    gap: 8px;
     width: 100%;
     margin-top: 4px;
+    box-sizing: border-box;
+    min-width: 0;
+}
+
+@media (min-width: 440px) {
+    .mines-actions-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
 }
 
 .btn-start-mines {
     background: linear-gradient(135deg, #00f5ff, #0077ff);
     color: #000;
-    font-size: 0.88rem;
+    font-size: clamp(0.82rem, 2.7vw, 0.90rem);
     font-weight: 900;
-    padding: 12px 10px;
+    padding: 13px 12px;
     border-radius: 12px;
     border: none;
     cursor: pointer;
@@ -28818,7 +28859,11 @@ video::-internal-media-controls-download-button {
     gap: 6px;
     box-shadow: 0 0 16px rgba(0, 245, 255, 0.4);
     transition: all 0.2s ease;
-    white-space: nowrap;
+    min-width: 0;
+    box-sizing: border-box;
+    width: 100%;
+    text-align: center;
+    line-height: 1.25;
 }
 
 .btn-start-mines:hover:not(:disabled) {
@@ -28835,9 +28880,9 @@ video::-internal-media-controls-download-button {
 .btn-cashout-mines {
     background: linear-gradient(135deg, #39ff14, #00cc22);
     color: #000;
-    font-size: 0.88rem;
+    font-size: clamp(0.82rem, 2.7vw, 0.90rem);
     font-weight: 900;
-    padding: 12px 10px;
+    padding: 13px 12px;
     border-radius: 12px;
     border: none;
     cursor: pointer;
@@ -28847,7 +28892,11 @@ video::-internal-media-controls-download-button {
     gap: 6px;
     box-shadow: 0 0 18px rgba(57, 255, 20, 0.45);
     transition: all 0.2s ease;
-    white-space: nowrap;
+    min-width: 0;
+    box-sizing: border-box;
+    width: 100%;
+    text-align: center;
+    line-height: 1.25;
 }
 
 .btn-cashout-mines:hover:not(:disabled) {
