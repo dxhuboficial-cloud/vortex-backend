@@ -21543,7 +21543,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.255';
+export const CURRENT_APP_VERSION = '1.0.256';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -38010,13 +38010,32 @@ export const GAMES_CATALOG = [
         desc: 'Roleta com giro diário gratuito para os usuários ganharem moedas e prêmios do Baú Pix.',
         tabBtnId: 'tab-btn-roleta',
         cardId: 'game-card-lucky-wheel'
+    },
+    {
+        id: 'diamante',
+        name: 'Caça Diamantes VIP',
+        shortName: '💎 Caça Diamantes',
+        icon: '💎',
+        badge: 'Mines • Fuja das Bombinhas',
+        desc: 'Encontre diamantes e acumule moedas. Cuidado com a bombinha: se achar, perde tudo! Resgate quando quiser.',
+        tabBtnId: 'tab-btn-diamante',
+        cardId: 'game-card-diamante'
     }
 ];
 
 export let gamesConfig = {
     tigrinho: true,
+    diamante: true,
     roleta: true
 };
+
+// Caça Diamantes VIP (Mines) State (v1.0.256)
+export let minesCurrentBet = 0.10;
+export let minesBombCount = 3;
+export let isMinesGameActive = false;
+export let minesGrid = [];
+export let minesDiamondsFound = 0;
+export let minesCurrentWin = 0;
 
 if (typeof window !== 'undefined') {
     window.clearChatForCurrentUser = clearChatForCurrentUser;
@@ -38634,6 +38653,59 @@ window.handleCallSwitchedToVideo = handleCallSwitchedToVideo;
         });
     } catch (_) {
         window.gamesConfig = gamesConfig;
+    }
+
+    // Caça Diamantes VIP (Mines) (v1.0.256)
+    window.playMinesDiamondSound = playMinesDiamondSound;
+    window.playMinesExplosionSound = playMinesExplosionSound;
+    window.playMinesCashoutFanfare = playMinesCashoutFanfare;
+    window.getMinesMultiplier = getMinesMultiplier;
+    window.setMinesBet = setMinesBet;
+    window.setMinesBombCount = setMinesBombCount;
+    window.startMinesGame = startMinesGame;
+    window.renderMinesGrid = renderMinesGrid;
+    window.revealMinesTile = revealMinesTile;
+    window.cashoutMinesGame = cashoutMinesGame;
+    window.updateMinesUI = updateMinesUI;
+    window.initMinesControls = initMinesControls;
+    try {
+        Object.defineProperty(window, 'minesCurrentBet', {
+            get: () => minesCurrentBet,
+            set: (v) => { minesCurrentBet = v; },
+            configurable: true
+        });
+        Object.defineProperty(window, 'minesBombCount', {
+            get: () => minesBombCount,
+            set: (v) => { minesBombCount = v; },
+            configurable: true
+        });
+        Object.defineProperty(window, 'isMinesGameActive', {
+            get: () => isMinesGameActive,
+            set: (v) => { isMinesGameActive = v; },
+            configurable: true
+        });
+        Object.defineProperty(window, 'minesGrid', {
+            get: () => minesGrid,
+            set: (v) => { minesGrid = v; },
+            configurable: true
+        });
+        Object.defineProperty(window, 'minesDiamondsFound', {
+            get: () => minesDiamondsFound,
+            set: (v) => { minesDiamondsFound = v; },
+            configurable: true
+        });
+        Object.defineProperty(window, 'minesCurrentWin', {
+            get: () => minesCurrentWin,
+            set: (v) => { minesCurrentWin = v; },
+            configurable: true
+        });
+    } catch (_) {
+        window.minesCurrentBet = minesCurrentBet;
+        window.minesBombCount = minesBombCount;
+        window.isMinesGameActive = isMinesGameActive;
+        window.minesGrid = minesGrid;
+        window.minesDiamondsFound = minesDiamondsFound;
+        window.minesCurrentWin = minesCurrentWin;
     }
 }
 
@@ -40722,6 +40794,9 @@ export function initGamesControls() {
     if (typeof initTigrinhoControls === 'function') {
         initTigrinhoControls();
     }
+    if (typeof initMinesControls === 'function') {
+        initMinesControls();
+    }
     if (typeof initAdminGamesControls === 'function') {
         initAdminGamesControls();
     }
@@ -40832,17 +40907,22 @@ export function switchActiveGame(gameId) {
     currentActiveGame = gameId;
     const cardTigrinho = document.getElementById('game-card-tigrinho');
     const cardRoleta = document.getElementById('game-card-lucky-wheel');
+    const cardDiamante = document.getElementById('game-card-diamante');
     const btnTigrinho = document.getElementById('tab-btn-tigrinho');
     const btnRoleta = document.getElementById('tab-btn-roleta');
+    const btnDiamante = document.getElementById('tab-btn-diamante');
 
     const isTigrinhoActive = (typeof gamesConfig !== 'undefined' && gamesConfig) ? gamesConfig.tigrinho !== false : true;
     const isRoletaActive = (typeof gamesConfig !== 'undefined' && gamesConfig) ? gamesConfig.roleta !== false : true;
+    const isDiamanteActive = (typeof gamesConfig !== 'undefined' && gamesConfig) ? gamesConfig.diamante !== false : true;
 
     if (btnTigrinho) btnTigrinho.classList.toggle('active', gameId === 'tigrinho');
     if (btnRoleta) btnRoleta.classList.toggle('active', gameId === 'roleta');
+    if (btnDiamante) btnDiamante.classList.toggle('active', gameId === 'diamante');
 
     if (cardTigrinho) cardTigrinho.style.display = (gameId === 'tigrinho' && isTigrinhoActive) ? 'flex' : 'none';
     if (cardRoleta) cardRoleta.style.display = (gameId === 'roleta' && isRoletaActive) ? 'flex' : 'none';
+    if (cardDiamante) cardDiamante.style.display = (gameId === 'diamante' && isDiamanteActive) ? 'flex' : 'none';
 
     if (gameId === 'roleta' && isRoletaActive) {
         const canvas = document.getElementById('lucky-wheel-canvas');
@@ -40851,6 +40931,8 @@ export function switchActiveGame(gameId) {
         }
     } else if (gameId === 'tigrinho' && isTigrinhoActive) {
         updateTigrinhoUI();
+    } else if (gameId === 'diamante' && isDiamanteActive) {
+        updateMinesUI();
     }
 }
 
@@ -40877,8 +40959,8 @@ export function updateTigrinhoUI() {
         betCoinsEl.textContent = '(' + Math.round(tigrinhoCurrentBet * 100) + ' moedas)';
     }
 
-    // Chips de aposta ativa
-    document.querySelectorAll('.bet-chip').forEach(chip => {
+    // Chips de aposta ativa (Tigrinho)
+    document.querySelectorAll('#game-card-tigrinho .bet-chip').forEach(chip => {
         const chipBet = Number(chip.dataset.bet) || 0;
         chip.classList.toggle('active', Math.abs(chipBet - tigrinhoCurrentBet) < 0.001);
     });
@@ -41191,7 +41273,7 @@ export function initTigrinhoControls() {
     document.getElementById('tab-btn-roleta')?.addEventListener('click', () => switchActiveGame('roleta'));
     document.getElementById('link-goto-roleta')?.addEventListener('click', () => switchActiveGame('roleta'));
 
-    document.querySelectorAll('.bet-chip').forEach(chip => {
+    document.querySelectorAll('#game-card-tigrinho .bet-chip').forEach(chip => {
         chip.addEventListener('click', () => {
             setTigrinhoBet(Number(chip.dataset.bet));
         });
@@ -41206,6 +41288,531 @@ export function initTigrinhoControls() {
     });
 
     updateTigrinhoUI();
+}
+
+/* ==========================================================================
+   VORTEX VIP ⚡ - CAÇA DIAMANTES VIP 💎💣 (MINES COM MOEDAS REAIS) (v1.0.256)
+   ========================================================================== */
+
+export function playMinesDiamondSound() {
+    try {
+        if (typeof window === 'undefined') return;
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = window.__vortexAudioCtx || new AudioCtx();
+        window.__vortexAudioCtx = ctx;
+        if (ctx.state === 'suspended') ctx.resume();
+
+        const now = ctx.currentTime;
+        const osc1 = ctx.createOscillator();
+        const osc2 = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(880, now);
+        osc1.frequency.exponentialRampToValueAtTime(1760, now + 0.12);
+
+        osc2.type = 'triangle';
+        osc2.frequency.setValueAtTime(1318.5, now + 0.04);
+        osc2.frequency.exponentialRampToValueAtTime(2637, now + 0.16);
+
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+
+        osc1.connect(gain);
+        osc2.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc1.start(now);
+        osc2.start(now + 0.04);
+        osc1.stop(now + 0.22);
+        osc2.stop(now + 0.22);
+    } catch (_) {}
+}
+
+export function playMinesExplosionSound() {
+    try {
+        if (typeof window === 'undefined') return;
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = window.__vortexAudioCtx || new AudioCtx();
+        window.__vortexAudioCtx = ctx;
+        if (ctx.state === 'suspended') ctx.resume();
+
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(160, now);
+        osc.frequency.exponentialRampToValueAtTime(35, now + 0.4);
+
+        gain.gain.setValueAtTime(0.35, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.45);
+    } catch (_) {}
+}
+
+export function playMinesCashoutFanfare() {
+    try {
+        if (typeof window === 'undefined') return;
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = window.__vortexAudioCtx || new AudioCtx();
+        window.__vortexAudioCtx = ctx;
+        if (ctx.state === 'suspended') ctx.resume();
+
+        const now = ctx.currentTime;
+        const notes = [523.25, 659.25, 783.99, 1046.50];
+        notes.forEach((freq, idx) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            const start = now + idx * 0.08;
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, start);
+            gain.gain.setValueAtTime(0.2, start);
+            gain.gain.exponentialRampToValueAtTime(0.001, start + 0.25);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(start);
+            osc.stop(start + 0.25);
+        });
+    } catch (_) {}
+}
+
+export function setMinesBet(val) {
+    if (isMinesGameActive) {
+        showToast('Partida em Andamento', 'Conclua ou resgate sua caçada antes de alterar a aposta.', 'orange');
+        return;
+    }
+    val = Math.round(val * 100) / 100;
+    val = Math.max(0.05, Math.min(5.00, val));
+    minesCurrentBet = val;
+    if (typeof window !== 'undefined') {
+        window.minesCurrentBet = val;
+    }
+    updateMinesUI();
+}
+
+export function setMinesBombCount(count) {
+    if (isMinesGameActive) {
+        showToast('Partida em Andamento', 'Conclua ou resgate sua caçada antes de alterar a dificuldade.', 'orange');
+        return;
+    }
+    if ([3, 5, 8].includes(count)) {
+        minesBombCount = count;
+        if (typeof window !== 'undefined') {
+            window.minesBombCount = count;
+        }
+        updateMinesUI();
+    }
+}
+
+export function getMinesMultiplier(bombs, diamonds) {
+    if (diamonds <= 0) return 0;
+    const totalTiles = 25;
+    const safeTiles = totalTiles - bombs;
+    if (diamonds > safeTiles) diamonds = safeTiles;
+    let prob = 1.0;
+    for (let i = 0; i < diamonds; i++) {
+        prob *= (safeTiles - i) / (totalTiles - i);
+    }
+    const fairMult = 1.0 / prob;
+    return Math.max(1.10, Math.round(fairMult * 0.96 * 100) / 100);
+}
+
+export function startMinesGame() {
+    if (isMinesGameActive) {
+        showToast('Aviso', 'A caçada já está em andamento. Encontre mais diamantes ou clique em Resgatar!', 'orange');
+        return;
+    }
+
+    if (!currentUser || !currentProfile) {
+        showToast('Aviso', 'Faça login para jogar Caça Diamantes.', 'orange');
+        return;
+    }
+
+    const balance = Number(currentProfile.rewardCoinsBalance) || 0;
+    const isCurrentAdmin = (typeof isAdmin !== 'undefined' && isAdmin) || currentUser.email === 'dxhub.oficial@gmail.com';
+
+    if (balance < minesCurrentBet && !isCurrentAdmin) {
+        showToast('Saldo Insuficiente', 'Você precisa de ' + formatBRLCurrency(minesCurrentBet) + ' para iniciar a caçada. Ganhe moedas na Roleta ou no Baú Diário!', 'orange');
+        updateMinesUI();
+        return;
+    }
+
+    // Deduz aposta do saldo de moedas reais do usuário
+    currentProfile.rewardCoinsBalance = Math.max(0, Math.round((balance - minesCurrentBet) * 100) / 100);
+    updateMinesUI();
+    updateDailyChestUI();
+    renderGamesCategory();
+
+    // Persiste novo saldo no Firestore
+    try {
+        if (typeof db !== 'undefined' && db && currentUser && currentUser.uid) {
+            updateDoc(doc(db, 'users', currentUser.uid), {
+                rewardCoinsBalance: currentProfile.rewardCoinsBalance
+            }).catch(err => {
+                console.warn('[VORTEX] Aviso ao debitar aposta no Firestore:', err);
+            });
+        }
+    } catch (_) {}
+
+    // Gera o campo 5x5 (25 ladrilhos) com a quantidade de bombas selecionada
+    const totalTiles = 25;
+    const tiles = [];
+    for (let i = 0; i < totalTiles; i++) {
+        tiles.push({
+            index: i,
+            type: i < minesBombCount ? 'bomb' : 'diamond',
+            revealed: false
+        });
+    }
+
+    // Embaralha aleatoriamente (Fisher-Yates)
+    for (let i = tiles.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const tempType = tiles[i].type;
+        tiles[i].type = tiles[j].type;
+        tiles[j].type = tempType;
+    }
+
+    minesGrid = tiles;
+    isMinesGameActive = true;
+    minesDiamondsFound = 0;
+    minesCurrentWin = 0;
+
+    if (typeof window !== 'undefined') {
+        window.isMinesGameActive = true;
+        window.minesGrid = tiles;
+        window.minesDiamondsFound = 0;
+        window.minesCurrentWin = 0;
+    }
+
+    // Esconde banner anterior
+    const banner = document.getElementById('diamante-result-banner');
+    if (banner) banner.style.display = 'none';
+
+    const statusText = document.getElementById('diamante-status-text');
+    if (statusText) {
+        statusText.textContent = 'Caçada iniciada! Clique nos blocos para revelar diamantes 💎. Fuja das bombinhas 💣!';
+    }
+
+    renderMinesGrid();
+    updateMinesUI();
+
+    if (navigator.vibrate) navigator.vibrate(30);
+}
+
+export function renderMinesGrid() {
+    const container = document.getElementById('mines-grid-container');
+    if (!container) return;
+
+    if (!minesGrid || minesGrid.length !== 25) {
+        minesGrid = [];
+        for (let i = 0; i < 25; i++) {
+            minesGrid.push({ index: i, type: 'diamond', revealed: false });
+        }
+    }
+
+    container.innerHTML = '';
+    minesGrid.forEach((tile, idx) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'mine-tile';
+        btn.id = 'mine-tile-' + idx;
+        btn.dataset.index = String(idx);
+        btn.setAttribute('aria-label', 'Ladrilho ' + (idx + 1));
+
+        if (tile.revealed) {
+            if (tile.type === 'diamond') {
+                btn.classList.add('revealed-diamond');
+                btn.innerHTML = '<span class="tile-icon">💎</span>';
+            } else {
+                btn.classList.add('revealed-bomb');
+                btn.innerHTML = '<span class="tile-icon">💣</span>';
+            }
+        } else if (!isMinesGameActive && minesDiamondsFound > 0) {
+            btn.classList.add('revealed-dim');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="tile-icon">' + (tile.type === 'bomb' ? '💣' : '💎') + '</span>';
+        } else if (!isMinesGameActive && minesGrid.some(t => t.revealed && t.type === 'bomb')) {
+            if (tile.type === 'bomb') {
+                btn.classList.add('revealed-bomb');
+                btn.innerHTML = '<span class="tile-icon">💣</span>';
+            } else {
+                btn.classList.add('revealed-dim');
+                btn.innerHTML = '<span class="tile-icon">💎</span>';
+            }
+            btn.disabled = true;
+        } else {
+            btn.innerHTML = '<span class="tile-shimmer"></span><span class="tile-icon-hidden">✦</span>';
+            btn.disabled = !isMinesGameActive;
+        }
+
+        btn.addEventListener('click', () => {
+            revealMinesTile(idx);
+        });
+
+        container.appendChild(btn);
+    });
+}
+
+export function revealMinesTile(index) {
+    if (!isMinesGameActive) {
+        if (!isMinesGameActive && (!currentUser || !currentProfile || currentProfile.rewardCoinsBalance >= minesCurrentBet)) {
+            startMinesGame();
+            if (!isMinesGameActive) return;
+        } else {
+            return;
+        }
+    }
+
+    if (!minesGrid || !minesGrid[index] || minesGrid[index].revealed) return;
+
+    const tile = minesGrid[index];
+    tile.revealed = true;
+
+    const tileEl = document.getElementById('mine-tile-' + index);
+
+    if (tile.type === 'diamond') {
+        minesDiamondsFound++;
+        const multiplier = getMinesMultiplier(minesBombCount, minesDiamondsFound);
+        minesCurrentWin = Math.round((minesCurrentBet * multiplier) * 100) / 100;
+
+        if (typeof window !== 'undefined') {
+            window.minesDiamondsFound = minesDiamondsFound;
+            window.minesCurrentWin = minesCurrentWin;
+        }
+
+        if (tileEl) {
+            tileEl.classList.remove('revealed-dim');
+            tileEl.classList.add('revealed-diamond');
+            tileEl.innerHTML = '<span class="tile-icon">💎</span>';
+        }
+
+        playMinesDiamondSound();
+        if (navigator.vibrate) navigator.vibrate(40);
+
+        const statusText = document.getElementById('diamante-status-text');
+        if (statusText) {
+            statusText.textContent = `Brilhante! 💎 Você achou ${minesDiamondsFound} diamante${minesDiamondsFound > 1 ? 's' : ''}! Prêmio: ${formatBRLCurrency(minesCurrentWin)} (${Math.round(minesCurrentWin * 100)} moedas).`;
+        }
+
+        updateMinesUI();
+
+        const safeTilesCount = 25 - minesBombCount;
+        if (minesDiamondsFound >= safeTilesCount) {
+            cashoutMinesGame(true);
+        }
+    } else {
+        isMinesGameActive = false;
+        minesCurrentWin = 0;
+        if (typeof window !== 'undefined') {
+            window.isMinesGameActive = false;
+            window.minesCurrentWin = 0;
+        }
+
+        if (tileEl) {
+            tileEl.classList.add('revealed-bomb');
+            tileEl.innerHTML = '<span class="tile-icon">💥</span>';
+        }
+
+        playMinesExplosionSound();
+        if (navigator.vibrate) navigator.vibrate([100, 50, 150]);
+
+        renderMinesGrid();
+
+        const banner = document.getElementById('diamante-result-banner');
+        const iconEl = document.getElementById('diamante-result-icon');
+        const titleEl = document.getElementById('diamante-result-title');
+        const msgEl = document.getElementById('diamante-result-msg');
+
+        if (banner) {
+            banner.className = 'diamante-result-banner bomb-banner';
+            banner.style.display = 'flex';
+        }
+        if (iconEl) iconEl.textContent = '💥';
+        if (titleEl) titleEl.textContent = 'KABOOM! Bombinha!';
+        if (msgEl) msgEl.textContent = `Você encontrou uma bomba e perdeu ${formatBRLCurrency(minesCurrentBet)} (${Math.round(minesCurrentBet * 100)} moedas). Tente de novo!`;
+
+        const statusText = document.getElementById('diamante-status-text');
+        if (statusText) {
+            statusText.textContent = 'KABOOM! 💥 Você tropeçou na bombinha! Inicie uma nova rodada para recuperar suas moedas.';
+        }
+
+        updateMinesUI();
+    }
+}
+
+export function cashoutMinesGame(isPerfectWin = false) {
+    if (!isMinesGameActive || minesDiamondsFound <= 0 || minesCurrentWin <= 0) return;
+
+    isMinesGameActive = false;
+    const winAmount = minesCurrentWin;
+    const diamondsWon = minesDiamondsFound;
+
+    if (typeof window !== 'undefined') {
+        window.isMinesGameActive = false;
+    }
+
+    if (currentProfile) {
+        const balance = Number(currentProfile.rewardCoinsBalance) || 0;
+        currentProfile.rewardCoinsBalance = Math.round((balance + winAmount) * 100) / 100;
+        updateDailyChestUI();
+        renderGamesCategory();
+
+        try {
+            if (typeof db !== 'undefined' && db && currentUser && currentUser.uid) {
+                updateDoc(doc(db, 'users', currentUser.uid), {
+                    rewardCoinsBalance: currentProfile.rewardCoinsBalance
+                }).catch(err => {
+                    console.warn('[VORTEX] Falha ao creditar ganho no Firestore:', err);
+                });
+            }
+        } catch (_) {}
+    }
+
+    playMinesCashoutFanfare();
+    if (navigator.vibrate) navigator.vibrate([50, 30, 80, 40, 100]);
+
+    renderMinesGrid();
+
+    const banner = document.getElementById('diamante-result-banner');
+    const iconEl = document.getElementById('diamante-result-icon');
+    const titleEl = document.getElementById('diamante-result-title');
+    const msgEl = document.getElementById('diamante-result-msg');
+
+    if (banner) {
+        banner.className = 'diamante-result-banner win-banner';
+        banner.style.display = 'flex';
+    }
+    if (iconEl) iconEl.textContent = isPerfectWin ? '👑' : '🎉';
+    if (titleEl) titleEl.textContent = isPerfectWin ? 'CAMPO LIMPO! VITÓRIA MÁXIMA!' : 'RESGATE CONCLUÍDO COM SUCESSO!';
+    if (msgEl) msgEl.textContent = `Você resgatou +${formatBRLCurrency(winAmount)} (${Math.round(winAmount * 100)} moedas) após achar ${diamondsWon} diamante${diamondsWon > 1 ? 's' : ''}! 💰`;
+
+    const statusText = document.getElementById('diamante-status-text');
+    if (statusText) {
+        statusText.textContent = `Parabéns! +${formatBRLCurrency(winAmount)} adicionados ao seu saldo com sucesso! 💰`;
+    }
+
+    updateMinesUI();
+}
+
+export function updateMinesUI() {
+    const balance = Number(currentProfile?.rewardCoinsBalance) || 0;
+
+    const userBalEl = document.getElementById('diamante-user-balance-val');
+    if (userBalEl) {
+        userBalEl.textContent = formatBRLCurrency(balance);
+    }
+
+    const betAmountEl = document.getElementById('diamante-bet-amount-text');
+    if (betAmountEl) {
+        betAmountEl.textContent = formatBRLCurrency(minesCurrentBet);
+    }
+
+    const betCoinsEl = document.getElementById('diamante-bet-coins-text');
+    if (betCoinsEl) {
+        betCoinsEl.textContent = '(' + Math.round(minesCurrentBet * 100) + ' moedas)';
+    }
+
+    const bombsCountEl = document.getElementById('mines-bombs-count-val');
+    if (bombsCountEl) {
+        bombsCountEl.textContent = `${minesBombCount} 💣`;
+    }
+
+    const diamondsFoundEl = document.getElementById('mines-diamonds-found-val');
+    if (diamondsFoundEl) {
+        diamondsFoundEl.textContent = String(minesDiamondsFound);
+    }
+
+    const currentWinEl = document.getElementById('mines-current-win-text');
+    if (currentWinEl) {
+        currentWinEl.textContent = formatBRLCurrency(minesCurrentWin);
+    }
+
+    // Chips de dificuldade
+    document.querySelectorAll('.mines-diff-chip').forEach(chip => {
+        const chipBombs = Number(chip.dataset.bombs) || 3;
+        chip.classList.toggle('active', chipBombs === minesBombCount);
+        chip.disabled = isMinesGameActive;
+    });
+
+    // Chips de aposta rápida
+    document.querySelectorAll('#game-card-diamante .bet-chip, .mines-chip').forEach(chip => {
+        const chipBet = Number(chip.dataset.bet) || 0;
+        chip.classList.toggle('active', Math.abs(chipBet - minesCurrentBet) < 0.001);
+        chip.disabled = isMinesGameActive;
+    });
+
+    const minusBtn = document.getElementById('diamante-bet-minus');
+    const plusBtn = document.getElementById('diamante-bet-plus');
+    if (minusBtn) minusBtn.disabled = isMinesGameActive;
+    if (plusBtn) plusBtn.disabled = isMinesGameActive;
+
+    const startBtn = document.getElementById('btn-start-mines');
+    const startBtnText = document.getElementById('btn-start-mines-text');
+    if (startBtn) {
+        startBtn.disabled = isMinesGameActive;
+        if (startBtnText) {
+            startBtnText.textContent = isMinesGameActive ? 'CAÇADA EM ANDAMENTO...' : (minesDiamondsFound > 0 ? 'NOVA CAÇADA 💎' : 'INICIAR CAÇADA 💎');
+        }
+    }
+
+    const cashoutBtn = document.getElementById('btn-cashout-mines');
+    const cashoutBtnText = document.getElementById('btn-cashout-mines-text');
+    if (cashoutBtn) {
+        const canCashout = isMinesGameActive && minesDiamondsFound > 0 && minesCurrentWin > 0;
+        cashoutBtn.disabled = !canCashout;
+        if (cashoutBtnText) {
+            if (canCashout) {
+                cashoutBtnText.textContent = `RESGATAR ${formatBRLCurrency(minesCurrentWin)} (${Math.round(minesCurrentWin * 100)} 🪙) 💰`;
+            } else {
+                cashoutBtnText.textContent = 'RESGATAR (R$ 0,00) 💰';
+            }
+        }
+    }
+
+    renderGamesCategory();
+
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+    }
+}
+
+export function initMinesControls() {
+    document.getElementById('tab-btn-diamante')?.addEventListener('click', () => switchActiveGame('diamante'));
+    document.getElementById('btn-start-mines')?.addEventListener('click', startMinesGame);
+    document.getElementById('btn-cashout-mines')?.addEventListener('click', () => cashoutMinesGame(false));
+
+    document.querySelectorAll('#game-card-diamante .bet-chip, .mines-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            setMinesBet(Number(chip.dataset.bet));
+        });
+    });
+
+    document.querySelectorAll('.mines-diff-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            setMinesBombCount(Number(chip.dataset.bombs));
+        });
+    });
+
+    document.getElementById('diamante-bet-minus')?.addEventListener('click', () => {
+        setMinesBet(minesCurrentBet - 0.05);
+    });
+
+    document.getElementById('diamante-bet-plus')?.addEventListener('click', () => {
+        setMinesBet(minesCurrentBet + 0.05);
+    });
+
+    renderMinesGrid();
+    updateMinesUI();
 }
 
 /* ==========================================================================
@@ -41252,19 +41859,24 @@ export function applyGamesConfig() {
 
     const isTigrinhoActive = (typeof gamesConfig !== 'undefined' && gamesConfig) ? gamesConfig.tigrinho !== false : true;
     const isRoletaActive = (typeof gamesConfig !== 'undefined' && gamesConfig) ? gamesConfig.roleta !== false : true;
+    const isDiamanteActive = (typeof gamesConfig !== 'undefined' && gamesConfig) ? gamesConfig.diamante !== false : true;
 
     const btnTigrinho = document.getElementById('tab-btn-tigrinho');
     const btnRoleta = document.getElementById('tab-btn-roleta');
+    const btnDiamante = document.getElementById('tab-btn-diamante');
     const cardTigrinho = document.getElementById('game-card-tigrinho');
     const cardRoleta = document.getElementById('game-card-lucky-wheel');
+    const cardDiamante = document.getElementById('game-card-diamante');
 
     if (btnTigrinho) btnTigrinho.style.display = isTigrinhoActive ? 'inline-flex' : 'none';
     if (btnRoleta) btnRoleta.style.display = isRoletaActive ? 'inline-flex' : 'none';
+    if (btnDiamante) btnDiamante.style.display = isDiamanteActive ? 'inline-flex' : 'none';
 
     if (cardTigrinho && !isTigrinhoActive) cardTigrinho.style.display = 'none';
     if (cardRoleta && !isRoletaActive) cardRoleta.style.display = 'none';
+    if (cardDiamante && !isDiamanteActive) cardDiamante.style.display = 'none';
 
-    const hasAnyActiveGame = isTigrinhoActive || isRoletaActive;
+    const hasAnyActiveGame = isTigrinhoActive || isRoletaActive || isDiamanteActive;
 
     if (!hasAnyActiveGame) {
         if (emptyStateEl) emptyStateEl.style.display = 'flex';
@@ -41276,8 +41888,11 @@ export function applyGamesConfig() {
         if (subtabsNav) subtabsNav.style.display = 'flex';
         if (gamesGrid) gamesGrid.style.display = 'flex';
 
-        if (!currentActiveGame || (currentActiveGame === 'tigrinho' && !isTigrinhoActive) || (currentActiveGame === 'roleta' && !isRoletaActive)) {
-            const nextGame = isTigrinhoActive ? 'tigrinho' : (isRoletaActive ? 'roleta' : null);
+        if (!currentActiveGame || 
+            (currentActiveGame === 'tigrinho' && !isTigrinhoActive) || 
+            (currentActiveGame === 'roleta' && !isRoletaActive) || 
+            (currentActiveGame === 'diamante' && !isDiamanteActive)) {
+            const nextGame = isTigrinhoActive ? 'tigrinho' : (isRoletaActive ? 'roleta' : (isDiamanteActive ? 'diamante' : null));
             if (nextGame) {
                 switchActiveGame(nextGame);
             }

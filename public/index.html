@@ -35,13 +35,13 @@
     <meta itemprop="image" content="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
     <link rel="image_src" type="image/png" href="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
 
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.255">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.255">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.255">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.255">
-    <link rel="stylesheet" href="style.css?v=1.0.255">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.256">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.256">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.256">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.256">
+    <link rel="stylesheet" href="style.css?v=1.0.256">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.255" id="app-manifest-link">
+    <link rel="manifest" href="manifest.json?v=1.0.256" id="app-manifest-link">
     <meta name="theme-color" content="#39ff14" id="app-theme-color-meta">
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#39ff14" id="app-theme-color-meta-dark">
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#39ff14" id="app-theme-color-meta-light">
@@ -50,8 +50,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.255">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.255">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.256">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.256">
     <!-- Sincronização Dinâmica da Barra de Status e Barra de Navegação do Celular -->
     <script>
         (function() {
@@ -290,7 +290,7 @@
                 </div>
             </main>
 
-            <!-- Seção da Categoria de Jogos (v1.0.255) -->
+            <!-- Seção da Categoria de Jogos (v1.0.256) -->
             <section id="games-category-container" class="games-category-container" style="display:none;">
                 <div class="games-category-header">
                     <div class="games-category-title-wrap">
@@ -308,11 +308,15 @@
                     </div>
                 </div>
 
-                <!-- Seletor Rápido de Jogos (v1.0.255) -->
+                <!-- Seletor Rápido de Jogos (v1.0.256) -->
                 <div class="games-subtabs-nav" id="games-subtabs-nav">
                     <button type="button" class="games-subtab-btn active" id="tab-btn-tigrinho" data-game-target="tigrinho">
                         <span>🐯 Tigrinho VIP</span>
                         <span class="game-tab-hot-badge">HOT 🔥</span>
+                    </button>
+                    <button type="button" class="games-subtab-btn" id="tab-btn-diamante" data-game-target="diamante">
+                        <span>💎 Caça Diamantes</span>
+                        <span class="game-tab-mines-badge">NOVO ✨</span>
                     </button>
                     <button type="button" class="games-subtab-btn" id="tab-btn-roleta" data-game-target="roleta">
                         <span>🎡 Roleta da Sorte</span>
@@ -320,7 +324,7 @@
                     </button>
                 </div>
 
-                <!-- Mensagem quando todos os jogos forem desativados (v1.0.255) -->
+                <!-- Mensagem quando todos os jogos forem desativados (v1.0.256) -->
                 <div id="games-empty-state" class="games-empty-state" style="display:none;">
                     <div class="games-empty-icon-wrap">
                         <i data-lucide="gamepad-2"></i>
@@ -331,7 +335,7 @@
 
                 <!-- Grid de Jogos da Categoria -->
                 <div class="games-category-grid" id="games-category-grid">
-                    <!-- Card do Jogo 2: Tigrinho VIP da Fortuna 🐯 (v1.0.255) -->
+                    <!-- Card do Jogo 2: Tigrinho VIP da Fortuna 🐯 (v1.0.256) -->
                     <div class="vortex-game-card tigrinho-game-card" id="game-card-tigrinho">
                         <div class="game-card-badge tigrinho-badge">
                             <span class="game-badge-pulse gold-pulse"></span>
@@ -470,6 +474,121 @@
                                 <div class="payout-item"><span class="payout-icon">🍊</span> <span class="payout-name">Laranja Fortuna</span> <span class="payout-val">1.5x</span></div>
                                 <div class="payout-item"><span class="payout-icon">🎆</span> <span class="payout-name">Fogos</span> <span class="payout-val">1.2x</span></div>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Card do Jogo 3: Caça Diamantes VIP 💎💣 (v1.0.256) -->
+                    <div class="vortex-game-card diamante-game-card" id="game-card-diamante" style="display:none;">
+                        <div class="game-card-badge diamond-badge">
+                            <span class="game-badge-pulse cyan-pulse"></span>
+                            <span>💎 CAÇA DIAMANTES • MINES VIP</span>
+                        </div>
+
+                        <!-- Mascote & Topo do Jogo -->
+                        <div class="diamante-mascot-header">
+                            <div class="diamante-mascot-avatar" id="diamante-mascot-avatar" title="Diamante Real">
+                                <span class="mascot-emoji">💎</span>
+                                <div class="mascot-sparkle-halo">✨</div>
+                            </div>
+                            <div class="diamante-header-info">
+                                <h4 class="diamante-title">Caça Diamantes 💎</h4>
+                                <p class="diamante-subtitle" id="diamante-status-text">Ache os diamantes e fuja das bombinhas! Resgate suas moedas a qualquer momento.</p>
+                            </div>
+                        </div>
+
+                        <!-- Banner de Vitória ou Explosão -->
+                        <div class="diamante-result-banner" id="diamante-result-banner" style="display:none;">
+                            <div class="result-banner-icon" id="diamante-result-icon">🎉</div>
+                            <div class="result-banner-content">
+                                <h4 id="diamante-result-title">Parabéns!</h4>
+                                <p id="diamante-result-msg">Você resgatou +R$ 0,50!</p>
+                            </div>
+                        </div>
+
+                        <!-- Painel de Status da Partida (Diamantes, Bombas e Prêmio Atual) -->
+                        <div class="diamante-status-bar">
+                            <div class="diamante-status-pill">
+                                <span class="pill-label">Diamantes</span>
+                                <strong class="pill-val cyan-text" id="mines-diamonds-found-val">0</strong>
+                            </div>
+                            <div class="diamante-status-pill">
+                                <span class="pill-label">Bombinhas</span>
+                                <strong class="pill-val red-text" id="mines-bombs-count-val">3 💣</strong>
+                            </div>
+                            <div class="diamante-status-pill highlight">
+                                <span class="pill-label">Prêmio Acumulado</span>
+                                <strong class="pill-val gold-text" id="mines-current-win-text">R$ 0,00</strong>
+                            </div>
+                        </div>
+
+                        <!-- Campo / Grid do Mines 5x5 (25 Ladrilhos) -->
+                        <div class="mines-grid-frame">
+                            <div class="mines-grid-container" id="mines-grid-container">
+                                <!-- 25 ladrilhos gerados dinamicamente via JS -->
+                            </div>
+                        </div>
+
+                        <!-- Controles e Painel de Apostas -->
+                        <div class="diamante-controls-panel">
+                            <!-- Seletor de Dificuldade / Quantidade de Bombas -->
+                            <div class="mines-difficulty-row">
+                                <span class="mines-control-label">Bombas no Campo:</span>
+                                <div class="mines-difficulty-chips">
+                                    <button type="button" class="mines-diff-chip active" data-bombs="3">3 Bombas (Fácil)</button>
+                                    <button type="button" class="mines-diff-chip" data-bombs="5">5 Bombas (Médio)</button>
+                                    <button type="button" class="mines-diff-chip" data-bombs="8">8 Bombas (Difícil)</button>
+                                </div>
+                            </div>
+
+                            <!-- Saldo do Usuário e Ajuste de Aposta -->
+                            <div class="diamante-bet-row">
+                                <div class="tigrinho-control-col">
+                                    <span class="tigrinho-control-label">Seu Saldo:</span>
+                                    <span class="tigrinho-control-val" id="diamante-user-balance-val">R$ 0,00</span>
+                                </div>
+                                <div class="tigrinho-control-col" style="text-align: right;">
+                                    <span class="tigrinho-control-label">Aposta:</span>
+                                    <div class="tigrinho-bet-adjuster">
+                                        <button type="button" class="btn-bet-step" id="diamante-bet-minus" title="Diminuir Aposta" aria-label="Diminuir Aposta">-</button>
+                                        <div class="bet-display-wrap">
+                                            <span class="bet-amount-text" id="diamante-bet-amount-text">R$ 0,10</span>
+                                            <span class="bet-coins-text" id="diamante-bet-coins-text">(10 moedas)</span>
+                                        </div>
+                                        <button type="button" class="btn-bet-step" id="diamante-bet-plus" title="Aumentar Aposta" aria-label="Aumentar Aposta">+</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Fichas de Aposta Rápida -->
+                            <div class="tigrinho-chips-row mines-chips-row">
+                                <button type="button" class="bet-chip mines-chip" data-bet="0.05">5 🪙</button>
+                                <button type="button" class="bet-chip mines-chip active" data-bet="0.10">10 🪙</button>
+                                <button type="button" class="bet-chip mines-chip" data-bet="0.25">25 🪙</button>
+                                <button type="button" class="bet-chip mines-chip" data-bet="0.50">50 🪙</button>
+                                <button type="button" class="bet-chip mines-chip" data-bet="1.00">100 🪙</button>
+                            </div>
+
+                            <!-- Ações: Iniciar Partida e Resgatar Moedas -->
+                            <div class="mines-actions-row">
+                                <button type="button" class="btn-start-mines" id="btn-start-mines">
+                                    <i data-lucide="play"></i>
+                                    <span id="btn-start-mines-text">INICIAR CAÇADA 💎</span>
+                                </button>
+                                <button type="button" class="btn-cashout-mines" id="btn-cashout-mines" disabled>
+                                    <i data-lucide="wallet"></i>
+                                    <span id="btn-cashout-mines-text">RESGATAR (R$ 0,00) 💰</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Regras e Instruções -->
+                        <div class="tigrinho-payout-table diamante-rules-box">
+                            <div class="payout-title"><i data-lucide="info"></i> Como Funciona o Caça Diamantes</div>
+                            <p class="diamante-rules-text">
+                                • A cada <strong>diamante 💎</strong> encontrado no campo, suas moedas aumentam.<br>
+                                • Você pode clicar em <strong>Resgatar Moedas 💰</strong> a qualquer momento para levar os ganhos para seu saldo real.<br>
+                                • Cuidado com a <strong>bombinha 💣</strong>: se achar uma bombinha antes de resgatar, você perde a aposta e as moedas acumuladas nesta rodada!
+                            </p>
                         </div>
                     </div>
 
@@ -2741,14 +2860,14 @@
                     </button>
                 </div>
 
-                <!-- Card de Versão Oficial do App (v1.0.255) -->
+                <!-- Card de Versão Oficial do App (v1.0.256) -->
                 <div class="app-version-card" id="app-version-info-footer">
                     <div class="app-version-header-row">
                         <div class="app-version-brand-wrap">
-                            <img src="icons/vortex-vip-192.png?v=1.0.255" alt="VORTEX VIP" class="app-version-icon-img" width="22" height="22">
+                            <img src="icons/vortex-vip-192.png?v=1.0.256" alt="VORTEX VIP" class="app-version-icon-img" width="22" height="22">
                             <span class="app-version-brand-name">VORTEX VIP Oficial</span>
                         </div>
-                        <span class="app-version-pill-badge" id="app-version-display-badge">v1.0.255 ⚡</span>
+                        <span class="app-version-pill-badge" id="app-version-display-badge">v1.0.256 ⚡</span>
                     </div>
                     <div class="app-version-status-row">
                         <span class="app-version-status-dot"></span>
@@ -3063,7 +3182,7 @@
                     </div>
                 </div>
 
-                <!-- 9. Aba de Controle de Jogos (v1.0.255) -->
+                <!-- 9. Aba de Controle de Jogos (v1.0.256) -->
                 <div id="admin-view-games" class="admin-view">
                     <div class="admin-filter-bar admin-games-filter-bar">
                         <div class="admin-games-header-info">
@@ -5252,7 +5371,7 @@
             </div>
         </div>
 
-        <!-- Tela de Saque em Análise (v1.0.255) -->
+        <!-- Tela de Saque em Análise (v1.0.256) -->
         <div id="withdrawal-under-review-screen" class="withdrawal-under-review-screen" style="display:none;" aria-hidden="true">
             <div class="withdrawal-review-card">
                 <!-- Botão Fechar (X) -->
@@ -5272,7 +5391,7 @@
                     <div class="withdrawal-review-radar-ring ring-2"></div>
                     <div class="withdrawal-review-radar-ring ring-3"></div>
                     <div class="withdrawal-review-radar-center" id="withdrawal-review-radar-center">
-                        <img src="icons/pix-wallet-paid.png?v=1.0.255" alt="Saque Pix Pago" class="withdrawal-review-wallet-img" id="withdrawal-review-icon-img" width="56" height="56">
+                        <img src="icons/pix-wallet-paid.png?v=1.0.256" alt="Saque Pix Pago" class="withdrawal-review-wallet-img" id="withdrawal-review-icon-img" width="56" height="56">
                         <div class="withdrawal-review-sub-badge" id="withdrawal-review-sub-badge">
                             <i data-lucide="hourglass" class="withdrawal-review-sub-icon"></i>
                         </div>
@@ -5933,7 +6052,7 @@
             </div>
         </div>
 
-        <!-- Modal do Jogo: Roleta da Sorte (v1.0.255) -->
+        <!-- Modal do Jogo: Roleta da Sorte (v1.0.256) -->
         <div id="lucky-wheel-modal" class="custom-modal-overlay lucky-wheel-overlay" style="display:none;" aria-hidden="true">
             <div class="custom-modal-card lucky-wheel-card">
                 <!-- Top bar do Modal -->
@@ -6014,6 +6133,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.255" defer></script>
+    <script type="module" src="script.js?v=1.0.256" defer></script>
 </body>
 </html>
