@@ -21540,7 +21540,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.253';
+export const CURRENT_APP_VERSION = '1.0.254';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -29826,6 +29826,12 @@ export function applyChatFilter(filter = currentChatFilter) {
         if (typeof updateLuckyWheelUI === 'function') {
             updateLuckyWheelUI();
         }
+        if (typeof updateTigrinhoUI === 'function') {
+            updateTigrinhoUI();
+        }
+        if (typeof switchActiveGame === 'function') {
+            switchActiveGame(currentActiveGame || 'tigrinho');
+        }
         if (typeof drawLuckyWheel === 'function') {
             drawLuckyWheel();
         }
@@ -37958,6 +37964,25 @@ export const LUCKY_WHEEL_SLICES = [
     { label: '+R$ 0,05', type: 'money', value: 0.05, bg: '#2979ff', text: '#fff', icon: '🪙', weight: 16 }
 ];
 
+export const TIGRINHO_SYMBOLS = [
+    { id: 'tiger', name: 'Tigre Dourado', icon: '🐯', multiplier: 10, weight: 10, isWild: true },
+    { id: 'gold_pot', name: 'Pote de Ouro', icon: '💰', multiplier: 5, weight: 15 },
+    { id: 'jade', name: 'Jade da Sorte', icon: '💎', multiplier: 3, weight: 20 },
+    { id: 'envelope', name: 'Envelope Vermelho', icon: '🧧', multiplier: 2, weight: 25 },
+    { id: 'orange', name: 'Laranja da Fortuna', icon: '🍊', multiplier: 1.5, weight: 30 },
+    { id: 'fireworks', name: 'Fogos de Artifício', icon: '🎆', multiplier: 1.2, weight: 35 }
+];
+
+export let tigrinhoCurrentBet = 0.10;
+export let isTigrinhoSpinning = false;
+export let tigrinhoLastWin = 0;
+export let currentActiveGame = 'tigrinho';
+export let tigrinhoReelsState = [
+    ['🍊', '🐯', '💰'],
+    ['💎', '🐯', '🧧'],
+    ['🎆', '🐯', '🍊']
+];
+
 if (typeof window !== 'undefined') {
     window.clearChatForCurrentUser = clearChatForCurrentUser;
     window.copyMessageText = copyMessageText;
@@ -38534,6 +38559,30 @@ window.handleCallSwitchedToVideo = handleCallSwitchedToVideo;
     window.spinLuckyWheel = spinLuckyWheel;
     window.handleLuckyWheelWin = handleLuckyWheelWin;
     window.initGamesControls = initGamesControls;
+    // Tigrinho VIP (v1.0.254)
+    window.TIGRINHO_SYMBOLS = TIGRINHO_SYMBOLS;
+    window.spinTigrinho = spinTigrinho;
+    window.setTigrinhoBet = setTigrinhoBet;
+    window.switchActiveGame = switchActiveGame;
+    window.updateTigrinhoUI = updateTigrinhoUI;
+    window.handleTigrinhoWin = handleTigrinhoWin;
+    window.evaluateTigrinhoPaylines = evaluateTigrinhoPaylines;
+    window.initTigrinhoControls = initTigrinhoControls;
+    try {
+        Object.defineProperty(window, 'tigrinhoCurrentBet', {
+            get: () => tigrinhoCurrentBet,
+            set: (v) => { tigrinhoCurrentBet = v; },
+            configurable: true
+        });
+        Object.defineProperty(window, 'tigrinhoLastWin', {
+            get: () => tigrinhoLastWin,
+            set: (v) => { tigrinhoLastWin = v; },
+            configurable: true
+        });
+    } catch (_) {
+        window.tigrinhoCurrentBet = tigrinhoCurrentBet;
+        window.tigrinhoLastWin = tigrinhoLastWin;
+    }
 }
 
 /* ==========================================================================
@@ -40612,6 +40661,9 @@ export async function handleLuckyWheelWin(prize) {
 }
 
 export function initGamesControls() {
+    if (typeof initTigrinhoControls === 'function') {
+        initTigrinhoControls();
+    }
     document.querySelectorAll(".open-lucky-wheel-btn, #open-lucky-wheel-btn").forEach(btn => {
         btn.addEventListener("click", openLuckyWheelModal);
     });
@@ -40637,4 +40689,447 @@ export function initGamesControls() {
     });
 
     drawLuckyWheel();
+}
+
+
+/* ==========================================================================
+   VORTEX VIP ⚡ - TIGRINHO DA FORTUNA (SLOTS COM MOEDAS) (v1.0.254)
+   ========================================================================== */
+
+export function playTigrinhoReelSpinSound() {
+    try {
+        if (typeof window === 'undefined') return;
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = window.__vortexAudioCtx || new AudioCtx();
+        window.__vortexAudioCtx = ctx;
+        if (ctx.state === 'suspended') ctx.resume();
+
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(190, now);
+        osc.frequency.exponentialRampToValueAtTime(70, now + 0.08);
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.08);
+    } catch (_) {}
+}
+
+export function playTigrinhoWinFanfare(isBigWin = false) {
+    try {
+        if (typeof window === 'undefined') return;
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = window.__vortexAudioCtx || new AudioCtx();
+        window.__vortexAudioCtx = ctx;
+        if (ctx.state === 'suspended') ctx.resume();
+
+        const notes = isBigWin ? [523.25, 659.25, 783.99, 1046.50, 1318.51] : [523.25, 659.25, 783.99];
+        const now = ctx.currentTime;
+        notes.forEach((freq, idx) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, now + (idx * 0.1));
+            gain.gain.setValueAtTime(0.2, now + (idx * 0.1));
+            gain.gain.exponentialRampToValueAtTime(0.001, now + (idx * 0.1) + 0.25);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now + (idx * 0.1));
+            osc.stop(now + (idx * 0.1) + 0.25);
+        });
+    } catch (_) {}
+}
+
+export function setTigrinhoBet(amount) {
+    let val = Number(amount) || 0.10;
+    val = Math.round(val * 100) / 100;
+    val = Math.max(0.05, Math.min(5.00, val));
+    tigrinhoCurrentBet = val;
+    if (typeof window !== 'undefined') {
+        window.tigrinhoCurrentBet = val;
+    }
+    updateTigrinhoUI();
+}
+
+export function switchActiveGame(gameId) {
+    currentActiveGame = gameId;
+    const cardTigrinho = document.getElementById('game-card-tigrinho');
+    const cardRoleta = document.getElementById('game-card-lucky-wheel');
+    const btnTigrinho = document.getElementById('tab-btn-tigrinho');
+    const btnRoleta = document.getElementById('tab-btn-roleta');
+
+    if (btnTigrinho) btnTigrinho.classList.toggle('active', gameId === 'tigrinho');
+    if (btnRoleta) btnRoleta.classList.toggle('active', gameId === 'roleta');
+
+    if (cardTigrinho) cardTigrinho.style.display = (gameId === 'tigrinho') ? 'flex' : 'none';
+    if (cardRoleta) cardRoleta.style.display = (gameId === 'roleta') ? 'flex' : 'none';
+
+    if (gameId === 'roleta') {
+        const canvas = document.getElementById('lucky-wheel-canvas');
+        if (canvas && typeof drawLuckyWheel === 'function') {
+            drawLuckyWheel(canvas);
+        }
+    } else {
+        updateTigrinhoUI();
+    }
+}
+
+export function updateTigrinhoUI() {
+    const balance = Number(currentProfile?.rewardCoinsBalance) || 0;
+
+    const userBalEl = document.getElementById('tigrinho-user-balance-val');
+    if (userBalEl) {
+        userBalEl.textContent = formatBRLCurrency(balance);
+    }
+
+    const lastWinEl = document.getElementById('tigrinho-last-win-val');
+    if (lastWinEl) {
+        lastWinEl.textContent = formatBRLCurrency(tigrinhoLastWin);
+    }
+
+    const betAmountEl = document.getElementById('tigrinho-bet-amount-text');
+    if (betAmountEl) {
+        betAmountEl.textContent = formatBRLCurrency(tigrinhoCurrentBet);
+    }
+
+    const betCoinsEl = document.getElementById('tigrinho-bet-coins-text');
+    if (betCoinsEl) {
+        betCoinsEl.textContent = '(' + Math.round(tigrinhoCurrentBet * 100) + ' moedas)';
+    }
+
+    // Chips de aposta ativa
+    document.querySelectorAll('.bet-chip').forEach(chip => {
+        const chipBet = Number(chip.dataset.bet) || 0;
+        chip.classList.toggle('active', Math.abs(chipBet - tigrinhoCurrentBet) < 0.001);
+    });
+
+    const spinBtn = document.getElementById('btn-spin-tigrinho');
+    const spinText = document.getElementById('btn-spin-tigrinho-text');
+    if (spinBtn) {
+        spinBtn.disabled = isTigrinhoSpinning;
+        if (spinText) {
+            spinText.textContent = isTigrinhoSpinning ? 'TIGRINHO GIRANDO... 🐯' : 'GIRAR TIGRINHO 🐯';
+        }
+    }
+
+    const demoBar = document.getElementById('tigrinho-demo-bar');
+    if (demoBar) {
+        demoBar.style.display = (balance < tigrinhoCurrentBet) ? 'block' : 'none';
+    }
+
+    renderGamesCategory();
+
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+    }
+}
+
+function getRandomTigrinhoSymbol(isFortuneBonus = false) {
+    const list = [...TIGRINHO_SYMBOLS];
+    if (isFortuneBonus) {
+        // Aumenta peso do tigre para 35
+        const tiger = list.find(s => s.id === 'tiger');
+        if (tiger) tiger.weight = 35;
+    }
+    const totalWeight = list.reduce((sum, s) => sum + s.weight, 0);
+    let rand = Math.random() * totalWeight;
+    for (const sym of list) {
+        if (rand < sym.weight) return sym;
+        rand -= sym.weight;
+    }
+    return list[0];
+}
+
+export function evaluateTigrinhoPaylines(grid) {
+    // grid é [col][row]: colunas 0, 1, 2; linhas 0, 1, 2
+    const lines = [
+        { name: 'Linha Central', coords: [[0, 1], [1, 1], [2, 1]] },
+        { name: 'Linha Superior', coords: [[0, 0], [1, 0], [2, 0]] },
+        { name: 'Linha Inferior', coords: [[0, 2], [1, 2], [2, 2]] },
+        { name: 'Diagonal Descendente', coords: [[0, 0], [1, 1], [2, 2]] },
+        { name: 'Diagonal Ascendente', coords: [[0, 2], [1, 1], [2, 0]] }
+    ];
+
+    let totalMultiplier = 0;
+    const winningLines = [];
+    const winningCellsSet = new Set();
+
+    for (const line of lines) {
+        const syms = line.coords.map(([c, r]) => grid[c][r]);
+        // Verifica se os 3 símbolos combinam (considerando 🐯 Tigre como Wild)
+        const isAllTigers = syms.every(s => s.id === 'tiger');
+        if (isAllTigers) {
+            totalMultiplier += 25; // Super Prêmio de 3 Tigres
+            winningLines.push({ ...line, multiplier: 25, isJackpot: true });
+            line.coords.forEach(([c, r]) => winningCellsSet.add(c + '-' + r));
+            continue;
+        }
+
+        // Encontra o primeiro símbolo não-wild
+        const nonWild = syms.find(s => !s.isWild);
+        if (nonWild) {
+            const isMatch = syms.every(s => s.isWild || s.id === nonWild.id);
+            if (isMatch) {
+                const mult = nonWild.multiplier || 1;
+                totalMultiplier += mult;
+                winningLines.push({ ...line, multiplier: mult, symbol: nonWild });
+                line.coords.forEach(([c, r]) => winningCellsSet.add(c + '-' + r));
+            }
+        }
+    }
+
+    // Bônus de Tela Cheia (9 símbolos iguais ou Wilds): +10x
+    const flatCells = [];
+    for (let c = 0; c < 3; c++) {
+        for (let r = 0; r < 3; r++) {
+            flatCells.push(grid[c][r]);
+        }
+    }
+    const nonWildAll = flatCells.find(s => !s.isWild);
+    const isFullGrid = flatCells.every(s => s.isWild || (nonWildAll && s.id === nonWildAll.id));
+    if (isFullGrid && winningLines.length > 0) {
+        totalMultiplier += 10;
+    }
+
+    return { totalMultiplier, winningLines, winningCellsSet, isFullGrid };
+}
+
+export async function spinTigrinho() {
+    if (isTigrinhoSpinning) return;
+
+    if (!currentUser || !currentProfile) {
+        showToast('Aviso', 'Faça login para girar o Tigrinho.', 'orange');
+        return;
+    }
+
+    const balance = Number(currentProfile.rewardCoinsBalance) || 0;
+    const isCurrentAdmin = (typeof isAdmin !== 'undefined' && isAdmin) || currentUser.email === 'dxhub.oficial@gmail.com';
+
+    if (balance < tigrinhoCurrentBet && !isCurrentAdmin) {
+        showToast('Saldo Insuficiente', 'Você precisa de ' + formatBRLCurrency(tigrinhoCurrentBet) + ' para girar. Ganhe moedas na Roleta da Sorte ou no Baú Diário!', 'orange');
+        updateTigrinhoUI();
+        return;
+    }
+
+    // Desconta a aposta do saldo do usuário
+    isTigrinhoSpinning = true;
+    tigrinhoLastWin = 0;
+    if (typeof window !== 'undefined') window.tigrinhoLastWin = 0;
+    currentProfile.rewardCoinsBalance = Math.max(0, Math.round((balance - tigrinhoCurrentBet) * 100) / 100);
+    updateTigrinhoUI();
+    updateDailyChestUI();
+
+    // Limpa banners de vitória anteriores e destaques
+    const winBanner = document.getElementById('tigrinho-win-banner');
+    if (winBanner) winBanner.style.display = 'none';
+    const fortuneBanner = document.getElementById('tigrinho-fortune-banner');
+    if (fortuneBanner) fortuneBanner.style.display = 'none';
+    document.querySelectorAll('.slot-cell').forEach(cell => cell.classList.remove('winning-cell'));
+
+    // Chance da Carta da Fortuna do Tigrinho (~12.5% das rodadas)
+    const isFortuneTriggered = Math.random() < 0.125;
+    if (isFortuneTriggered) {
+        if (fortuneBanner) fortuneBanner.style.display = 'flex';
+        playTigrinhoWinFanfare(false);
+        const mascotAvatar = document.getElementById('tigrinho-mascot-avatar');
+        if (mascotAvatar) {
+            mascotAvatar.style.transform = 'scale(1.2) rotate(10deg)';
+            setTimeout(() => { mascotAvatar.style.transform = ''; }, 1200);
+        }
+    }
+
+    // Determina o resultado final dos 3x3 símbolos
+    const finalGrid = [
+        [getRandomTigrinhoSymbol(isFortuneTriggered), getRandomTigrinhoSymbol(isFortuneTriggered), getRandomTigrinhoSymbol(isFortuneTriggered)],
+        [getRandomTigrinhoSymbol(isFortuneTriggered), getRandomTigrinhoSymbol(isFortuneTriggered), getRandomTigrinhoSymbol(isFortuneTriggered)],
+        [getRandomTigrinhoSymbol(isFortuneTriggered), getRandomTigrinhoSymbol(isFortuneTriggered), getRandomTigrinhoSymbol(isFortuneTriggered)]
+    ];
+
+    // Se o modo da Carta da Fortuna ativou, garante pelo menos 1 linha vencedora com Tigres
+    if (isFortuneTriggered) {
+        const tigerSym = TIGRINHO_SYMBOLS.find(s => s.id === 'tiger') || TIGRINHO_SYMBOLS[0];
+        const luckyPick = getRandomTigrinhoSymbol();
+        finalGrid[0][1] = tigerSym;
+        finalGrid[1][1] = luckyPick;
+        finalGrid[2][1] = luckyPick;
+    }
+
+    // Inicia rotação animada dos rolos
+    const reelStrips = [
+        document.getElementById('reel-strip-0'),
+        document.getElementById('reel-strip-1'),
+        document.getElementById('reel-strip-2')
+    ];
+    reelStrips.forEach(strip => strip?.classList.add('spinning'));
+
+    // Loop de som e embaralhamento visual temporário
+    let spinTicks = 0;
+    const spinInterval = setInterval(() => {
+        spinTicks++;
+        if (spinTicks % 3 === 0) playTigrinhoReelSpinSound();
+        for (let c = 0; c < 3; c++) {
+            const strip = reelStrips[c];
+            if (strip && strip.classList.contains('spinning')) {
+                const cells = strip.querySelectorAll('.slot-cell .slot-icon');
+                cells.forEach(iconEl => {
+                    const randomSym = TIGRINHO_SYMBOLS[Math.floor(Math.random() * TIGRINHO_SYMBOLS.length)];
+                    iconEl.textContent = randomSym.icon;
+                });
+            }
+        }
+    }, 60);
+
+    // Parada sequencial dos rolos
+    // Rolo 1 para em 700ms
+    setTimeout(() => {
+        if (reelStrips[0]) {
+            reelStrips[0].classList.remove('spinning');
+            const cells = reelStrips[0].querySelectorAll('.slot-cell .slot-icon');
+            if (cells.length >= 3) {
+                cells[0].textContent = finalGrid[0][0].icon;
+                cells[1].textContent = finalGrid[0][1].icon;
+                cells[2].textContent = finalGrid[0][2].icon;
+            }
+        }
+        playTigrinhoReelSpinSound();
+    }, 700);
+
+    // Rolo 2 para em 1200ms
+    setTimeout(() => {
+        if (reelStrips[1]) {
+            reelStrips[1].classList.remove('spinning');
+            const cells = reelStrips[1].querySelectorAll('.slot-cell .slot-icon');
+            if (cells.length >= 3) {
+                cells[0].textContent = finalGrid[1][0].icon;
+                cells[1].textContent = finalGrid[1][1].icon;
+                cells[2].textContent = finalGrid[1][2].icon;
+            }
+        }
+        playTigrinhoReelSpinSound();
+    }, 1200);
+
+    // Rolo 3 para em 1700ms e avalia prêmios
+    setTimeout(() => {
+        clearInterval(spinInterval);
+        if (reelStrips[2]) {
+            reelStrips[2].classList.remove('spinning');
+            const cells = reelStrips[2].querySelectorAll('.slot-cell .slot-icon');
+            if (cells.length >= 3) {
+                cells[0].textContent = finalGrid[2][0].icon;
+                cells[1].textContent = finalGrid[2][1].icon;
+                cells[2].textContent = finalGrid[2][2].icon;
+            }
+        }
+        playTigrinhoReelSpinSound();
+
+        // Avaliação do resultado
+        const evaluation = evaluateTigrinhoPaylines(finalGrid);
+        handleTigrinhoWin(evaluation, isFortuneTriggered);
+    }, 1700);
+}
+
+export function handleTigrinhoWin(evaluation, isFortuneTriggered = false) {
+    isTigrinhoSpinning = false;
+    const { totalMultiplier, winningLines, winningCellsSet, isFullGrid } = evaluation;
+
+    const winBanner = document.getElementById('tigrinho-win-banner');
+    const winTitle = document.getElementById('tigrinho-win-title');
+    const winMsg = document.getElementById('tigrinho-win-msg');
+    const winMult = document.getElementById('tigrinho-win-mult');
+    const winIcon = document.getElementById('tigrinho-win-icon');
+
+    if (totalMultiplier > 0) {
+        const winAmount = Math.round((tigrinhoCurrentBet * totalMultiplier) * 100) / 100;
+        tigrinhoLastWin = winAmount;
+        if (typeof window !== 'undefined') {
+            window.tigrinhoLastWin = winAmount;
+        }
+
+        // Adiciona ao saldo do usuário
+        currentProfile.rewardCoinsBalance = Math.round(((Number(currentProfile.rewardCoinsBalance) || 0) + winAmount) * 100) / 100;
+
+        // Destaca as células vencedoras
+        winningCellsSet.forEach(key => {
+            const [c, r] = key.split('-').map(Number);
+            const reel = document.getElementById('tigrinho-reel-' + c);
+            const cell = reel?.querySelector('.slot-cell[data-row="' + r + '"]');
+            if (cell) cell.classList.add('winning-cell');
+        });
+
+        // Banner de Vitória
+        if (winBanner) {
+            let titleText = '💰 VITÓRIA!';
+            let iconText = '🎉';
+            if (totalMultiplier >= 20 || isFullGrid) {
+                titleText = '💥 MEGA JACKPOT DO TIGRE! 🐯🔥';
+                iconText = '👑';
+            } else if (totalMultiplier >= 10) {
+                titleText = '🌟 GRANDE VITÓRIA!';
+                iconText = '💎';
+            } else if (totalMultiplier >= 3) {
+                titleText = '✨ BOA VITÓRIA!';
+                iconText = '💰';
+            }
+
+            if (winTitle) winTitle.textContent = titleText;
+            if (winMsg) winMsg.textContent = 'Você ganhou +' + formatBRLCurrency(winAmount) + '! Valor creditado no seu Baú Pix!';
+            if (winMult) winMult.textContent = totalMultiplier + 'x';
+            if (winIcon) winIcon.textContent = iconText;
+            winBanner.style.display = 'flex';
+        }
+
+        playTigrinhoWinFanfare(totalMultiplier >= 10);
+        playCoinRewardSound();
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+            try { navigator.vibrate([100, 50, 150, 50, 250]); } catch (_) {}
+        }
+        showToast('Tigrinho da Fortuna 🐯', 'Parabéns! Ganhou +' + formatBRLCurrency(winAmount) + ' (' + totalMultiplier + 'x)!', 'green');
+    } else {
+        tigrinhoLastWin = 0;
+        const statusText = document.getElementById('tigrinho-status-text');
+        if (statusText) {
+            statusText.textContent = 'Quase! O Tigrinho está aquecendo... 🔥 Tente de novo!';
+        }
+    }
+
+    // Salvar no Firestore
+    if (typeof updateDoc === 'function' && typeof db !== 'undefined' && currentUser && currentUser.uid) {
+        updateDoc(doc(db, 'users', currentUser.uid), {
+            rewardCoinsBalance: currentProfile.rewardCoinsBalance || 0
+        }).catch(err => console.warn('[VORTEX] Erro ao sincronizar saldo do Tigrinho no Firestore:', err));
+    }
+
+    updateTigrinhoUI();
+    updateLuckyWheelUI();
+    updateDailyChestUI();
+}
+
+export function initTigrinhoControls() {
+    document.getElementById('btn-spin-tigrinho')?.addEventListener('click', spinTigrinho);
+
+    document.getElementById('tab-btn-tigrinho')?.addEventListener('click', () => switchActiveGame('tigrinho'));
+    document.getElementById('tab-btn-roleta')?.addEventListener('click', () => switchActiveGame('roleta'));
+    document.getElementById('link-goto-roleta')?.addEventListener('click', () => switchActiveGame('roleta'));
+
+    document.querySelectorAll('.bet-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            setTigrinhoBet(Number(chip.dataset.bet));
+        });
+    });
+
+    document.getElementById('tigrinho-bet-minus')?.addEventListener('click', () => {
+        setTigrinhoBet(tigrinhoCurrentBet - 0.05);
+    });
+
+    document.getElementById('tigrinho-bet-plus')?.addEventListener('click', () => {
+        setTigrinhoBet(tigrinhoCurrentBet + 0.05);
+    });
+
+    updateTigrinhoUI();
 }

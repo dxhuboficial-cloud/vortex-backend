@@ -35,13 +35,13 @@
     <meta itemprop="image" content="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
     <link rel="image_src" type="image/png" href="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
 
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.253">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.253">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.253">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.253">
-    <link rel="stylesheet" href="style.css?v=1.0.253">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.254">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.254">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.254">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.254">
+    <link rel="stylesheet" href="style.css?v=1.0.254">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.253" id="app-manifest-link">
+    <link rel="manifest" href="manifest.json?v=1.0.254" id="app-manifest-link">
     <meta name="theme-color" content="#39ff14" id="app-theme-color-meta">
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#39ff14" id="app-theme-color-meta-dark">
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#39ff14" id="app-theme-color-meta-light">
@@ -50,8 +50,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.253">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.253">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.254">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.254">
     <!-- Sincronização Dinâmica da Barra de Status e Barra de Navegação do Celular -->
     <script>
         (function() {
@@ -290,7 +290,7 @@
                 </div>
             </main>
 
-            <!-- Seção da Categoria de Jogos (v1.0.253) -->
+            <!-- Seção da Categoria de Jogos (v1.0.254) -->
             <section id="games-category-container" class="games-category-container" style="display:none;">
                 <div class="games-category-header">
                     <div class="games-category-title-wrap">
@@ -308,10 +308,164 @@
                     </div>
                 </div>
 
+                <!-- Seletor Rápido de Jogos (v1.0.254) -->
+                <div class="games-subtabs-nav" id="games-subtabs-nav">
+                    <button type="button" class="games-subtab-btn active" id="tab-btn-tigrinho" data-game-target="tigrinho">
+                        <span>🐯 Tigrinho VIP</span>
+                        <span class="game-tab-hot-badge">HOT 🔥</span>
+                    </button>
+                    <button type="button" class="games-subtab-btn" id="tab-btn-roleta" data-game-target="roleta">
+                        <span>🎡 Roleta da Sorte</span>
+                        <span class="game-tab-free-badge">GRÁTIS</span>
+                    </button>
+                </div>
+
                 <!-- Grid de Jogos da Categoria -->
                 <div class="games-category-grid" id="games-category-grid">
+                    <!-- Card do Jogo 2: Tigrinho VIP da Fortuna 🐯 (v1.0.254) -->
+                    <div class="vortex-game-card tigrinho-game-card" id="game-card-tigrinho">
+                        <div class="game-card-badge tigrinho-badge">
+                            <span class="game-badge-pulse gold-pulse"></span>
+                            <span>🐯 FORTUNE TIGER • MOEDAS DO BAÚ</span>
+                        </div>
+
+                        <!-- Mascote & Topo do Tigrinho -->
+                        <div class="tigrinho-mascot-header">
+                            <div class="tigrinho-mascot-avatar" id="tigrinho-mascot-avatar" title="Tigrinho da Sorte">
+                                <span class="mascot-emoji">🐯</span>
+                                <div class="mascot-crown">👑</div>
+                            </div>
+                            <div class="tigrinho-header-info">
+                                <h4 class="tigrinho-title">Tigrinho da Fortuna 🐯</h4>
+                                <p class="tigrinho-subtitle" id="tigrinho-status-text">O Tigre da Sorte solta a carta e multiplica suas moedas!</p>
+                            </div>
+                        </div>
+
+                        <!-- Banner Especial da Carta da Sorte (Modo Bônus do Tigre) -->
+                        <div class="tigrinho-fortune-banner" id="tigrinho-fortune-banner" style="display:none;">
+                            <span class="fortune-banner-sparkle">✨</span>
+                            <span id="tigrinho-fortune-text">O TIGRINHO SOLTOU A CARTA DA FORTUNA! 🐯🔥</span>
+                            <span class="fortune-banner-sparkle">✨</span>
+                        </div>
+
+                        <!-- Máquina de Slots 3x3 do Tigrinho -->
+                        <div class="tigrinho-machine-frame">
+                            <div class="tigrinho-reels-container" id="tigrinho-reels-container">
+                                <!-- Rolo 1 -->
+                                <div class="tigrinho-reel" id="tigrinho-reel-0">
+                                    <div class="reel-strip" id="reel-strip-0">
+                                        <div class="slot-cell" data-row="0"><span class="slot-icon">🍊</span></div>
+                                        <div class="slot-cell payline-center" data-row="1"><span class="slot-icon">🐯</span></div>
+                                        <div class="slot-cell" data-row="2"><span class="slot-icon">💰</span></div>
+                                    </div>
+                                </div>
+
+                                <!-- Rolo 2 -->
+                                <div class="tigrinho-reel" id="tigrinho-reel-1">
+                                    <div class="reel-strip" id="reel-strip-1">
+                                        <div class="slot-cell" data-row="0"><span class="slot-icon">💎</span></div>
+                                        <div class="slot-cell payline-center" data-row="1"><span class="slot-icon">🐯</span></div>
+                                        <div class="slot-cell" data-row="2"><span class="slot-icon">🧧</span></div>
+                                    </div>
+                                </div>
+
+                                <!-- Rolo 3 -->
+                                <div class="tigrinho-reel" id="tigrinho-reel-2">
+                                    <div class="reel-strip" id="reel-strip-2">
+                                        <div class="slot-cell" data-row="0"><span class="slot-icon">🎆</span></div>
+                                        <div class="slot-cell payline-center" data-row="1"><span class="slot-icon">🐯</span></div>
+                                        <div class="slot-cell" data-row="2"><span class="slot-icon">🍊</span></div>
+                                    </div>
+                                </div>
+
+                                <!-- Indicador de Linha de Pagamento Central -->
+                                <div class="payline-guide center-guide" title="Linha de Pagamento Principal"></div>
+                            </div>
+                        </div>
+
+                        <!-- Banner de Resultado / Big Win -->
+                        <div class="tigrinho-win-banner" id="tigrinho-win-banner" style="display:none;">
+                            <div class="win-banner-icon" id="tigrinho-win-icon">🎉</div>
+                            <div class="win-banner-content">
+                                <h4 id="tigrinho-win-title">GRANDE VITÓRIA!</h4>
+                                <p id="tigrinho-win-msg">Você ganhou +R$ 1,00!</p>
+                            </div>
+                            <div class="win-banner-mult" id="tigrinho-win-mult">10x</div>
+                        </div>
+
+                        <!-- Painel de Controles de Aposta -->
+                        <div class="tigrinho-controls-panel">
+                            <div class="tigrinho-control-row">
+                                <!-- Saldo do Usuário -->
+                                <div class="tigrinho-stat-box">
+                                    <span class="stat-label"><i data-lucide="wallet"></i> Seu Saldo:</span>
+                                    <span class="stat-val balance-gold" id="tigrinho-user-balance-val">R$ 0,00</span>
+                                </div>
+
+                                <!-- Último Ganho -->
+                                <div class="tigrinho-stat-box">
+                                    <span class="stat-label"><i data-lucide="trophy"></i> Prêmio:</span>
+                                    <span class="stat-val win-green" id="tigrinho-last-win-val">R$ 0,00</span>
+                                </div>
+                            </div>
+
+                            <!-- Seletor de Valor de Aposta -->
+                            <div class="tigrinho-bet-section">
+                                <span class="bet-section-label">Aposta da Rodada:</span>
+                                <div class="bet-adjuster">
+                                    <button type="button" class="bet-btn-step" id="tigrinho-bet-minus" title="Diminuir Aposta" aria-label="Diminuir Aposta">
+                                        <i data-lucide="minus"></i>
+                                    </button>
+                                    <div class="bet-value-display">
+                                        <span id="tigrinho-bet-amount-text">R$ 0,10</span>
+                                        <small id="tigrinho-bet-coins-text">(10 moedas)</small>
+                                    </div>
+                                    <button type="button" class="bet-btn-step" id="tigrinho-bet-plus" title="Aumentar Aposta" aria-label="Aumentar Aposta">
+                                        <i data-lucide="plus"></i>
+                                    </button>
+                                </div>
+
+                                <!-- Botões Rápidos de Aposta -->
+                                <div class="bet-quick-chips">
+                                    <button type="button" class="bet-chip" data-bet="0.05">R$ 0,05</button>
+                                    <button type="button" class="bet-chip active" data-bet="0.10">R$ 0,10</button>
+                                    <button type="button" class="bet-chip" data-bet="0.25">R$ 0,25</button>
+                                    <button type="button" class="bet-chip" data-bet="0.50">R$ 0,50</button>
+                                    <button type="button" class="bet-chip" data-bet="1.00">R$ 1,00</button>
+                                </div>
+                            </div>
+
+                            <!-- Botão Girar Tigrinho -->
+                            <button type="button" class="btn-spin-tigrinho" id="btn-spin-tigrinho">
+                                <span class="spin-tiger-glow"></span>
+                                <div class="spin-content">
+                                    <span class="spin-main-icon">🐯</span>
+                                    <span class="spin-text" id="btn-spin-tigrinho-text">GIRAR TIGRINHO 🐯</span>
+                                </div>
+                            </button>
+
+                            <!-- Atalho para Roleta caso saldo = 0 -->
+                            <div class="tigrinho-demo-bar" id="tigrinho-demo-bar">
+                                <small>Precisa de mais moedas? Ganhe giros grátis na <button type="button" class="link-btn-inline" id="link-goto-roleta">Roleta da Sorte 🎡</button> ou resgate o Baú Diário!</small>
+                            </div>
+                        </div>
+
+                        <!-- Tabela de Multiplicadores do Tigrinho -->
+                        <div class="tigrinho-payout-table">
+                            <div class="payout-title"><i data-lucide="sparkles"></i> Tabela de Multiplicadores da Fortuna</div>
+                            <div class="payout-grid">
+                                <div class="payout-item"><span class="payout-icon">🐯</span> <span class="payout-name">Tigre (Wild)</span> <span class="payout-val highlight">10x a 25x</span></div>
+                                <div class="payout-item"><span class="payout-icon">💰</span> <span class="payout-name">Pote de Ouro</span> <span class="payout-val">5x</span></div>
+                                <div class="payout-item"><span class="payout-icon">💎</span> <span class="payout-name">Jade da Sorte</span> <span class="payout-val">3x</span></div>
+                                <div class="payout-item"><span class="payout-icon">🧧</span> <span class="payout-name">Envelope Vermelho</span> <span class="payout-val">2x</span></div>
+                                <div class="payout-item"><span class="payout-icon">🍊</span> <span class="payout-name">Laranja Fortuna</span> <span class="payout-val">1.5x</span></div>
+                                <div class="payout-item"><span class="payout-icon">🎆</span> <span class="payout-name">Fogos</span> <span class="payout-val">1.2x</span></div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Card do Jogo 1: Roleta da Sorte 🎡 -->
-                    <div class="vortex-game-card lucky-wheel-card" id="game-card-lucky-wheel">
+                    <div class="vortex-game-card lucky-wheel-card" id="game-card-lucky-wheel" style="display:none;">
                         <div class="game-card-badge">
                             <span class="game-badge-pulse"></span>
                             <span>🎡 1º JOGO • ROLETA DA SORTE</span>
@@ -2578,14 +2732,14 @@
                     </button>
                 </div>
 
-                <!-- Card de Versão Oficial do App (v1.0.253) -->
+                <!-- Card de Versão Oficial do App (v1.0.254) -->
                 <div class="app-version-card" id="app-version-info-footer">
                     <div class="app-version-header-row">
                         <div class="app-version-brand-wrap">
-                            <img src="icons/vortex-vip-192.png?v=1.0.253" alt="VORTEX VIP" class="app-version-icon-img" width="22" height="22">
+                            <img src="icons/vortex-vip-192.png?v=1.0.254" alt="VORTEX VIP" class="app-version-icon-img" width="22" height="22">
                             <span class="app-version-brand-name">VORTEX VIP Oficial</span>
                         </div>
-                        <span class="app-version-pill-badge" id="app-version-display-badge">v1.0.253 ⚡</span>
+                        <span class="app-version-pill-badge" id="app-version-display-badge">v1.0.254 ⚡</span>
                     </div>
                     <div class="app-version-status-row">
                         <span class="app-version-status-dot"></span>
@@ -5058,7 +5212,7 @@
             </div>
         </div>
 
-        <!-- Tela de Saque em Análise (v1.0.253) -->
+        <!-- Tela de Saque em Análise (v1.0.254) -->
         <div id="withdrawal-under-review-screen" class="withdrawal-under-review-screen" style="display:none;" aria-hidden="true">
             <div class="withdrawal-review-card">
                 <!-- Botão Fechar (X) -->
@@ -5078,7 +5232,7 @@
                     <div class="withdrawal-review-radar-ring ring-2"></div>
                     <div class="withdrawal-review-radar-ring ring-3"></div>
                     <div class="withdrawal-review-radar-center" id="withdrawal-review-radar-center">
-                        <img src="icons/pix-wallet-paid.png?v=1.0.253" alt="Saque Pix Pago" class="withdrawal-review-wallet-img" id="withdrawal-review-icon-img" width="56" height="56">
+                        <img src="icons/pix-wallet-paid.png?v=1.0.254" alt="Saque Pix Pago" class="withdrawal-review-wallet-img" id="withdrawal-review-icon-img" width="56" height="56">
                         <div class="withdrawal-review-sub-badge" id="withdrawal-review-sub-badge">
                             <i data-lucide="hourglass" class="withdrawal-review-sub-icon"></i>
                         </div>
@@ -5739,7 +5893,7 @@
             </div>
         </div>
 
-        <!-- Modal do Jogo: Roleta da Sorte (v1.0.253) -->
+        <!-- Modal do Jogo: Roleta da Sorte (v1.0.254) -->
         <div id="lucky-wheel-modal" class="custom-modal-overlay lucky-wheel-overlay" style="display:none;" aria-hidden="true">
             <div class="custom-modal-card lucky-wheel-card">
                 <!-- Top bar do Modal -->
@@ -5820,6 +5974,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.253" defer></script>
+    <script type="module" src="script.js?v=1.0.254" defer></script>
 </body>
 </html>

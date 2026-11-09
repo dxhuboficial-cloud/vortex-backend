@@ -27389,4 +27389,604 @@ video::-internal-media-controls-download-button {
     }
 }
 
+/* ==========================================================================
+   TIGRINHO VIP DA FORTUNA (v1.0.254)
+   ========================================================================== */
+
+/* Sub-abas de navegação entre jogos */
+.games-subtabs-nav {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+    margin-bottom: 2px;
+}
+
+.games-subtab-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1.5px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-dim, #aaa);
+    font-weight: 700;
+    font-size: 0.88rem;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    outline: none;
+}
+
+.games-subtab-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.25);
+}
+
+.games-subtab-btn.active {
+    background: linear-gradient(135deg, rgba(255, 170, 0, 0.2) 0%, rgba(255, 59, 48, 0.2) 100%);
+    border-color: #ffaa00;
+    color: #fff;
+    box-shadow: 0 0 16px rgba(255, 170, 0, 0.35);
+}
+
+.game-tab-hot-badge {
+    background: linear-gradient(135deg, #ff3b30, #ff9500);
+    color: #fff;
+    font-size: 0.62rem;
+    font-weight: 900;
+    padding: 2px 6px;
+    border-radius: 8px;
+    letter-spacing: 0.5px;
+    box-shadow: 0 0 8px rgba(255, 59, 48, 0.6);
+    animation: pulseHot 1.5s infinite;
+}
+
+.game-tab-free-badge {
+    background: rgba(52, 199, 89, 0.2);
+    border: 1px solid rgba(52, 199, 89, 0.5);
+    color: #34c759;
+    font-size: 0.62rem;
+    font-weight: 800;
+    padding: 2px 6px;
+    border-radius: 8px;
+}
+
+@keyframes pulseHot {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.08); opacity: 0.85; }
+}
+
+/* Card do Tigrinho */
+.tigrinho-game-card {
+    background: linear-gradient(180deg, #180d12 0%, #11070a 100%);
+    border: 1.5px solid rgba(255, 180, 0, 0.45);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6), 0 0 30px rgba(255, 150, 0, 0.15);
+    padding: 16px 14px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    border-radius: 20px;
+}
+
+.tigrinho-badge {
+    border-color: rgba(255, 180, 0, 0.65) !important;
+    color: #ffcc00 !important;
+}
+
+.gold-pulse {
+    background: #ffcc00 !important;
+    box-shadow: 0 0 10px #ffcc00 !important;
+}
+
+/* Mascote e Topo do Tigrinho */
+.tigrinho-mascot-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    margin-top: 24px;
+    margin-bottom: 12px;
+    padding: 0 4px;
+}
+
+.tigrinho-mascot-avatar {
+    position: relative;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #ffaa00 0%, #7b2a00 100%);
+    border: 2px solid #ffd700;
+    box-shadow: 0 0 20px rgba(255, 170, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    flex-shrink: 0;
+}
+
+.mascot-crown {
+    position: absolute;
+    top: -10px;
+    right: -4px;
+    font-size: 1.1rem;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.8));
+    animation: crownFloat 2s ease-in-out infinite;
+}
+
+@keyframes crownFloat {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-3px) rotate(6deg); }
+}
+
+.tigrinho-header-info {
+    text-align: left;
+    flex: 1;
+}
+
+.tigrinho-title {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #ffd700;
+    text-shadow: 0 0 12px rgba(255, 215, 0, 0.4);
+    margin: 0;
+}
+
+.tigrinho-subtitle {
+    font-size: 0.74rem;
+    color: var(--text-dim, #bba);
+    margin: 2px 0 0;
+}
+
+/* Banner da Carta da Fortuna */
+.tigrinho-fortune-banner {
+    width: 100%;
+    background: linear-gradient(90deg, #ff3b30, #ff9500, #ff3b30);
+    background-size: 200% auto;
+    color: #fff;
+    font-weight: 900;
+    font-size: 0.76rem;
+    padding: 8px 12px;
+    border-radius: 10px;
+    margin-bottom: 12px;
+    box-shadow: 0 0 16px rgba(255, 100, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    animation: fortuneShine 1.8s linear infinite;
+}
+
+@keyframes fortuneShine {
+    0% { background-position: 0% center; }
+    100% { background-position: 200% center; }
+}
+
+/* Frame da Máquina de Slots */
+.tigrinho-machine-frame {
+    width: 100%;
+    max-width: 330px;
+    background: radial-gradient(circle at center, #2e0811 0%, #150207 100%);
+    border: 3.5px solid #d4af37;
+    border-radius: 18px;
+    box-shadow: 0 0 30px rgba(212, 175, 55, 0.35), inset 0 0 25px rgba(0, 0, 0, 0.85);
+    padding: 8px;
+    position: relative;
+    box-sizing: border-box;
+}
+
+.tigrinho-reels-container {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    position: relative;
+    background: rgba(0, 0, 0, 0.65);
+    border-radius: 12px;
+    padding: 6px;
+    overflow: hidden;
+}
+
+.tigrinho-reel {
+    height: 186px;
+    overflow: hidden;
+    position: relative;
+    background: linear-gradient(180deg, rgba(25, 5, 10, 0.9) 0%, rgba(45, 10, 18, 0.95) 50%, rgba(25, 5, 10, 0.9) 100%);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 215, 0, 0.15);
+}
+
+.reel-strip {
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.1s linear;
+}
+
+.reel-strip.spinning {
+    filter: blur(1.5px);
+}
+
+.slot-cell {
+    height: 62px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.2rem;
+    box-sizing: border-box;
+    transition: all 0.25s ease;
+    user-select: none;
+}
+
+.slot-cell.payline-center {
+    background: rgba(255, 215, 0, 0.06);
+    box-shadow: inset 0 0 10px rgba(255, 215, 0, 0.1);
+}
+
+.slot-cell.winning-cell {
+    animation: winCellGlow 0.6s ease-in-out infinite alternate;
+    background: rgba(255, 215, 0, 0.25) !important;
+    border-radius: 8px;
+}
+
+@keyframes winCellGlow {
+    0% { transform: scale(0.96); filter: drop-shadow(0 0 6px #ffd700); }
+    100% { transform: scale(1.1); filter: drop-shadow(0 0 16px #ffea00); }
+}
+
+.payline-guide.center-guide {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 62px;
+    transform: translateY(-50%);
+    border-top: 1.5px dashed rgba(255, 215, 0, 0.35);
+    border-bottom: 1.5px dashed rgba(255, 215, 0, 0.35);
+    pointer-events: none;
+}
+
+/* Banner de Vitória do Tigrinho */
+.tigrinho-win-banner {
+    width: 100%;
+    margin-top: 12px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, rgba(255, 170, 0, 0.18) 0%, rgba(255, 59, 48, 0.18) 100%);
+    border: 2px solid #ffd700;
+    box-shadow: 0 0 30px rgba(255, 215, 0, 0.45);
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-sizing: border-box;
+    animation: popWheelResult 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.win-banner-icon {
+    font-size: 2rem;
+    flex-shrink: 0;
+}
+
+.win-banner-content {
+    flex: 1;
+    text-align: left;
+}
+
+.win-banner-content h4 {
+    margin: 0;
+    font-size: 0.95rem;
+    color: #ffd700;
+    font-weight: 800;
+}
+
+.win-banner-content p {
+    margin: 2px 0 0;
+    font-size: 0.8rem;
+    color: #ffffff;
+}
+
+.win-banner-mult {
+    background: linear-gradient(135deg, #ffd700, #ff9500);
+    color: #111;
+    font-weight: 900;
+    font-size: 1.1rem;
+    padding: 4px 10px;
+    border-radius: 12px;
+    box-shadow: 0 0 12px rgba(255, 215, 0, 0.6);
+}
+
+/* Painel de Controles */
+.tigrinho-controls-panel {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 14px;
+}
+
+.tigrinho-control-row {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+}
+
+.tigrinho-stat-box {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    text-align: left;
+}
+
+.tigrinho-stat-box .stat-label {
+    font-size: 0.72rem;
+    color: var(--text-dim, #999);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.tigrinho-stat-box .stat-label i,
+.tigrinho-stat-box .stat-label svg {
+    width: 13px;
+    height: 13px;
+    color: #ffaa00;
+}
+
+.tigrinho-stat-box .stat-val {
+    font-size: 0.95rem;
+    font-weight: 800;
+}
+
+.stat-val.balance-gold {
+    color: #ffd700;
+}
+
+.stat-val.win-green {
+    color: #34c759;
+}
+
+/* Seletor de Aposta */
+.tigrinho-bet-section {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 14px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.bet-section-label {
+    font-size: 0.74rem;
+    color: var(--text-dim, #aaa);
+    text-align: left;
+    font-weight: 600;
+}
+
+.bet-adjuster {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.bet-btn-step {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    outline: none;
+}
+
+.bet-btn-step:hover {
+    background: rgba(255, 170, 0, 0.2);
+    border-color: #ffaa00;
+    color: #ffd700;
+}
+
+.bet-btn-step i,
+.bet-btn-step svg {
+    width: 18px;
+    height: 18px;
+}
+
+.bet-value-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.bet-value-display span {
+    font-size: 1.15rem;
+    font-weight: 900;
+    color: #ffd700;
+}
+
+.bet-value-display small {
+    font-size: 0.7rem;
+    color: var(--text-dim, #888);
+}
+
+.bet-quick-chips {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.bet-chip {
+    padding: 5px 9px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-dim, #bbb);
+    font-size: 0.72rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    outline: none;
+}
+
+.bet-chip:hover {
+    background: rgba(255, 170, 0, 0.15);
+    border-color: #ffaa00;
+    color: #ffd700;
+}
+
+.bet-chip.active {
+    background: #ffaa00;
+    border-color: #ffd700;
+    color: #111;
+    box-shadow: 0 0 10px rgba(255, 170, 0, 0.5);
+}
+
+/* Botão Girar Tigrinho */
+.btn-spin-tigrinho {
+    width: 100%;
+    position: relative;
+    padding: 15px 20px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #ff9500 0%, #ff3b30 50%, #d42217 100%);
+    border: 2px solid #ffd700;
+    color: #fff;
+    cursor: pointer;
+    overflow: hidden;
+    box-shadow: 0 6px 25px rgba(255, 59, 48, 0.45), 0 0 15px rgba(255, 215, 0, 0.35);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    outline: none;
+}
+
+.btn-spin-tigrinho:hover:not(:disabled) {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 8px 30px rgba(255, 59, 48, 0.65), 0 0 25px rgba(255, 215, 0, 0.55);
+    border-color: #fff;
+}
+
+.btn-spin-tigrinho:active:not(:disabled) {
+    transform: translateY(1px) scale(0.98);
+}
+
+.btn-spin-tigrinho:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+    filter: grayscale(0.2);
+}
+
+.spin-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-size: 1.05rem;
+    font-weight: 900;
+    letter-spacing: 0.6px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.spin-main-icon {
+    font-size: 1.4rem;
+    animation: tigerWobble 2s ease-in-out infinite;
+}
+
+@keyframes tigerWobble {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(-8deg); }
+    75% { transform: rotate(8deg); }
+}
+
+.tigrinho-demo-bar {
+    font-size: 0.72rem;
+    color: var(--text-dim, #999);
+    text-align: center;
+    margin-top: 2px;
+}
+
+.link-btn-inline {
+    background: none;
+    border: none;
+    color: #00ff88;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: underline;
+    padding: 0;
+    font-size: inherit;
+}
+
+/* Tabela de Pagamentos */
+.tigrinho-payout-table {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 14px;
+    padding: 10px 12px;
+    margin-top: 14px;
+    box-sizing: border-box;
+}
+
+.payout-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #ffd700;
+    text-align: left;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.payout-title i,
+.payout-title svg {
+    width: 14px;
+    height: 14px;
+}
+
+.payout-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px 10px;
+}
+
+.payout-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.72rem;
+    color: var(--text-dim, #ccc);
+    background: rgba(255, 255, 255, 0.03);
+    padding: 4px 8px;
+    border-radius: 8px;
+}
+
+.payout-icon {
+    font-size: 1rem;
+}
+
+.payout-name {
+    flex: 1;
+    text-align: left;
+}
+
+.payout-val {
+    font-weight: 800;
+    color: #fff;
+}
+
+.payout-val.highlight {
+    color: #ffd700;
+}
+
+
 
