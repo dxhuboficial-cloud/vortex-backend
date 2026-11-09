@@ -26784,14 +26784,18 @@ video::-internal-media-controls-download-button {
 }
 
 /* ==========================================================================
-   CATEGORIA DE JOGOS & ROLETA DA SORTE (v1.0.252)
+   CATEGORIA DE JOGOS & ROLETA DA SORTE (v1.0.253)
    ========================================================================== */
 
 .games-category-container {
+    flex: 1;
+    min-height: 0;
+    padding: 12px 14px max(165px, calc(150px + env(safe-area-inset-bottom, 20px)));
+    overflow-y: auto;
+    position: relative;
     display: flex;
     flex-direction: column;
     gap: 16px;
-    padding: 12px 14px 90px;
     width: 100%;
     box-sizing: border-box;
     animation: fadeInGames 0.3s cubic-bezier(0.16, 1, 0.3, 1);
@@ -27304,4 +27308,85 @@ video::-internal-media-controls-download-button {
     flex-shrink: 0;
     margin-top: 1px;
 }
+
+/* Card Embutido da Roleta na Seção Jogos */
+.vortex-game-card.lucky-wheel-card {
+    padding: 18px 16px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.game-card-header-clean {
+    width: 100%;
+    margin-top: 26px;
+    margin-bottom: 6px;
+}
+
+.lucky-wheel-slices-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    width: 100%;
+}
+
+.slice-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.72rem;
+    color: var(--text-dim, #a0a0b0);
+    background: rgba(255, 255, 255, 0.04);
+    padding: 4px 9px;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.legend-color-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.game-card-coming-soon {
+    padding: 16px;
+    opacity: 0.75;
+    filter: grayscale(0.2);
+}
+
+.badge-coming-soon {
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: var(--text-dim, #888) !important;
+    border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+.game-card-tag-soon {
+    font-size: 0.68rem;
+    padding: 3px 8px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-dim, #aaa);
+}
+
+.btn-play-game-secondary {
+    display: none;
+}
+
+@media (max-width: 360px) {
+    .lucky-wheel-container {
+        width: 270px;
+        height: 270px;
+    }
+    .lucky-wheel-disk-wrap {
+        width: 260px;
+        height: 260px;
+    }
+}
+
 

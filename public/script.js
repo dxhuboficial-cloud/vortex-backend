@@ -21540,7 +21540,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.252';
+export const CURRENT_APP_VERSION = '1.0.253';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -29784,6 +29784,7 @@ let currentChatFilter = 'todos';
 
 export function applyChatFilter(filter = currentChatFilter) {
     currentChatFilter = filter;
+    const chatListEl = document.getElementById('chat-conversations-list');
     const cards = document.querySelectorAll('.chat-card');
     const gamesContainer = document.getElementById('games-category-container');
     const emptyState = document.getElementById('empty-chat-state');
@@ -29816,12 +29817,23 @@ export function applyChatFilter(filter = currentChatFilter) {
     });
 
     if (filter === 'jogos') {
+        if (chatListEl) chatListEl.style.display = 'none';
         if (gamesContainer) gamesContainer.style.display = 'flex';
         if (emptyState) emptyState.style.display = 'none';
         if (typeof renderGamesCategory === 'function') {
             renderGamesCategory();
         }
+        if (typeof updateLuckyWheelUI === 'function') {
+            updateLuckyWheelUI();
+        }
+        if (typeof drawLuckyWheel === 'function') {
+            drawLuckyWheel();
+        }
+        if (window.lucide && typeof window.lucide.createIcons === 'function') {
+            window.lucide.createIcons();
+        }
     } else {
+        if (chatListEl) chatListEl.style.display = '';
         if (gamesContainer) gamesContainer.style.display = 'none';
         if (emptyState) {
             if (visibleCount === 0 && cards.length > 0) {
@@ -38511,7 +38523,7 @@ window.handleCallSwitchedToVideo = handleCallSwitchedToVideo;
     window.updateCompanyChatbotSettingsUI = updateCompanyChatbotSettingsUI;
     window.initCompanyChatbotControls = initCompanyChatbotControls;
 
-    // Jogos & Roleta da Sorte (v1.0.252)
+    // Jogos & Roleta da Sorte (v1.0.253)
     window.LUCKY_WHEEL_SLICES = LUCKY_WHEEL_SLICES;
     window.drawLuckyWheel = drawLuckyWheel;
     window.getLuckyWheelSpinsLeft = getLuckyWheelSpinsLeft;
@@ -40258,90 +40270,102 @@ export function initCompanyChatbotControls() {
 }
 
 /* ==========================================================================
-   VORTEX VIP ⚡ - CATEGORIA DE JOGOS & ROLETA DA SORTE (v1.0.252)
+   VORTEX VIP ⚡ - CATEGORIA DE JOGOS & ROLETA DA SORTE (v1.0.253)
    ========================================================================== */
 
 export function drawLuckyWheel(canvas, angle = luckyWheelCurrentAngle) {
-    if (!canvas) canvas = document.getElementById('lucky-wheel-canvas');
-    if (!canvas || typeof canvas.getContext !== 'function') return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    const w = canvas.width || 320;
-    const h = canvas.height || 320;
-    const cx = w / 2;
-    const cy = h / 2;
-    const radius = (w / 2) - 8;
-    const numSlices = LUCKY_WHEEL_SLICES.length;
-    const sliceAngle = (2 * Math.PI) / numSlices;
+    const targets = [];
+    if (canvas) {
+        targets.push(canvas);
+    } else {
+        const c1 = document.getElementById("lucky-wheel-canvas");
+        if (c1) targets.push(c1);
+        const c2 = document.getElementById("lucky-wheel-modal-canvas");
+        if (c2) targets.push(c2);
+    }
+    if (targets.length === 0) return;
 
-    ctx.clearRect(0, 0, w, h);
+    targets.forEach(targetCanvas => {
+        if (!targetCanvas || typeof targetCanvas.getContext !== "function") return;
+        const ctx = targetCanvas.getContext("2d");
+        if (!ctx) return;
+        const w = targetCanvas.width || 320;
+        const h = targetCanvas.height || 320;
+        const cx = w / 2;
+        const cy = h / 2;
+        const radius = (w / 2) - 8;
+        const numSlices = LUCKY_WHEEL_SLICES.length;
+        const sliceAngle = (2 * Math.PI) / numSlices;
 
-    // Borda neon externa
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(cx, cy, radius + 4, 0, 2 * Math.PI);
-    ctx.fillStyle = '#14141e';
-    ctx.fill();
-    ctx.lineWidth = 4;
-    ctx.strokeStyle = '#00ff88';
-    ctx.shadowColor = '#00ff88';
-    ctx.shadowBlur = 12;
-    ctx.stroke();
-    ctx.restore();
+        ctx.clearRect(0, 0, w, h);
 
-    // Fatias
-    for (let i = 0; i < numSlices; i++) {
-        const startA = angle + (i * sliceAngle);
-        const endA = startA + sliceAngle;
-        const slice = LUCKY_WHEEL_SLICES[i];
-
+        // Borda neon externa
         ctx.save();
         ctx.beginPath();
-        ctx.moveTo(cx, cy);
-        ctx.arc(cx, cy, radius, startA, endA);
-        ctx.closePath();
-        ctx.fillStyle = slice.bg;
+        ctx.arc(cx, cy, radius + 4, 0, 2 * Math.PI);
+        ctx.fillStyle = "#14141e";
         ctx.fill();
-
-        ctx.lineWidth = 1.5;
-        ctx.strokeStyle = 'rgba(0, 0, 0, 0.28)';
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = "#00ff88";
+        ctx.shadowColor = "#00ff88";
+        ctx.shadowBlur = 12;
         ctx.stroke();
+        ctx.restore();
 
+        // Fatias
+        for (let i = 0; i < numSlices; i++) {
+            const startA = angle + (i * sliceAngle);
+            const endA = startA + sliceAngle;
+            const slice = LUCKY_WHEEL_SLICES[i];
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(cx, cy);
+            ctx.arc(cx, cy, radius, startA, endA);
+            ctx.closePath();
+            ctx.fillStyle = slice.bg;
+            ctx.fill();
+
+            ctx.lineWidth = 1.5;
+            ctx.strokeStyle = "rgba(0, 0, 0, 0.28)";
+            ctx.stroke();
+
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate(startA + (sliceAngle / 2));
+            ctx.textAlign = "right";
+            ctx.textBaseline = "middle";
+            ctx.fillStyle = slice.text;
+            ctx.font = "bold 13px -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif";
+            ctx.fillText(slice.label, radius - 18, 0);
+            ctx.restore();
+
+            ctx.restore();
+        }
+
+        // Luzes da borda
+        const dotCount = 16;
+        for (let d = 0; d < dotCount; d++) {
+            const dotAngle = (d * (2 * Math.PI / dotCount));
+            const dx = cx + (radius - 2) * Math.cos(dotAngle);
+            const dy = cy + (radius - 2) * Math.sin(dotAngle);
+            ctx.beginPath();
+            ctx.arc(dx, dy, 3, 0, 2 * Math.PI);
+            ctx.fillStyle = d % 2 === 0 ? "#ffd600" : "#ffffff";
+            ctx.fill();
+        }
+
+        // Círculo interno
         ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(startA + (sliceAngle / 2));
-        ctx.textAlign = 'right';
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = slice.text;
-        ctx.font = 'bold 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-        ctx.fillText(slice.label, radius - 18, 0);
-        ctx.restore();
-
-        ctx.restore();
-    }
-
-    // Luzes da borda
-    const dotCount = 16;
-    for (let d = 0; d < dotCount; d++) {
-        const dotAngle = (d * (2 * Math.PI / dotCount));
-        const dx = cx + (radius - 2) * Math.cos(dotAngle);
-        const dy = cy + (radius - 2) * Math.sin(dotAngle);
         ctx.beginPath();
-        ctx.arc(dx, dy, 3, 0, 2 * Math.PI);
-        ctx.fillStyle = d % 2 === 0 ? '#ffd600' : '#ffffff';
+        ctx.arc(cx, cy, 38, 0, 2 * Math.PI);
+        ctx.fillStyle = "#0a0a10";
         ctx.fill();
-    }
-
-    // Círculo interno
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(cx, cy, 38, 0, 2 * Math.PI);
-    ctx.fillStyle = '#0a0a10';
-    ctx.fill();
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = '#00ff88';
-    ctx.stroke();
-    ctx.restore();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = "#00ff88";
+        ctx.stroke();
+        ctx.restore();
+    });
 }
 
 export function getLuckyWheelSpinsLeft() {
@@ -40356,95 +40380,85 @@ export function getLuckyWheelSpinsLeft() {
 }
 
 export function renderGamesCategory() {
-    const balanceValEl = document.getElementById('games-user-balance-val');
+    const balanceValEl = document.getElementById("games-user-balance-val");
     const balance = Number(currentProfile?.rewardCoinsBalance) || 0;
     if (balanceValEl) {
         balanceValEl.textContent = formatBRLCurrency(balance);
     }
 
     const spinsLeft = getLuckyWheelSpinsLeft();
-    const playBtn = document.getElementById('open-lucky-wheel-btn');
+    const playBtn = document.getElementById("open-lucky-wheel-btn");
     if (playBtn) {
         if (spinsLeft > 0) {
-            playBtn.innerHTML = '<i data-lucide="play"></i> <span>Girar Roleta (' + spinsLeft + ' giro' + (spinsLeft > 1 ? 's' : '') + ') 🎲</span>';
+            playBtn.innerHTML = "<i data-lucide=\"play\"></i> <span>Girar Roleta (" + spinsLeft + " giro" + (spinsLeft > 1 ? "s" : "") + ") 🎲</span>";
         } else {
-            playBtn.innerHTML = '<i data-lucide="clock"></i> <span>Volte Amanhã para Mais Giros ⏳</span>';
+            playBtn.innerHTML = "<i data-lucide=\"clock\"></i> <span>Volte Amanhã para Mais Giros ⏳</span>";
         }
     }
 
-    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+    if (window.lucide && typeof window.lucide.createIcons === "function") {
         window.lucide.createIcons();
     }
 }
 
 export function updateLuckyWheelUI() {
-    const balanceDisplay = document.getElementById('lucky-wheel-balance-display');
     const balance = Number(currentProfile?.rewardCoinsBalance) || 0;
-    if (balanceDisplay) {
-        balanceDisplay.innerHTML = 'Saldo: <strong>' + formatBRLCurrency(balance) + '</strong>';
-    }
-
     const spinsLeft = getLuckyWheelSpinsLeft();
-    const spinsTextEl = document.getElementById('lucky-wheel-spins-left-text');
-    if (spinsTextEl) {
-        spinsTextEl.innerHTML = 'Giros disponíveis: <strong>' + spinsLeft + '</strong>';
-    }
-
-    const spinMainBtn = document.getElementById('lucky-wheel-spin-btn');
-    const spinCenterBtn = document.getElementById('lucky-wheel-center-btn');
     const isSpinning = isLuckyWheelSpinning;
 
-    if (spinMainBtn) {
-        spinMainBtn.disabled = isSpinning || spinsLeft <= 0;
-        const btnText = document.getElementById('lucky-wheel-spin-btn-text');
-        if (btnText) {
-            if (isSpinning) {
-                btnText.textContent = 'Girando a Roleta... 🎡';
-            } else if (spinsLeft <= 0) {
-                btnText.textContent = 'Giro Diário Utilizado (Volte Amanhã) ⏳';
-            } else {
-                btnText.textContent = 'Girar Roleta da Sorte 🎲';
-            }
-        }
-    }
+    document.querySelectorAll(".lucky-wheel-balance-display, #lucky-wheel-balance-display, #lucky-wheel-modal-balance-display").forEach(el => {
+        el.innerHTML = "Saldo: <strong>" + formatBRLCurrency(balance) + "</strong>";
+    });
 
-    if (spinCenterBtn) {
+    document.querySelectorAll(".lucky-wheel-spins-left-text, #lucky-wheel-spins-left-text, #lucky-wheel-modal-spins-left-text").forEach(el => {
+        el.innerHTML = "Giros disponíveis: <strong>" + spinsLeft + "</strong>";
+    });
+
+    document.querySelectorAll(".lucky-wheel-spin-btn, #lucky-wheel-spin-btn, #lucky-wheel-modal-spin-btn").forEach(spinMainBtn => {
+        spinMainBtn.disabled = isSpinning || spinsLeft <= 0;
+    });
+
+    document.querySelectorAll(".lucky-wheel-spin-btn-text, #lucky-wheel-spin-btn-text, #lucky-wheel-modal-spin-btn-text").forEach(btnText => {
+        if (isSpinning) {
+            btnText.textContent = "Girando a Roleta... 🎡";
+        } else if (spinsLeft <= 0) {
+            btnText.textContent = "Giro Diário Utilizado (Volte Amanhã) ⏳";
+        } else {
+            btnText.textContent = "Girar Roleta da Sorte 🎲";
+        }
+    });
+
+    document.querySelectorAll(".lucky-wheel-center-btn, #lucky-wheel-center-btn, #lucky-wheel-modal-center-btn").forEach(spinCenterBtn => {
         spinCenterBtn.disabled = isSpinning || spinsLeft <= 0;
-    }
+    });
 
     renderGamesCategory();
 
-    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+    if (window.lucide && typeof window.lucide.createIcons === "function") {
         window.lucide.createIcons();
     }
 }
 
 export function openLuckyWheelModal() {
     updateLuckyWheelUI();
-    const modal = document.getElementById('lucky-wheel-modal');
+    const modal = document.getElementById("lucky-wheel-modal");
     if (modal) {
-        modal.style.display = 'flex';
-        modal.setAttribute('aria-hidden', 'false');
+        modal.style.display = "flex";
+        modal.setAttribute("aria-hidden", "false");
     }
-    const canvas = document.getElementById('lucky-wheel-canvas');
-    if (canvas) {
-        drawLuckyWheel(canvas, luckyWheelCurrentAngle);
-    }
-    const resultBanner = document.getElementById('lucky-wheel-result-banner');
-    if (resultBanner) {
-        resultBanner.style.display = 'none';
-    }
-    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+    drawLuckyWheel();
+    document.querySelectorAll(".lucky-wheel-result-banner, #lucky-wheel-result-banner, #lucky-wheel-modal-result-banner").forEach(b => b.style.display = "none");
+    if (window.lucide && typeof window.lucide.createIcons === "function") {
         window.lucide.createIcons();
     }
 }
 
 export function closeLuckyWheelModal() {
     if (isLuckyWheelSpinning) return;
-    const modal = document.getElementById('lucky-wheel-modal');
+    const modal = document.getElementById("lucky-wheel-modal");
     if (modal) {
-        modal.style.display = 'none';
-        modal.setAttribute('aria-hidden', 'true');
+        modal.style.display = "none";
+        modal.setAttribute("aria-hidden", "true");
     }
 }
 
@@ -40452,22 +40466,21 @@ export async function spinLuckyWheel() {
     if (isLuckyWheelSpinning) return;
 
     if (!currentUser || !currentProfile) {
-        showToast('Aviso', 'Faça login para girar a Roleta da Sorte.', 'orange');
+        showToast("Aviso", "Faça login para girar a Roleta da Sorte.", "orange");
         return;
     }
 
     const spinsLeft = getLuckyWheelSpinsLeft();
-    const isCurrentAdmin = (typeof isAdmin !== 'undefined' && isAdmin) || currentUser.email === 'dxhub.oficial@gmail.com';
+    const isCurrentAdmin = (typeof isAdmin !== "undefined" && isAdmin) || currentUser.email === "dxhub.oficial@gmail.com";
     if (spinsLeft <= 0 && !isCurrentAdmin) {
-        showToast('Limite Atingido', 'Você já utilizou seus giros de hoje. Volte amanhã para mais giros grátis!', 'orange');
+        showToast("Limite Atingido", "Você já utilizou seus giros de hoje. Volte amanhã para mais giros grátis!", "orange");
         return;
     }
 
     isLuckyWheelSpinning = true;
     updateLuckyWheelUI();
 
-    const resultBanner = document.getElementById('lucky-wheel-result-banner');
-    if (resultBanner) resultBanner.style.display = 'none';
+    document.querySelectorAll(".lucky-wheel-result-banner, #lucky-wheel-result-banner, #lucky-wheel-modal-result-banner").forEach(b => b.style.display = "none");
 
     // Seleciona fatia vencedora por peso
     const totalWeight = LUCKY_WHEEL_SLICES.reduce((sum, s) => sum + s.weight, 0);
@@ -40493,7 +40506,6 @@ export async function spinLuckyWheel() {
     const totalDelta = fullSpins + ((targetOffset - (startAngle % (2 * Math.PI)) + 4 * Math.PI) % (2 * Math.PI));
     const finalAngle = startAngle + totalDelta;
 
-    const canvas = document.getElementById('lucky-wheel-canvas');
     const spinDuration = 4000;
     const startTime = Date.now();
 
@@ -40504,26 +40516,22 @@ export async function spinLuckyWheel() {
         const ease = 1 - Math.pow(1 - progress, 3.5);
         luckyWheelCurrentAngle = startAngle + (totalDelta * ease);
 
-        if (canvas) {
-            drawLuckyWheel(canvas, luckyWheelCurrentAngle);
-        }
+        drawLuckyWheel(null, luckyWheelCurrentAngle);
 
         if (progress < 1) {
-            if (typeof requestAnimationFrame === 'function') {
+            if (typeof requestAnimationFrame === "function") {
                 requestAnimationFrame(animateSpin);
             } else {
                 setTimeout(animateSpin, 16);
             }
         } else {
             luckyWheelCurrentAngle = finalAngle;
-            if (canvas) {
-                drawLuckyWheel(canvas, luckyWheelCurrentAngle);
-            }
+            drawLuckyWheel(null, luckyWheelCurrentAngle);
             handleLuckyWheelWin(winningSlice);
         }
     };
 
-    if (typeof requestAnimationFrame === 'function') {
+    if (typeof requestAnimationFrame === "function") {
         requestAnimationFrame(animateSpin);
     } else {
         animateSpin();
@@ -40542,62 +40550,61 @@ export async function handleLuckyWheelWin(prize) {
     }
     currentProfile.luckyWheelSpinsCount = (currentProfile.luckyWheelSpinsCount || 0) + 1;
 
-    let resTitle = 'Parabéns!';
-    let resMsg = '';
-    let resIcon = prize.icon || '🎉';
+    let resTitle = "Parabéns!";
+    let resMsg = "";
+    let resIcon = prize.icon || "🎉";
 
-    if (prize.type === 'money') {
+    if (prize.type === "money") {
         const prizeVal = Number(prize.value) || 0;
         const currentBal = Number(currentProfile.rewardCoinsBalance) || 0;
         const newBal = Math.round((currentBal + prizeVal) * 100) / 100;
         currentProfile.rewardCoinsBalance = newBal;
 
-        resTitle = '🎉 Prêmio em Moedas Pix!';
-        resMsg = `Você ganhou +${formatBRLCurrency(prizeVal)}! O valor foi adicionado ao seu saldo do Baú Diário! 💸`;
+        resTitle = "🎉 Prêmio em Moedas Pix!";
+        resMsg = "Você ganhou +" + formatBRLCurrency(prizeVal) + "! O valor foi adicionado ao seu saldo do Baú Diário! 💸";
 
-        if (typeof playCoinRewardSound === 'function') {
+        if (typeof playCoinRewardSound === "function") {
             playCoinRewardSound();
         }
-        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        if (typeof navigator !== "undefined" && navigator.vibrate) {
             try { navigator.vibrate([100, 50, 100, 50, 200]); } catch (_) {}
         }
-        showToast('Roleta da Sorte 🎡', `Parabéns! Você ganhou +${formatBRLCurrency(prizeVal)}!`, 'green');
-    } else if (prize.type === 'extra_spin') {
+        showToast("Roleta da Sorte 🎡", "Parabéns! Você ganhou +" + formatBRLCurrency(prizeVal) + "!", "green");
+    } else if (prize.type === "extra_spin") {
         currentProfile.luckyWheelExtraSpins = (currentProfile.luckyWheelExtraSpins || 0) + 1;
-        resTitle = '🌟 GIRO EXTRA!';
-        resMsg = 'Você ganhou mais 1 giro grátis da Roleta da Sorte! Gire agora mesmo!';
-        resIcon = '🌟';
+        resTitle = "🌟 GIRO EXTRA!";
+        resMsg = "Você ganhou mais 1 giro grátis da Roleta da Sorte! Gire agora mesmo!";
+        resIcon = "🌟";
 
-        if (typeof playCoinRewardSound === 'function') {
+        if (typeof playCoinRewardSound === "function") {
             playCoinRewardSound();
         }
-        showToast('Giro Extra! 🌟', 'Você ganhou mais 1 giro na Roleta da Sorte!', 'green');
+        showToast("Giro Extra! 🌟", "Você ganhou mais 1 giro na Roleta da Sorte!", "green");
     } else {
-        resTitle = '🍀 Tente Mais Uma Vez!';
-        resMsg = 'Não foi dessa vez, mas não desanime! Amanhã você tem outro giro garantido!';
-        resIcon = '🍀';
-        showToast('Roleta da Sorte 🎡', 'Mais sorte no próximo giro!', 'orange');
+        resTitle = "🍀 Tente Mais Uma Vez!";
+        resMsg = "Não foi dessa vez, mas não desanime! Amanhã você tem outro giro garantido!";
+        resIcon = "🍀";
+        showToast("Roleta da Sorte 🎡", "Mais sorte no próximo giro!", "orange");
     }
 
-    const resultBanner = document.getElementById('lucky-wheel-result-banner');
-    const wheelIconEl = document.getElementById('wheel-result-icon');
-    const wheelTitleEl = document.getElementById('wheel-result-title');
-    const wheelMsgEl = document.getElementById('wheel-result-msg');
+    document.querySelectorAll(".lucky-wheel-result-banner, #lucky-wheel-result-banner, #lucky-wheel-modal-result-banner").forEach(resultBanner => {
+        const wheelIconEl = resultBanner.querySelector("#wheel-result-icon, #wheel-modal-result-icon, .result-banner-icon");
+        const wheelTitleEl = resultBanner.querySelector("#wheel-result-title, #wheel-modal-result-title, h4");
+        const wheelMsgEl = resultBanner.querySelector("#wheel-result-msg, #wheel-modal-result-msg, p");
 
-    if (resultBanner) {
         if (wheelIconEl) wheelIconEl.textContent = resIcon;
         if (wheelTitleEl) wheelTitleEl.textContent = resTitle;
         if (wheelMsgEl) wheelMsgEl.textContent = resMsg;
-        resultBanner.style.display = 'flex';
-    }
+        resultBanner.style.display = "flex";
+    });
 
-    if (typeof updateDoc === 'function' && typeof db !== 'undefined' && currentUser && currentUser.uid) {
-        updateDoc(doc(db, 'users', currentUser.uid), {
+    if (typeof updateDoc === "function" && typeof db !== "undefined" && currentUser && currentUser.uid) {
+        updateDoc(doc(db, "users", currentUser.uid), {
             rewardCoinsBalance: currentProfile.rewardCoinsBalance || 0,
             lastLuckyWheelSpinDate: currentProfile.lastLuckyWheelSpinDate || today,
             luckyWheelExtraSpins: currentProfile.luckyWheelExtraSpins || 0,
             luckyWheelSpinsCount: currentProfile.luckyWheelSpinsCount || 0
-        }).catch(err => console.warn('[VORTEX] Erro ao sincronizar Roleta no Firestore:', err));
+        }).catch(err => console.warn("[VORTEX] Erro ao sincronizar Roleta no Firestore:", err));
     }
 
     updateDailyChestUI();
@@ -40605,25 +40612,29 @@ export async function handleLuckyWheelWin(prize) {
 }
 
 export function initGamesControls() {
-    document.getElementById('open-lucky-wheel-btn')?.addEventListener('click', openLuckyWheelModal);
-    document.getElementById('game-card-lucky-wheel')?.addEventListener('click', (e) => {
-        if (!e.target.closest('#open-lucky-wheel-btn')) {
-            openLuckyWheelModal();
-        }
+    document.querySelectorAll(".open-lucky-wheel-btn, #open-lucky-wheel-btn").forEach(btn => {
+        btn.addEventListener("click", openLuckyWheelModal);
     });
 
-    document.getElementById('close-lucky-wheel-modal')?.addEventListener('click', closeLuckyWheelModal);
-    document.getElementById('lucky-wheel-modal')?.addEventListener('click', (e) => {
-        if (e.target && e.target.id === 'lucky-wheel-modal') {
-            closeLuckyWheelModal();
-        }
+    document.querySelectorAll(".close-lucky-wheel-modal, #close-lucky-wheel-modal").forEach(btn => {
+        btn.addEventListener("click", closeLuckyWheelModal);
     });
 
-    document.getElementById('lucky-wheel-spin-btn')?.addEventListener('click', spinLuckyWheel);
-    document.getElementById('lucky-wheel-center-btn')?.addEventListener('click', spinLuckyWheel);
+    document.querySelectorAll(".lucky-wheel-modal, #lucky-wheel-modal").forEach(modal => {
+        modal.addEventListener("click", (e) => {
+            if (e.target && (e.target.id === "lucky-wheel-modal" || e.target.classList.contains("lucky-wheel-overlay"))) {
+                closeLuckyWheelModal();
+            }
+        });
+    });
 
-    const canvas = document.getElementById('lucky-wheel-canvas');
-    if (canvas) {
-        drawLuckyWheel(canvas, luckyWheelCurrentAngle);
-    }
+    document.querySelectorAll(".lucky-wheel-spin-btn, #lucky-wheel-spin-btn, #lucky-wheel-modal-spin-btn").forEach(btn => {
+        btn.addEventListener("click", spinLuckyWheel);
+    });
+
+    document.querySelectorAll(".lucky-wheel-center-btn, #lucky-wheel-center-btn, #lucky-wheel-modal-center-btn").forEach(btn => {
+        btn.addEventListener("click", spinLuckyWheel);
+    });
+
+    drawLuckyWheel();
 }
