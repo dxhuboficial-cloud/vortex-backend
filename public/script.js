@@ -1956,8 +1956,29 @@ export function combineAndRenderNotifications() {
             mergedMap.set(n.id, n);
         }
     });
-    allNotifications = Array.from(mergedMap.values());
-    allNotifications.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    let list = Array.from(mergedMap.values());
+    list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+    // Deduplicação estrita de notificações de links de risco para nunca duplicar no drawer
+    const seenRiskKeys = new Set();
+    const deduplicatedList = [];
+    for (const notif of list) {
+        const isLinkRisk = notif.type === 'link_risk_warning' || notif.hasJustificationAction || 
+            /taxa de risco enorme em links/i.test(notif.message || '') || 
+            /taxa de risco enorme/i.test(notif.title || '');
+        if (isLinkRisk) {
+            const cleanUrl = String(notif.linkUrl || '').trim().toLowerCase().replace(/\/+$/, '');
+            const targetUid = String(notif.toUid || (currentUser ? currentUser.uid : '')).trim();
+            const riskKey = `risk_${targetUid}_${cleanUrl || notif.linkId || 'link'}`;
+            if (seenRiskKeys.has(riskKey)) {
+                continue;
+            }
+            seenRiskKeys.add(riskKey);
+        }
+        deduplicatedList.push(notif);
+    }
+
+    allNotifications = deduplicatedList;
 
     updateNotificationsBadge();
     renderNotifications();
@@ -1966,6 +1987,10 @@ export function combineAndRenderNotifications() {
 export function setAllNotifications(notifs) {
     allNotifications = Array.isArray(notifs) ? [...notifs] : [];
     renderNotifications();
+}
+
+export function getAllNotifications() {
+    return allNotifications;
 }
 
 export function setAdminNotifications(notifs) {
@@ -2262,7 +2287,23 @@ export function renderNotifications() {
 
         if (currentNotifFilter === 'vip') return n.type === 'vip';
         if (currentNotifFilter === 'warning') return !n.type || n.type === 'warning' || n.type === 'group_add' || n.type === 'group_promote' || n.type === 'withdrawal_paid' || /Saque Pix Pago/i.test(n.title || '');
-        if (currentNotifFilter === 'alert') return n.type === 'alert';
+        if (currentNotifFilter === 'alert') return n.type === 'alert' || n.type === 'link_risk_warning';
+        return true;
+    });
+
+    // Guarda secundária de deduplicação de alertas de links no render
+    const seenRenderRiskKeys = new Set();
+    filtered = filtered.filter(n => {
+        const isLinkRisk = n.type === 'link_risk_warning' || n.hasJustificationAction || 
+            /taxa de risco enorme em links/i.test(n.message || '') || 
+            /taxa de risco enorme/i.test(n.title || '');
+        if (isLinkRisk) {
+            const cleanUrl = String(n.linkUrl || '').trim().toLowerCase().replace(/\/+$/, '');
+            const targetUid = String(n.toUid || (currentUser ? currentUser.uid : '')).trim();
+            const riskKey = `risk_${targetUid}_${cleanUrl || n.linkId || 'link'}`;
+            if (seenRenderRiskKeys.has(riskKey)) return false;
+            seenRenderRiskKeys.add(riskKey);
+        }
         return true;
     });
 
@@ -21499,7 +21540,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.249';
+export const CURRENT_APP_VERSION = '1.0.250';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -21978,6 +22019,7 @@ if (typeof window !== 'undefined') {
     window.attachNotificationSwipeHandlers = attachNotificationSwipeHandlers;
     window.renderNotifications = renderNotifications;
     window.setAllNotifications = setAllNotifications;
+    window.getAllNotifications = getAllNotifications;
     window.updateNotificationsBadge = updateNotificationsBadge;
     window.adminSendBroadcast = adminSendBroadcast;
     window.loadAdminBroadcastHistory = loadAdminBroadcastHistory;
@@ -23567,7 +23609,50 @@ export function analyzeUrlSecurity(url = '') {
 }
 
 /**
+ * Gera um hash numérico simples em base36 para deduplicação determinística
+ */
+export function simpleStringHash(str) {
+    let hash = 0;
+    const s = String(str || '');
+    for (let i = 0; i < s.length; i++) {
+        hash = ((hash << 5) - hash) + s.charCodeAt(i);
+        hash |= 0;
+    }
+    return Math.abs(hash).toString(36);
+}
+
+/**
+ * Retorna uma chave determinística para deduplicação de links na plataforma
+ */
+export function getLinkDeduplicationKey(ownerUid, url, source) {
+    const safeUid = String(ownerUid || 'anonymous').trim();
+    const safeSource = String(source || '').trim();
+    const cleanUrl = String(url || '').trim().toLowerCase().replace(/\/+$/, '');
+    if (safeSource === 'company_button' && safeUid !== 'anonymous') {
+        return `btn_${safeUid}`;
+    }
+    return `${safeUid}_${cleanUrl}`;
+}
+
+/**
+ * Retorna a precedência de status do link (maior número = mais avançado/prioritário)
+ */
+export function getLinkStatusRank(status) {
+    switch (status) {
+        case 'approved': return 6;
+        case 'justification_submitted': return 5;
+        case 'restricted': return 4;
+        case 'last_warning': return 3;
+        case 'pending_justification': return 2;
+        case 'active':
+        default:
+            return 1;
+    }
+}
+
+/**
  * Registra o link na base da plataforma para auditoria e controle do painel ADM.
+ * Atualiza registros existentes em vez de gerar documentos duplicados.
  */
 export async function registerPlatformLink({
     url,
@@ -23584,8 +23669,33 @@ export async function registerPlatformLink({
     const targetName = ownerName || (currentProfile ? currentProfile.name : 'Membro Vortex');
     const targetUsername = ownerUsername || (currentProfile ? currentProfile.username : '@usuario');
 
-    // Identificador único estável ou temporal
-    const linkId = 'link_' + (targetUid ? `${targetUid}_` : '') + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 6);
+    const dedupKey = getLinkDeduplicationKey(targetUid, analysis.url, source);
+
+    // Buscar link já existente por chave determinística ou ID
+    let existingLink = platformLinksMap.get(dedupKey) || null;
+    if (!existingLink) {
+        existingLink = adminLinksList.find(l => getLinkDeduplicationKey(l.ownerUid, l.url, l.source) === dedupKey) || null;
+    }
+    if (!existingLink) {
+        for (const [, l] of platformLinksMap.entries()) {
+            if (getLinkDeduplicationKey(l.ownerUid, l.url, l.source) === dedupKey) {
+                existingLink = l;
+                break;
+            }
+        }
+    }
+
+    // Identificador estável: evita IDs aleatórios repetidos para o mesmo usuário/botão/link
+    const stableId = (source === 'company_button')
+        ? `link_btn_${targetUid}`
+        : (existingLink ? existingLink.id : `link_${targetUid}_${simpleStringHash(analysis.url)}`);
+
+    const linkId = existingLink ? existingLink.id : stableId;
+
+    // Preserva o status avançado e justificativa caso o link já tenha sido aprovado ou justificado
+    const preservedStatus = existingLink ? existingLink.status : 'active';
+    const preservedJustification = existingLink ? existingLink.justification : null;
+    const originalCreatedAt = existingLink?.createdAt || Date.now();
 
     const record = {
         id: linkId,
@@ -23599,20 +23709,27 @@ export async function registerPlatformLink({
         riskScore: analysis.riskScore,
         riskLevel: analysis.riskLevel,
         riskReasons: analysis.riskReasons,
-        status: 'active', // active | pending_justification | justification_submitted | approved | restricted | last_warning
-        justification: null,
-        createdAt: Date.now(),
+        status: preservedStatus,
+        justification: preservedJustification,
+        createdAt: originalCreatedAt,
         updatedAt: Date.now()
     };
 
-    // Armazenar localmente
-    adminLinksList.unshift(record);
+    if (existingLink) {
+        Object.assign(existingLink, record);
+    } else {
+        adminLinksList.unshift(record);
+    }
     platformLinksMap.set(linkId, record);
+    platformLinksMap.set(dedupKey, record);
+    if (stableId !== linkId) {
+        platformLinksMap.set(stableId, record);
+    }
 
-    // Persistir no Firestore se disponível
+    // Persistir no Firestore com merge para não sobrescrever justificativas anteriores
     try {
         if (typeof db !== 'undefined' && db && typeof setDoc === 'function' && typeof doc === 'function') {
-            await setDoc(doc(db, 'platformLinks', linkId), record).catch(() => {});
+            await setDoc(doc(db, 'platformLinks', linkId), record, { merge: true }).catch(() => {});
         }
     } catch (e) {
         console.warn('Erro ao salvar platformLink no Firestore:', e);
@@ -23639,21 +23756,77 @@ export async function loadAdminLinks() {
         if (typeof db !== 'undefined' && db && typeof getDocs === 'function' && typeof collection === 'function') {
             const snap = await getDocs(collection(db, 'platformLinks')).catch(() => null);
             if (snap && !snap.empty) {
-                const loaded = [];
+                // Agrupar registros pelo dedupKey para eliminar duplicatas legadas
+                const grouped = new Map();
                 snap.forEach(d => {
                     const data = { id: d.id, ...d.data() };
-                    const existing = platformLinksMap.get(d.id);
+                    const key = getLinkDeduplicationKey(data.ownerUid, data.url, data.source);
+                    if (!grouped.has(key)) {
+                        grouped.set(key, []);
+                    }
+                    grouped.get(key).push(data);
+                });
+
+                const loaded = [];
+                const docsToDelete = [];
+
+                grouped.forEach((docs, key) => {
+                    // Ordena por rank de status decrescente (ex: approved > pending_justification > active), depois por updatedAt
+                    docs.sort((a, b) => {
+                        const rankDiff = getLinkStatusRank(b.status) - getLinkStatusRank(a.status);
+                        if (rankDiff !== 0) return rankDiff;
+                        return (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0);
+                    });
+
+                    const canonical = docs[0];
+                    // Se outro documento tinha justificativa preenchida e o canônico não, herdar
+                    if (!canonical.justification) {
+                        for (let i = 1; i < docs.length; i++) {
+                            if (docs[i].justification) {
+                                canonical.justification = docs[i].justification;
+                                break;
+                            }
+                        }
+                    }
+
+                    // Se já existia em memória, preserva a referência e status mais avançado em memória
+                    const existing = platformLinksMap.get(canonical.id) || 
+                        platformLinksMap.get(key) || 
+                        adminLinksList.find(l => getLinkDeduplicationKey(l.ownerUid, l.url, l.source) === key);
+
                     if (existing) {
-                        Object.assign(existing, data);
+                        const currentRank = getLinkStatusRank(existing.status);
+                        const loadedRank = getLinkStatusRank(canonical.status);
+                        if (currentRank > loadedRank) {
+                            canonical.status = existing.status;
+                        }
+                        if (existing.justification && !canonical.justification) {
+                            canonical.justification = existing.justification;
+                        }
+                        Object.assign(existing, canonical);
                         loaded.push(existing);
                     } else {
-                        loaded.push(data);
-                        platformLinksMap.set(d.id, data);
+                        loaded.push(canonical);
+                        platformLinksMap.set(canonical.id, canonical);
+                        platformLinksMap.set(key, canonical);
+                    }
+
+                    // Agendar remoção das duplicatas obsoletas do Firestore
+                    for (let i = 1; i < docs.length; i++) {
+                        docsToDelete.push(docs[i].id);
                     }
                 });
+
                 loaded.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
                 adminLinksList.length = 0;
                 adminLinksList.push(...loaded);
+
+                // Limpeza silenciosa de duplicatas legadas no Firestore
+                if (docsToDelete.length > 0 && typeof deleteDoc === 'function' && typeof doc === 'function') {
+                    Promise.all(docsToDelete.map(dupId =>
+                        deleteDoc(doc(db, 'platformLinks', dupId)).catch(() => {})
+                    )).catch(() => {});
+                }
             }
         }
     } catch (err) {
@@ -23668,6 +23841,15 @@ export function renderAdminLinks(filter = currentAdminLinksFilter, searchQuery =
     if (!container) return;
 
     let list = [...adminLinksList];
+
+    // Guarda de deduplicação estrita: nunca renderiza dois cards para a mesma chave
+    const seenAdminLinkKeys = new Set();
+    list = list.filter(link => {
+        const key = getLinkDeduplicationKey(link.ownerUid, link.url, link.source);
+        if (seenAdminLinkKeys.has(key)) return false;
+        seenAdminLinkKeys.add(key);
+        return true;
+    });
 
     if (filter === 'high') {
         list = list.filter(l => (l.riskScore >= 70));
@@ -23858,30 +24040,34 @@ export async function adminRequestLinkJustification(linkId) {
         }
     } catch (_) {}
 
-    // Enviar notificação oficial com texto exato requerido pelo usuário
+    // Enviar notificação oficial com texto exato requerido pelo usuário (sem duplicar)
     try {
-        const notifPayload = {
-            toUid: link.ownerUid,
-            type: 'link_risk_warning',
-            title: '⚠️ Risco Enorme em Link Detectado',
-            message: 'Você recebeu uma taxa de risco enorme em links no Vortex VIP clique no botão abaixo para preencher o formulário sobre o motivo desses links 👇',
-            linkId: link.id,
-            linkUrl: link.url,
-            riskScore: link.riskScore || 87,
-            hasJustificationAction: true,
-            read: false,
-            createdAt: Date.now(),
-            author: 'Administração VORTEX VIP'
-        };
+        const cleanUrl = String(link.url || '').trim().toLowerCase().replace(/\/+$/, '');
+        const alreadyNotified = (allNotifications || []).some(n => 
+            n.toUid === link.ownerUid && 
+            (n.type === 'link_risk_warning' || n.hasJustificationAction) &&
+            (n.linkId === link.id || String(n.linkUrl || '').trim().toLowerCase().replace(/\/+$/, '') === cleanUrl) &&
+            !readNotifIds.has(n.id)
+        );
 
-        if (typeof db !== 'undefined' && db && typeof addDoc === 'function' && typeof collection === 'function') {
-            await addDoc(collection(db, 'notifications'), notifPayload).catch(() => {});
-        }
+        if (!alreadyNotified) {
+            const notifPayload = {
+                toUid: link.ownerUid,
+                type: 'link_risk_warning',
+                title: '⚠️ Risco Enorme em Link Detectado',
+                message: 'Você recebeu uma taxa de risco enorme em links no Vortex VIP clique no botão abaixo para preencher o formulário sobre o motivo desses links 👇',
+                linkId: link.id,
+                linkUrl: link.url,
+                riskScore: link.riskScore || 87,
+                hasJustificationAction: true,
+                read: false,
+                createdAt: Date.now(),
+                author: 'Administração VORTEX VIP'
+            };
 
-        // Adiciona à lista local de notificações para visualização imediata se for o próprio usuário
-        if (typeof allNotifications !== 'undefined' && Array.isArray(allNotifications)) {
-            allNotifications.unshift({ id: 'notif_' + Date.now(), ...notifPayload });
-            if (typeof renderNotifications === 'function') renderNotifications();
+            if (typeof db !== 'undefined' && db && typeof addDoc === 'function' && typeof collection === 'function') {
+                await addDoc(collection(db, 'notifications'), notifPayload).catch(() => {});
+            }
         }
     } catch (e) {
         console.warn('Erro ao disparar notificação de justificativa:', e);
@@ -24038,6 +24224,24 @@ export async function submitLinkJustification() {
         }
 
         closeLinkJustificationModal();
+
+        // Marcar notificações deste link como lidas
+        const cleanTargetUrl = String(link.url || '').trim().toLowerCase().replace(/\/+$/, '');
+        if (typeof allNotifications !== 'undefined' && Array.isArray(allNotifications)) {
+            allNotifications.forEach(n => {
+                const nUrl = String(n.linkUrl || '').trim().toLowerCase().replace(/\/+$/, '');
+                if (n.linkId === link.id || (nUrl && nUrl === cleanTargetUrl)) {
+                    n.read = true;
+                    if (typeof readNotifIds !== 'undefined' && readNotifIds.add) {
+                        readNotifIds.add(n.id);
+                    }
+                }
+            });
+            if (typeof saveNotifStorage === 'function') saveNotifStorage();
+            if (typeof updateNotificationsBadge === 'function') updateNotificationsBadge();
+            if (typeof renderNotifications === 'function') renderNotifications();
+        }
+
         showToast('Justificativa Enviada! 🚀', 'Sua justificativa foi enviada para análise da moderação.', 'green');
         renderAdminLinks();
         updateAdminLinksBadge();
@@ -24064,6 +24268,23 @@ export async function adminApproveLink(linkId) {
 
     link.status = 'approved';
     link.updatedAt = Date.now();
+
+    // Marcar notificações deste link como resolvidas/lidas
+    const cleanApproveUrl = String(link.url || '').trim().toLowerCase().replace(/\/+$/, '');
+    if (typeof allNotifications !== 'undefined' && Array.isArray(allNotifications)) {
+        allNotifications.forEach(n => {
+            const nUrl = String(n.linkUrl || '').trim().toLowerCase().replace(/\/+$/, '');
+            if (n.linkId === link.id || (nUrl && nUrl === cleanApproveUrl)) {
+                n.read = true;
+                if (typeof readNotifIds !== 'undefined' && readNotifIds.add) {
+                    readNotifIds.add(n.id);
+                }
+            }
+        });
+        if (typeof saveNotifStorage === 'function') saveNotifStorage();
+        if (typeof updateNotificationsBadge === 'function') updateNotificationsBadge();
+        if (typeof renderNotifications === 'function') renderNotifications();
+    }
 
     try {
         if (typeof db !== 'undefined' && db && typeof updateDoc === 'function' && typeof doc === 'function') {
@@ -24166,23 +24387,6 @@ export async function adminRequestLastJustification(linkId) {
                 createdAt: Date.now(),
                 author: 'Administração VORTEX VIP'
             }).catch(() => {});
-        }
-
-        if (typeof allNotifications !== 'undefined' && Array.isArray(allNotifications)) {
-            allNotifications.unshift({
-                id: 'notif_last_' + Date.now(),
-                toUid: link.ownerUid,
-                type: 'link_risk_warning',
-                title: '⚠️ ÚLTIMO AVISO SOBRE LINK',
-                message: 'Você recebeu uma última oportunidade sobre links no Vortex VIP: clique no botão abaixo para preencher o formulário final sobre o motivo desses links 👇',
-                linkId: link.id,
-                linkUrl: link.url,
-                riskScore: link.riskScore || 87,
-                hasJustificationAction: true,
-                read: false,
-                createdAt: Date.now()
-            });
-            if (typeof renderNotifications === 'function') renderNotifications();
         }
     } catch (_) {}
 
@@ -38192,6 +38396,9 @@ window.handleCallSwitchedToVideo = handleCallSwitchedToVideo;
     window.initLinkSecurityUI = initLinkSecurityUI;
     window.setupCompanyButtonLinkValidation = setupCompanyButtonLinkValidation;
     window.setupProfileWebsitesLinkValidation = setupProfileWebsitesLinkValidation;
+    window.simpleStringHash = simpleStringHash;
+    window.getLinkDeduplicationKey = getLinkDeduplicationKey;
+    window.getLinkStatusRank = getLinkStatusRank;
     window.playStoryEmojiSound = playStoryEmojiSound;
     window.triggerStoryEmojiAnimation = triggerStoryEmojiAnimation;
     window.renderGroupMiniAdminPanel = renderGroupMiniAdminPanel;
