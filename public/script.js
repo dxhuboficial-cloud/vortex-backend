@@ -21543,7 +21543,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.257';
+export const CURRENT_APP_VERSION = '1.0.258';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -38029,7 +38029,7 @@ export let gamesConfig = {
     roleta: true
 };
 
-// Caça Diamantes VIP (Mines) State (v1.0.257)
+// Caça Diamantes VIP (Mines) State (v1.0.258)
 export let minesCurrentBet = 0.10;
 export let minesBombCount = 3;
 export let isMinesGameActive = false;
@@ -38655,7 +38655,7 @@ window.handleCallSwitchedToVideo = handleCallSwitchedToVideo;
         window.gamesConfig = gamesConfig;
     }
 
-    // Caça Diamantes VIP (Mines) (v1.0.257)
+    // Caça Diamantes VIP (Mines) (v1.0.258)
     window.playMinesDiamondSound = playMinesDiamondSound;
     window.playMinesExplosionSound = playMinesExplosionSound;
     window.playMinesCashoutFanfare = playMinesCashoutFanfare;
@@ -41291,7 +41291,7 @@ export function initTigrinhoControls() {
 }
 
 /* ==========================================================================
-   VORTEX VIP ⚡ - CAÇA DIAMANTES VIP 💎💣 (MINES COM MOEDAS REAIS) (v1.0.257)
+   VORTEX VIP ⚡ - CAÇA DIAMANTES VIP 💎💣 (MINES COM MOEDAS REAIS) (v1.0.258)
    ========================================================================== */
 
 export function playMinesDiamondSound() {
