@@ -19646,6 +19646,9 @@ export function switchAdminTab(tabName) {
     if (tabName === 'links') {
         loadAdminLinks().then(() => renderAdminLinks());
     }
+    if (tabName === 'games') {
+        renderAdminGamesConfig();
+    }
     if (window.lucide) lucide.createIcons();
 }
 
@@ -21540,7 +21543,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.254';
+export const CURRENT_APP_VERSION = '1.0.255';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -22254,6 +22257,10 @@ document.getElementById('admin-tab-vip-requests-btn')?.addEventListener('click',
 
 document.getElementById('admin-tab-broadcast-btn')?.addEventListener('click', () => {
     switchAdminTab('broadcast');
+});
+
+document.getElementById('admin-tab-games-btn')?.addEventListener('click', () => {
+    switchAdminTab('games');
 });
 
 document.querySelectorAll('.admin-pill').forEach(pill => {
@@ -29820,6 +29827,9 @@ export function applyChatFilter(filter = currentChatFilter) {
         if (chatListEl) chatListEl.style.display = 'none';
         if (gamesContainer) gamesContainer.style.display = 'flex';
         if (emptyState) emptyState.style.display = 'none';
+        if (typeof applyGamesConfig === 'function') {
+            applyGamesConfig();
+        }
         if (typeof renderGamesCategory === 'function') {
             renderGamesCategory();
         }
@@ -29828,9 +29838,6 @@ export function applyChatFilter(filter = currentChatFilter) {
         }
         if (typeof updateTigrinhoUI === 'function') {
             updateTigrinhoUI();
-        }
-        if (typeof switchActiveGame === 'function') {
-            switchActiveGame(currentActiveGame || 'tigrinho');
         }
         if (typeof drawLuckyWheel === 'function') {
             drawLuckyWheel();
@@ -37983,6 +37990,34 @@ export let tigrinhoReelsState = [
     ['🎆', '🐯', '🍊']
 ];
 
+export const GAMES_CATALOG = [
+    {
+        id: 'tigrinho',
+        name: 'Tigrinho VIP da Fortuna',
+        shortName: '🐯 Tigrinho VIP',
+        icon: '🐯',
+        badge: 'Slots 3x3 • Moedas do Baú',
+        desc: 'Máquina caça-níqueis com apostas usando as moedas reais do usuário, multiplicadores e Carta da Fortuna.',
+        tabBtnId: 'tab-btn-tigrinho',
+        cardId: 'game-card-tigrinho'
+    },
+    {
+        id: 'roleta',
+        name: 'Roleta da Sorte',
+        shortName: '🎡 Roleta da Sorte',
+        icon: '🎡',
+        badge: 'Roleta Diária • Grátis',
+        desc: 'Roleta com giro diário gratuito para os usuários ganharem moedas e prêmios do Baú Pix.',
+        tabBtnId: 'tab-btn-roleta',
+        cardId: 'game-card-lucky-wheel'
+    }
+];
+
+export let gamesConfig = {
+    tigrinho: true,
+    roleta: true
+};
+
 if (typeof window !== 'undefined') {
     window.clearChatForCurrentUser = clearChatForCurrentUser;
     window.copyMessageText = copyMessageText;
@@ -38582,6 +38617,23 @@ window.handleCallSwitchedToVideo = handleCallSwitchedToVideo;
     } catch (_) {
         window.tigrinhoCurrentBet = tigrinhoCurrentBet;
         window.tigrinhoLastWin = tigrinhoLastWin;
+    }
+
+    // Gerenciamento e Ativação de Jogos pelo ADM (v1.0.255)
+    window.GAMES_CATALOG = GAMES_CATALOG;
+    window.loadGamesConfig = loadGamesConfig;
+    window.applyGamesConfig = applyGamesConfig;
+    window.renderAdminGamesConfig = renderAdminGamesConfig;
+    window.adminToggleGameStatus = adminToggleGameStatus;
+    window.initAdminGamesControls = initAdminGamesControls;
+    try {
+        Object.defineProperty(window, 'gamesConfig', {
+            get: () => gamesConfig,
+            set: (v) => { gamesConfig = v; },
+            configurable: true
+        });
+    } catch (_) {
+        window.gamesConfig = gamesConfig;
     }
 }
 
@@ -40661,8 +40713,17 @@ export async function handleLuckyWheelWin(prize) {
 }
 
 export function initGamesControls() {
+    if (typeof loadGamesConfig === 'function') {
+        loadGamesConfig();
+    }
+    if (typeof applyGamesConfig === 'function') {
+        applyGamesConfig();
+    }
     if (typeof initTigrinhoControls === 'function') {
         initTigrinhoControls();
+    }
+    if (typeof initAdminGamesControls === 'function') {
+        initAdminGamesControls();
     }
     document.querySelectorAll(".open-lucky-wheel-btn, #open-lucky-wheel-btn").forEach(btn => {
         btn.addEventListener("click", openLuckyWheelModal);
@@ -40757,25 +40818,38 @@ export function setTigrinhoBet(amount) {
     updateTigrinhoUI();
 }
 
+
 export function switchActiveGame(gameId) {
+    if (typeof gamesConfig !== 'undefined' && gamesConfig && gamesConfig[gameId] === false) {
+        const firstActive = (typeof GAMES_CATALOG !== 'undefined') ? GAMES_CATALOG.find(g => gamesConfig[g.id] !== false) : null;
+        if (!firstActive) {
+            currentActiveGame = null;
+            if (typeof applyGamesConfig === 'function') applyGamesConfig();
+            return;
+        }
+        gameId = firstActive.id;
+    }
     currentActiveGame = gameId;
     const cardTigrinho = document.getElementById('game-card-tigrinho');
     const cardRoleta = document.getElementById('game-card-lucky-wheel');
     const btnTigrinho = document.getElementById('tab-btn-tigrinho');
     const btnRoleta = document.getElementById('tab-btn-roleta');
 
+    const isTigrinhoActive = (typeof gamesConfig !== 'undefined' && gamesConfig) ? gamesConfig.tigrinho !== false : true;
+    const isRoletaActive = (typeof gamesConfig !== 'undefined' && gamesConfig) ? gamesConfig.roleta !== false : true;
+
     if (btnTigrinho) btnTigrinho.classList.toggle('active', gameId === 'tigrinho');
     if (btnRoleta) btnRoleta.classList.toggle('active', gameId === 'roleta');
 
-    if (cardTigrinho) cardTigrinho.style.display = (gameId === 'tigrinho') ? 'flex' : 'none';
-    if (cardRoleta) cardRoleta.style.display = (gameId === 'roleta') ? 'flex' : 'none';
+    if (cardTigrinho) cardTigrinho.style.display = (gameId === 'tigrinho' && isTigrinhoActive) ? 'flex' : 'none';
+    if (cardRoleta) cardRoleta.style.display = (gameId === 'roleta' && isRoletaActive) ? 'flex' : 'none';
 
-    if (gameId === 'roleta') {
+    if (gameId === 'roleta' && isRoletaActive) {
         const canvas = document.getElementById('lucky-wheel-canvas');
         if (canvas && typeof drawLuckyWheel === 'function') {
             drawLuckyWheel(canvas);
         }
-    } else {
+    } else if (gameId === 'tigrinho' && isTigrinhoActive) {
         updateTigrinhoUI();
     }
 }
@@ -41132,4 +41206,191 @@ export function initTigrinhoControls() {
     });
 
     updateTigrinhoUI();
+}
+
+/* ==========================================================================
+   VORTEX VIP ⚡ - GERENCIAMENTO E CONTROLE DE JOGOS PELO ADM (v1.0.255)
+   ========================================================================== */
+
+
+
+export function loadGamesConfig() {
+    try {
+        const local = localStorage.getItem('vortex_games_config');
+        if (local) {
+            const parsed = JSON.parse(local);
+            if (parsed && typeof parsed === 'object') {
+                gamesConfig = { ...gamesConfig, ...parsed };
+            }
+        }
+    } catch (_) {}
+
+    try {
+        if (typeof db !== 'undefined' && db && typeof getDoc === 'function') {
+            getDoc(doc(db, 'settings', 'games_config')).then(snapshot => {
+                if (snapshot && snapshot.exists && snapshot.exists()) {
+                    const data = snapshot.data();
+                    if (data && typeof data === 'object') {
+                        gamesConfig = { ...gamesConfig, ...data };
+                        applyGamesConfig();
+                        if (document.getElementById('admin-view-games')?.classList.contains('active')) {
+                            renderAdminGamesConfig();
+                        }
+                    }
+                }
+            }).catch(err => {
+                console.warn('[VORTEX] Aviso ao carregar games_config do Firestore:', err);
+            });
+        }
+    } catch (_) {}
+}
+
+export function applyGamesConfig() {
+    const emptyStateEl = document.getElementById('games-empty-state');
+    const subtabsNav = document.getElementById('games-subtabs-nav');
+    const gamesGrid = document.getElementById('games-category-grid');
+
+    const isTigrinhoActive = (typeof gamesConfig !== 'undefined' && gamesConfig) ? gamesConfig.tigrinho !== false : true;
+    const isRoletaActive = (typeof gamesConfig !== 'undefined' && gamesConfig) ? gamesConfig.roleta !== false : true;
+
+    const btnTigrinho = document.getElementById('tab-btn-tigrinho');
+    const btnRoleta = document.getElementById('tab-btn-roleta');
+    const cardTigrinho = document.getElementById('game-card-tigrinho');
+    const cardRoleta = document.getElementById('game-card-lucky-wheel');
+
+    if (btnTigrinho) btnTigrinho.style.display = isTigrinhoActive ? 'inline-flex' : 'none';
+    if (btnRoleta) btnRoleta.style.display = isRoletaActive ? 'inline-flex' : 'none';
+
+    if (cardTigrinho && !isTigrinhoActive) cardTigrinho.style.display = 'none';
+    if (cardRoleta && !isRoletaActive) cardRoleta.style.display = 'none';
+
+    const hasAnyActiveGame = isTigrinhoActive || isRoletaActive;
+
+    if (!hasAnyActiveGame) {
+        if (emptyStateEl) emptyStateEl.style.display = 'flex';
+        if (subtabsNav) subtabsNav.style.display = 'none';
+        if (gamesGrid) gamesGrid.style.display = 'none';
+        currentActiveGame = null;
+    } else {
+        if (emptyStateEl) emptyStateEl.style.display = 'none';
+        if (subtabsNav) subtabsNav.style.display = 'flex';
+        if (gamesGrid) gamesGrid.style.display = 'flex';
+
+        if (!currentActiveGame || (currentActiveGame === 'tigrinho' && !isTigrinhoActive) || (currentActiveGame === 'roleta' && !isRoletaActive)) {
+            const nextGame = isTigrinhoActive ? 'tigrinho' : (isRoletaActive ? 'roleta' : null);
+            if (nextGame) {
+                switchActiveGame(nextGame);
+            }
+        } else {
+            switchActiveGame(currentActiveGame);
+        }
+    }
+}
+
+export async function adminToggleGameStatus(gameId) {
+    if (!isUserAdmin()) {
+        showToast('Acesso Negado', 'O controle de jogos é restrito exclusivamente aos administradores.', 'red');
+        return false;
+    }
+
+    const currentStatus = gamesConfig[gameId] !== false;
+    const newStatus = !currentStatus;
+    gamesConfig[gameId] = newStatus;
+
+    try {
+        localStorage.setItem('vortex_games_config', JSON.stringify(gamesConfig));
+    } catch (_) {}
+
+    try {
+        if (typeof db !== 'undefined' && db && typeof setDoc === 'function') {
+            const configRef = doc(db, 'settings', 'games_config');
+            await setDoc(configRef, { [gameId]: newStatus, updatedAt: Date.now() }, { merge: true });
+        }
+    } catch (err) {
+        console.warn('[VORTEX] Falha ao persistir games_config no Firestore:', err);
+    }
+
+    const gameMeta = GAMES_CATALOG.find(g => g.id === gameId);
+    const gameName = gameMeta ? gameMeta.name : gameId;
+    const toastTitle = newStatus ? 'Jogo Ativado' : 'Jogo Desativado';
+    const toastMsg = newStatus 
+        ? `O jogo "${gameName}" foi ativado e já está visível para todos os usuários.`
+        : `O jogo "${gameName}" foi desativado e ocultado da plataforma.`;
+    showToast(toastTitle, toastMsg, newStatus ? 'green' : 'orange');
+
+    applyGamesConfig();
+    renderAdminGamesConfig();
+
+    if (navigator.vibrate) navigator.vibrate([40, 30, 40]);
+    return newStatus;
+}
+
+export function renderAdminGamesConfig() {
+    const listEl = document.getElementById('admin-games-list');
+    const totalValEl = document.getElementById('admin-games-total-val');
+    const activeValEl = document.getElementById('admin-games-active-val');
+    const inactiveValEl = document.getElementById('admin-games-inactive-val');
+
+    let totalCount = GAMES_CATALOG.length;
+    let activeCount = 0;
+    let inactiveCount = 0;
+
+    GAMES_CATALOG.forEach(game => {
+        if (gamesConfig[game.id] !== false) activeCount++;
+        else inactiveCount++;
+    });
+
+    if (totalValEl) totalValEl.textContent = totalCount;
+    if (activeValEl) activeValEl.textContent = activeCount;
+    if (inactiveValEl) inactiveValEl.textContent = inactiveCount;
+
+    if (!listEl) return;
+
+    listEl.innerHTML = GAMES_CATALOG.map(game => {
+        const isActive = gamesConfig[game.id] !== false;
+        return `
+            <div class="admin-game-card ${isActive ? 'is-active' : 'is-disabled'}" id="admin-game-card-${game.id}">
+                <div class="admin-game-card-top">
+                    <div class="admin-game-icon-wrap" aria-hidden="true">${game.icon}</div>
+                    <div class="admin-game-meta">
+                        <div class="admin-game-title-row">
+                            <h4 class="admin-game-name">${game.name}</h4>
+                            <span class="admin-game-status-badge ${isActive ? 'badge-active' : 'badge-inactive'}">
+                                ${isActive ? '🟢 Ativo' : '🔴 Desativado'}
+                            </span>
+                        </div>
+                        <span class="admin-game-tag">${game.badge}</span>
+                        <p class="admin-game-desc">${game.desc}</p>
+                    </div>
+                </div>
+                <div class="admin-game-card-bottom">
+                    <div class="admin-game-info-note">
+                        ${isActive ? 'Jogo disponível e visível na aba de Jogos.' : 'Jogo ocultado da tela de Jogos para todos os usuários.'}
+                    </div>
+                    <button type="button" class="admin-game-toggle-btn ${isActive ? 'btn-deactivate' : 'btn-activate'}" id="admin-toggle-game-${game.id}" data-game-id="${game.id}">
+                        <i data-lucide="${isActive ? 'power-off' : 'power'}"></i>
+                        <span>${isActive ? 'Desativar Jogo' : 'Ativar Jogo'}</span>
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    listEl.querySelectorAll('.admin-game-toggle-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            adminToggleGameStatus(btn.dataset.gameId);
+        });
+    });
+
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+    }
+}
+
+export function initAdminGamesControls() {
+    loadGamesConfig();
+    applyGamesConfig();
+    document.getElementById('admin-tab-games-btn')?.addEventListener('click', () => {
+        switchAdminTab('games');
+    });
 }

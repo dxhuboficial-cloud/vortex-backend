@@ -35,13 +35,13 @@
     <meta itemprop="image" content="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
     <link rel="image_src" type="image/png" href="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
 
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.254">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.254">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.254">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.254">
-    <link rel="stylesheet" href="style.css?v=1.0.254">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.255">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.255">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.255">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.255">
+    <link rel="stylesheet" href="style.css?v=1.0.255">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.254" id="app-manifest-link">
+    <link rel="manifest" href="manifest.json?v=1.0.255" id="app-manifest-link">
     <meta name="theme-color" content="#39ff14" id="app-theme-color-meta">
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#39ff14" id="app-theme-color-meta-dark">
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#39ff14" id="app-theme-color-meta-light">
@@ -50,8 +50,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.254">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.254">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.255">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.255">
     <!-- Sincronização Dinâmica da Barra de Status e Barra de Navegação do Celular -->
     <script>
         (function() {
@@ -290,7 +290,7 @@
                 </div>
             </main>
 
-            <!-- Seção da Categoria de Jogos (v1.0.254) -->
+            <!-- Seção da Categoria de Jogos (v1.0.255) -->
             <section id="games-category-container" class="games-category-container" style="display:none;">
                 <div class="games-category-header">
                     <div class="games-category-title-wrap">
@@ -308,7 +308,7 @@
                     </div>
                 </div>
 
-                <!-- Seletor Rápido de Jogos (v1.0.254) -->
+                <!-- Seletor Rápido de Jogos (v1.0.255) -->
                 <div class="games-subtabs-nav" id="games-subtabs-nav">
                     <button type="button" class="games-subtab-btn active" id="tab-btn-tigrinho" data-game-target="tigrinho">
                         <span>🐯 Tigrinho VIP</span>
@@ -320,9 +320,18 @@
                     </button>
                 </div>
 
+                <!-- Mensagem quando todos os jogos forem desativados (v1.0.255) -->
+                <div id="games-empty-state" class="games-empty-state" style="display:none;">
+                    <div class="games-empty-icon-wrap">
+                        <i data-lucide="gamepad-2"></i>
+                    </div>
+                    <h4 class="games-empty-title">Nenhum jogo encontrado!</h4>
+                    <p class="games-empty-subtitle">Todos os jogos estão temporariamente desativados pela administração. Volte mais tarde para novas partidas!</p>
+                </div>
+
                 <!-- Grid de Jogos da Categoria -->
                 <div class="games-category-grid" id="games-category-grid">
-                    <!-- Card do Jogo 2: Tigrinho VIP da Fortuna 🐯 (v1.0.254) -->
+                    <!-- Card do Jogo 2: Tigrinho VIP da Fortuna 🐯 (v1.0.255) -->
                     <div class="vortex-game-card tigrinho-game-card" id="game-card-tigrinho">
                         <div class="game-card-badge tigrinho-badge">
                             <span class="game-badge-pulse gold-pulse"></span>
@@ -2732,14 +2741,14 @@
                     </button>
                 </div>
 
-                <!-- Card de Versão Oficial do App (v1.0.254) -->
+                <!-- Card de Versão Oficial do App (v1.0.255) -->
                 <div class="app-version-card" id="app-version-info-footer">
                     <div class="app-version-header-row">
                         <div class="app-version-brand-wrap">
-                            <img src="icons/vortex-vip-192.png?v=1.0.254" alt="VORTEX VIP" class="app-version-icon-img" width="22" height="22">
+                            <img src="icons/vortex-vip-192.png?v=1.0.255" alt="VORTEX VIP" class="app-version-icon-img" width="22" height="22">
                             <span class="app-version-brand-name">VORTEX VIP Oficial</span>
                         </div>
-                        <span class="app-version-pill-badge" id="app-version-display-badge">v1.0.254 ⚡</span>
+                        <span class="app-version-pill-badge" id="app-version-display-badge">v1.0.255 ⚡</span>
                     </div>
                     <div class="app-version-status-row">
                         <span class="app-version-status-dot"></span>
@@ -2839,6 +2848,10 @@
                     <i data-lucide="shield-alert" class="admin-tab-icon"></i>
                     <span>Links &amp; Risco</span>
                     <span id="admin-links-badge" class="admin-tab-badge" style="display: none;">0</span>
+                </button>
+                <button type="button" class="admin-tab-btn" data-tab="games" id="admin-tab-games-btn">
+                    <i data-lucide="gamepad-2" class="admin-tab-icon"></i>
+                    <span>Jogos</span>
                 </button>
             </div>
 
@@ -3047,6 +3060,33 @@
                             <p>Nenhum link registrado no momento.</p>
                             <small>Os links adicionados em botões interativos e perfis serão analisados e listados aqui com seus respectivos scores de risco.</small>
                         </div>
+                    </div>
+                </div>
+
+                <!-- 9. Aba de Controle de Jogos (v1.0.255) -->
+                <div id="admin-view-games" class="admin-view">
+                    <div class="admin-filter-bar admin-games-filter-bar">
+                        <div class="admin-games-header-info">
+                            <h3 class="admin-games-title"><i data-lucide="gamepad-2"></i> Controle de Jogos da Plataforma</h3>
+                            <p class="admin-games-desc">Ative ou desative jogos individualmente. Ao desativar, o jogo desaparece da tela de jogos. Se todos forem desativados, é exibida a mensagem "Nenhum jogo encontrado!".</p>
+                        </div>
+                    </div>
+                    <div class="admin-games-stats-bar">
+                        <div class="admin-games-stat-card">
+                            <span class="stat-label">Total de Jogos</span>
+                            <strong class="stat-val" id="admin-games-total-val">2</strong>
+                        </div>
+                        <div class="admin-games-stat-card">
+                            <span class="stat-label">Ativos</span>
+                            <strong class="stat-val stat-green" id="admin-games-active-val">2</strong>
+                        </div>
+                        <div class="admin-games-stat-card">
+                            <span class="stat-label">Desativados</span>
+                            <strong class="stat-val stat-red" id="admin-games-inactive-val">0</strong>
+                        </div>
+                    </div>
+                    <div id="admin-games-list" class="admin-games-cards-list">
+                        <!-- Cards de cada jogo renderizados dinamicamente via JS -->
                     </div>
                 </div>
             </div>
@@ -5212,7 +5252,7 @@
             </div>
         </div>
 
-        <!-- Tela de Saque em Análise (v1.0.254) -->
+        <!-- Tela de Saque em Análise (v1.0.255) -->
         <div id="withdrawal-under-review-screen" class="withdrawal-under-review-screen" style="display:none;" aria-hidden="true">
             <div class="withdrawal-review-card">
                 <!-- Botão Fechar (X) -->
@@ -5232,7 +5272,7 @@
                     <div class="withdrawal-review-radar-ring ring-2"></div>
                     <div class="withdrawal-review-radar-ring ring-3"></div>
                     <div class="withdrawal-review-radar-center" id="withdrawal-review-radar-center">
-                        <img src="icons/pix-wallet-paid.png?v=1.0.254" alt="Saque Pix Pago" class="withdrawal-review-wallet-img" id="withdrawal-review-icon-img" width="56" height="56">
+                        <img src="icons/pix-wallet-paid.png?v=1.0.255" alt="Saque Pix Pago" class="withdrawal-review-wallet-img" id="withdrawal-review-icon-img" width="56" height="56">
                         <div class="withdrawal-review-sub-badge" id="withdrawal-review-sub-badge">
                             <i data-lucide="hourglass" class="withdrawal-review-sub-icon"></i>
                         </div>
@@ -5893,7 +5933,7 @@
             </div>
         </div>
 
-        <!-- Modal do Jogo: Roleta da Sorte (v1.0.254) -->
+        <!-- Modal do Jogo: Roleta da Sorte (v1.0.255) -->
         <div id="lucky-wheel-modal" class="custom-modal-overlay lucky-wheel-overlay" style="display:none;" aria-hidden="true">
             <div class="custom-modal-card lucky-wheel-card">
                 <!-- Top bar do Modal -->
@@ -5974,6 +6014,6 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.254" defer></script>
+    <script type="module" src="script.js?v=1.0.255" defer></script>
 </body>
 </html>
