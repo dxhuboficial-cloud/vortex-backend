@@ -28313,54 +28313,84 @@ video::-internal-media-controls-download-button {
 }
 
 .diamante-game-card {
-    background: linear-gradient(160deg, #0a1124 0%, #0d1a38 50%, #080d1c 100%);
-    border: 1px solid rgba(0, 245, 255, 0.3);
-    box-shadow: 0 10px 40px rgba(0, 245, 255, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    background: linear-gradient(160deg, #070d1c 0%, #0a152e 50%, #050914 100%);
+    border: 1.5px solid rgba(0, 245, 255, 0.35);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6), 0 0 25px rgba(0, 245, 255, 0.12);
+    border-radius: 16px;
+    padding: 10px 8px 12px;
+    display: flex;
+    flex-direction: column !important;
+    align-items: center;
+    position: relative;
+    width: 100%;
+    max-width: 320px;
+    margin: 0 auto;
+    box-sizing: border-box;
 }
 
 .diamond-badge {
+    position: absolute;
+    top: 6px;
+    left: 8px;
+    z-index: 5;
     background: linear-gradient(90deg, rgba(0, 245, 255, 0.2), rgba(0, 168, 255, 0.25));
-    border-color: rgba(0, 245, 255, 0.4);
+    border: 1px solid rgba(0, 245, 255, 0.4);
     color: #00f5ff;
+    font-size: 0.58rem;
+    font-weight: 800;
+    padding: 2px 7px;
+    border-radius: 20px;
+    letter-spacing: 0.3px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
 }
 
 .cyan-pulse {
     background: #00f5ff;
-    box-shadow: 0 0 8px #00f5ff;
+    box-shadow: 0 0 6px #00f5ff;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    display: inline-block;
 }
 
 .diamante-mascot-header {
     display: flex;
     align-items: center;
-    gap: 14px;
-    padding: 6px 0 12px;
+    gap: 8px;
+    width: 100%;
+    margin-top: 18px;
+    margin-bottom: 4px;
+    padding: 0 2px;
+    box-sizing: border-box;
 }
 
 .diamante-mascot-avatar {
     position: relative;
-    width: 58px;
-    height: 58px;
-    border-radius: 18px;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
     background: linear-gradient(135deg, #003366, #001f3f);
-    border: 2px solid #00f5ff;
+    border: 1.5px solid #00f5ff;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 0 20px rgba(0, 245, 255, 0.35);
+    box-shadow: 0 0 10px rgba(0, 245, 255, 0.3);
     flex-shrink: 0;
 }
 
 .diamante-mascot-avatar .mascot-emoji {
-    font-size: 2.2rem;
-    filter: drop-shadow(0 0 8px rgba(0, 245, 255, 0.8));
+    font-size: 1.15rem;
+    filter: drop-shadow(0 0 4px rgba(0, 245, 255, 0.8));
     animation: bounceSlow 3s infinite ease-in-out;
 }
 
 .diamante-mascot-avatar .mascot-sparkle-halo {
     position: absolute;
-    top: -6px;
-    right: -6px;
-    font-size: 1rem;
+    top: -4px;
+    right: -4px;
+    font-size: 0.6rem;
     animation: spinSlow 6s linear infinite;
 }
 
@@ -28370,38 +28400,87 @@ video::-internal-media-controls-download-button {
 }
 
 .diamante-title {
-    font-size: 1.25rem;
+    font-size: 0.88rem;
     font-weight: 800;
     color: #ffffff;
     margin: 0;
-    text-shadow: 0 0 12px rgba(0, 245, 255, 0.4);
+    text-shadow: 0 0 8px rgba(0, 245, 255, 0.4);
+    line-height: 1.2;
 }
 
 .diamante-subtitle {
-    font-size: 0.82rem;
+    font-size: 0.62rem;
     color: rgba(255, 255, 255, 0.7);
-    margin: 3px 0 0 0;
-    line-height: 1.35;
+    margin: 1px 0 0 0;
+    line-height: 1.2;
+}
+
+/* Banner de Resultado do Caça Diamantes */
+.diamante-result-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 5px 8px;
+    border-radius: 8px;
+    margin-bottom: 6px;
+    animation: fadeIn 0.25s ease-out;
+    box-sizing: border-box;
+}
+
+.diamante-result-banner .result-banner-icon {
+    font-size: 1.15rem;
+    flex-shrink: 0;
+}
+
+.diamante-result-banner.win-banner,
+.diamante-result-banner.win {
+    background: linear-gradient(90deg, rgba(57, 255, 20, 0.15), rgba(0, 245, 255, 0.15));
+    border: 1px solid rgba(57, 255, 20, 0.4);
+    box-shadow: 0 0 12px rgba(57, 255, 20, 0.2);
+}
+
+.diamante-result-banner.bomb-banner,
+.diamante-result-banner.lose {
+    background: linear-gradient(90deg, rgba(255, 51, 51, 0.2), rgba(150, 0, 0, 0.25));
+    border: 1px solid rgba(255, 51, 51, 0.5);
+    box-shadow: 0 0 12px rgba(255, 51, 51, 0.25);
+}
+
+.diamante-result-banner h4 {
+    margin: 0;
+    font-size: 0.76rem;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.diamante-result-banner p {
+    margin: 1px 0 0 0;
+    font-size: 0.64rem;
+    color: rgba(255, 255, 255, 0.85);
+    line-height: 1.2;
 }
 
 /* Status Bar do Mines */
 .diamante-status-bar {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-    margin: 10px 0 14px;
+    gap: 4px;
+    width: 100%;
+    margin: 3px 0 6px;
+    box-sizing: border-box;
 }
 
 .diamante-status-pill {
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 12px;
-    padding: 8px 6px;
+    border-radius: 7px;
+    padding: 3px 4px;
     display: flex;
     flex-direction: column;
     align-items: center;
     text-align: center;
-    gap: 2px;
+    gap: 1px;
 }
 
 .diamante-status-pill.highlight {
@@ -28410,21 +28489,22 @@ video::-internal-media-controls-download-button {
 }
 
 .diamante-status-pill .pill-label {
-    font-size: 0.68rem;
-    font-weight: 600;
+    font-size: 0.54rem;
+    font-weight: 700;
     color: rgba(255, 255, 255, 0.6);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
 }
 
 .diamante-status-pill .pill-val {
-    font-size: 0.95rem;
+    font-size: 0.74rem;
     font-weight: 800;
+    line-height: 1.1;
 }
 
 .cyan-text {
     color: #00f5ff;
-    text-shadow: 0 0 8px rgba(0, 245, 255, 0.4);
+    text-shadow: 0 0 6px rgba(0, 245, 255, 0.4);
 }
 
 .red-text {
@@ -28433,171 +28513,153 @@ video::-internal-media-controls-download-button {
 
 .gold-text {
     color: #ffd700;
-    text-shadow: 0 0 8px rgba(255, 215, 0, 0.4);
+    text-shadow: 0 0 6px rgba(255, 215, 0, 0.4);
 }
 
 /* Grid do Mines 5x5 */
 .mines-grid-frame {
-    background: rgba(0, 0, 0, 0.45);
-    border: 2px solid rgba(0, 245, 255, 0.25);
-    border-radius: 16px;
-    padding: 12px;
-    box-shadow: inset 0 0 25px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0, 245, 255, 0.08);
-    margin-bottom: 14px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1.5px solid rgba(0, 245, 255, 0.22);
+    border-radius: 10px;
+    padding: 5px;
+    box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.8), 0 0 12px rgba(0, 245, 255, 0.08);
+    margin-bottom: 6px;
+    width: 100%;
+    max-width: 240px;
+    margin-left: auto;
+    margin-right: auto;
+    box-sizing: border-box;
 }
 
 .mines-grid-container {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
-    gap: 8px;
+    gap: 3.5px;
     width: 100%;
-    max-width: 360px;
     margin: 0 auto;
 }
 
 .mine-tile {
     aspect-ratio: 1;
+    min-height: 36px;
+    max-height: 42px;
     background: linear-gradient(145deg, #162444, #0f1a33);
     border: 1px solid rgba(0, 245, 255, 0.25);
-    border-radius: 10px;
+    border-radius: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.45rem;
+    font-size: 1.05rem;
     cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transition: all 0.15s ease;
     user-select: none;
     position: relative;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
+    padding: 0;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35);
 }
 
-.mine-tile:hover:not(.revealed):not(.disabled) {
-    transform: translateY(-2px) scale(1.05);
+.mine-tile .tile-icon-hidden {
+    font-size: 0.65rem;
+    color: rgba(0, 245, 255, 0.4);
+}
+
+.mine-tile:hover:not(:disabled) {
+    transform: scale(1.05);
     border-color: #00f5ff;
-    box-shadow: 0 6px 14px rgba(0, 245, 255, 0.3);
+    box-shadow: 0 0 8px rgba(0, 245, 255, 0.4);
 }
 
-.mine-tile:active:not(.revealed):not(.disabled) {
-    transform: scale(0.95);
+.mine-tile:active:not(:disabled) {
+    transform: scale(0.92);
 }
 
 .mine-tile.revealed-diamond {
     background: radial-gradient(circle, #004d66 0%, #002233 100%);
     border-color: #00f5ff;
-    box-shadow: 0 0 16px rgba(0, 245, 255, 0.6);
-    animation: diamondPop 0.35s ease-out;
+    box-shadow: 0 0 10px rgba(0, 245, 255, 0.6);
+    animation: diamondPop 0.25s ease-out;
 }
 
 .mine-tile.revealed-bomb {
     background: radial-gradient(circle, #7a0000 0%, #3a0000 100%);
     border-color: #ff3333;
-    box-shadow: 0 0 20px rgba(255, 51, 51, 0.8);
-    animation: bombPop 0.4s ease-out;
+    box-shadow: 0 0 12px rgba(255, 51, 51, 0.8);
+    animation: bombPop 0.25s ease-out;
 }
 
 .mine-tile.revealed-dim {
-    opacity: 0.45;
+    opacity: 0.35;
     cursor: default;
 }
 
-.mine-tile.disabled {
+.mine-tile:disabled {
     cursor: not-allowed;
-    opacity: 0.7;
 }
 
 @keyframes diamondPop {
     0% { transform: scale(0.4) rotate(-15deg); opacity: 0.5; }
-    50% { transform: scale(1.25) rotate(5deg); }
+    50% { transform: scale(1.2) rotate(5deg); }
     100% { transform: scale(1) rotate(0deg); opacity: 1; }
 }
 
 @keyframes bombPop {
     0% { transform: scale(0.5); }
-    30% { transform: scale(1.3) rotate(-10deg); }
+    30% { transform: scale(1.25) rotate(-10deg); }
     60% { transform: scale(1.1) rotate(10deg); }
     100% { transform: scale(1) rotate(0deg); }
-}
-
-/* Banner de Resultado do Caça Diamantes */
-.diamante-result-banner {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 14px;
-    border-radius: 12px;
-    margin-bottom: 12px;
-    animation: fadeIn 0.3s ease-out;
-}
-
-.diamante-result-banner.win {
-    background: linear-gradient(90deg, rgba(57, 255, 20, 0.15), rgba(0, 245, 255, 0.15));
-    border: 1px solid rgba(57, 255, 20, 0.4);
-    box-shadow: 0 0 15px rgba(57, 255, 20, 0.2);
-}
-
-.diamante-result-banner.lose {
-    background: linear-gradient(90deg, rgba(255, 51, 51, 0.2), rgba(150, 0, 0, 0.25));
-    border: 1px solid rgba(255, 51, 51, 0.5);
-    box-shadow: 0 0 15px rgba(255, 51, 51, 0.25);
-}
-
-.diamante-result-banner h4 {
-    margin: 0;
-    font-size: 0.98rem;
-    font-weight: 800;
-}
-
-.diamante-result-banner p {
-    margin: 2px 0 0 0;
-    font-size: 0.82rem;
-    color: rgba(255, 255, 255, 0.85);
 }
 
 /* Controles e Botões */
 .diamante-controls-panel {
     background: rgba(0, 0, 0, 0.35);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 14px;
-    padding: 14px;
+    border-radius: 10px;
+    padding: 6px 8px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 5px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .mines-difficulty-row {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 2px;
     text-align: left;
+    width: 100%;
 }
 
 .mines-control-label {
-    font-size: 0.74rem;
+    font-size: 0.6rem;
     font-weight: 700;
     color: rgba(255, 255, 255, 0.6);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
 }
 
 .mines-difficulty-chips {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 6px;
+    gap: 3px;
+    width: 100%;
 }
 
 .mines-diff-chip {
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 8px;
-    padding: 7px 4px;
-    font-size: 0.75rem;
+    border-radius: 5px;
+    padding: 3px 2px;
+    font-size: 0.6rem;
     font-weight: 700;
     color: rgba(255, 255, 255, 0.8);
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+    text-align: center;
 }
 
-.mines-diff-chip:hover {
+.mines-diff-chip:hover:not(:disabled) {
     background: rgba(255, 255, 255, 0.1);
 }
 
@@ -28605,43 +28667,158 @@ video::-internal-media-controls-download-button {
     background: rgba(0, 245, 255, 0.2);
     border-color: #00f5ff;
     color: #00f5ff;
-    box-shadow: 0 0 10px rgba(0, 245, 255, 0.3);
+    box-shadow: 0 0 6px rgba(0, 245, 255, 0.3);
+}
+
+.mines-diff-chip:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 .diamante-bet-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
+    gap: 6px;
+    width: 100%;
+}
+
+.diamante-bet-row .tigrinho-control-col {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.diamante-bet-row .tigrinho-control-label {
+    font-size: 0.58rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.6);
+    text-transform: uppercase;
+}
+
+.diamante-bet-row .tigrinho-control-val {
+    font-size: 0.74rem;
+    font-weight: 800;
+    color: #ffd700;
+}
+
+.diamante-bet-row .tigrinho-bet-adjuster {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.diamante-bet-row .btn-bet-step {
+    width: 22px;
+    height: 22px;
+    border-radius: 5px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+}
+
+.diamante-bet-row .btn-bet-step:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.16);
+    border-color: #00f5ff;
+}
+
+.diamante-bet-row .btn-bet-step:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.diamante-bet-row .bet-display-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 52px;
+}
+
+.diamante-bet-row .bet-amount-text {
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: #00f5ff;
+    line-height: 1.1;
+}
+
+.diamante-bet-row .bet-coins-text {
+    font-size: 0.56rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.mines-chips-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 3px;
+    width: 100%;
+}
+
+.mines-chips-row .bet-chip {
+    flex: 1;
+    padding: 3px 1px;
+    font-size: 0.6rem;
+    font-weight: 700;
+    border-radius: 5px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.85);
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s ease;
+}
+
+.mines-chips-row .bet-chip:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.mines-chips-row .bet-chip.active {
+    background: rgba(0, 245, 255, 0.2);
+    border-color: #00f5ff;
+    color: #00f5ff;
+    box-shadow: 0 0 6px rgba(0, 245, 255, 0.3);
+}
+
+.mines-chips-row .bet-chip:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
 }
 
 .mines-actions-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-top: 4px;
+    gap: 5px;
+    width: 100%;
+    margin-top: 1px;
 }
 
 .btn-start-mines {
     background: linear-gradient(135deg, #00f5ff, #0077ff);
     color: #000;
-    font-size: 0.88rem;
+    font-size: 0.7rem;
     font-weight: 800;
-    padding: 12px 10px;
-    border-radius: 12px;
+    padding: 7px 4px;
+    border-radius: 7px;
     border: none;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    box-shadow: 0 0 16px rgba(0, 245, 255, 0.4);
-    transition: all 0.2s ease;
+    gap: 4px;
+    box-shadow: 0 0 10px rgba(0, 245, 255, 0.35);
+    transition: all 0.15s ease;
+    white-space: nowrap;
 }
 
 .btn-start-mines:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 0 24px rgba(0, 245, 255, 0.6);
+    transform: translateY(-1px);
+    box-shadow: 0 0 14px rgba(0, 245, 255, 0.5);
 }
 
 .btn-start-mines:disabled {
@@ -28653,23 +28830,24 @@ video::-internal-media-controls-download-button {
 .btn-cashout-mines {
     background: linear-gradient(135deg, #39ff14, #00cc22);
     color: #000;
-    font-size: 0.88rem;
+    font-size: 0.7rem;
     font-weight: 800;
-    padding: 12px 10px;
-    border-radius: 12px;
+    padding: 7px 4px;
+    border-radius: 7px;
     border: none;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    box-shadow: 0 0 18px rgba(57, 255, 20, 0.45);
-    transition: all 0.2s ease;
+    gap: 4px;
+    box-shadow: 0 0 10px rgba(57, 255, 20, 0.35);
+    transition: all 0.15s ease;
+    white-space: nowrap;
 }
 
 .btn-cashout-mines:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 0 28px rgba(57, 255, 20, 0.7);
+    transform: translateY(-1px);
+    box-shadow: 0 0 14px rgba(57, 255, 20, 0.6);
 }
 
 .btn-cashout-mines:disabled {
@@ -28681,13 +28859,23 @@ video::-internal-media-controls-download-button {
 }
 
 .diamante-rules-box {
-    margin-top: 12px;
+    margin-top: 6px;
+    padding: 5px 6px;
+    border-radius: 7px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.diamante-rules-box .payout-title {
+    font-size: 0.62rem;
+    font-weight: 700;
+    margin-bottom: 2px;
 }
 
 .diamante-rules-text {
-    font-size: 0.76rem;
-    color: rgba(255, 255, 255, 0.75);
-    line-height: 1.5;
+    font-size: 0.58rem;
+    color: rgba(255, 255, 255, 0.65);
+    line-height: 1.25;
     text-align: left;
     margin: 0;
 }
