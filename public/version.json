@@ -1,6 +1,6 @@
 {
-  "version": "1.0.262",
-  "build": 262,
+  "version": "1.0.263",
+  "build": 263,
   "releaseDate": "2026-11-10",
-  "notes": "Ícones oficiais de Conta Empresa: Mulher com joinha para Conta Aprovada e Documento com X para Conta Reprovada v1.0.262"
+  "notes": "Modo de Manutenção oficial com ativação no Painel ADM, bloqueio geral de usuários e isenção de administradores v1.0.263"
 }

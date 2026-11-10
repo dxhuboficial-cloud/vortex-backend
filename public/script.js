@@ -1902,12 +1902,14 @@ onAuthStateChanged(auth, async (user) => {
                 if (typeof updateActiveChatMuteUI === 'function') updateActiveChatMuteUI();
                 if (typeof applyPinnedSortToChatList === 'function') applyPinnedSortToChatList();
                 if (typeof checkUserPendingWithdrawalFromProfile === 'function') checkUserPendingWithdrawalFromProfile();
+                if (typeof applyMaintenanceMode === 'function') applyMaintenanceMode();
             }
         });
 
         if (currentProfile.pinEnabled && lockScreen) lockScreen.classList.remove('unlocked');
         checkBannedAccountState();
         updateAdminUIVisibility();
+        if (typeof applyMaintenanceMode === 'function') applyMaintenanceMode();
 
         listenToContacts();
         listenToBlockedContacts();
@@ -1930,6 +1932,7 @@ onAuthStateChanged(auth, async (user) => {
         detachListeners();
         updateAdminUIVisibility();
         if (typeof hideWithdrawalUnderReviewScreen === 'function') hideWithdrawalUnderReviewScreen();
+        if (typeof applyMaintenanceMode === 'function') applyMaintenanceMode();
     }
 });
 
@@ -21569,7 +21572,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.262';
+export const CURRENT_APP_VERSION = '1.0.263';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -38071,6 +38074,12 @@ export let gamesConfig = {
     roleta: true
 };
 
+export let maintenanceConfig = {
+    active: false,
+    updatedAt: 0,
+    updatedBy: ''
+};
+
 // Caça Diamantes VIP (Mines) State (v1.0.258)
 export let minesCurrentBet = 0.10;
 export let minesBombCount = 3;
@@ -38791,6 +38800,23 @@ window.handleCallSwitchedToVideo = handleCallSwitchedToVideo;
         window.businessSelfiePhotoData = businessSelfiePhotoData;
         window.businessDocPhotoData = businessDocPhotoData;
     }
+    window.maintenanceConfig = maintenanceConfig;
+    window.setMaintenanceConfig = setMaintenanceConfig;
+    window.startMaintenanceTypingCycle = startMaintenanceTypingCycle;
+    window.stopMaintenanceTypingCycle = stopMaintenanceTypingCycle;
+    window.applyMaintenanceMode = applyMaintenanceMode;
+    window.loadMaintenanceConfig = loadMaintenanceConfig;
+    window.adminToggleMaintenanceMode = adminToggleMaintenanceMode;
+    window.initMaintenanceControls = initMaintenanceControls;
+    try {
+        Object.defineProperty(window, 'maintenanceConfig', {
+            get: () => maintenanceConfig,
+            set: (v) => { maintenanceConfig = v; },
+            configurable: true
+        });
+    } catch (_) {
+        window.maintenanceConfig = maintenanceConfig;
+    }
 }
 
 /* ==========================================================================
@@ -39229,6 +39255,8 @@ if (typeof window !== 'undefined') {
     initLinkSecurityUI();
     initGamesControls();
     initBusinessVerificationEvents();
+    loadMaintenanceConfig();
+    initMaintenanceControls();
 }
 
 
@@ -43182,4 +43210,295 @@ export function initBusinessVerificationEvents() {
         currentAdminBizSearch = (e.target?.value || '').toLowerCase().trim();
         renderAdminBusinessRequests();
     });
+}
+
+/* ==========================================================================
+   VORTEX VIP ⚡ - MODO DE MANUTENÇÃO (v1.0.263)
+   Ativado no Painel ADM; bloqueia usuários comuns e visitantes.
+   Administradores possuem bypass total e não visualizam a tela de manutenção.
+   ========================================================================== */
+
+export function setMaintenanceConfig(cfg) {
+    if (cfg && typeof cfg === 'object') {
+        maintenanceConfig = { ...maintenanceConfig, ...cfg };
+        if (typeof window !== 'undefined') {
+            window.maintenanceConfig = maintenanceConfig;
+        }
+    }
+}
+
+var maintenanceTypingTimeout = null;
+var maintenanceDotsInterval = null;
+var maintenanceCycleInterval = null;
+var maintenanceCycleRunning = false;
+var wasMaintenanceActiveForMe = false;
+
+export function startMaintenanceTypingCycle() {
+    const typeLine1El = document.getElementById('typeLine1');
+    const typeLine2El = document.getElementById('typeLine2');
+    const lineBreakEl = document.getElementById('lineBreak');
+    const processingDotsEl = document.getElementById('processingDots');
+    const cursorEl = document.getElementById('cursor');
+
+    if (!typeLine1El || !typeLine2El) return;
+
+    maintenanceCycleRunning = true;
+
+    const line1Text = "Em manutenção volte";
+    const line2Text = "mais tarde";
+
+    function runSingleCycle() {
+        if (!maintenanceCycleRunning) return;
+
+        if (maintenanceTypingTimeout) clearTimeout(maintenanceTypingTimeout);
+        if (maintenanceDotsInterval) clearInterval(maintenanceDotsInterval);
+
+        typeLine1El.textContent = "";
+        typeLine2El.textContent = "";
+        if (processingDotsEl) processingDotsEl.textContent = "";
+        if (lineBreakEl) {
+            lineBreakEl.classList.add('hidden');
+            lineBreakEl.classList.add('vortex-maint-hidden');
+        }
+        if (cursorEl) cursorEl.style.display = "inline-block";
+
+        let charIndex1 = 0;
+        let charIndex2 = 0;
+        const typingSpeed = 75;
+
+        function typeFirstLine() {
+            if (!maintenanceCycleRunning) return;
+            if (charIndex1 < line1Text.length) {
+                typeLine1El.textContent += line1Text.charAt(charIndex1);
+                charIndex1++;
+                maintenanceTypingTimeout = setTimeout(typeFirstLine, typingSpeed);
+            } else {
+                if (lineBreakEl) {
+                    lineBreakEl.classList.remove('hidden');
+                    lineBreakEl.classList.remove('vortex-maint-hidden');
+                }
+                maintenanceTypingTimeout = setTimeout(typeSecondLine, 180);
+            }
+        }
+
+        function typeSecondLine() {
+            if (!maintenanceCycleRunning) return;
+            if (charIndex2 < line2Text.length) {
+                typeLine2El.textContent += line2Text.charAt(charIndex2);
+                charIndex2++;
+                maintenanceTypingTimeout = setTimeout(typeSecondLine, typingSpeed);
+            } else {
+                startProcessingDots();
+            }
+        }
+
+        function startProcessingDots() {
+            if (!maintenanceCycleRunning || !processingDotsEl) return;
+            const dotStates = [".", "..", "...", ""];
+            let currentDotStep = 0;
+            processingDotsEl.textContent = ".";
+
+            maintenanceDotsInterval = setInterval(() => {
+                if (!maintenanceCycleRunning) {
+                    clearInterval(maintenanceDotsInterval);
+                    return;
+                }
+                currentDotStep = (currentDotStep + 1) % dotStates.length;
+                processingDotsEl.textContent = dotStates[currentDotStep];
+            }, 450);
+        }
+
+        typeFirstLine();
+    }
+
+    if (maintenanceCycleInterval) clearInterval(maintenanceCycleInterval);
+    runSingleCycle();
+    maintenanceCycleInterval = setInterval(runSingleCycle, 20000);
+}
+
+export function stopMaintenanceTypingCycle() {
+    maintenanceCycleRunning = false;
+    if (maintenanceTypingTimeout) {
+        clearTimeout(maintenanceTypingTimeout);
+        maintenanceTypingTimeout = null;
+    }
+    if (maintenanceDotsInterval) {
+        clearInterval(maintenanceDotsInterval);
+        maintenanceDotsInterval = null;
+    }
+    if (maintenanceCycleInterval) {
+        clearInterval(maintenanceCycleInterval);
+        maintenanceCycleInterval = null;
+    }
+}
+
+export function applyMaintenanceMode(cfg = maintenanceConfig) {
+    const overlay = document.getElementById('maintenance-screen-overlay');
+    const topIndicator = document.getElementById('admin-maint-top-indicator');
+    const banner = document.getElementById('admin-maintenance-banner');
+    const statusPill = document.getElementById('admin-maint-status-pill');
+    const statusLabel = document.getElementById('admin-maint-status-label');
+    const toggleBtn = document.getElementById('admin-toggle-maintenance-btn');
+    const toggleLabel = document.getElementById('admin-toggle-maintenance-label');
+
+    const isActive = !!(cfg && cfg.active);
+    const isAdmin = isUserAdmin(currentUser, currentProfile);
+
+    // 1. Atualização dos componentes visuais do Painel ADM
+    if (banner) {
+        if (isActive) {
+            banner.classList.add('active-maint');
+        } else {
+            banner.classList.remove('active-maint');
+        }
+    }
+    if (statusPill && statusLabel) {
+        if (isActive) {
+            statusPill.className = 'admin-maint-status-pill maintenance';
+            statusLabel.textContent = 'Manutenção Ativa 🔴';
+        } else {
+            statusPill.className = 'admin-maint-status-pill online';
+            statusLabel.textContent = 'Online 🟢';
+        }
+    }
+    if (toggleBtn) {
+        if (isActive) {
+            toggleBtn.className = 'admin-maint-toggle-btn btn-deactivate';
+            if (toggleLabel) toggleLabel.textContent = 'Desativar Manutenção';
+            toggleBtn.textContent = 'Desativar Manutenção';
+        } else {
+            toggleBtn.className = 'admin-maint-toggle-btn btn-activate';
+            if (toggleLabel) toggleLabel.textContent = 'Ativar Manutenção';
+            toggleBtn.textContent = 'Ativar Manutenção';
+        }
+    }
+
+    // 2. Aplicação para Administradores
+    if (isAdmin) {
+        if (overlay) {
+            overlay.style.display = 'none';
+            overlay.setAttribute('aria-hidden', 'true');
+        }
+        stopMaintenanceTypingCycle();
+        wasMaintenanceActiveForMe = false;
+
+        if (topIndicator) {
+            topIndicator.style.display = isActive ? 'flex' : 'none';
+        }
+        return;
+    }
+
+    // 3. Usuário COMUM ou Visitante
+    if (topIndicator) topIndicator.style.display = 'none';
+
+    if (isActive) {
+        wasMaintenanceActiveForMe = true;
+        if (overlay) {
+            overlay.style.display = 'flex';
+            overlay.setAttribute('aria-hidden', 'false');
+        }
+        startMaintenanceTypingCycle();
+    } else {
+        if (overlay) {
+            const wasVisible = overlay.style.display === 'flex';
+            overlay.style.display = 'none';
+            overlay.setAttribute('aria-hidden', 'true');
+            stopMaintenanceTypingCycle();
+
+            if (wasMaintenanceActiveForMe || wasVisible) {
+                wasMaintenanceActiveForMe = false;
+                if (typeof window !== 'undefined' && window.location && typeof window.location.reload === 'function') {
+                    try {
+                        window.location.reload();
+                    } catch (_) {}
+                }
+            }
+        } else {
+            stopMaintenanceTypingCycle();
+        }
+    }
+}
+
+export function loadMaintenanceConfig() {
+    try {
+        const localActive = localStorage.getItem('vortex_maintenance_active');
+        if (localActive !== null) {
+            maintenanceConfig.active = localActive === 'true';
+        }
+        const localObj = localStorage.getItem('vortex_maintenance_config');
+        if (localObj) {
+            const parsed = JSON.parse(localObj);
+            if (parsed && typeof parsed === 'object') {
+                maintenanceConfig = { ...maintenanceConfig, ...parsed };
+            }
+        }
+    } catch (_) {}
+
+    applyMaintenanceMode(maintenanceConfig);
+
+    try {
+        if (typeof db !== 'undefined' && db && typeof doc === 'function' && typeof onSnapshot === 'function') {
+            const maintDocRef = doc(db, 'settings', 'maintenance');
+            onSnapshot(maintDocRef, (snap) => {
+                if (snap && snap.exists && snap.exists()) {
+                    const data = snap.data();
+                    if (data && typeof data === 'object') {
+                        maintenanceConfig = { ...maintenanceConfig, ...data };
+                        try {
+                            localStorage.setItem('vortex_maintenance_active', String(!!maintenanceConfig.active));
+                            localStorage.setItem('vortex_maintenance_config', JSON.stringify(maintenanceConfig));
+                        } catch (_) {}
+                        applyMaintenanceMode(maintenanceConfig);
+                    }
+                }
+            }, (err) => {
+                console.warn('[VORTEX] Aviso listener de manutenção Firestore:', err);
+            });
+        }
+    } catch (err) {
+        console.warn('[VORTEX] Falha ao iniciar listener de manutenção:', err);
+    }
+}
+
+export async function adminToggleMaintenanceMode() {
+    if (!isUserAdmin(currentUser, currentProfile)) {
+        showToast("Acesso Negado", "Apenas administradores podem alterar o modo de manutenção.", "red");
+        return;
+    }
+
+    const newActive = !maintenanceConfig.active;
+    maintenanceConfig.active = newActive;
+    maintenanceConfig.updatedAt = Date.now();
+    maintenanceConfig.updatedBy = currentUser?.email || currentProfile?.email || 'admin';
+
+    try {
+        localStorage.setItem('vortex_maintenance_active', String(newActive));
+        localStorage.setItem('vortex_maintenance_config', JSON.stringify(maintenanceConfig));
+    } catch (_) {}
+
+    applyMaintenanceMode(maintenanceConfig);
+
+    try {
+        if (typeof db !== 'undefined' && db && typeof setDoc === 'function' && typeof doc === 'function') {
+            const configRef = doc(db, 'settings', 'maintenance');
+            await setDoc(configRef, {
+                active: newActive,
+                updatedAt: maintenanceConfig.updatedAt,
+                updatedBy: maintenanceConfig.updatedBy
+            }, { merge: true });
+        }
+    } catch (err) {
+        console.warn('[VORTEX] Falha ao persistir manutenção no Firestore:', err);
+    }
+
+    if (newActive) {
+        showToast("Manutenção Ativada 🔴", "A tela amarela de alerta está ativa para todos os usuários.", "orange");
+    } else {
+        showToast("Manutenção Desativada 🟢", "Plataforma liberada com sucesso para todos os usuários!", "green");
+    }
+}
+
+export function initMaintenanceControls() {
+    const toggleBtn = document.getElementById('admin-toggle-maintenance-btn');
+    toggleBtn?.addEventListener('click', adminToggleMaintenanceMode);
 }

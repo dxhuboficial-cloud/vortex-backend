@@ -29789,6 +29789,524 @@ video::-internal-media-controls-download-button {
     text-align: left;
 }
 
+/* =========================================================
+   VORTEX VIP - TELA DE MANUTENÇÃO OFICIAL (v1.0.263)
+   ========================================================= */
+
+:root {
+    --bg-yellow: #FFE052;
+    --icon-dark: #3B3E42;
+    --alert-red: #FF1A22;
+    --vortex-pink: #C85CF8;
+}
+
+/* 1. SÍMBOLO DE ALERTA PULSANTE CONTÍNUO */
+@keyframes pulseWarning {
+    0%, 100% {
+        transform: scale(1);
+        filter: drop-shadow(0 6px 12px rgba(59, 62, 66, 0.18));
+    }
+    50% {
+        transform: scale(1.09);
+        filter: drop-shadow(0 14px 26px rgba(59, 62, 66, 0.38));
+    }
+}
+
+@keyframes exclamationGlow {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.92;
+        transform: scale(0.97);
+    }
+}
+
+.warning-symbol {
+    animation: pulseWarning 1.8s infinite ease-in-out;
+    transform-origin: center center;
+}
+
+.exclamation-inner {
+    animation: exclamationGlow 1.8s infinite ease-in-out;
+    transform-origin: center center;
+}
+
+/* 2. LETRA VERMELHA COM LUZ PARA O LADO A CADA 5 SEGUNDOS */
+.red-shimmer-text {
+    position: relative;
+    display: inline-block;
+    color: var(--alert-red);
+    background: linear-gradient(
+        110deg,
+        #FF1A22 0%,
+        #FF1A22 38%,
+        #FFF5F5 48%,
+        #FFFFFF 50%,
+        #FFF5F5 52%,
+        #FF1A22 62%,
+        #FF1A22 100%
+    );
+    background-size: 260% 100%;
+    background-position: 140% 0;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: lightSweepSide 5s infinite linear;
+}
+
+@keyframes lightSweepSide {
+    0% {
+        background-position: 130% 0;
+        filter: drop-shadow(0 0 0px rgba(255, 26, 34, 0));
+    }
+    11% {
+        filter: drop-shadow(0 0 12px rgba(255, 80, 80, 0.75));
+    }
+    22% {
+        background-position: -30% 0;
+        filter: drop-shadow(0 0 0px rgba(255, 26, 34, 0));
+    }
+    100% {
+        background-position: -30% 0;
+        filter: drop-shadow(0 0 0px rgba(255, 26, 34, 0));
+    }
+}
+
+@keyframes lockPulse {
+    0%, 24%, 100% {
+        transform: scale(1) rotate(0deg);
+    }
+    6% {
+        transform: scale(1.12) rotate(-6deg);
+    }
+    14% {
+        transform: scale(1.12) rotate(6deg);
+    }
+}
+
+.lock-icon {
+    display: inline-block;
+    animation: lockPulse 5s infinite ease-in-out;
+}
+
+/* 3. LETRAS ROSAS COM LUZ QUE TREME E PARA A CADA 3 SEGUNDOS */
+.pink-neon-tremble {
+    color: var(--vortex-pink);
+    display: inline-block;
+    position: relative;
+    animation: neonTrembleEvery3s 3s infinite;
+    text-shadow: 0 2px 4px rgba(200, 92, 248, 0.25);
+}
+
+@keyframes neonTrembleEvery3s {
+    0% {
+        transform: translate(0, 0) scale(1);
+        color: #C85CF8;
+        text-shadow: 0 0 4px rgba(200, 92, 248, 0.3);
+    }
+    3% {
+        transform: translate(-3px, 1px) rotate(-0.8deg) scale(1.02);
+        color: #FFB3FF;
+        text-shadow: 0 0 12px #FF33FF, 0 0 25px #C85CF8, 0 0 40px #FF00CC;
+    }
+    6% {
+        transform: translate(3px, -2px) rotate(0.8deg);
+        color: #9A32CD;
+        text-shadow: none;
+    }
+    9% {
+        transform: translate(-3px, -1px) rotate(-0.5deg) scale(1.03);
+        color: #FFF0FF;
+        text-shadow: 0 0 16px #FF4DFF, 0 0 32px #D966FF, 0 0 50px #FF00AA;
+    }
+    12% {
+        transform: translate(3px, 2px) rotate(0.6deg);
+        color: #C85CF8;
+        text-shadow: 0 0 6px #C85CF8;
+    }
+    15% {
+        transform: translate(-2px, 1px) rotate(-0.4deg) scale(1.02);
+        color: #FFE6FF;
+        text-shadow: 0 0 18px #FF33FF, 0 0 35px #C85CF8;
+    }
+    18% {
+        transform: translate(2px, -1px) rotate(0.4deg);
+        color: #B544E8;
+        text-shadow: 0 0 4px rgba(200, 92, 248, 0.4);
+    }
+    21% {
+        transform: translate(-2px, 0px) scale(1.01);
+        color: #FFCCFF;
+        text-shadow: 0 0 14px #FF33FF, 0 0 28px #C85CF8;
+    }
+    24% {
+        transform: translate(1px, 1px);
+        color: #C85CF8;
+        text-shadow: 0 0 8px rgba(200, 92, 248, 0.5);
+    }
+    26%, 100% {
+        transform: translate(0, 0) rotate(0deg) scale(1);
+        color: #C85CF8;
+        text-shadow: 0 2px 6px rgba(200, 92, 248, 0.25);
+    }
+}
+
+/* 4. LETRAS PRETAS COM DIGITAÇÃO + "..." PROCESSANDO (20s) */
+.typing-cursor {
+    display: inline-block;
+    width: 3px;
+    height: 0.9em;
+    background-color: #000000;
+    margin-left: 3px;
+    vertical-align: -0.08em;
+    animation: blinkCursor 0.75s step-end infinite;
+}
+
+@keyframes blinkCursor {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+}
+
+.dots-container {
+    display: inline-block;
+    min-width: 1.5ch;
+    text-align: left;
+}
+
+/* Overlay da Tela de Manutenção Fullscreen */
+.vortex-maintenance-overlay {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: var(--bg-yellow, #FFE052);
+    z-index: 999999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+    box-sizing: border-box;
+    overflow-x: hidden;
+    overflow-y: auto;
+    user-select: none;
+    -webkit-user-select: none;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.vortex-maintenance-main {
+    width: 100%;
+    max-width: 680px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    margin: auto 0;
+}
+
+.vortex-maintenance-symbol-wrap {
+    margin-bottom: 24px;
+}
+
+.vortex-maintenance-svg {
+    width: 176px;
+    height: 176px;
+}
+
+@media (min-width: 640px) {
+    .vortex-maintenance-svg {
+        width: 224px;
+        height: 224px;
+    }
+}
+
+@media (min-width: 768px) {
+    .vortex-maintenance-svg {
+        width: 256px;
+        height: 256px;
+    }
+}
+
+.vortex-maintenance-alert-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 28px;
+}
+
+.vortex-maintenance-alert-row .lock-icon {
+    font-size: 1.8rem;
+    line-height: 1;
+}
+
+@media (min-width: 640px) {
+    .vortex-maintenance-alert-row .lock-icon {
+        font-size: 2.2rem;
+    }
+}
+
+.vortex-maintenance-alert-row .red-shimmer-text {
+    font-size: 1.8rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin: 0;
+    line-height: 1.2;
+}
+
+@media (min-width: 640px) {
+    .vortex-maintenance-alert-row .red-shimmer-text {
+        font-size: 2.4rem;
+    }
+}
+
+@media (min-width: 768px) {
+    .vortex-maintenance-alert-row .red-shimmer-text {
+        font-size: 2.7rem;
+    }
+}
+
+.vortex-maintenance-title-wrap {
+    margin-bottom: 24px;
+}
+
+.vortex-maintenance-title-wrap .pink-neon-tremble {
+    font-size: 2.2rem;
+    font-weight: 900;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    line-height: 1;
+    margin: 0;
+}
+
+@media (min-width: 640px) {
+    .vortex-maintenance-title-wrap .pink-neon-tremble {
+        font-size: 3.2rem;
+    }
+}
+
+@media (min-width: 768px) {
+    .vortex-maintenance-title-wrap .pink-neon-tremble {
+        font-size: 3.6rem;
+    }
+}
+
+.vortex-maintenance-typing-wrap {
+    min-height: 5.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+@media (min-width: 640px) {
+    .vortex-maintenance-typing-wrap {
+        min-height: 7rem;
+    }
+}
+
+.vortex-maintenance-typing-text {
+    color: #000000;
+    font-size: 1.6rem;
+    font-weight: 900;
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+    margin: 0;
+}
+
+@media (min-width: 640px) {
+    .vortex-maintenance-typing-text {
+        font-size: 2.4rem;
+        line-height: 1.35;
+    }
+}
+
+@media (min-width: 768px) {
+    .vortex-maintenance-typing-text {
+        font-size: 2.85rem;
+    }
+}
+
+.vortex-maint-hidden {
+    display: none !important;
+}
+
+/* =========================================================
+   PAINEL ADM: Banner e Controle do Modo de Manutenção
+   ========================================================= */
+.admin-maintenance-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 18px;
+    margin: 12px 16px 6px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, rgba(255, 224, 82, 0.08), rgba(255, 26, 34, 0.05));
+    border: 1px solid rgba(255, 224, 82, 0.25);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.admin-maintenance-banner.active-maint {
+    background: linear-gradient(135deg, rgba(255, 26, 34, 0.16), rgba(255, 224, 82, 0.12));
+    border-color: rgba(255, 26, 34, 0.5);
+    box-shadow: 0 0 20px rgba(255, 26, 34, 0.25);
+}
+
+.admin-maint-banner-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex: 1;
+    min-width: 0;
+}
+
+.admin-maint-icon-badge {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: rgba(255, 224, 82, 0.15);
+    border: 1px solid rgba(255, 224, 82, 0.35);
+    color: #FFE052;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+    transition: all 0.3s ease;
+}
+
+.admin-maintenance-banner.active-maint .admin-maint-icon-badge {
+    background: rgba(255, 26, 34, 0.2);
+    border-color: rgba(255, 26, 34, 0.6);
+    color: #FF1A22;
+    animation: pulseWarning 1.8s infinite ease-in-out;
+}
+
+.admin-maint-text-box {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.admin-maint-title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.admin-maint-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-main, #ffffff);
+    letter-spacing: -0.01em;
+}
+
+.admin-maint-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.admin-maint-status-pill.online {
+    background: rgba(57, 255, 20, 0.15);
+    color: #39ff14;
+    border: 1px solid rgba(57, 255, 20, 0.3);
+}
+
+.admin-maint-status-pill.maintenance {
+    background: rgba(255, 26, 34, 0.2);
+    color: #FF1A22;
+    border: 1px solid rgba(255, 26, 34, 0.5);
+    animation: neonTrembleEvery3s 3s infinite;
+}
+
+.maint-pulse-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+    box-shadow: 0 0 6px currentColor;
+}
+
+.admin-maint-description {
+    font-size: 0.8rem;
+    color: var(--text-dim, #999999);
+    margin: 0;
+    line-height: 1.35;
+}
+
+.admin-maint-description strong {
+    color: #FFE052;
+}
+
+.admin-maint-banner-right {
+    flex-shrink: 0;
+}
+
+.admin-maint-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    font-weight: 800;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.25s ease;
+    user-select: none;
+}
+
+.admin-maint-toggle-btn.btn-activate {
+    background: linear-gradient(135deg, #FF1A22, #b30006);
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(255, 26, 34, 0.35);
+}
+
+.admin-maint-toggle-btn.btn-activate:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(255, 26, 34, 0.5);
+}
+
+.admin-maint-toggle-btn.btn-deactivate {
+    background: linear-gradient(135deg, #39ff14, #28b80e);
+    color: #000000;
+    box-shadow: 0 4px 12px rgba(57, 255, 20, 0.35);
+}
+
+.admin-maint-toggle-btn.btn-deactivate:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(57, 255, 20, 0.5);
+}
+
+/* Indicador no Topo da Aplicação quando Manutenção Ativa para Administrador */
+.admin-maint-top-indicator {
+    background: linear-gradient(90deg, #FFE052, #FF1A22);
+    color: #000000;
+    font-size: 0.75rem;
+    font-weight: 900;
+    text-align: center;
+    padding: 6px 12px;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    z-index: 999;
+}
+
 
 
 

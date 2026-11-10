@@ -35,13 +35,13 @@
     <meta itemprop="image" content="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
     <link rel="image_src" type="image/png" href="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
 
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.262">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.262">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.262">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.262">
-    <link rel="stylesheet" href="style.css?v=1.0.262">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.263">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.263">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.263">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.263">
+    <link rel="stylesheet" href="style.css?v=1.0.263">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.262" id="app-manifest-link">
+    <link rel="manifest" href="manifest.json?v=1.0.263" id="app-manifest-link">
     <meta name="theme-color" content="#39ff14" id="app-theme-color-meta">
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#39ff14" id="app-theme-color-meta-dark">
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#39ff14" id="app-theme-color-meta-light">
@@ -50,8 +50,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.262">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.262">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.263">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.263">
     <!-- Sincronização Dinâmica da Barra de Status e Barra de Navegação do Celular -->
     <script>
         (function() {
@@ -194,6 +194,11 @@
 
         <!-- Barra Lateral de Conversas (Sidebar Desktop / Lista Mobile) -->
         <aside class="sidebar" id="main-sidebar">
+            <!-- Indicador Superior para Administrador quando em Manutenção -->
+            <div id="admin-maint-top-indicator" class="admin-maint-top-indicator" style="display: none;">
+                ⚠️ MODO MANUTENÇÃO ATIVO — Acesso liberado apenas para Administradores
+            </div>
+
             <!-- Header VIP com Botões Interativos -->
             <header>
                 <h1>VORTEX <span>VIP</span></h1>
@@ -2869,14 +2874,14 @@
                     </button>
                 </div>
 
-                <!-- Card de Versão Oficial do App (v1.0.262) -->
+                <!-- Card de Versão Oficial do App (v1.0.263) -->
                 <div class="app-version-card" id="app-version-info-footer">
                     <div class="app-version-header-row">
                         <div class="app-version-brand-wrap">
-                            <img src="icons/vortex-vip-192.png?v=1.0.262" alt="VORTEX VIP" class="app-version-icon-img" width="22" height="22">
+                            <img src="icons/vortex-vip-192.png?v=1.0.263" alt="VORTEX VIP" class="app-version-icon-img" width="22" height="22">
                             <span class="app-version-brand-name">VORTEX VIP Oficial</span>
                         </div>
-                        <span class="app-version-pill-badge" id="app-version-display-badge">v1.0.262 ⚡</span>
+                        <span class="app-version-pill-badge" id="app-version-display-badge">v1.0.263 ⚡</span>
                     </div>
                     <div class="app-version-status-row">
                         <span class="app-version-status-dot"></span>
@@ -2937,6 +2942,33 @@
                         <line x1="6" y1="6" x2="18" y2="18"></line>
                     </svg>
                 </button>
+            </div>
+
+            <!-- Banner de Controle de Manutenção Geral VORTEX VIP (v1.0.263) -->
+            <div class="admin-maintenance-banner" id="admin-maintenance-banner">
+                <div class="admin-maint-banner-left">
+                    <div class="admin-maint-icon-badge" id="admin-maint-icon-badge">
+                        <i data-lucide="wrench"></i>
+                    </div>
+                    <div class="admin-maint-text-box">
+                        <div class="admin-maint-title-row">
+                            <span class="admin-maint-title">Modo de Manutenção do VORTEX VIP</span>
+                            <span class="admin-maint-status-pill online" id="admin-maint-status-pill">
+                                <span class="maint-pulse-dot"></span> <span id="admin-maint-status-label">Online 🟢</span>
+                            </span>
+                        </div>
+                        <p class="admin-maint-description">
+                            Quando ativado, a tela amarela bloqueia todos os usuários comuns e visitantes. 
+                            <strong>Administradores possuem bypass total e não são bloqueados.</strong>
+                        </p>
+                    </div>
+                </div>
+                <div class="admin-maint-banner-right">
+                    <button type="button" class="admin-maint-toggle-btn btn-activate" id="admin-toggle-maintenance-btn">
+                        <i data-lucide="power"></i>
+                        <span id="admin-toggle-maintenance-label">Ativar Manutenção</span>
+                    </button>
+                </div>
             </div>
 
             <!-- Abas de Navegação do Painel ADM -->
@@ -6399,7 +6431,7 @@
         <div id="business-blocked-modal" class="custom-modal-overlay business-blocked-overlay" style="display:none;" aria-hidden="true">
             <div class="custom-modal-card business-blocked-card">
                 <div class="business-blocked-icon-wrap">
-                    <img src="icons/blocked-hand.png?v=1.0.262" alt="Acesso Bloqueado" class="business-blocked-hand-icon" width="64" height="64">
+                    <img src="icons/blocked-hand.png?v=1.0.263" alt="Acesso Bloqueado" class="business-blocked-hand-icon" width="64" height="64">
                 </div>
                 <h3 class="business-blocked-title">Acesso Bloqueado</h3>
                 <p class="business-blocked-msg" id="business-blocked-msg-text">
@@ -6447,6 +6479,70 @@
 
     </div> <!-- Fim do app-container -->
 
-    <script type="module" src="script.js?v=1.0.262" defer></script>
+    <!-- =========================================================
+         TELA DE MANUTENÇÃO OFICIAL VORTEX VIP (v1.0.263)
+         Ativada via Painel ADM; exibida apenas para usuários comuns e visitantes.
+         Administradores possuem bypass total e não visualizam esta tela.
+         ========================================================= -->
+    <div id="maintenance-screen-overlay" class="vortex-maintenance-overlay" style="display: none;" aria-hidden="true" role="alertdialog">
+        <main class="vortex-maintenance-main">
+            <!-- 1. Símbolo do Triângulo de Manutenção (Pulsante) -->
+            <div class="vortex-maintenance-symbol-wrap mb-6 sm:mb-8">
+                <svg class="warning-symbol vortex-maintenance-svg" viewBox="0 0 240 220" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Símbolo de Alerta">
+                    <!-- Camada externa escura arredondada -->
+                    <path d="M103.5 18.5C110.8 5.8 129.2 5.8 136.5 18.5L225.2 172C232.5 184.7 223.3 200.5 208.7 200.5H31.3C16.7 200.5 7.5 184.7 14.8 172L103.5 18.5Z" 
+                          fill="#3B3E42" />
+                    
+                    <!-- Borda interna amarela acompanhando o triângulo -->
+                    <path d="M109.1 25.5C113.9 17.2 126.1 17.2 130.9 25.5L216.2 173.2C221.0 181.5 215.0 192 205.3 192H34.7C25.0 192 19.0 181.5 23.8 173.2L109.1 25.5Z" 
+                          stroke="#FFE052" 
+                          stroke-width="6.5" 
+                          stroke-linejoin="round" />
+
+                    <!-- Ponto de Exclamação Interno em Amarelo -->
+                    <g class="exclamation-inner">
+                        <!-- Barra superior da exclamação -->
+                        <path d="M108.5 68H131.5L127.5 136H112.5L108.5 68Z" fill="#FFE052" />
+                        <!-- Bolinha inferior da exclamação -->
+                        <circle cx="120" cy="162" r="13.5" fill="#FFE052" />
+                    </g>
+                </svg>
+            </div>
+
+            <!-- 2. "🔒 Atenção Alerta 🔒" (Luz para o lado a cada 5 segundos) -->
+            <div class="vortex-maintenance-alert-row">
+                <!-- Cadeado Esquerdo -->
+                <span class="lock-icon select-none" aria-hidden="true">🔒</span>
+                
+                <!-- Texto Vermelho com Luz Lateral -->
+                <h1 class="red-shimmer-text">
+                    Atenção Alerta
+                </h1>
+                
+                <!-- Cadeado Direito -->
+                <span class="lock-icon select-none" aria-hidden="true">🔒</span>
+            </div>
+
+            <!-- 3. "VORTEX VIP" (Efeito de luz que treme e para a cada 3 segundos) -->
+            <div class="vortex-maintenance-title-wrap">
+                <h2 class="pink-neon-tremble">
+                    VORTEX VIP
+                </h2>
+            </div>
+
+            <!-- 4. "Em manutenção volte mais tarde..." (Digitação + 3 pontinhos processando a cada 20s) -->
+            <div class="vortex-maintenance-typing-wrap">
+                <p class="vortex-maintenance-typing-text">
+                    <!-- Linha 1 digitada -->
+                    <span id="typeLine1"></span>
+                    <br id="lineBreak" class="vortex-maint-hidden" />
+                    <!-- Linha 2 digitada + "..." Processando -->
+                    <span id="typeLine2"></span><span id="processingDots" class="dots-container"></span><span id="cursor" class="typing-cursor"></span>
+                </p>
+            </div>
+        </main>
+    </div>
+
+    <script type="module" src="script.js?v=1.0.263" defer></script>
 </body>
 </html>
