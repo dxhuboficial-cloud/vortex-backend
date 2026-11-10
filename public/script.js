@@ -19599,10 +19599,12 @@ export function openAdminPanel() {
     switchAdminTab('reports');
     listenToAdminReports();
     listenToAdminVipRequests();
+    listenToAdminBusinessRequests();
     loadAdminUsers();
     loadAdminPosts();
     loadAdminGroups();
     loadAdminVipRequests();
+    loadAdminBusinessRequests();
     if (window.lucide) lucide.createIcons();
 }
 
@@ -19648,6 +19650,9 @@ export function switchAdminTab(tabName) {
     }
     if (tabName === 'games') {
         renderAdminGamesConfig();
+    }
+    if (tabName === 'business-requests') {
+        loadAdminBusinessRequests().then(() => renderAdminBusinessRequests());
     }
     if (window.lucide) lucide.createIcons();
 }
@@ -21543,7 +21548,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.259';
+export const CURRENT_APP_VERSION = '1.0.260';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -33522,6 +33527,20 @@ document.getElementById('profile-btn')?.addEventListener('click', () => {
 const handleAccountTypeChange = () => {
     if (typeof updateCompanyChatbotSettingsUI === 'function') updateCompanyChatbotSettingsUI();
     const isBiz = document.getElementById('profile-type-business')?.checked;
+    if (isBiz && (currentProfile?.businessBlocked || currentProfile?.businessStatus === 'blocked')) {
+        const personalRadio = document.getElementById('profile-type-personal');
+        if (personalRadio) personalRadio.checked = true;
+        const bRadio = document.getElementById('profile-type-business');
+        if (bRadio) bRadio.checked = false;
+        const bFields = document.getElementById('profile-business-fields');
+        if (bFields) bFields.style.display = 'none';
+        const storeToggleSetting = document.getElementById('profile-store-toggle-setting');
+        if (storeToggleSetting) storeToggleSetting.style.display = 'none';
+        if (typeof showBusinessBlockedModal === 'function') {
+            showBusinessBlockedModal();
+        }
+        return;
+    }
     const bFields = document.getElementById('profile-business-fields');
     if (bFields) {
         bFields.style.display = isBiz ? 'flex' : 'none';
@@ -34649,7 +34668,9 @@ document.getElementById('save-profile-btn')?.addEventListener('click', async () 
         return;
     }
 
-    const isBusiness = document.getElementById('profile-type-business')?.checked || false;
+    const isBlockedBiz = Boolean(currentProfile?.businessBlocked || currentProfile?.businessStatus === 'blocked');
+    const wantsBiz = document.getElementById('profile-type-business')?.checked || false;
+    const isBusiness = wantsBiz && !isBlockedBiz;
     const accountType = isBusiness ? 'business' : 'personal';
     const isStoreEnabled = isBusiness
         ? (document.getElementById('profile-store-enabled-toggle')
@@ -38707,6 +38728,48 @@ window.handleCallSwitchedToVideo = handleCallSwitchedToVideo;
         window.minesDiamondsFound = minesDiamondsFound;
         window.minesCurrentWin = minesCurrentWin;
     }
+
+    // Verificação Obrigatória de Conta Empresa (Anti-Golpe) v1.0.260
+    window.openBusinessVerificationModal = openBusinessVerificationModal;
+    window.closeBusinessVerificationModal = closeBusinessVerificationModal;
+    window.submitBusinessVerification = submitBusinessVerification;
+    window.showBusinessBlockedModal = showBusinessBlockedModal;
+    window.closeBusinessBlockedModal = closeBusinessBlockedModal;
+    window.handleBusinessAccountClick = handleBusinessAccountClick;
+    window.handleBusinessPhotoSelected = handleBusinessPhotoSelected;
+    window.removeBusinessPhoto = removeBusinessPhoto;
+    window.loadAdminBusinessRequests = loadAdminBusinessRequests;
+    window.listenToAdminBusinessRequests = listenToAdminBusinessRequests;
+    window.renderAdminBusinessRequests = renderAdminBusinessRequests;
+    window.adminApproveBusinessRequest = adminApproveBusinessRequest;
+    window.adminRejectBusinessRequest = adminRejectBusinessRequest;
+    window.adminBlockBusinessRequest = adminBlockBusinessRequest;
+    window.openAdminBusinessPreviewModal = openAdminBusinessPreviewModal;
+    window.closeAdminBusinessPreviewModal = closeAdminBusinessPreviewModal;
+    window.openBusinessPhotoZoom = openBusinessPhotoZoom;
+    window.closeBusinessPhotoZoom = closeBusinessPhotoZoom;
+    window.initBusinessVerificationEvents = initBusinessVerificationEvents;
+    try {
+        Object.defineProperty(window, 'adminBusinessRequests', {
+            get: () => adminBusinessRequests,
+            set: (v) => { adminBusinessRequests = v; },
+            configurable: true
+        });
+        Object.defineProperty(window, 'businessSelfiePhotoData', {
+            get: () => businessSelfiePhotoData,
+            set: (v) => { businessSelfiePhotoData = v; },
+            configurable: true
+        });
+        Object.defineProperty(window, 'businessDocPhotoData', {
+            get: () => businessDocPhotoData,
+            set: (v) => { businessDocPhotoData = v; },
+            configurable: true
+        });
+    } catch (_) {
+        window.adminBusinessRequests = adminBusinessRequests;
+        window.businessSelfiePhotoData = businessSelfiePhotoData;
+        window.businessDocPhotoData = businessDocPhotoData;
+    }
 }
 
 /* ==========================================================================
@@ -39144,6 +39207,7 @@ if (typeof window !== 'undefined') {
     initPrivacyPolicyUI();
     initLinkSecurityUI();
     initGamesControls();
+    initBusinessVerificationEvents();
 }
 
 
@@ -42007,5 +42071,1045 @@ export function initAdminGamesControls() {
     applyGamesConfig();
     document.getElementById('admin-tab-games-btn')?.addEventListener('click', () => {
         switchAdminTab('games');
+    });
+}
+
+/* ==========================================================================
+   VORTEX VIP ⚡ - VERIFICAÇÃO OBRIGATÓRIA DE CONTA EMPRESA & PAINEL ADM (v1.0.260)
+   ========================================================================== */
+
+export let adminBusinessRequests = [];
+let adminBusinessRequestsUnsubscribe = null;
+let currentAdminBizFilter = 'all';
+let currentAdminBizSearch = '';
+let businessSelfiePhotoData = '';
+let businessDocPhotoData = '';
+
+export function getAdminBusinessRequests() {
+    return adminBusinessRequests;
+}
+
+export function showBusinessBlockedModal() {
+    const modal = document.getElementById('business-blocked-modal');
+    if (!modal) return;
+    const msgEl = document.getElementById('business-blocked-msg-text');
+    if (msgEl) {
+        msgEl.innerText = 'Você não tem permissão e acesso à conta empresa, por motivo de Spam.';
+    }
+    modal.style.display = 'flex';
+    modal.classList.add('active');
+    modal.setAttribute('aria-hidden', 'false');
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+    }
+}
+
+export function closeBusinessBlockedModal() {
+    const modal = document.getElementById('business-blocked-modal');
+    if (!modal) return;
+    modal.style.display = 'none';
+    modal.classList.remove('active');
+    modal.setAttribute('aria-hidden', 'true');
+}
+
+export function openBusinessVerificationModal(options = {}) {
+    const modal = document.getElementById('business-verification-modal');
+    if (!modal) return;
+
+    const isPending = Boolean(options.isPending || currentProfile?.businessStatus === 'pending');
+    const banner = document.getElementById('biz-verify-status-banner');
+    const submitBtn = document.getElementById('btn-submit-biz-verification');
+    const submitBtnText = document.getElementById('biz-submit-btn-text');
+
+    if (banner) {
+        banner.style.display = isPending ? 'flex' : 'none';
+    }
+
+    if (submitBtn && submitBtnText) {
+        if (isPending) {
+            submitBtnText.textContent = 'Em Análise ⏳';
+            submitBtn.disabled = true;
+            submitBtn.classList.add('btn-pending');
+        } else {
+            submitBtnText.textContent = 'Enviar Solicitação';
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('btn-pending');
+        }
+    }
+
+    // Preencher dados do perfil se disponíveis
+    const fullNameInp = document.getElementById('biz-verify-fullname');
+    if (fullNameInp && !fullNameInp.value && currentProfile) {
+        const full = `${currentProfile.name || ''} ${currentProfile.surname || ''}`.trim();
+        if (full) fullNameInp.value = full;
+    }
+    const emailInp = document.getElementById('biz-verify-email');
+    if (emailInp && !emailInp.value && currentUser?.email) {
+        emailInp.value = currentUser.email;
+    }
+    const phoneInp = document.getElementById('biz-verify-phone');
+    if (phoneInp && !phoneInp.value && (currentProfile?.phone || currentProfile?.whatsapp)) {
+        phoneInp.value = currentProfile.phone || currentProfile.whatsapp;
+    }
+
+    modal.style.display = 'flex';
+    modal.classList.add('active');
+    modal.setAttribute('aria-hidden', 'false');
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+    }
+}
+
+export function closeBusinessVerificationModal() {
+    const modal = document.getElementById('business-verification-modal');
+    if (!modal) return;
+    modal.style.display = 'none';
+    modal.classList.remove('active');
+    modal.setAttribute('aria-hidden', 'true');
+}
+
+export function handleBusinessAccountClick(e) {
+    if (currentProfile?.businessBlocked || currentProfile?.businessStatus === 'blocked') {
+        if (e && typeof e.preventDefault === 'function') {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        const personalRadio = document.getElementById('profile-type-personal');
+        if (personalRadio) personalRadio.checked = true;
+        const bRadio = document.getElementById('profile-type-business');
+        if (bRadio) bRadio.checked = false;
+        handleAccountTypeChange();
+        showBusinessBlockedModal();
+        return false;
+    }
+
+    if (currentProfile?.businessStatus === 'pending') {
+        if (currentProfile?.accountType !== 'business') {
+            const personalRadio = document.getElementById('profile-type-personal');
+            if (personalRadio) personalRadio.checked = true;
+            const bRadio = document.getElementById('profile-type-business');
+            if (bRadio) bRadio.checked = false;
+            handleAccountTypeChange();
+        }
+        openBusinessVerificationModal({ isPending: true });
+        return false;
+    }
+
+    if (currentProfile?.businessStatus === 'approved') {
+        return true;
+    }
+
+    if (e && typeof e.preventDefault === 'function') {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    const personalRadio = document.getElementById('profile-type-personal');
+    if (personalRadio) personalRadio.checked = true;
+    const bRadio = document.getElementById('profile-type-business');
+    if (bRadio) bRadio.checked = false;
+    handleAccountTypeChange();
+    openBusinessVerificationModal();
+    return false;
+}
+
+export function handleBusinessPhotoSelected(type, file) {
+    if (!file) return;
+    if (file.size && file.size > 10 * 1024 * 1024) {
+        showToast("Arquivo muito grande", "A imagem selecionada deve ter no máximo 10MB.", "red");
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const dataUrl = e.target?.result;
+        if (!dataUrl) return;
+        if (type === 'selfie') {
+            businessSelfiePhotoData = dataUrl;
+            const previewWrap = document.getElementById('biz-preview-wrap-selfie');
+            const previewImg = document.getElementById('biz-preview-img-selfie');
+            const dropContent = document.getElementById('biz-dropzone-content-selfie');
+            if (previewImg) previewImg.src = dataUrl;
+            if (previewWrap) previewWrap.style.display = 'block';
+            if (dropContent) dropContent.style.display = 'none';
+        } else if (type === 'doc') {
+            businessDocPhotoData = dataUrl;
+            const previewWrap = document.getElementById('biz-preview-wrap-doc');
+            const previewImg = document.getElementById('biz-preview-img-doc');
+            const dropContent = document.getElementById('biz-dropzone-content-doc');
+            if (previewImg) previewImg.src = dataUrl;
+            if (previewWrap) previewWrap.style.display = 'block';
+            if (dropContent) dropContent.style.display = 'none';
+        }
+    };
+    reader.readAsDataURL(file);
+}
+
+export function removeBusinessPhoto(type) {
+    if (type === 'selfie') {
+        businessSelfiePhotoData = '';
+        const input = document.getElementById('biz-photo-input-selfie');
+        const previewWrap = document.getElementById('biz-preview-wrap-selfie');
+        const previewImg = document.getElementById('biz-preview-img-selfie');
+        const dropContent = document.getElementById('biz-dropzone-content-selfie');
+        if (input) input.value = '';
+        if (previewImg) previewImg.src = '';
+        if (previewWrap) previewWrap.style.display = 'none';
+        if (dropContent) dropContent.style.display = 'flex';
+    } else if (type === 'doc') {
+        businessDocPhotoData = '';
+        const input = document.getElementById('biz-photo-input-doc');
+        const previewWrap = document.getElementById('biz-preview-wrap-doc');
+        const previewImg = document.getElementById('biz-preview-img-doc');
+        const dropContent = document.getElementById('biz-dropzone-content-doc');
+        if (input) input.value = '';
+        if (previewImg) previewImg.src = '';
+        if (previewWrap) previewWrap.style.display = 'none';
+        if (dropContent) dropContent.style.display = 'flex';
+    }
+}
+
+export async function submitBusinessVerification() {
+    if (!currentUser) {
+        showToast("Login Obrigatório", "Você precisa estar conectado para enviar a verificação.", "red");
+        return;
+    }
+
+    if (currentProfile?.businessBlocked || currentProfile?.businessStatus === 'blocked') {
+        closeBusinessVerificationModal();
+        showBusinessBlockedModal();
+        return;
+    }
+
+    const fullname = document.getElementById('biz-verify-fullname')?.value.trim() || '';
+    const birthdate = document.getElementById('biz-verify-birthdate')?.value.trim() || '';
+    const docnumber = document.getElementById('biz-verify-docnumber')?.value.trim() || '';
+    const phone = document.getElementById('biz-verify-phone')?.value.trim() || '';
+    const email = document.getElementById('biz-verify-email')?.value.trim() || '';
+    const companyName = document.getElementById('biz-verify-company-name')?.value.trim() || '';
+    const website = document.getElementById('biz-verify-website')?.value.trim() || '';
+    const address = document.getElementById('biz-verify-address')?.value.trim() || '';
+    const street = document.getElementById('biz-verify-street')?.value.trim() || '';
+    const houseNumber = document.getElementById('biz-verify-house-number')?.value.trim() || '';
+    const city = document.getElementById('biz-verify-city')?.value.trim() || '';
+    const state = document.getElementById('biz-verify-state')?.value.trim() || '';
+    const cep = document.getElementById('biz-verify-cep')?.value.trim() || '';
+    const country = document.getElementById('biz-verify-country')?.value.trim() || '';
+
+    // Validação de todos os 14 campos
+    if (!fullname) {
+        showToast("Campo Obrigatório", "Por favor, digite seu Nome Completo.", "red");
+        document.getElementById('biz-verify-fullname')?.focus();
+        return;
+    }
+    if (!birthdate) {
+        showToast("Campo Obrigatório", "Por favor, informe sua Data de Nascimento.", "red");
+        document.getElementById('biz-verify-birthdate')?.focus();
+        return;
+    }
+    if (!docnumber) {
+        showToast("Campo Obrigatório", "Por favor, digite seu CPF ou CNPJ.", "red");
+        document.getElementById('biz-verify-docnumber')?.focus();
+        return;
+    }
+    if (!phone) {
+        showToast("Campo Obrigatório", "Por favor, informe seu Número de Telefone.", "red");
+        document.getElementById('biz-verify-phone')?.focus();
+        return;
+    }
+    if (!email) {
+        showToast("Campo Obrigatório", "Por favor, informe seu Gmail.", "red");
+        document.getElementById('biz-verify-email')?.focus();
+        return;
+    }
+    if (!companyName) {
+        showToast("Campo Obrigatório", "Por favor, informe o Nome da Empresa.", "red");
+        document.getElementById('biz-verify-company-name')?.focus();
+        return;
+    }
+    if (!website) {
+        showToast("Campo Obrigatório", "Por favor, informe o Site da Empresa.", "red");
+        document.getElementById('biz-verify-website')?.focus();
+        return;
+    }
+    if (!address) {
+        showToast("Campo Obrigatório", "Por favor, informe o Endereço completo.", "red");
+        document.getElementById('biz-verify-address')?.focus();
+        return;
+    }
+    if (!street) {
+        showToast("Campo Obrigatório", "Por favor, informe a Rua.", "red");
+        document.getElementById('biz-verify-street')?.focus();
+        return;
+    }
+    if (!houseNumber) {
+        showToast("Campo Obrigatório", "Por favor, informe o Número da Casa.", "red");
+        document.getElementById('biz-verify-house-number')?.focus();
+        return;
+    }
+    if (!city) {
+        showToast("Campo Obrigatório", "Por favor, informe a Cidade.", "red");
+        document.getElementById('biz-verify-city')?.focus();
+        return;
+    }
+    if (!state) {
+        showToast("Campo Obrigatório", "Por favor, informe o Estado.", "red");
+        document.getElementById('biz-verify-state')?.focus();
+        return;
+    }
+    if (!cep) {
+        showToast("Campo Obrigatório", "Por favor, informe o CEP.", "red");
+        document.getElementById('biz-verify-cep')?.focus();
+        return;
+    }
+    if (!country) {
+        showToast("Campo Obrigatório", "Por favor, informe o País.", "red");
+        document.getElementById('biz-verify-country')?.focus();
+        return;
+    }
+
+    // Validação das 2 fotos
+    if (!businessSelfiePhotoData) {
+        showToast("Foto Obrigatória", "Envie a foto da frente do RG com uma foto do seu rosto para verificar que é uma pessoa real.", "red");
+        return;
+    }
+    if (!businessDocPhotoData) {
+        showToast("Foto Obrigatória", "Envie a foto do verso do documento (RG/CNH) ou comprovante da empresa.", "red");
+        return;
+    }
+
+    // Validação das 3 caixas de marcar
+    const checkTerms = document.getElementById('biz-verify-check-terms')?.checked;
+    const checkResp = document.getElementById('biz-verify-check-responsibility')?.checked;
+    const checkConf = document.getElementById('biz-verify-check-confirm')?.checked;
+
+    if (!checkTerms) {
+        showToast("Termos de Segurança", "Você deve concordar com os termos de segurança para prosseguir.", "red");
+        return;
+    }
+    if (!checkResp) {
+        showToast("Responsabilidade", "Você deve concordar em se responsabilizar por qualquer problema com os clientes.", "red");
+        return;
+    }
+    if (!checkConf) {
+        showToast("Confirmação dos Dados", "Você deve confirmar que preencheu o formulário corretamente.", "red");
+        return;
+    }
+
+    const submitBtn = document.getElementById('btn-submit-biz-verification');
+    const submitBtnText = document.getElementById('biz-submit-btn-text');
+    if (submitBtn) submitBtn.disabled = true;
+    if (submitBtnText) submitBtnText.textContent = 'Enviando...';
+
+    try {
+        const reqData = {
+            uid: currentUser.uid,
+            applicantName: fullname,
+            applicantUsername: currentProfile?.username || '',
+            applicantAvatar: currentProfile?.avatar || '',
+            fullname,
+            birthdate,
+            docnumber,
+            phone,
+            email,
+            companyName,
+            website,
+            address,
+            street,
+            houseNumber,
+            city,
+            state: state.toUpperCase(),
+            cep,
+            country,
+            selfiePhoto: businessSelfiePhotoData,
+            docPhoto: businessDocPhotoData,
+            checkTerms: true,
+            checkResponsibility: true,
+            checkConfirm: true,
+            status: 'pending',
+            requestedAt: Date.now(),
+            updatedAt: Date.now()
+        };
+
+        if (typeof db !== 'undefined' && db && typeof setDoc === 'function') {
+            await setDoc(doc(db, 'business_requests', currentUser.uid), reqData);
+            if (typeof updateDoc === 'function') {
+                await updateDoc(doc(db, 'users', currentUser.uid), {
+                    businessStatus: 'pending',
+                    businessBlocked: false
+                }).catch(() => {});
+            }
+        }
+
+        if (currentProfile) {
+            currentProfile.businessStatus = 'pending';
+            currentProfile.businessBlocked = false;
+        }
+
+        // Notifica administração
+        if (typeof notifyAdmins === 'function') {
+            notifyAdmins(
+                'Nova Verificação de Conta Empresa 🏢',
+                `A empresa "${companyName}" enviou formulário de verificação anti-golpe para análise.`,
+                'business',
+                'building-2'
+            ).catch(() => {});
+        }
+
+        // Atualiza botão para "Em Análise ⏳"
+        if (submitBtnText) submitBtnText.textContent = 'Em Análise ⏳';
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.classList.add('btn-pending');
+        }
+        const banner = document.getElementById('biz-verify-status-banner');
+        if (banner) banner.style.display = 'flex';
+
+        showToast("Solicitação Enviada! ⏳", "Sua solicitação de Conta Empresa foi enviada e está Em Análise pela administração.", "green");
+    } catch (e) {
+        console.error("Erro ao enviar solicitação de verificação:", e);
+        showToast("Erro ao Enviar", "Não foi possível enviar a solicitação. Tente novamente.", "red");
+        if (submitBtn) submitBtn.disabled = false;
+        if (submitBtnText) submitBtnText.textContent = 'Enviar Solicitação';
+    }
+}
+
+export async function loadAdminBusinessRequests() {
+    if (!currentUser || !isUserAdmin()) return;
+    try {
+        if (typeof db !== 'undefined' && db && typeof getDocs === 'function' && typeof collection === 'function') {
+            const snap = await getDocs(collection(db, 'business_requests'));
+            adminBusinessRequests = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            adminBusinessRequests.sort((a, b) => (b.requestedAt || 0) - (a.requestedAt || 0));
+        }
+    } catch (e) {
+        console.warn('Erro ao carregar solicitações de Conta Empresa:', e);
+    }
+    updateAdminBusinessBadge();
+    if (currentAdminTab === 'business-requests') {
+        renderAdminBusinessRequests();
+    }
+}
+
+export function listenToAdminBusinessRequests() {
+    if (!currentUser || !isUserAdmin()) return;
+    if (adminBusinessRequestsUnsubscribe) adminBusinessRequestsUnsubscribe();
+
+    try {
+        if (typeof db !== 'undefined' && db && typeof collection === 'function' && typeof onSnapshot === 'function') {
+            const reqRef = collection(db, 'business_requests');
+            adminBusinessRequestsUnsubscribe = onSnapshot(reqRef, (snapshot) => {
+                adminBusinessRequests = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+                adminBusinessRequests.sort((a, b) => (b.requestedAt || 0) - (a.requestedAt || 0));
+                updateAdminBusinessBadge();
+                if (currentAdminTab === 'business-requests') {
+                    renderAdminBusinessRequests();
+                }
+            }, (err) => console.warn('Erro no listener de Conta Empresa:', err));
+        }
+    } catch (e) {
+        console.warn('Falha ao iniciar listener de Conta Empresa:', e);
+    }
+}
+
+function updateAdminBusinessBadge() {
+    const pendingCount = adminBusinessRequests.filter(r => r.status === 'pending').length;
+    const badge = document.getElementById('admin-business-badge');
+    if (badge) {
+        badge.innerText = pendingCount;
+        badge.style.display = pendingCount > 0 ? 'inline-block' : 'none';
+    }
+}
+
+export function renderAdminBusinessRequests() {
+    const container = document.getElementById('admin-business-requests-list');
+    if (!container) return;
+
+    const searchTerm = currentAdminBizSearch || (document.getElementById('admin-business-search-input')?.value || '').toLowerCase().trim();
+
+    const filtered = adminBusinessRequests.filter(r => {
+        if (currentAdminBizFilter !== 'all' && r.status !== currentAdminBizFilter) {
+            return false;
+        }
+        if (searchTerm) {
+            const fn = (r.fullname || r.applicantName || '').toLowerCase();
+            const cn = (r.companyName || '').toLowerCase();
+            const em = (r.email || '').toLowerCase();
+            const doc = (r.docnumber || '').toLowerCase();
+            const ph = (r.phone || '').toLowerCase();
+            const ci = (r.city || '').toLowerCase();
+            const uid = (r.uid || '').toLowerCase();
+            return fn.includes(searchTerm) || cn.includes(searchTerm) || em.includes(searchTerm) || doc.includes(searchTerm) || ph.includes(searchTerm) || ci.includes(searchTerm) || uid.includes(searchTerm);
+        }
+        return true;
+    });
+
+    if (filtered.length === 0) {
+        container.innerHTML = `
+            <div class="admin-empty-state">
+                <i data-lucide="building-2" class="empty-state-icon"></i>
+                <p>Nenhuma solicitação de Conta Empresa encontrada.</p>
+                <small>Quando os usuários solicitarem verificação empresarial, os formulários com fotos aparecerão aqui para análise.</small>
+            </div>
+        `;
+        if (window.lucide && typeof window.lucide.createIcons === 'function') {
+            window.lucide.createIcons();
+        }
+        return;
+    }
+
+    container.innerHTML = filtered.map(r => {
+        const isPending = r.status === 'pending';
+        const isApproved = r.status === 'approved';
+        const isRejected = r.status === 'rejected';
+        const isBlocked = r.status === 'blocked';
+
+        let badgeHtml = '';
+        if (isPending) {
+            badgeHtml = `<span class="admin-badge" style="background: rgba(255,149,0,0.2); border: 1px solid #ff9500; color: #ff9500;">EM ANÁLISE ⏳</span>`;
+        } else if (isApproved) {
+            badgeHtml = `<span class="admin-badge" style="background: rgba(48,209,88,0.2); border: 1px solid #30d158; color: #30d158;">APROVADA ✅</span>`;
+        } else if (isRejected) {
+            badgeHtml = `<span class="admin-badge" style="background: rgba(255,59,48,0.2); border: 1px solid #ff3b30; color: #ff3b30;">REJEITADA ❌</span>`;
+        } else if (isBlocked) {
+            badgeHtml = `<span class="admin-badge" style="background: rgba(180,0,0,0.3); border: 1px solid #ff2222; color: #ff4444;">BLOQUEADA 🚫 (Spam)</span>`;
+        } else {
+            badgeHtml = `<span class="admin-badge admin-badge-active">${escapeHTML(r.status || 'Nova')}</span>`;
+        }
+
+        const dateStr = r.requestedAt ? new Date(r.requestedAt).toLocaleString('pt-BR') : 'Recentemente';
+
+        return `
+            <div class="admin-card admin-biz-card" data-biz-req-id="${r.id}" data-uid="${r.uid}">
+                <div class="admin-card-header">
+                    <div class="admin-card-user-info">
+                        <div class="avatar sm" style="background-image: url('${r.applicantAvatar || ''}');">
+                            ${!r.applicantAvatar ? '<i data-lucide="building-2" style="width:18px;height:18px;"></i>' : ''}
+                        </div>
+                        <div>
+                            <span class="admin-card-title">${escapeHTML(r.companyName || 'Empresa')}</span>
+                            <span class="admin-card-subtitle">Resp: ${escapeHTML(r.fullname || r.applicantName || 'Responsável')} • @${escapeHTML(r.applicantUsername || 'usuário')}</span>
+                        </div>
+                    </div>
+                    <div>
+                        ${badgeHtml}
+                    </div>
+                </div>
+                <div class="admin-card-body">
+                    <div><strong>CPF/CNPJ:</strong> <code>${escapeHTML(r.docnumber || 'N/A')}</code></div>
+                    <div><strong>Gmail:</strong> ${escapeHTML(r.email || 'N/A')}</div>
+                    <div><strong>Telefone:</strong> ${escapeHTML(r.phone || 'N/A')}</div>
+                    <div><strong>Local:</strong> ${escapeHTML(r.city || '')}/${escapeHTML(r.state || '')} - CEP: ${escapeHTML(r.cep || '')}</div>
+                    <div style="font-size: 0.78rem; color: var(--text-dim); margin-top: 4px;">
+                        <i data-lucide="clock" style="width:12px; height:12px; display:inline-block; vertical-align:middle;"></i> Solicitado em: ${dateStr}
+                    </div>
+                </div>
+                <div class="admin-card-actions admin-biz-actions">
+                    <button type="button" class="admin-btn-action btn-preview admin-preview-biz-btn" data-uid="${r.uid}" data-reqid="${r.id}">
+                        <i data-lucide="eye"></i> Ver Formulário
+                    </button>
+                    ${!isApproved ? `
+                        <button type="button" class="admin-btn-action btn-success admin-approve-biz-btn" data-uid="${r.uid}" data-reqid="${r.id}">
+                            <i data-lucide="check"></i> Aprovar
+                        </button>
+                    ` : ''}
+                    ${!isRejected ? `
+                        <button type="button" class="admin-btn-action btn-danger admin-reject-biz-btn" data-uid="${r.uid}" data-reqid="${r.id}">
+                            <i data-lucide="x"></i> Reprovar
+                        </button>
+                    ` : ''}
+                    ${!isBlocked ? `
+                        <button type="button" class="admin-btn-action btn-block admin-block-biz-btn" data-uid="${r.uid}" data-reqid="${r.id}">
+                            <i data-lucide="shield-alert"></i> Bloquear
+                        </button>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    container.querySelectorAll('.admin-preview-biz-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const req = adminBusinessRequests.find(r => r.uid === btn.dataset.uid || r.id === btn.dataset.reqid);
+            if (req) openAdminBusinessPreviewModal(req);
+        });
+    });
+    container.querySelectorAll('.admin-approve-biz-btn').forEach(btn => {
+        btn.addEventListener('click', () => adminApproveBusinessRequest(btn.dataset.uid, btn.dataset.reqid));
+    });
+    container.querySelectorAll('.admin-reject-biz-btn').forEach(btn => {
+        btn.addEventListener('click', () => adminRejectBusinessRequest(btn.dataset.uid, btn.dataset.reqid));
+    });
+    container.querySelectorAll('.admin-block-biz-btn').forEach(btn => {
+        btn.addEventListener('click', () => adminBlockBusinessRequest(btn.dataset.uid, btn.dataset.reqid));
+    });
+
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+    }
+}
+
+export async function adminApproveBusinessRequest(uid, reqId) {
+    if (!uid) return;
+    const targetId = reqId || uid;
+    try {
+        if (typeof db !== 'undefined' && db && typeof updateDoc === 'function') {
+            await updateDoc(doc(db, 'business_requests', targetId), {
+                status: 'approved',
+                approvedAt: Date.now(),
+                updatedAt: Date.now()
+            });
+
+            await updateDoc(doc(db, 'users', uid), {
+                accountType: 'business',
+                businessStatus: 'approved',
+                businessBlocked: false
+            });
+
+            if (typeof addDoc === 'function') {
+                await addDoc(collection(db, 'notifications'), {
+                    toUid: uid,
+                    type: 'business',
+                    title: 'Conta Empresa Aprovada! 🏢✅',
+                    message: 'Parabéns! Sua solicitação de Conta Empresa foi aprovada pela moderação da VORTEX VIP. O seu perfil empresarial está liberado com sucesso!',
+                    read: false,
+                    createdAt: Date.now()
+                });
+            }
+        }
+
+        const req = adminBusinessRequests.find(r => r.id === targetId || r.uid === uid);
+        if (req) {
+            req.status = 'approved';
+            req.approvedAt = Date.now();
+        }
+
+        if (typeof adminUsers !== 'undefined' && Array.isArray(adminUsers)) {
+            const userObj = adminUsers.find(u => u.id === uid);
+            if (userObj) {
+                userObj.accountType = 'business';
+                userObj.businessStatus = 'approved';
+                userObj.businessBlocked = false;
+            }
+        }
+
+        if (currentProfile && currentUser?.uid === uid) {
+            currentProfile.accountType = 'business';
+            currentProfile.businessStatus = 'approved';
+            currentProfile.businessBlocked = false;
+            const bRadio = document.getElementById('profile-type-business');
+            if (bRadio) bRadio.checked = true;
+            handleAccountTypeChange();
+        }
+
+        showToast("Conta Empresa Aprovada! ✅", "A conta empresa foi aprovada com sucesso.", "green");
+        closeAdminBusinessPreviewModal();
+        renderAdminBusinessRequests();
+    } catch (e) {
+        console.error("Erro ao aprovar Conta Empresa:", e);
+        showToast("Erro ao Aprovar", "Não foi possível aprovar a solicitação.", "red");
+    }
+}
+
+export async function adminRejectBusinessRequest(uid, reqId) {
+    if (!uid) return;
+    const targetId = reqId || uid;
+    try {
+        if (typeof db !== 'undefined' && db && typeof updateDoc === 'function') {
+            await updateDoc(doc(db, 'business_requests', targetId), {
+                status: 'rejected',
+                rejectedAt: Date.now(),
+                updatedAt: Date.now()
+            });
+
+            await updateDoc(doc(db, 'users', uid), {
+                accountType: 'personal',
+                businessStatus: 'rejected',
+                businessBlocked: false
+            });
+
+            if (typeof addDoc === 'function') {
+                await addDoc(collection(db, 'notifications'), {
+                    toUid: uid,
+                    type: 'business',
+                    title: 'Conta Empresa Reprovada ❌',
+                    message: 'Sua solicitação de Conta Empresa foi reprovada pela moderação. Por favor, revise seus dados e documentos e envie novamente.',
+                    read: false,
+                    createdAt: Date.now()
+                });
+            }
+        }
+
+        const req = adminBusinessRequests.find(r => r.id === targetId || r.uid === uid);
+        if (req) {
+            req.status = 'rejected';
+            req.rejectedAt = Date.now();
+        }
+
+        if (typeof adminUsers !== 'undefined' && Array.isArray(adminUsers)) {
+            const userObj = adminUsers.find(u => u.id === uid);
+            if (userObj) {
+                userObj.accountType = 'personal';
+                userObj.businessStatus = 'rejected';
+                userObj.businessBlocked = false;
+            }
+        }
+
+        if (currentProfile && currentUser?.uid === uid) {
+            currentProfile.accountType = 'personal';
+            currentProfile.businessStatus = 'rejected';
+            currentProfile.businessBlocked = false;
+            const pRadio = document.getElementById('profile-type-personal');
+            if (pRadio) pRadio.checked = true;
+            handleAccountTypeChange();
+        }
+
+        showToast("Solicitação Reprovada", "A solicitação foi marcada como reprovada.", "orange");
+        closeAdminBusinessPreviewModal();
+        renderAdminBusinessRequests();
+    } catch (e) {
+        console.error("Erro ao reprovar Conta Empresa:", e);
+        showToast("Erro ao Reprovar", "Não foi possível reprovar a solicitação.", "red");
+    }
+}
+
+export async function adminBlockBusinessRequest(uid, reqId) {
+    if (!uid) return;
+    const targetId = reqId || uid;
+    try {
+        if (typeof db !== 'undefined' && db && typeof updateDoc === 'function') {
+            await updateDoc(doc(db, 'business_requests', targetId), {
+                status: 'blocked',
+                blockedAt: Date.now(),
+                blockReason: 'Spam',
+                updatedAt: Date.now()
+            });
+
+            await updateDoc(doc(db, 'users', uid), {
+                accountType: 'personal',
+                businessStatus: 'blocked',
+                businessBlocked: true,
+                businessBlockedReason: 'Spam'
+            });
+
+            if (typeof addDoc === 'function') {
+                await addDoc(collection(db, 'notifications'), {
+                    toUid: uid,
+                    type: 'business_blocked',
+                    title: 'Acesso Bloqueado à Conta Empresa 🚫',
+                    message: 'Você não tem permissão e acesso à conta empresa, por motivo de Spam.',
+                    read: false,
+                    createdAt: Date.now()
+                });
+            }
+        }
+
+        const req = adminBusinessRequests.find(r => r.id === targetId || r.uid === uid);
+        if (req) {
+            req.status = 'blocked';
+            req.blockedAt = Date.now();
+        }
+
+        if (typeof adminUsers !== 'undefined' && Array.isArray(adminUsers)) {
+            const userObj = adminUsers.find(u => u.id === uid);
+            if (userObj) {
+                userObj.accountType = 'personal';
+                userObj.businessStatus = 'blocked';
+                userObj.businessBlocked = true;
+                userObj.businessBlockedReason = 'Spam';
+            }
+        }
+
+        if (currentProfile && currentUser?.uid === uid) {
+            currentProfile.accountType = 'personal';
+            currentProfile.businessStatus = 'blocked';
+            currentProfile.businessBlocked = true;
+            currentProfile.businessBlockedReason = 'Spam';
+            const pRadio = document.getElementById('profile-type-personal');
+            if (pRadio) pRadio.checked = true;
+            handleAccountTypeChange();
+        }
+
+        showToast("Usuário Bloqueado 🚫", "Acesso à conta empresa bloqueado por motivo de Spam.", "red");
+        closeAdminBusinessPreviewModal();
+        renderAdminBusinessRequests();
+    } catch (e) {
+        console.error("Erro ao bloquear Conta Empresa:", e);
+        showToast("Erro ao Bloquear", "Não foi possível bloquear o usuário.", "red");
+    }
+}
+
+export function openAdminBusinessPreviewModal(req) {
+    const modal = document.getElementById('admin-business-preview-modal');
+    const content = document.getElementById('admin-biz-preview-content');
+    if (!modal || !content || !req) return;
+
+    let statusText = 'Em Análise ⏳';
+    let statusClass = 'status-pending';
+    if (req.status === 'approved') {
+        statusText = 'Aprovada ✅';
+        statusClass = 'status-approved';
+    } else if (req.status === 'rejected') {
+        statusText = 'Rejeitada ❌';
+        statusClass = 'status-rejected';
+    } else if (req.status === 'blocked') {
+        statusText = 'Bloqueada 🚫 (Spam)';
+        statusClass = 'status-blocked';
+    }
+
+    const dateStr = req.requestedAt ? new Date(req.requestedAt).toLocaleString('pt-BR') : 'Data não informada';
+
+    content.innerHTML = `
+        <div class="biz-preview-header">
+            <div class="biz-preview-company-badge">
+                <i data-lucide="building-2"></i>
+                <div>
+                    <h4>${escapeHTML(req.companyName || 'Empresa')}</h4>
+                    <span class="biz-preview-status-pill ${statusClass}">${statusText}</span>
+                </div>
+            </div>
+            <div class="biz-preview-applicant-meta">
+                <span><strong>Responsável:</strong> ${escapeHTML(req.fullname || req.applicantName || 'N/A')}</span>
+                <span><strong>Usuário:</strong> @${escapeHTML(req.applicantUsername || 'sem_username')}</span>
+                <span><strong>UID:</strong> <code>${escapeHTML(req.uid)}</code></span>
+                <span><strong>Enviado em:</strong> ${dateStr}</span>
+            </div>
+        </div>
+
+        <div class="biz-preview-section">
+            <h5 class="biz-preview-section-title"><i data-lucide="user-check"></i> Dados Pessoais & Documento</h5>
+            <div class="biz-preview-grid">
+                <div class="biz-preview-field"><strong>Nome Completo:</strong> <span>${escapeHTML(req.fullname || 'N/A')}</span></div>
+                <div class="biz-preview-field"><strong>Data de Nascimento:</strong> <span>${escapeHTML(req.birthdate || 'N/A')}</span></div>
+                <div class="biz-preview-field"><strong>CPF ou CNPJ:</strong> <span>${escapeHTML(req.docnumber || 'N/A')}</span></div>
+                <div class="biz-preview-field"><strong>Telefone:</strong> <span>${escapeHTML(req.phone || 'N/A')}</span></div>
+                <div class="biz-preview-field"><strong>Gmail:</strong> <span>${escapeHTML(req.email || 'N/A')}</span></div>
+            </div>
+        </div>
+
+        <div class="biz-preview-section">
+            <h5 class="biz-preview-section-title"><i data-lucide="store"></i> Dados da Empresa</h5>
+            <div class="biz-preview-grid">
+                <div class="biz-preview-field"><strong>Nome da Empresa:</strong> <span>${escapeHTML(req.companyName || 'N/A')}</span></div>
+                <div class="biz-preview-field"><strong>Site da Empresa:</strong> <span>${req.website ? `<a href="${escapeHTML(req.website)}" target="_blank" rel="noopener noreferrer">${escapeHTML(req.website)}</a>` : 'N/A'}</span></div>
+            </div>
+        </div>
+
+        <div class="biz-preview-section">
+            <h5 class="biz-preview-section-title"><i data-lucide="map-pin"></i> Endereço Completo</h5>
+            <div class="biz-preview-grid">
+                <div class="biz-preview-field full-row"><strong>Endereço:</strong> <span>${escapeHTML(req.address || 'N/A')}</span></div>
+                <div class="biz-preview-field"><strong>Rua:</strong> <span>${escapeHTML(req.street || 'N/A')}</span></div>
+                <div class="biz-preview-field"><strong>Número da Casa:</strong> <span>${escapeHTML(req.houseNumber || 'N/A')}</span></div>
+                <div class="biz-preview-field"><strong>Cidade:</strong> <span>${escapeHTML(req.city || 'N/A')}</span></div>
+                <div class="biz-preview-field"><strong>Estado:</strong> <span>${escapeHTML(req.state || 'N/A')}</span></div>
+                <div class="biz-preview-field"><strong>CEP:</strong> <span>${escapeHTML(req.cep || 'N/A')}</span></div>
+                <div class="biz-preview-field"><strong>País:</strong> <span>${escapeHTML(req.country || 'N/A')}</span></div>
+            </div>
+        </div>
+
+        <div class="biz-preview-section">
+            <h5 class="biz-preview-section-title"><i data-lucide="camera"></i> Fotos do Usuário e Documentos (Anti-Golpe)</h5>
+            <div class="biz-preview-photos-grid">
+                <div class="biz-preview-photo-item">
+                    <span class="biz-preview-photo-label">Foto 1: RG Frente com Rosto (Selfie)</span>
+                    <div class="biz-preview-photo-thumb" id="thumb-preview-selfie">
+                        ${req.selfiePhoto ? `<img src="${req.selfiePhoto}" alt="Foto 1: RG Frente com Rosto">` : '<div class="no-photo">Sem foto</div>'}
+                        <div class="biz-photo-zoom-hint"><i data-lucide="zoom-in"></i> Ampliar</div>
+                    </div>
+                </div>
+                <div class="biz-preview-photo-item">
+                    <span class="biz-preview-photo-label">Foto 2: RG Verso ou Comprovante</span>
+                    <div class="biz-preview-photo-thumb" id="thumb-preview-doc">
+                        ${req.docPhoto ? `<img src="${req.docPhoto}" alt="Foto 2: RG Verso / Comprovante">` : '<div class="no-photo">Sem foto</div>'}
+                        <div class="biz-photo-zoom-hint"><i data-lucide="zoom-in"></i> Ampliar</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="biz-preview-section">
+            <h5 class="biz-preview-section-title"><i data-lucide="check-square"></i> Termos de Segurança e Responsabilidade</h5>
+            <div class="biz-preview-terms-list">
+                <div class="biz-preview-term-item"><i data-lucide="check-circle-2" style="color:#00ff88;"></i> <span>Você concorda com os termos de segurança</span></div>
+                <div class="biz-preview-term-item"><i data-lucide="check-circle-2" style="color:#00ff88;"></i> <span>Você se responsabilizar por qualquer problema com os clientes</span></div>
+                <div class="biz-preview-term-item"><i data-lucide="check-circle-2" style="color:#00ff88;"></i> <span>Você confirmar que preencheu o formulário corretamente</span></div>
+            </div>
+        </div>
+
+        <div class="biz-preview-actions-bar">
+            <button type="button" class="admin-btn-action btn-success modal-act-approve" id="admin-modal-approve-btn">
+                <i data-lucide="check"></i> Aprovar
+            </button>
+            <button type="button" class="admin-btn-action btn-danger modal-act-reject" id="admin-modal-reject-btn">
+                <i data-lucide="x"></i> Reprovar
+            </button>
+            <button type="button" class="admin-btn-action btn-block modal-act-block" id="admin-modal-block-btn">
+                <i data-lucide="shield-alert"></i> Bloquear (Spam)
+            </button>
+        </div>
+    `;
+
+    // Listeners para os botões do modal
+    const approveBtn = document.getElementById('admin-modal-approve-btn');
+    if (approveBtn && typeof approveBtn.addEventListener === 'function') {
+        approveBtn.addEventListener('click', () => {
+            adminApproveBusinessRequest(req.uid, req.id);
+        });
+    }
+    const rejectBtn = document.getElementById('admin-modal-reject-btn');
+    if (rejectBtn && typeof rejectBtn.addEventListener === 'function') {
+        rejectBtn.addEventListener('click', () => {
+            adminRejectBusinessRequest(req.uid, req.id);
+        });
+    }
+    const blockBtn = document.getElementById('admin-modal-block-btn');
+    if (blockBtn && typeof blockBtn.addEventListener === 'function') {
+        blockBtn.addEventListener('click', () => {
+            adminBlockBusinessRequest(req.uid, req.id);
+        });
+    }
+
+    // Listeners para zoom das fotos
+    if (req.selfiePhoto) {
+        const thumbSelfie = document.getElementById('thumb-preview-selfie');
+        if (thumbSelfie && typeof thumbSelfie.addEventListener === 'function') {
+            thumbSelfie.addEventListener('click', () => {
+                openBusinessPhotoZoom(req.selfiePhoto, 'Foto 1: Frente do RG com Rosto');
+            });
+        }
+    }
+    if (req.docPhoto) {
+        const thumbDoc = document.getElementById('thumb-preview-doc');
+        if (thumbDoc && typeof thumbDoc.addEventListener === 'function') {
+            thumbDoc.addEventListener('click', () => {
+                openBusinessPhotoZoom(req.docPhoto, 'Foto 2: Verso do Documento ou Comprovante');
+            });
+        }
+    }
+
+    modal.style.display = 'flex';
+    modal.classList.add('active');
+    modal.setAttribute('aria-hidden', 'false');
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+    }
+}
+
+export function closeAdminBusinessPreviewModal() {
+    const modal = document.getElementById('admin-business-preview-modal');
+    if (!modal) return;
+    modal.style.display = 'none';
+    modal.classList.remove('active');
+    modal.setAttribute('aria-hidden', 'true');
+}
+
+export function openBusinessPhotoZoom(src, title = 'Visualização do Documento') {
+    const modal = document.getElementById('business-photo-zoom-modal');
+    const img = document.getElementById('photo-zoom-img');
+    const titleEl = document.getElementById('photo-zoom-title');
+    if (!modal || !img) return;
+    img.src = src;
+    if (titleEl) titleEl.innerText = title;
+    modal.style.display = 'flex';
+    modal.classList.add('active');
+    modal.setAttribute('aria-hidden', 'false');
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+    }
+}
+
+export function closeBusinessPhotoZoom() {
+    const modal = document.getElementById('business-photo-zoom-modal');
+    if (!modal) return;
+    modal.style.display = 'none';
+    modal.classList.remove('active');
+    modal.setAttribute('aria-hidden', 'true');
+}
+
+export function initBusinessVerificationEvents() {
+    const bizOption = document.getElementById('account-type-option-business');
+    const bizRadio = document.getElementById('profile-type-business');
+
+    const onBizOptionClick = (e) => {
+        if (currentProfile?.businessStatus === 'approved' && !currentProfile?.businessBlocked) {
+            return;
+        }
+        if (e && typeof e.preventDefault === 'function') {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        handleBusinessAccountClick(e);
+    };
+
+    bizOption?.addEventListener('click', onBizOptionClick);
+    bizRadio?.addEventListener('click', onBizOptionClick);
+
+    document.getElementById('close-business-verification-modal')?.addEventListener('click', closeBusinessVerificationModal);
+    document.getElementById('close-business-blocked-modal')?.addEventListener('click', closeBusinessBlockedModal);
+    document.getElementById('close-admin-biz-preview-modal')?.addEventListener('click', closeAdminBusinessPreviewModal);
+    document.getElementById('close-photo-zoom-modal')?.addEventListener('click', closeBusinessPhotoZoom);
+
+    ['business-verification-modal', 'business-blocked-modal', 'admin-business-preview-modal', 'business-photo-zoom-modal'].forEach(id => {
+        const el = document.getElementById(id);
+        el?.addEventListener('click', (e) => {
+            if (e.target === el) {
+                if (id === 'business-verification-modal') closeBusinessVerificationModal();
+                if (id === 'business-blocked-modal') closeBusinessBlockedModal();
+                if (id === 'admin-business-preview-modal') closeAdminBusinessPreviewModal();
+                if (id === 'business-photo-zoom-modal') closeBusinessPhotoZoom();
+            }
+        });
+    });
+
+    const selfieInput = document.getElementById('biz-photo-input-selfie');
+    const selfieDropzone = document.getElementById('biz-photo-dropzone-selfie');
+    selfieDropzone?.addEventListener('click', (e) => {
+        if (e.target && e.target.closest('#biz-remove-photo-selfie')) return;
+        selfieInput?.click();
+    });
+    selfieInput?.addEventListener('change', (e) => {
+        if (e.target?.files && e.target.files[0]) {
+            handleBusinessPhotoSelected('selfie', e.target.files[0]);
+        }
+    });
+    document.getElementById('biz-remove-photo-selfie')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        removeBusinessPhoto('selfie');
+    });
+
+    const docInput = document.getElementById('biz-photo-input-doc');
+    const docDropzone = document.getElementById('biz-photo-dropzone-doc');
+    docDropzone?.addEventListener('click', (e) => {
+        if (e.target && e.target.closest('#biz-remove-photo-doc')) return;
+        docInput?.click();
+    });
+    docInput?.addEventListener('change', (e) => {
+        if (e.target?.files && e.target.files[0]) {
+            handleBusinessPhotoSelected('doc', e.target.files[0]);
+        }
+    });
+    document.getElementById('biz-remove-photo-doc')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        removeBusinessPhoto('doc');
+    });
+
+    document.getElementById('btn-submit-biz-verification')?.addEventListener('click', submitBusinessVerification);
+
+    document.getElementById('admin-tab-business-requests-btn')?.addEventListener('click', () => {
+        switchAdminTab('business-requests');
+    });
+
+    document.querySelectorAll('.admin-biz-pill').forEach(pill => {
+        pill.addEventListener('click', () => {
+            document.querySelectorAll('.admin-biz-pill').forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+            currentAdminBizFilter = pill.dataset.bizFilter || 'all';
+            renderAdminBusinessRequests();
+        });
+    });
+
+    const searchInp = document.getElementById('admin-business-search-input');
+    searchInp?.addEventListener('input', (e) => {
+        currentAdminBizSearch = (e.target?.value || '').toLowerCase().trim();
+        renderAdminBusinessRequests();
     });
 }
