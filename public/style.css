@@ -4501,26 +4501,191 @@ body.theme-cyberpunk .feed-search-icon {
 
 .admin-status-filters {
     display: flex;
+    align-items: center;
     gap: 8px;
     overflow-x: auto;
+    padding: 4px 2px 8px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    -webkit-overflow-scrolling: touch;
+}
+
+.admin-status-filters::-webkit-scrollbar {
+    display: none;
 }
 
 .admin-pill {
-    padding: 6px 14px;
-    border-radius: 20px;
+    appearance: none;
+    -webkit-appearance: none;
+    outline: none;
+    padding: 7px 16px;
+    border-radius: 999px;
     background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: var(--text-dim);
-    font-size: 0.78rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: var(--text-dim, #9aa0a6);
+    font-size: 0.8rem;
     font-weight: 600;
+    font-family: inherit;
     cursor: pointer;
-    transition: all 0.2s;
+    white-space: nowrap;
+    user-select: none;
+    -webkit-user-select: none;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.admin-pill:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.25);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.admin-pill:active {
+    transform: scale(0.96);
 }
 
 .admin-pill.active {
     background: rgba(255, 59, 48, 0.2);
     border-color: #ff3b30;
     color: #ff6b6b;
+    font-weight: 700;
+    box-shadow: 0 0 14px rgba(255, 59, 48, 0.35);
+}
+
+/* ==========================================================================
+   Pílulas de Filtro de Conta Empresa (Painel ADM)
+   Todas, Em Análise, Aprovadas, Rejeitadas, Bloqueadas
+   ========================================================================== */
+.admin-biz-pill {
+    appearance: none;
+    -webkit-appearance: none;
+    outline: none;
+    padding: 7px 16px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: var(--text-dim, #9aa0a6);
+    font-size: 0.8rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    white-space: nowrap;
+    user-select: none;
+    -webkit-user-select: none;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.admin-biz-pill:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.25);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.admin-biz-pill:active {
+    transform: scale(0.96);
+}
+
+.admin-biz-pill::before {
+    content: '';
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    transition: all 0.22s ease;
+}
+
+.admin-biz-pill[data-biz-filter="all"]::before {
+    background: #00e5ff;
+    box-shadow: 0 0 6px rgba(0, 229, 255, 0.6);
+    opacity: 0.75;
+}
+
+.admin-biz-pill[data-biz-filter="pending"]::before {
+    background: #ffb300;
+    box-shadow: 0 0 6px rgba(255, 179, 0, 0.6);
+    opacity: 0.75;
+}
+
+.admin-biz-pill[data-biz-filter="approved"]::before {
+    background: #22c55e;
+    box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
+    opacity: 0.75;
+}
+
+.admin-biz-pill[data-biz-filter="rejected"]::before {
+    background: #ef4444;
+    box-shadow: 0 0 6px rgba(239, 68, 68, 0.6);
+    opacity: 0.75;
+}
+
+.admin-biz-pill[data-biz-filter="blocked"]::before {
+    background: #dc2626;
+    box-shadow: 0 0 6px rgba(220, 38, 38, 0.6);
+    opacity: 0.75;
+}
+
+.admin-biz-pill.active {
+    font-weight: 700;
+}
+
+.admin-biz-pill.active::before {
+    opacity: 1;
+    transform: scale(1.25);
+}
+
+.admin-biz-pill[data-biz-filter="all"].active {
+    background: rgba(0, 229, 255, 0.16);
+    border-color: #00e5ff;
+    color: #00e5ff;
+    box-shadow: 0 0 14px rgba(0, 229, 255, 0.35);
+}
+
+.admin-biz-pill[data-biz-filter="pending"].active {
+    background: rgba(255, 179, 0, 0.18);
+    border-color: #ffb300;
+    color: #ffc107;
+    box-shadow: 0 0 14px rgba(255, 179, 0, 0.35);
+}
+
+.admin-biz-pill[data-biz-filter="approved"].active {
+    background: rgba(34, 197, 94, 0.18);
+    border-color: #22c55e;
+    color: #4ade80;
+    box-shadow: 0 0 14px rgba(34, 197, 94, 0.35);
+}
+
+.admin-biz-pill[data-biz-filter="rejected"].active {
+    background: rgba(239, 68, 68, 0.18);
+    border-color: #ef4444;
+    color: #f87171;
+    box-shadow: 0 0 14px rgba(239, 68, 68, 0.35);
+}
+
+.admin-biz-pill[data-biz-filter="blocked"].active {
+    background: rgba(220, 38, 38, 0.22);
+    border-color: #dc2626;
+    color: #ff4d4d;
+    box-shadow: 0 0 16px rgba(220, 38, 38, 0.45);
 }
 
 .admin-cards-list {

@@ -1,6 +1,6 @@
 {
-  "version": "1.0.263",
-  "build": 263,
+  "version": "1.0.264",
+  "build": 264,
   "releaseDate": "2026-11-10",
-  "notes": "Modo de Manutenção oficial com ativação no Painel ADM, bloqueio geral de usuários e isenção de administradores v1.0.263"
+  "notes": "Estilização refinada dos botões de filtro de Conta Empresa (Todas, Em Análise, Aprovadas, Rejeitadas, Bloqueadas) v1.0.264"
 }
