@@ -2286,8 +2286,8 @@ export function renderNotifications() {
         if (isSecurityAiNotif && !isAdmin) return false;
 
         if (currentNotifFilter === 'vip') return n.type === 'vip';
-        if (currentNotifFilter === 'warning') return !n.type || n.type === 'warning' || n.type === 'group_add' || n.type === 'group_promote' || n.type === 'withdrawal_paid' || /Saque Pix Pago/i.test(n.title || '');
-        if (currentNotifFilter === 'alert') return n.type === 'alert' || n.type === 'link_risk_warning' || n.type === 'business_blocked' || /Acesso Bloqueado.*Conta Empresa/i.test(n.title || '');
+        if (currentNotifFilter === 'warning') return !n.type || n.type === 'warning' || n.type === 'group_add' || n.type === 'group_promote' || n.type === 'withdrawal_paid' || n.type === 'business_approved' || /Saque Pix Pago/i.test(n.title || '') || /Conta Empresa Aprovada/i.test(n.title || '');
+        if (currentNotifFilter === 'alert') return n.type === 'alert' || n.type === 'link_risk_warning' || n.type === 'business_blocked' || n.type === 'business_rejected' || /Acesso Bloqueado.*Conta Empresa/i.test(n.title || '') || /Conta Empresa Reprovada/i.test(n.title || '');
         return true;
     });
 
@@ -2327,6 +2327,8 @@ export function renderNotifications() {
         const isVip = type === 'vip';
         const isAlert = type === 'alert';
         const isWithdrawalPaid = type === 'withdrawal_paid' || /Saque Pix Pago/i.test(titleRaw) || /saque.*Ba[úu] Di[áa]rio.*pago/i.test(msgRaw);
+        const isBusinessApproved = type === 'business_approved' || (type === 'business' && /aprovad/i.test(titleRaw)) || /Conta Empresa Aprovada/i.test(titleRaw) || /perfil empresarial está liberado/i.test(msgRaw);
+        const isBusinessRejected = type === 'business_rejected' || (type === 'business' && /reprovad/i.test(titleRaw)) || /Conta Empresa Reprovada/i.test(titleRaw) || /solicitação de Conta Empresa foi reprovada/i.test(msgRaw);
         const isBusinessBlocked = type === 'business_blocked' || /Acesso Bloqueado.*Conta Empresa/i.test(titleRaw) || /não tem permissão e acesso à conta empresa/i.test(msgRaw);
         const isGroupPromote = type === 'group_promote' ||
             /Você é admin do grupo|admin do grupo/i.test(titleRaw) ||
@@ -2347,11 +2349,23 @@ export function renderNotifications() {
             typeClass = 'vip';
             badgeText = 'SELO VIP ⭐';
             iconHTML = '<i data-lucide="sparkles"></i>';
+        } else if (isBusinessApproved) {
+            typeClass = 'business-approved';
+            badgeText = 'APROVADA ✅';
+            iconHTML = `
+                <img src="icons/business-approved.png?v=1.0.262" alt="Conta Empresa Aprovada" class="notif-biz-approved-img" width="28" height="28">
+            `;
+        } else if (isBusinessRejected) {
+            typeClass = 'business-rejected';
+            badgeText = 'REPROVADA ❌';
+            iconHTML = `
+                <img src="icons/business-rejected.png?v=1.0.262" alt="Conta Empresa Reprovada" class="notif-biz-rejected-img" width="28" height="28">
+            `;
         } else if (isBusinessBlocked) {
             typeClass = 'business-blocked';
             badgeText = 'BLOQUEIO 🚫';
             iconHTML = `
-                <img src="icons/blocked-hand.png?v=1.0.261" alt="Acesso Bloqueado" class="notif-blocked-hand-img" width="28" height="28">
+                <img src="icons/blocked-hand.png?v=1.0.262" alt="Acesso Bloqueado" class="notif-blocked-hand-img" width="28" height="28">
             `;
         } else if (isWithdrawalPaid) {
             typeClass = 'withdrawal-paid';
@@ -21555,7 +21569,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.261';
+export const CURRENT_APP_VERSION = '1.0.262';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -42124,12 +42138,49 @@ export function openBusinessVerificationModal(options = {}) {
     if (!modal) return;
 
     const isPending = Boolean(options.isPending || currentProfile?.businessStatus === 'pending');
+    const isRejected = Boolean(options.isRejected || currentProfile?.businessStatus === 'rejected');
+    const isApproved = Boolean(options.isApproved || currentProfile?.businessStatus === 'approved');
     const banner = document.getElementById('biz-verify-status-banner');
+    const statusIcon = document.getElementById('biz-verify-status-icon');
+    const statusTitle = document.getElementById('biz-verify-status-title');
+    const statusDesc = document.getElementById('biz-verify-status-desc');
     const submitBtn = document.getElementById('btn-submit-biz-verification');
     const submitBtnText = document.getElementById('biz-submit-btn-text');
 
     if (banner) {
-        banner.style.display = isPending ? 'flex' : 'none';
+        if (isPending) {
+            banner.style.display = 'flex';
+            banner.className = 'biz-verify-status-banner banner-pending';
+            banner.innerHTML = `
+                <i data-lucide="clock" id="biz-verify-status-icon"></i>
+                <div id="biz-verify-status-text-wrap">
+                    <strong id="biz-verify-status-title">Em Análise ⏳</strong>
+                    <p id="biz-verify-status-desc">Sua solicitação está sendo revisada pela moderação da VORTEX VIP.</p>
+                </div>
+            `;
+        } else if (isRejected) {
+            banner.style.display = 'flex';
+            banner.className = 'biz-verify-status-banner banner-rejected';
+            banner.innerHTML = `
+                <img src="icons/business-rejected.png?v=1.0.262" id="biz-verify-status-img" class="biz-status-icon-img" alt="Conta Reprovada" width="36" height="36">
+                <div id="biz-verify-status-text-wrap">
+                    <strong id="biz-verify-status-title">Solicitação Reprovada ❌</strong>
+                    <p id="biz-verify-status-desc">Sua solicitação anterior foi reprovada pela moderação. Revise seus dados e documentos abaixo e envie novamente.</p>
+                </div>
+            `;
+        } else if (isApproved) {
+            banner.style.display = 'flex';
+            banner.className = 'biz-verify-status-banner banner-approved';
+            banner.innerHTML = `
+                <img src="icons/business-approved.png?v=1.0.262" id="biz-verify-status-img" class="biz-status-icon-img" alt="Conta Aprovada" width="36" height="36">
+                <div id="biz-verify-status-text-wrap">
+                    <strong id="biz-verify-status-title">Conta Empresa Aprovada! 🏢✅</strong>
+                    <p id="biz-verify-status-desc">Parabéns! Sua conta empresa está verificada e ativa na VORTEX VIP.</p>
+                </div>
+            `;
+        } else {
+            banner.style.display = 'none';
+        }
     }
 
     if (submitBtn && submitBtnText) {
@@ -42137,6 +42188,14 @@ export function openBusinessVerificationModal(options = {}) {
             submitBtnText.textContent = 'Em Análise ⏳';
             submitBtn.disabled = true;
             submitBtn.classList.add('btn-pending');
+        } else if (isApproved) {
+            submitBtnText.textContent = 'Conta Aprovada ✅';
+            submitBtn.disabled = true;
+            submitBtn.classList.remove('btn-pending');
+        } else if (isRejected) {
+            submitBtnText.textContent = 'Reenviar Solicitação';
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('btn-pending');
         } else {
             submitBtnText.textContent = 'Enviar Solicitação';
             submitBtn.disabled = false;
@@ -42573,11 +42632,11 @@ export function renderAdminBusinessRequests() {
         if (isPending) {
             badgeHtml = `<span class="admin-badge" style="background: rgba(255,149,0,0.2); border: 1px solid #ff9500; color: #ff9500;">EM ANÁLISE ⏳</span>`;
         } else if (isApproved) {
-            badgeHtml = `<span class="admin-badge" style="background: rgba(48,209,88,0.2); border: 1px solid #30d158; color: #30d158;">APROVADA ✅</span>`;
+            badgeHtml = `<span class="admin-badge admin-badge-biz-approved" style="background: rgba(48,209,88,0.2); border: 1px solid #30d158; color: #30d158;"><img src="icons/business-approved.png?v=1.0.262" class="admin-biz-badge-icon" alt="Aprovada" width="16" height="16"> APROVADA ✅</span>`;
         } else if (isRejected) {
-            badgeHtml = `<span class="admin-badge" style="background: rgba(255,59,48,0.2); border: 1px solid #ff3b30; color: #ff3b30;">REJEITADA ❌</span>`;
+            badgeHtml = `<span class="admin-badge admin-badge-biz-rejected" style="background: rgba(255,59,48,0.2); border: 1px solid #ff3b30; color: #ff3b30;"><img src="icons/business-rejected.png?v=1.0.262" class="admin-biz-badge-icon" alt="Reprovada" width="16" height="16"> REPROVADA ❌</span>`;
         } else if (isBlocked) {
-            badgeHtml = `<span class="admin-badge" style="background: rgba(180,0,0,0.3); border: 1px solid #ff2222; color: #ff4444;">BLOQUEADA 🚫 (Spam)</span>`;
+            badgeHtml = `<span class="admin-badge admin-badge-biz-blocked" style="background: rgba(180,0,0,0.3); border: 1px solid #ff2222; color: #ff4444;"><img src="icons/blocked-hand.png?v=1.0.262" class="admin-biz-badge-icon" alt="Bloqueada" width="16" height="16"> BLOQUEADA 🚫 (Spam)</span>`;
         } else {
             badgeHtml = `<span class="admin-badge admin-badge-active">${escapeHTML(r.status || 'Nova')}</span>`;
         }
@@ -42674,7 +42733,7 @@ export async function adminApproveBusinessRequest(uid, reqId) {
             if (typeof addDoc === 'function') {
                 await addDoc(collection(db, 'notifications'), {
                     toUid: uid,
-                    type: 'business',
+                    type: 'business_approved',
                     title: 'Conta Empresa Aprovada! 🏢✅',
                     message: 'Parabéns! Sua solicitação de Conta Empresa foi aprovada pela moderação da VORTEX VIP. O seu perfil empresarial está liberado com sucesso!',
                     read: false,
@@ -42736,7 +42795,7 @@ export async function adminRejectBusinessRequest(uid, reqId) {
             if (typeof addDoc === 'function') {
                 await addDoc(collection(db, 'notifications'), {
                     toUid: uid,
-                    type: 'business',
+                    type: 'business_rejected',
                     title: 'Conta Empresa Reprovada ❌',
                     message: 'Sua solicitação de Conta Empresa foi reprovada pela moderação. Por favor, revise seus dados e documentos e envie novamente.',
                     read: false,
@@ -42851,15 +42910,19 @@ export function openAdminBusinessPreviewModal(req) {
 
     let statusText = 'Em Análise ⏳';
     let statusClass = 'status-pending';
+    let statusIconHtml = '';
     if (req.status === 'approved') {
         statusText = 'Aprovada ✅';
         statusClass = 'status-approved';
+        statusIconHtml = '<img src="icons/business-approved.png?v=1.0.262" class="admin-biz-badge-icon" alt="Aprovada" width="16" height="16"> ';
     } else if (req.status === 'rejected') {
-        statusText = 'Rejeitada ❌';
+        statusText = 'Reprovada ❌';
         statusClass = 'status-rejected';
+        statusIconHtml = '<img src="icons/business-rejected.png?v=1.0.262" class="admin-biz-badge-icon" alt="Reprovada" width="16" height="16"> ';
     } else if (req.status === 'blocked') {
         statusText = 'Bloqueada 🚫 (Spam)';
         statusClass = 'status-blocked';
+        statusIconHtml = '<img src="icons/blocked-hand.png?v=1.0.262" class="admin-biz-badge-icon" alt="Bloqueada" width="16" height="16"> ';
     }
 
     const dateStr = req.requestedAt ? new Date(req.requestedAt).toLocaleString('pt-BR') : 'Data não informada';
@@ -42870,7 +42933,7 @@ export function openAdminBusinessPreviewModal(req) {
                 <i data-lucide="building-2"></i>
                 <div>
                     <h4>${escapeHTML(req.companyName || 'Empresa')}</h4>
-                    <span class="biz-preview-status-pill ${statusClass}">${statusText}</span>
+                    <span class="biz-preview-status-pill ${statusClass}">${statusIconHtml}${statusText}</span>
                 </div>
             </div>
             <div class="biz-preview-applicant-meta">
