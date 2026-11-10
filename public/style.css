@@ -4827,16 +4827,31 @@ body.theme-cyberpunk .feed-search-icon {
 }
 
 .admin-btn-action {
-    padding: 7px 12px;
-    border-radius: 8px;
-    font-size: 0.76rem;
+    padding: 7px 13px;
+    border-radius: 9px;
+    font-size: 0.78rem;
     font-weight: 700;
     cursor: pointer;
-    border: none;
+    border: 1px solid transparent;
     display: inline-flex;
     align-items: center;
-    gap: 5px;
-    transition: all 0.2s;
+    justify-content: center;
+    gap: 6px;
+    white-space: nowrap;
+    user-select: none;
+    -webkit-user-select: none;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.admin-btn-action:active {
+    transform: scale(0.96);
+}
+
+.admin-btn-action i,
+.admin-btn-action svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
 }
 
 .admin-btn-action.btn-danger {
@@ -4848,6 +4863,9 @@ body.theme-cyberpunk .feed-search-icon {
 .admin-btn-action.btn-danger:hover {
     background: #ff3b30;
     color: #fff;
+    border-color: #ff3b30;
+    box-shadow: 0 0 12px rgba(255, 59, 48, 0.45);
+    transform: translateY(-1px);
 }
 
 .admin-btn-action.btn-success {
@@ -4859,6 +4877,9 @@ body.theme-cyberpunk .feed-search-icon {
 .admin-btn-action.btn-success:hover {
     background: #34c759;
     color: #000;
+    border-color: #34c759;
+    box-shadow: 0 0 12px rgba(52, 199, 89, 0.45);
+    transform: translateY(-1px);
 }
 
 .admin-btn-action.btn-accent {
@@ -4870,6 +4891,9 @@ body.theme-cyberpunk .feed-search-icon {
 .admin-btn-action.btn-accent:hover {
     background: var(--accent-color);
     color: #000;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 12px rgba(0, 243, 255, 0.45);
+    transform: translateY(-1px);
 }
 
 .admin-btn-action.btn-info {
@@ -4881,6 +4905,9 @@ body.theme-cyberpunk .feed-search-icon {
 .admin-btn-action.btn-info:hover {
     background: #ffa500;
     color: #000;
+    border-color: #ffa500;
+    box-shadow: 0 0 12px rgba(255, 165, 0, 0.45);
+    transform: translateY(-1px);
 }
 
 .admin-btn-action.btn-ghost {
@@ -4890,8 +4917,59 @@ body.theme-cyberpunk .feed-search-icon {
 }
 
 .admin-btn-action.btn-ghost:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.12);
     color: #fff;
+    border-color: rgba(255, 255, 255, 0.25);
+    transform: translateY(-1px);
+}
+
+/* Botão "Ver Formulário" - Cyan Glassmorphic */
+.admin-btn-action.btn-preview,
+.admin-preview-biz-btn {
+    background: rgba(0, 229, 255, 0.12);
+    border: 1px solid rgba(0, 229, 255, 0.35);
+    color: #00e5ff;
+    box-shadow: 0 2px 6px rgba(0, 229, 255, 0.15);
+}
+
+.admin-btn-action.btn-preview:hover,
+.admin-preview-biz-btn:hover {
+    background: #00e5ff;
+    color: #000;
+    border-color: #00e5ff;
+    box-shadow: 0 0 16px rgba(0, 229, 255, 0.5);
+    transform: translateY(-1px);
+}
+
+/* Botão "Bloquear" - Crimson Warning Glassmorphic */
+.admin-btn-action.btn-block,
+.admin-block-biz-btn,
+.modal-act-block {
+    background: rgba(255, 45, 85, 0.15);
+    border: 1px solid rgba(255, 45, 85, 0.45);
+    color: #ff3b69;
+    box-shadow: 0 2px 6px rgba(255, 45, 85, 0.15);
+}
+
+.admin-btn-action.btn-block:hover,
+.admin-block-biz-btn:hover,
+.modal-act-block:hover {
+    background: linear-gradient(135deg, #b91c1c, #ff2d55);
+    color: #fff;
+    border-color: #ff2d55;
+    box-shadow: 0 0 16px rgba(255, 45, 85, 0.55);
+    transform: translateY(-1px);
+}
+
+.biz-preview-actions-bar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    margin-top: 16px;
 }
 
 /* Post preview in Admin */

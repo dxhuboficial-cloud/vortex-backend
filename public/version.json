@@ -1,6 +1,6 @@
 {
-  "version": "1.0.264",
-  "build": 264,
+  "version": "1.0.265",
+  "build": 265,
   "releaseDate": "2026-11-10",
-  "notes": "Estilização refinada dos botões de filtro de Conta Empresa (Todas, Em Análise, Aprovadas, Rejeitadas, Bloqueadas) v1.0.264"
+  "notes": "Estilização refinada dos botões de ação Ver Formulário e Bloquear no Painel ADM v1.0.265"
 }
