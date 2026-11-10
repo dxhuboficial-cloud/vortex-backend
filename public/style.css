@@ -5295,6 +5295,42 @@ body.theme-cyberpunk .feed-search-icon {
     transform: scale(1.1);
 }
 
+.notification-icon-box.business-blocked {
+    background: rgba(220, 38, 38, 0.16);
+    border: 1px solid rgba(220, 38, 38, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    box-shadow: 0 0 12px rgba(220, 38, 38, 0.35);
+    border-radius: 12px;
+}
+
+.notif-blocked-hand-img {
+    width: 28px;
+    height: 28px;
+    max-width: 28px;
+    max-height: 28px;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 6px rgba(220, 38, 38, 0.45));
+    display: block;
+    transition: transform 0.2s ease;
+}
+
+.notification-card:hover .notif-blocked-hand-img {
+    transform: scale(1.12);
+}
+
+.notification-badge.business-blocked {
+    background: rgba(220, 38, 38, 0.2);
+    color: #ff4d4d;
+    border: 1px solid rgba(220, 38, 38, 0.5);
+}
+
+.notification-card.card-business-blocked {
+    border-left: 3px solid #ff3b30;
+}
+
 .notification-card-content {
     flex: 1;
     min-width: 0;
@@ -29398,18 +29434,25 @@ video::-internal-media-controls-download-button {
 }
 
 .business-blocked-icon-wrap {
-    width: 60px;
-    height: 60px;
+    width: 64px;
+    height: 64px;
     border-radius: 50%;
-    background: rgba(255, 59, 48, 0.15);
-    border: 2px solid rgba(255, 59, 48, 0.5);
-    color: #ff3b30;
+    background: transparent;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.8rem;
-    box-shadow: 0 0 20px rgba(255, 59, 48, 0.4);
+    box-shadow: 0 0 20px rgba(255, 59, 48, 0.45);
     animation: pulseRed 2s infinite ease-in-out;
+}
+
+.business-blocked-hand-icon {
+    width: 64px;
+    height: 64px;
+    max-width: 64px;
+    max-height: 64px;
+    object-fit: contain;
+    filter: drop-shadow(0 0 10px rgba(255, 59, 48, 0.5));
+    display: block;
 }
 
 @keyframes pulseRed {

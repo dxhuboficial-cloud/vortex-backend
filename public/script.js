@@ -2287,7 +2287,7 @@ export function renderNotifications() {
 
         if (currentNotifFilter === 'vip') return n.type === 'vip';
         if (currentNotifFilter === 'warning') return !n.type || n.type === 'warning' || n.type === 'group_add' || n.type === 'group_promote' || n.type === 'withdrawal_paid' || /Saque Pix Pago/i.test(n.title || '');
-        if (currentNotifFilter === 'alert') return n.type === 'alert' || n.type === 'link_risk_warning';
+        if (currentNotifFilter === 'alert') return n.type === 'alert' || n.type === 'link_risk_warning' || n.type === 'business_blocked' || /Acesso Bloqueado.*Conta Empresa/i.test(n.title || '');
         return true;
     });
 
@@ -2327,6 +2327,7 @@ export function renderNotifications() {
         const isVip = type === 'vip';
         const isAlert = type === 'alert';
         const isWithdrawalPaid = type === 'withdrawal_paid' || /Saque Pix Pago/i.test(titleRaw) || /saque.*Ba[úu] Di[áa]rio.*pago/i.test(msgRaw);
+        const isBusinessBlocked = type === 'business_blocked' || /Acesso Bloqueado.*Conta Empresa/i.test(titleRaw) || /não tem permissão e acesso à conta empresa/i.test(msgRaw);
         const isGroupPromote = type === 'group_promote' ||
             /Você é admin do grupo|admin do grupo/i.test(titleRaw) ||
             /promovido a administrador/i.test(msgRaw);
@@ -2346,6 +2347,12 @@ export function renderNotifications() {
             typeClass = 'vip';
             badgeText = 'SELO VIP ⭐';
             iconHTML = '<i data-lucide="sparkles"></i>';
+        } else if (isBusinessBlocked) {
+            typeClass = 'business-blocked';
+            badgeText = 'BLOQUEIO 🚫';
+            iconHTML = `
+                <img src="icons/blocked-hand.png?v=1.0.261" alt="Acesso Bloqueado" class="notif-blocked-hand-img" width="28" height="28">
+            `;
         } else if (isWithdrawalPaid) {
             typeClass = 'withdrawal-paid';
             badgeText = 'PAGO 💸';
@@ -21548,7 +21555,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.260';
+export const CURRENT_APP_VERSION = '1.0.261';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
