@@ -9326,6 +9326,44 @@ body.theme-cyberpunk .desktop-meteor-canvas {
 }
 
 /* ==========================================================================
+   Canvas de Clima RGB Animado (Tema RGB VIP)
+   Nuvens oscilantes (30s ciclo de cores), Chuva Multicolorida (7 cores),
+   Raios em sequência com faíscas no chão e Neve
+   ========================================================================== */
+.rgb-weather-canvas,
+.desktop-weather-canvas,
+.feed-weather-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0;
+    transition: opacity 0.6s ease;
+    display: none;
+}
+
+.desktop-weather-canvas,
+.feed-weather-canvas {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    pointer-events: none !important;
+    z-index: 0 !important;
+}
+
+body.theme-rgb .rgb-weather-canvas,
+body.theme-rgb .desktop-weather-canvas,
+body.theme-rgb .feed-weather-canvas {
+    display: block;
+    opacity: 0.95;
+}
+
+/* ==========================================================================
    Temas Exclusivos VORTEX VIP (Cyberpunk, Hacker e RGB)
    ========================================================================== */
 /* 1. Cyberpunk ("cyber Park") */

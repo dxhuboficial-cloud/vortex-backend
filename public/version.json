@@ -1,6 +1,6 @@
 {
-  "version": "1.0.270",
-  "build": 270,
+  "version": "1.0.271",
+  "build": 271,
   "releaseDate": "2026-11-12",
-  "notes": "Correção de layout da Janela de Conversa: remoção de meteoros e background do chat mantendo animação cósmica exclusivamente no início e no Feed v1.0.270"
+  "notes": "Animação de clima dinâmico no tema RGB: nuvens oscilantes com transição a cada 30s, chuva em 7 cores fixas, raios sequenciais com faíscas no chão e transição para neve com reinício v1.0.271"
 }

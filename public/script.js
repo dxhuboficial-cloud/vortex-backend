@@ -3650,6 +3650,632 @@ export function stopCyberMeteors() {
     }
 }
 
+// ==========================================================================
+// Clima Dinâmico e Atmosférico no Tema RGB (Chuva Multicolorida, Nuvens, Raios e Neve)
+// ==========================================================================
+
+// 1. Cores das gotas de chuva: azul, vermelho, amarelo, roxo, verde, rosa, branco
+// Cada gota cai com uma cor fixa para não piscar!
+export const RGB_RAIN_COLORS = [
+    { name: 'azul',     hex: '#00e5ff', rgba: 'rgba(0, 229, 255, 0.85)' },
+    { name: 'vermelho', hex: '#ff1744', rgba: 'rgba(255, 23, 68, 0.85)' },
+    { name: 'amarelo',  hex: '#ffe600', rgba: 'rgba(255, 230, 0, 0.85)' },
+    { name: 'roxo',     hex: '#b026ff', rgba: 'rgba(176, 38, 255, 0.85)' },
+    { name: 'verde',    hex: '#00ff66', rgba: 'rgba(0, 255, 102, 0.85)' },
+    { name: 'rosa',     hex: '#ff007f', rgba: 'rgba(255, 0, 127, 0.85)' },
+    { name: 'branco',   hex: '#ffffff', rgba: 'rgba(255, 255, 255, 0.90)' }
+];
+
+// 2. Ciclo de cores das nuvens: branca -> azul -> verde -> roxo -> vermelho (lentamente a cada 30 segundos)
+export const RGB_CLOUD_COLOR_CYCLE = [
+    { r: 255, g: 255, b: 255, name: 'branca' },
+    { r: 0,   g: 180, b: 255, name: 'azul' },
+    { r: 0,   g: 245, b: 120, name: 'verde' },
+    { r: 180, g: 38,  b: 255, name: 'roxo' },
+    { r: 255, g: 30,  b: 70,  name: 'vermelho' }
+];
+
+// 3. Cores dos raios: amarelo, vermelho, azul, verde, branco
+export const RGB_LIGHTNING_COLORS = [
+    { name: 'amarelo',  hex: '#ffe600', glow: 'rgba(255, 230, 0, 0.85)' },
+    { name: 'vermelho', hex: '#ff1744', glow: 'rgba(255, 23, 68, 0.85)' },
+    { name: 'azul',     hex: '#00e5ff', glow: 'rgba(0, 229, 255, 0.85)' },
+    { name: 'verde',    hex: '#00ff66', glow: 'rgba(0, 255, 102, 0.85)' },
+    { name: 'branco',   hex: '#ffffff', glow: 'rgba(255, 255, 255, 0.95)' }
+];
+
+let rgbWeatherAnimId = null;
+let rgbWeatherInitialized = false;
+let rgbWeatherCycleStart = 0;
+let rgbCloudStartTime = 0;
+
+let rgbRainDrops = [];
+let rgbLightningList = [];
+let rgbGroundSparks = [];
+let rgbSnowFlakes = [];
+
+let rgbLightningSeq1Done = false;
+let rgbLightningSeq2Done = false;
+let rgbSeq1Timestamp = 0;
+let rgbSeq2Timestamp = 0;
+let rgbWeatherPhase = 'rain';
+
+export function getRgbWeatherState() {
+    return {
+        phase: rgbWeatherPhase,
+        rainCount: rgbRainDrops.length,
+        lightningCount: rgbLightningList.length,
+        sparksCount: rgbGroundSparks.length,
+        snowCount: rgbSnowFlakes.length,
+        seq1Done: rgbLightningSeq1Done,
+        seq2Done: rgbLightningSeq2Done
+    };
+}
+
+export function getRgbCloudColor(elapsedMs) {
+    const phaseDuration = 30000; // 30 segundos por fase
+    const totalPhases = RGB_CLOUD_COLOR_CYCLE.length;
+    const totalCycle = phaseDuration * totalPhases;
+    const progress = (elapsedMs % totalCycle) / phaseDuration;
+    const idx = Math.floor(progress) % totalPhases;
+    const nextIdx = (idx + 1) % totalPhases;
+    const t = progress - Math.floor(progress);
+
+    const c1 = RGB_CLOUD_COLOR_CYCLE[idx];
+    const c2 = RGB_CLOUD_COLOR_CYCLE[nextIdx];
+    const r = Math.round(c1.r + (c2.r - c1.r) * t);
+    const g = Math.round(c1.g + (c2.g - c1.g) * t);
+    const b = Math.round(c1.b + (c2.b - c1.b) * t);
+    return { r, g, b, rgba: (a) => `rgba(${r}, ${g}, ${b}, ${a})` };
+}
+
+export function createRgbRainDrop(w, h, isFirstSpawn) {
+    const colorObj = RGB_RAIN_COLORS[Math.floor(Math.random() * RGB_RAIN_COLORS.length)];
+    const speed = 14 + Math.random() * 8;
+    const length = 18 + Math.random() * 16;
+    const width = 1.6 + Math.random() * 0.8;
+    const x = Math.random() * (w + 120) - 60;
+    const y = isFirstSpawn ? (Math.random() * h) : (-20 - Math.random() * 60);
+
+    return {
+        x,
+        y,
+        speed,
+        length,
+        width,
+        color: colorObj,
+        alpha: 0.75 + Math.random() * 0.25
+    };
+}
+
+export function createLightningBolt(type, w, h, forcedColor) {
+    const color = forcedColor || RGB_LIGHTNING_COLORS[Math.floor(Math.random() * RGB_LIGHTNING_COLORS.length)];
+    const segments = [];
+    let groundPoint = null;
+
+    if (type === 'crawler') {
+        // "em forma de rajadas na nuvem inteira espalhando"
+        const startX = w * (0.05 + Math.random() * 0.1);
+        const endX = w * (0.85 + Math.random() * 0.1);
+        const startY = 35 + Math.random() * 30;
+        const endY = 45 + Math.random() * 35;
+
+        function buildCrawler(x1, y1, x2, y2, depth) {
+            if (depth <= 0) {
+                segments.push({ x1, y1, x2, y2 });
+                return;
+            }
+            const midX = (x1 + x2) / 2 + (Math.random() - 0.5) * (w * 0.08);
+            const midY = (y1 + y2) / 2 + (Math.random() - 0.5) * 35;
+            buildCrawler(x1, y1, midX, midY, depth - 1);
+            buildCrawler(midX, midY, x2, y2, depth - 1);
+
+            if (Math.random() < 0.45 && depth >= 2) {
+                const bX = midX + (Math.random() - 0.5) * 80;
+                const bY = midY + (Math.random() - 0.5) * 45;
+                buildCrawler(midX, midY, bX, bY, depth - 2);
+            }
+        }
+        buildCrawler(startX, startY, endX, endY, 5);
+    } else {
+        let startX, targetX;
+        const reachGround = (type === 'center' || type === 'side');
+
+        if (type === 'center') {
+            startX = w * (0.44 + Math.random() * 0.12);
+            targetX = startX + (Math.random() - 0.5) * 60;
+        } else if (type === 'side') {
+            const isLeft = Math.random() < 0.5;
+            startX = isLeft ? (w * (0.12 + Math.random() * 0.15)) : (w * (0.75 + Math.random() * 0.15));
+            targetX = startX + (Math.random() - 0.5) * 70;
+        } else {
+            // background (fundo)
+            startX = w * (0.2 + Math.random() * 0.6);
+            targetX = startX + (Math.random() - 0.5) * 120;
+        }
+
+        const startY = 15 + Math.random() * 25;
+        const targetY = reachGround ? (h - 6) : (h * (0.55 + Math.random() * 0.35));
+
+        function buildVertical(x1, y1, x2, y2, depth) {
+            if (depth <= 0) {
+                segments.push({ x1, y1, x2, y2 });
+                return;
+            }
+            const midX = (x1 + x2) / 2 + (Math.random() - 0.5) * 50;
+            const midY = (y1 + y2) / 2 + (Math.random() - 0.5) * 20;
+            buildVertical(x1, y1, midX, midY, depth - 1);
+            buildVertical(midX, midY, x2, y2, depth - 1);
+
+            if (Math.random() < 0.35 && depth >= 2) {
+                const branchX = midX + (Math.random() - 0.5) * 60;
+                const branchY = midY + Math.random() * 45;
+                buildVertical(midX, midY, branchX, branchY, depth - 2);
+            }
+        }
+        buildVertical(startX, startY, targetX, targetY, 5);
+
+        if (reachGround) {
+            groundPoint = { x: targetX, y: targetY };
+        }
+    }
+
+    return {
+        type,
+        color,
+        segments,
+        groundPoint,
+        life: 1.0,
+        decay: (type === 'crawler') ? 0.045 : 0.055,
+        lineWidth: (type === 'background') ? 2.0 : 3.4
+    };
+}
+
+export function createGroundSparks(gx, gy, colorHex, count = 22) {
+    const list = [];
+    for (let i = 0; i < count; i++) {
+        const angle = -Math.PI * 0.5 + (Math.random() - 0.5) * Math.PI * 0.85;
+        const speed = 4 + Math.random() * 9;
+        list.push({
+            x: gx + (Math.random() - 0.5) * 8,
+            y: gy,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            gravity: 0.28,
+            radius: 1.4 + Math.random() * 1.8,
+            color: colorHex,
+            alpha: 1.0,
+            decay: 0.016 + Math.random() * 0.014
+        });
+    }
+    return list;
+}
+
+export function createRgbSnowFlake(w, h, isFirstSpawn) {
+    const isLarge = Math.random() < 0.15;
+    const isMedium = !isLarge && Math.random() < 0.35;
+    const radius = isLarge ? (3.2 + Math.random() * 1.4) : (isMedium ? (1.8 + Math.random() * 0.9) : (0.8 + Math.random() * 0.7));
+    const speed = isLarge ? (1.2 + Math.random() * 0.8) : (0.8 + Math.random() * 1.5);
+    const x = Math.random() * w;
+    const y = isFirstSpawn ? (Math.random() * h) : (-10 - Math.random() * 40);
+
+    return {
+        x,
+        y,
+        radius,
+        speed,
+        driftPhase: Math.random() * Math.PI * 2,
+        driftSpeed: 0.02 + Math.random() * 0.02,
+        driftAmp: 0.8 + Math.random() * 1.6,
+        alpha: 0.65 + Math.random() * 0.3,
+        color: Math.random() < 0.75 ? '#ffffff' : '#e0f7fa'
+    };
+}
+
+export function renderRgbClouds(targetCanvas, targetCtx, elapsedMs, swayOffset) {
+    if (!targetCanvas || !targetCtx || typeof targetCtx.beginPath !== 'function') return;
+    const w = targetCanvas.width;
+    const color = getRgbCloudColor(elapsedMs);
+
+    const cloudPuffs = [
+        { rx: 0.12, ry: 40, rad: 110 },
+        { rx: 0.28, ry: 55, rad: 140 },
+        { rx: 0.45, ry: 35, rad: 125 },
+        { rx: 0.62, ry: 60, rad: 150 },
+        { rx: 0.78, ry: 45, rad: 130 },
+        { rx: 0.92, ry: 50, rad: 115 },
+        { rx: 0.22, ry: 75, rad: 100 },
+        { rx: 0.50, ry: 85, rad: 110 },
+        { rx: 0.75, ry: 80, rad: 105 }
+    ];
+
+    if (typeof targetCtx.save === 'function') targetCtx.save();
+    for (let i = 0; i < cloudPuffs.length; i++) {
+        const p = cloudPuffs[i];
+        const cx = p.rx * w + swayOffset;
+        const cy = p.ry;
+        if (typeof targetCtx.createRadialGradient === 'function') {
+            const grad = targetCtx.createRadialGradient(cx, cy, p.rad * 0.15, cx, cy, p.rad);
+            grad.addColorStop(0, color.rgba(0.48));
+            grad.addColorStop(0.65, color.rgba(0.25));
+            grad.addColorStop(1, color.rgba(0));
+            targetCtx.fillStyle = grad;
+        } else {
+            targetCtx.fillStyle = color.rgba(0.35);
+        }
+        targetCtx.beginPath();
+        if (typeof targetCtx.arc === 'function') {
+            targetCtx.arc(cx, cy, p.rad, 0, Math.PI * 2);
+        }
+        if (typeof targetCtx.fill === 'function') targetCtx.fill();
+    }
+    if (typeof targetCtx.restore === 'function') targetCtx.restore();
+}
+
+export function initRgbWeatherCanvas() {
+    if (typeof document === 'undefined') return null;
+    const canvas = document.getElementById('rgb-weather-canvas');
+    const desktopCanvas = document.getElementById('desktop-weather-canvas');
+    const feedCanvas = document.getElementById('feed-weather-canvas');
+    if (!canvas && !desktopCanvas && !feedCanvas) return null;
+    const ctx = (canvas && typeof canvas.getContext === 'function') ? canvas.getContext('2d') : null;
+
+    function resize() {
+        const winW = (typeof window !== 'undefined' && window.innerWidth) ? window.innerWidth : 800;
+        const winH = (typeof window !== 'undefined' && window.innerHeight) ? window.innerHeight : 600;
+
+        if (canvas) {
+            canvas.width = winW;
+            canvas.height = winH;
+        }
+
+        if (desktopCanvas) {
+            const parent = desktopCanvas.parentElement;
+            desktopCanvas.width = (parent && parent.clientWidth) || winW;
+            desktopCanvas.height = (parent && parent.clientHeight) || winH;
+        }
+
+        if (feedCanvas) {
+            const parent = feedCanvas.parentElement;
+            feedCanvas.width = (parent && parent.clientWidth) || winW;
+            feedCanvas.height = (parent && parent.clientHeight) || winH;
+        }
+    }
+
+    if (!rgbWeatherInitialized && typeof window !== 'undefined' && window.addEventListener) {
+        window.addEventListener('resize', resize);
+        rgbWeatherInitialized = true;
+    }
+    resize();
+    return { canvas, ctx };
+}
+
+export function startRgbWeather() {
+    const setup = initRgbWeatherCanvas();
+    if (!setup) return;
+    const { canvas, ctx } = setup;
+    if (rgbWeatherAnimId) return;
+
+    rgbWeatherCycleStart = Date.now();
+    if (!rgbCloudStartTime) rgbCloudStartTime = Date.now();
+    rgbLightningSeq1Done = false;
+    rgbLightningSeq2Done = false;
+    rgbSeq1Timestamp = 0;
+    rgbSeq2Timestamp = 0;
+    rgbWeatherPhase = 'rain';
+    rgbRainDrops = [];
+    rgbLightningList = [];
+    rgbGroundSparks = [];
+    rgbSnowFlakes = [];
+
+    const initialDropCount = Math.max(35, Math.min(65, Math.floor((canvas ? canvas.width : 800) / 20)));
+    for (let i = 0; i < initialDropCount; i++) {
+        rgbRainDrops.push(createRgbRainDrop(canvas ? canvas.width : 800, canvas ? canvas.height : 600, true));
+    }
+
+    function renderWeather(targetCanvas, targetCtx) {
+        if (!targetCanvas || !targetCtx || typeof targetCtx.clearRect !== 'function') return;
+        const w = targetCanvas.width;
+        const h = targetCanvas.height;
+        targetCtx.clearRect(0, 0, w, h);
+
+        const now = Date.now();
+        const cycleElapsed = now - rgbWeatherCycleStart;
+        const cloudElapsed = now - rgbCloudStartTime;
+
+        // 1. Nuvens no topo (balançando suavemente de um lado para o outro)
+        const swayOffset = Math.sin(cycleElapsed * 0.0008) * (w * 0.08);
+        renderRgbClouds(targetCanvas, targetCtx, cloudElapsed, swayOffset);
+
+        // 2. Gotas de Chuva (7 cores sólidas distintas por gota, sem piscar)
+        if (rgbWeatherPhase === 'rain') {
+            const targetDropCount = Math.max(35, Math.min(65, Math.floor(w / 20)));
+            while (rgbRainDrops.length < targetDropCount) {
+                rgbRainDrops.push(createRgbRainDrop(w, h, false));
+            }
+        }
+
+        for (let i = rgbRainDrops.length - 1; i >= 0; i--) {
+            const drop = rgbRainDrops[i];
+            drop.y += drop.speed;
+            drop.x += 0.8;
+
+            if (typeof targetCtx.save === 'function') targetCtx.save();
+            targetCtx.globalAlpha = drop.alpha;
+            targetCtx.strokeStyle = drop.color.hex;
+            targetCtx.lineWidth = drop.width;
+            targetCtx.lineCap = 'round';
+            targetCtx.beginPath();
+            targetCtx.moveTo(drop.x, drop.y);
+            targetCtx.lineTo(drop.x - 1.2, drop.y - drop.length);
+            targetCtx.stroke();
+            if (typeof targetCtx.restore === 'function') targetCtx.restore();
+
+            if (drop.y > h + drop.length) {
+                if (rgbWeatherPhase === 'rain') {
+                    rgbRainDrops[i] = createRgbRainDrop(w, h, false);
+                } else {
+                    rgbRainDrops.splice(i, 1);
+                }
+            }
+        }
+
+        // 3. Raios (amarelo, vermelho, azul, verde, branco)
+        for (let i = rgbLightningList.length - 1; i >= 0; i--) {
+            const bolt = rgbLightningList[i];
+            bolt.life -= bolt.decay;
+            if (bolt.life <= 0) {
+                if (bolt.groundPoint) {
+                    const sparks = createGroundSparks(bolt.groundPoint.x, bolt.groundPoint.y, bolt.color.hex, 20);
+                    for (let s = 0; s < sparks.length; s++) {
+                        rgbGroundSparks.push(sparks[s]);
+                    }
+                    bolt.groundPoint = null;
+                }
+                rgbLightningList.splice(i, 1);
+                continue;
+            }
+
+            if (typeof targetCtx.save === 'function') targetCtx.save();
+            targetCtx.globalAlpha = Math.max(0, Math.min(1.0, bolt.life * (0.85 + Math.random() * 0.15)));
+            targetCtx.strokeStyle = bolt.color.hex;
+            targetCtx.shadowColor = bolt.color.glow;
+            targetCtx.shadowBlur = (bolt.type === 'crawler') ? 14 : 10;
+            targetCtx.lineWidth = bolt.lineWidth;
+            targetCtx.lineCap = 'round';
+            targetCtx.lineJoin = 'round';
+
+            targetCtx.beginPath();
+            for (let s = 0; s < bolt.segments.length; s++) {
+                const seg = bolt.segments[s];
+                targetCtx.moveTo(seg.x1, seg.y1);
+                targetCtx.lineTo(seg.x2, seg.y2);
+            }
+            targetCtx.stroke();
+
+            // Núcleo branco central
+            targetCtx.strokeStyle = '#ffffff';
+            targetCtx.lineWidth = Math.max(1.0, bolt.lineWidth * 0.45);
+            targetCtx.beginPath();
+            for (let s = 0; s < bolt.segments.length; s++) {
+                const seg = bolt.segments[s];
+                targetCtx.moveTo(seg.x1, seg.y1);
+                targetCtx.lineTo(seg.x2, seg.y2);
+            }
+            targetCtx.stroke();
+            if (typeof targetCtx.restore === 'function') targetCtx.restore();
+        }
+
+        // 4. Faíscas geradas pelo impacto no chão ("apagar lentamente")
+        for (let j = rgbGroundSparks.length - 1; j >= 0; j--) {
+            const sp = rgbGroundSparks[j];
+            sp.x += sp.vx;
+            sp.y += sp.vy;
+            sp.vy += sp.gravity;
+            sp.alpha -= sp.decay;
+
+            if (sp.alpha <= 0) {
+                rgbGroundSparks.splice(j, 1);
+                continue;
+            }
+
+            if (typeof targetCtx.save === 'function') targetCtx.save();
+            targetCtx.globalAlpha = Math.max(0, sp.alpha);
+            targetCtx.fillStyle = sp.color;
+            targetCtx.shadowColor = sp.color;
+            targetCtx.shadowBlur = 8;
+            targetCtx.beginPath();
+            if (typeof targetCtx.arc === 'function') {
+                targetCtx.arc(sp.x, Math.min(h, sp.y), sp.radius, 0, Math.PI * 2);
+            }
+            targetCtx.fill();
+            if (typeof targetCtx.restore === 'function') targetCtx.restore();
+        }
+
+        // 5. Neve ("aí depois começa a nevar")
+        if (rgbWeatherPhase === 'snow') {
+            const targetSnowCount = Math.max(45, Math.min(85, Math.floor(w / 16)));
+            while (rgbSnowFlakes.length < targetSnowCount) {
+                rgbSnowFlakes.push(createRgbSnowFlake(w, h, false));
+            }
+        }
+
+        for (let k = rgbSnowFlakes.length - 1; k >= 0; k--) {
+            const sf = rgbSnowFlakes[k];
+            sf.driftPhase += sf.driftSpeed;
+            sf.y += sf.speed;
+            sf.x += Math.sin(sf.driftPhase) * sf.driftAmp;
+
+            if (typeof targetCtx.save === 'function') targetCtx.save();
+            targetCtx.globalAlpha = sf.alpha;
+            targetCtx.fillStyle = sf.color;
+            targetCtx.shadowColor = sf.color;
+            targetCtx.shadowBlur = (sf.radius > 2.5) ? 6 : 2;
+            targetCtx.beginPath();
+            if (typeof targetCtx.arc === 'function') {
+                targetCtx.arc(sf.x, sf.y, sf.radius, 0, Math.PI * 2);
+            }
+            targetCtx.fill();
+            if (typeof targetCtx.restore === 'function') targetCtx.restore();
+
+            if (sf.y > h + sf.radius) {
+                if (rgbWeatherPhase === 'snow') {
+                    rgbSnowFlakes[k] = createRgbSnowFlake(w, h, false);
+                } else {
+                    rgbSnowFlakes.splice(k, 1);
+                }
+            }
+        }
+    }
+
+    function animateWeather() {
+        if (typeof document !== 'undefined' && document.body) {
+            const isRgb = document.body.classList.contains('theme-rgb');
+            if (!isRgb) {
+                stopRgbWeather();
+                return;
+            }
+        }
+
+        if (typeof requestAnimationFrame === 'function') {
+            rgbWeatherAnimId = requestAnimationFrame(animateWeather);
+        }
+
+        const now = Date.now();
+        const cycleElapsed = now - rgbWeatherCycleStart;
+        const w = canvas ? canvas.width : 800;
+        const h = canvas ? canvas.height : 600;
+
+        // Sequência 1: 2 raios no fundo
+        if (cycleElapsed >= 2000 && !rgbLightningSeq1Done) {
+            rgbLightningList.push(createLightningBolt('background', w, h, RGB_LIGHTNING_COLORS[2])); // azul
+            setTimeout(() => {
+                if (rgbWeatherAnimId) {
+                    rgbLightningList.push(createLightningBolt('background', w, h, RGB_LIGHTNING_COLORS[0])); // amarelo
+                }
+            }, 350);
+            rgbLightningSeq1Done = true;
+            rgbSeq1Timestamp = now + 350;
+        }
+
+        // "depois espera 5 segundos":
+        // Sequência 2: 4 raios (fundo, meio, lado, rajadas na nuvem inteira espalhando)
+        if (rgbLightningSeq1Done && !rgbLightningSeq2Done && rgbSeq1Timestamp > 0 && (now - rgbSeq1Timestamp >= 5000)) {
+            // 1. Um no fundo
+            rgbLightningList.push(createLightningBolt('background', w, h, RGB_LIGHTNING_COLORS[1])); // vermelho
+
+            // 2. Outro no meio
+            setTimeout(() => {
+                if (rgbWeatherAnimId) {
+                    rgbLightningList.push(createLightningBolt('center', w, h, RGB_LIGHTNING_COLORS[2])); // azul
+                }
+            }, 300);
+
+            // 3. Um no lado
+            setTimeout(() => {
+                if (rgbWeatherAnimId) {
+                    rgbLightningList.push(createLightningBolt('side', w, h, RGB_LIGHTNING_COLORS[0])); // amarelo
+                }
+            }, 600);
+
+            // 4. E o outro em forma de rajadas na nuvem inteira espalhando
+            setTimeout(() => {
+                if (rgbWeatherAnimId) {
+                    rgbLightningList.push(createLightningBolt('crawler', w, h, RGB_LIGHTNING_COLORS[4])); // branco
+                }
+            }, 950);
+
+            rgbLightningSeq2Done = true;
+            rgbSeq2Timestamp = now + 950;
+        }
+
+        // "aí depois começa a nevar":
+        if (rgbLightningSeq2Done && rgbSeq2Timestamp > 0 && (now - rgbSeq2Timestamp >= 5000) && rgbWeatherPhase === 'rain') {
+            rgbWeatherPhase = 'snow';
+        }
+
+        // "depois que a Neve para aí começa tudo de novo do início":
+        if (rgbWeatherPhase === 'snow' && rgbSeq2Timestamp > 0 && (now - rgbSeq2Timestamp >= 24000)) {
+            rgbWeatherPhase = 'resetting';
+        }
+
+        if (rgbWeatherPhase === 'resetting' && rgbSnowFlakes.length === 0) {
+            rgbWeatherCycleStart = Date.now();
+            rgbLightningSeq1Done = false;
+            rgbLightningSeq2Done = false;
+            rgbSeq1Timestamp = 0;
+            rgbSeq2Timestamp = 0;
+            rgbWeatherPhase = 'rain';
+        }
+
+        if (canvas && ctx) {
+            renderWeather(canvas, ctx);
+        }
+
+        const desktopCanvas = (typeof document !== 'undefined') ? document.getElementById('desktop-weather-canvas') : null;
+        if (desktopCanvas && typeof desktopCanvas.getContext === 'function') {
+            const parent = desktopCanvas.parentElement;
+            if (parent && parent.clientWidth > 0 && parent.clientHeight > 0) {
+                if (desktopCanvas.width !== parent.clientWidth || desktopCanvas.height !== parent.clientHeight) {
+                    desktopCanvas.width = parent.clientWidth;
+                    desktopCanvas.height = parent.clientHeight;
+                }
+                const desktopCtx = desktopCanvas.getContext('2d');
+                if (desktopCtx) renderWeather(desktopCanvas, desktopCtx);
+            }
+        }
+
+        const feedCanvas = (typeof document !== 'undefined') ? document.getElementById('feed-weather-canvas') : null;
+        if (feedCanvas && typeof feedCanvas.getContext === 'function') {
+            const parent = feedCanvas.parentElement;
+            if (parent && parent.clientWidth > 0 && parent.clientHeight > 0) {
+                if (feedCanvas.width !== parent.clientWidth || feedCanvas.height !== parent.clientHeight) {
+                    feedCanvas.width = parent.clientWidth;
+                    feedCanvas.height = parent.clientHeight;
+                }
+                const feedCtx = feedCanvas.getContext('2d');
+                if (feedCtx) renderWeather(feedCanvas, feedCtx);
+            }
+        }
+    }
+
+    if (typeof requestAnimationFrame === 'function') {
+        rgbWeatherAnimId = requestAnimationFrame(animateWeather);
+    }
+}
+
+export function stopRgbWeather() {
+    if (rgbWeatherAnimId) {
+        if (typeof cancelAnimationFrame === 'function') {
+            cancelAnimationFrame(rgbWeatherAnimId);
+        }
+        rgbWeatherAnimId = null;
+    }
+    rgbRainDrops = [];
+    rgbLightningList = [];
+    rgbGroundSparks = [];
+    rgbSnowFlakes = [];
+    rgbWeatherPhase = 'rain';
+
+    if (typeof document !== 'undefined') {
+        const canvas = document.getElementById('rgb-weather-canvas');
+        if (canvas && typeof canvas.getContext === 'function') {
+            const ctx = canvas.getContext('2d');
+            if (ctx && typeof ctx.clearRect === 'function') ctx.clearRect(0, 0, canvas.width || 800, canvas.height || 600);
+        }
+        const desktopCanvas = document.getElementById('desktop-weather-canvas');
+        if (desktopCanvas && typeof desktopCanvas.getContext === 'function') {
+            const desktopCtx = desktopCanvas.getContext('2d');
+            if (desktopCtx && typeof desktopCtx.clearRect === 'function') desktopCtx.clearRect(0, 0, desktopCanvas.width || 800, desktopCanvas.height || 600);
+        }
+        const feedCanvas = document.getElementById('feed-weather-canvas');
+        if (feedCanvas && typeof feedCanvas.getContext === 'function') {
+            const feedCtx = feedCanvas.getContext('2d');
+            if (feedCtx && typeof feedCtx.clearRect === 'function') feedCtx.clearRect(0, 0, feedCanvas.width || 800, feedCanvas.height || 600);
+        }
+    }
+}
+
 let rgbThemeChromaInterval = null;
 let rgbThemeHue = 0;
 
@@ -4428,8 +5054,10 @@ export function applyUserTheme() {
 
     if (activeVipTheme === 'rgb') {
         startRgbThemeChroma();
+        startRgbWeather();
     } else {
         stopRgbThemeChroma();
+        stopRgbWeather();
     }
 
     document.querySelectorAll('.vip-theme-option').forEach(btn => {
@@ -22083,7 +22711,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.270';
+export const CURRENT_APP_VERSION = '1.0.271';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -38786,6 +39414,18 @@ if (typeof window !== 'undefined') {
     window.setupVipSettingsControls = setupVipSettingsControls;
     window.startRgbThemeChroma = startRgbThemeChroma;
     window.stopRgbThemeChroma = stopRgbThemeChroma;
+    window.startRgbWeather = startRgbWeather;
+    window.stopRgbWeather = stopRgbWeather;
+    window.initRgbWeatherCanvas = initRgbWeatherCanvas;
+    window.RGB_RAIN_COLORS = RGB_RAIN_COLORS;
+    window.RGB_CLOUD_COLOR_CYCLE = RGB_CLOUD_COLOR_CYCLE;
+    window.RGB_LIGHTNING_COLORS = RGB_LIGHTNING_COLORS;
+    window.createRgbRainDrop = createRgbRainDrop;
+    window.createLightningBolt = createLightningBolt;
+    window.createGroundSparks = createGroundSparks;
+    window.createRgbSnowFlake = createRgbSnowFlake;
+    window.getRgbWeatherState = getRgbWeatherState;
+    window.getRgbCloudColor = getRgbCloudColor;
     window.updateChatEphemeralUI = updateChatEphemeralUI;
     window.purgeExpiredMessages = purgeExpiredMessages;
     window.saveChatEphemeralDuration = saveChatEphemeralDuration;
