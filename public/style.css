@@ -9291,8 +9291,7 @@ body.theme-hacker .feed-matrix-canvas {
    ========================================================================== */
 .cyberpark-meteor-canvas,
 .feed-meteor-canvas,
-.desktop-meteor-canvas,
-.chat-meteor-canvas {
+.desktop-meteor-canvas {
     position: fixed;
     top: 0;
     left: 0;
@@ -9306,8 +9305,7 @@ body.theme-hacker .feed-matrix-canvas {
 }
 
 .feed-meteor-canvas,
-.desktop-meteor-canvas,
-.chat-meteor-canvas {
+.desktop-meteor-canvas {
     position: absolute !important;
     top: 0 !important;
     left: 0 !important;
@@ -9320,11 +9318,9 @@ body.theme-hacker .feed-matrix-canvas {
 body.theme-cyberpark .cyberpark-meteor-canvas,
 body.theme-cyberpark .feed-meteor-canvas,
 body.theme-cyberpark .desktop-meteor-canvas,
-body.theme-cyberpark .chat-meteor-canvas,
 body.theme-cyberpunk .cyberpark-meteor-canvas,
 body.theme-cyberpunk .feed-meteor-canvas,
-body.theme-cyberpunk .desktop-meteor-canvas,
-body.theme-cyberpunk .chat-meteor-canvas {
+body.theme-cyberpunk .desktop-meteor-canvas {
     display: block;
     opacity: 0.95;
 }
@@ -9463,22 +9459,6 @@ body.theme-cyberpark .desktop-placeholder-icon {
 
 body.theme-cyberpunk .desktop-placeholder-content,
 body.theme-cyberpark .desktop-placeholder-content {
-    position: relative !important;
-    z-index: 2 !important;
-}
-
-body.theme-cyberpunk .chat-window,
-body.theme-cyberpark .chat-window {
-    position: relative !important;
-    overflow: hidden !important;
-}
-
-body.theme-cyberpunk .chat-window-header,
-body.theme-cyberpark .chat-window-header,
-body.theme-cyberpunk .messages-container,
-body.theme-cyberpark .messages-container,
-body.theme-cyberpunk .chat-input-bar,
-body.theme-cyberpark .chat-input-bar {
     position: relative !important;
     z-index: 2 !important;
 }

@@ -1,6 +1,6 @@
 {
-  "version": "1.0.269",
-  "build": 269,
+  "version": "1.0.270",
+  "build": 270,
   "releaseDate": "2026-11-12",
-  "notes": "Bolinhas de estrela grandes, médias e pequenas no fundo cósmico do tema Cyber Park com efeito cintilante v1.0.269"
+  "notes": "Correção de layout da Janela de Conversa: remoção de meteoros e background do chat mantendo animação cósmica exclusivamente no início e no Feed v1.0.270"
 }

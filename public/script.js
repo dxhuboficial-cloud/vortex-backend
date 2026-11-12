@@ -3377,8 +3377,7 @@ export function initCyberMeteorsCanvas() {
     const canvas = document.getElementById('cyberpark-meteor-canvas');
     const feedCanvas = document.getElementById('feed-meteor-canvas');
     const desktopCanvas = document.getElementById('desktop-meteor-canvas');
-    const chatCanvas = document.getElementById('chat-meteor-canvas');
-    if (!canvas && !feedCanvas && !desktopCanvas && !chatCanvas) return null;
+    if (!canvas && !feedCanvas && !desktopCanvas) return null;
     const ctx = (canvas && typeof canvas.getContext === 'function') ? canvas.getContext('2d') : null;
 
     function resize() {
@@ -3400,12 +3399,6 @@ export function initCyberMeteorsCanvas() {
             const parent = desktopCanvas.parentElement;
             desktopCanvas.width = (parent && parent.clientWidth) || winW;
             desktopCanvas.height = (parent && parent.clientHeight) || winH;
-        }
-
-        if (chatCanvas) {
-            const parent = chatCanvas.parentElement;
-            chatCanvas.width = (parent && parent.clientWidth) || winW;
-            chatCanvas.height = (parent && parent.clientHeight) || winH;
         }
 
         // Criar pool inicial de meteoros garantindo que todas as 6 cores estejam ativas
@@ -3622,22 +3615,6 @@ export function startCyberMeteors() {
                 }
             }
         }
-
-        // 4. Desenhar no canvas da Janela de Chat se presente e ativo
-        const chatCanvas = (typeof document !== 'undefined') ? document.getElementById('chat-meteor-canvas') : null;
-        if (chatCanvas && typeof chatCanvas.getContext === 'function') {
-            const parent = chatCanvas.parentElement;
-            if (parent && parent.clientWidth > 0 && parent.clientHeight > 0) {
-                if (chatCanvas.width !== parent.clientWidth || chatCanvas.height !== parent.clientHeight) {
-                    chatCanvas.width = parent.clientWidth;
-                    chatCanvas.height = parent.clientHeight;
-                }
-                const chatCtx = chatCanvas.getContext('2d');
-                if (chatCtx) {
-                    renderMeteors(chatCanvas, chatCtx, cyberMeteors);
-                }
-            }
-        }
     }
 
     if (typeof requestAnimationFrame === 'function') {
@@ -3669,11 +3646,6 @@ export function stopCyberMeteors() {
         if (desktopCanvas && typeof desktopCanvas.getContext === 'function') {
             const desktopCtx = desktopCanvas.getContext('2d');
             if (desktopCtx && typeof desktopCtx.clearRect === 'function') desktopCtx.clearRect(0, 0, desktopCanvas.width || 800, desktopCanvas.height || 600);
-        }
-        const chatCanvas = document.getElementById('chat-meteor-canvas');
-        if (chatCanvas && typeof chatCanvas.getContext === 'function') {
-            const chatCtx = chatCanvas.getContext('2d');
-            if (chatCtx && typeof chatCtx.clearRect === 'function') chatCtx.clearRect(0, 0, chatCanvas.width || 800, chatCanvas.height || 600);
         }
     }
 }
@@ -22111,7 +22083,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.269';
+export const CURRENT_APP_VERSION = '1.0.270';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
