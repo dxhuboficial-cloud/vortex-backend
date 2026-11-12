@@ -1,6 +1,6 @@
 {
-  "version": "1.0.271",
-  "build": 271,
+  "version": "1.0.272",
+  "build": 272,
   "releaseDate": "2026-11-12",
-  "notes": "Animação de clima dinâmico no tema RGB: nuvens oscilantes com transição a cada 30s, chuva em 7 cores fixas, raios sequenciais com faíscas no chão e transição para neve com reinício v1.0.271"
+  "notes": "Paisagem de praia com coqueiros e montanhas no escuro que clareiam com os raios no tema RGB v1.0.272"
 }

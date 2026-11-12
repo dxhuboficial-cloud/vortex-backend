@@ -3677,11 +3677,11 @@ export const RGB_CLOUD_COLOR_CYCLE = [
 
 // 3. Cores dos raios: amarelo, vermelho, azul, verde, branco
 export const RGB_LIGHTNING_COLORS = [
-    { name: 'amarelo',  hex: '#ffe600', glow: 'rgba(255, 230, 0, 0.85)' },
-    { name: 'vermelho', hex: '#ff1744', glow: 'rgba(255, 23, 68, 0.85)' },
-    { name: 'azul',     hex: '#00e5ff', glow: 'rgba(0, 229, 255, 0.85)' },
-    { name: 'verde',    hex: '#00ff66', glow: 'rgba(0, 255, 102, 0.85)' },
-    { name: 'branco',   hex: '#ffffff', glow: 'rgba(255, 255, 255, 0.95)' }
+    { name: 'amarelo',  hex: '#ffe600', glow: 'rgba(255, 230, 0, 0.85)',   rgb: { r: 255, g: 230, b: 0 } },
+    { name: 'vermelho', hex: '#ff1744', glow: 'rgba(255, 23, 68, 0.85)',   rgb: { r: 255, g: 23,  b: 68 } },
+    { name: 'azul',     hex: '#00e5ff', glow: 'rgba(0, 229, 255, 0.85)',   rgb: { r: 0,   g: 229, b: 255 } },
+    { name: 'verde',    hex: '#00ff66', glow: 'rgba(0, 255, 102, 0.85)',   rgb: { r: 0,   g: 255, b: 102 } },
+    { name: 'branco',   hex: '#ffffff', glow: 'rgba(255, 255, 255, 0.95)', rgb: { r: 255, g: 255, b: 255 } }
 ];
 
 let rgbWeatherAnimId = null;
@@ -3912,6 +3912,370 @@ export function renderRgbClouds(targetCanvas, targetCtx, elapsedMs, swayOffset) 
     if (typeof targetCtx.restore === 'function') targetCtx.restore();
 }
 
+// ==========================================================================
+// Paisagem Tropical no Tema RGB: Montanhas Distantes, Praia e Coqueiros
+// Normal: Silhuetas no escuro. Raios: Clareiam dramaticamente com a cor do raio.
+// ==========================================================================
+
+export function parseColorToRgb(colorObj) {
+    if (!colorObj) return { r: 255, g: 255, b: 255 };
+    if (colorObj.rgb) return colorObj.rgb;
+    if (typeof colorObj.r === 'number') return { r: colorObj.r, g: colorObj.g, b: colorObj.b };
+    if (colorObj.hex && typeof colorObj.hex === 'string' && colorObj.hex.startsWith('#')) {
+        const hex = colorObj.hex.replace('#', '');
+        if (hex.length === 6) {
+            const r = parseInt(hex.substring(0, 2), 16);
+            const g = parseInt(hex.substring(2, 4), 16);
+            const b = parseInt(hex.substring(4, 6), 16);
+            return {
+                r: Number.isNaN(r) ? 255 : r,
+                g: Number.isNaN(g) ? 255 : g,
+                b: Number.isNaN(b) ? 255 : b
+            };
+        }
+    }
+    return { r: 255, g: 255, b: 255 };
+}
+
+export function drawMountains(targetCtx, w, h, flashIntensity = 0, flashColor = null) {
+    if (!targetCtx || typeof targetCtx.beginPath !== 'function') return;
+    const { r, g, b } = parseColorToRgb(flashColor);
+    const intensity = Math.max(0, Math.min(1.0, flashIntensity));
+
+    if (typeof targetCtx.save === 'function') targetCtx.save();
+
+    // 1. Resplendor atmosférico no horizonte atrás das montanhas quando o raio cai
+    if (intensity > 0.05 && typeof targetCtx.createLinearGradient === 'function') {
+        const skyGlow = targetCtx.createLinearGradient(0, h * 0.38, 0, h * 0.76);
+        skyGlow.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0)`);
+        skyGlow.addColorStop(0.65, `rgba(${r}, ${g}, ${b}, ${0.28 * intensity})`);
+        skyGlow.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+        targetCtx.fillStyle = skyGlow;
+        if (typeof targetCtx.fillRect === 'function') {
+            targetCtx.fillRect(0, h * 0.35, w, h * 0.42);
+        }
+    }
+
+    // 2. Montanhas Distantes lá longe (Picos mais altos e pontiagudos)
+    targetCtx.beginPath();
+    targetCtx.moveTo(0, h * 0.76);
+    targetCtx.lineTo(0, h * 0.63);
+    targetCtx.lineTo(w * 0.08, h * 0.58);
+    targetCtx.lineTo(w * 0.18, h * 0.48); // Pico 1
+    targetCtx.lineTo(w * 0.28, h * 0.56);
+    targetCtx.lineTo(w * 0.38, h * 0.44); // Pico 2 (Alto)
+    targetCtx.lineTo(w * 0.48, h * 0.54);
+    targetCtx.lineTo(w * 0.58, h * 0.46); // Pico 3
+    targetCtx.lineTo(w * 0.68, h * 0.55);
+    targetCtx.lineTo(w * 0.78, h * 0.42); // Pico 4 (Alto)
+    targetCtx.lineTo(w * 0.88, h * 0.52);
+    targetCtx.lineTo(w * 0.95, h * 0.49); // Pico 5
+    targetCtx.lineTo(w, h * 0.58);
+    targetCtx.lineTo(w, h * 0.78);
+    targetCtx.lineTo(0, h * 0.78);
+    targetCtx.closePath();
+
+    if (intensity > 0.02 && typeof targetCtx.createLinearGradient === 'function') {
+        const farGrad = targetCtx.createLinearGradient(0, h * 0.42, 0, h * 0.78);
+        farGrad.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${0.24 * intensity + 0.04})`);
+        farGrad.addColorStop(0.55, `rgba(${Math.round(r * 0.4)}, ${Math.round(g * 0.4)}, ${Math.round(b * 0.4)}, ${0.12 * intensity + 0.03})`);
+        farGrad.addColorStop(1, 'rgba(5, 4, 12, 0.98)');
+        targetCtx.fillStyle = farGrad;
+    } else {
+        targetCtx.fillStyle = 'rgba(6, 5, 14, 0.96)'; // No escuro
+    }
+    if (typeof targetCtx.fill === 'function') targetCtx.fill();
+
+    // Contorno iluminado dos picos distantes quando o raio clareia
+    if (intensity > 0.05 && typeof targetCtx.stroke === 'function') {
+        targetCtx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${0.45 * intensity})`;
+        targetCtx.lineWidth = 1.3;
+        targetCtx.stroke();
+    }
+
+    // 3. Montanhas Intermediárias (Cumes mais próximos criando relevo)
+    targetCtx.beginPath();
+    targetCtx.moveTo(0, h * 0.78);
+    targetCtx.lineTo(0, h * 0.67);
+    targetCtx.lineTo(w * 0.12, h * 0.60);
+    targetCtx.lineTo(w * 0.24, h * 0.54); // Cume 1
+    targetCtx.lineTo(w * 0.35, h * 0.63);
+    targetCtx.lineTo(w * 0.52, h * 0.51); // Cume 2
+    targetCtx.lineTo(w * 0.66, h * 0.60);
+    targetCtx.lineTo(w * 0.82, h * 0.54); // Cume 3
+    targetCtx.lineTo(w * 0.92, h * 0.64);
+    targetCtx.lineTo(w, h * 0.62);
+    targetCtx.lineTo(w, h * 0.80);
+    targetCtx.lineTo(0, h * 0.80);
+    targetCtx.closePath();
+
+    if (intensity > 0.02 && typeof targetCtx.createLinearGradient === 'function') {
+        const midGrad = targetCtx.createLinearGradient(0, h * 0.51, 0, h * 0.80);
+        midGrad.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${0.34 * intensity + 0.05})`);
+        midGrad.addColorStop(0.5, `rgba(${Math.round(r * 0.6)}, ${Math.round(g * 0.6)}, ${Math.round(b * 0.6)}, ${0.18 * intensity + 0.04})`);
+        midGrad.addColorStop(1, 'rgba(6, 5, 15, 0.99)');
+        targetCtx.fillStyle = midGrad;
+    } else {
+        targetCtx.fillStyle = 'rgba(7, 6, 16, 0.97)'; // No escuro
+    }
+    if (typeof targetCtx.fill === 'function') targetCtx.fill();
+
+    if (intensity > 0.05 && typeof targetCtx.stroke === 'function') {
+        targetCtx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${0.58 * intensity})`;
+        targetCtx.lineWidth = 1.6;
+        targetCtx.stroke();
+    }
+
+    if (typeof targetCtx.restore === 'function') targetCtx.restore();
+}
+
+export function drawBeach(targetCtx, w, h, flashIntensity = 0, flashColor = null) {
+    if (!targetCtx || typeof targetCtx.beginPath !== 'function') return;
+    const { r, g, b } = parseColorToRgb(flashColor);
+    const intensity = Math.max(0, Math.min(1.0, flashIntensity));
+
+    if (typeof targetCtx.save === 'function') targetCtx.save();
+
+    // 1. Superfície do Mar / Água entre montanhas e praia
+    targetCtx.beginPath();
+    targetCtx.moveTo(0, h * 0.70);
+    targetCtx.lineTo(w, h * 0.70);
+    targetCtx.lineTo(w, h * 0.84);
+    if (typeof targetCtx.bezierCurveTo === 'function') {
+        targetCtx.bezierCurveTo(w * 0.65, h * 0.81, w * 0.35, h * 0.83, 0, h * 0.79);
+    } else {
+        targetCtx.lineTo(0, h * 0.84);
+    }
+    targetCtx.closePath();
+
+    if (intensity > 0.02 && typeof targetCtx.createLinearGradient === 'function') {
+        const waterGrad = targetCtx.createLinearGradient(0, h * 0.70, 0, h * 0.84);
+        waterGrad.addColorStop(0, 'rgba(4, 4, 12, 0.98)');
+        waterGrad.addColorStop(0.5, `rgba(${Math.round(r * 0.35)}, ${Math.round(g * 0.5)}, ${Math.round(b * 0.85)}, ${0.28 * intensity + 0.02})`);
+        waterGrad.addColorStop(1, `rgba(${r}, ${g}, ${b}, ${0.35 * intensity + 0.02})`);
+        targetCtx.fillStyle = waterGrad;
+    } else {
+        targetCtx.fillStyle = 'rgba(5, 5, 14, 0.98)';
+    }
+    if (typeof targetCtx.fill === 'function') targetCtx.fill();
+
+    // Reflexo do relâmpago na água
+    if (intensity > 0.08 && typeof targetCtx.stroke === 'function') {
+        targetCtx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${0.45 * intensity})`;
+        targetCtx.lineWidth = 1.4;
+        targetCtx.beginPath();
+        targetCtx.moveTo(w * 0.35, h * 0.74);
+        targetCtx.lineTo(w * 0.65, h * 0.74);
+        targetCtx.moveTo(w * 0.40, h * 0.77);
+        targetCtx.lineTo(w * 0.60, h * 0.77);
+        targetCtx.stroke();
+    }
+
+    // 2. Faixa de Areia da Praia (curvada e orgânica em primeiro plano)
+    targetCtx.beginPath();
+    targetCtx.moveTo(0, h * 0.79);
+    if (typeof targetCtx.bezierCurveTo === 'function') {
+        targetCtx.bezierCurveTo(w * 0.32, h * 0.75, w * 0.68, h * 0.83, w, h * 0.78);
+    } else {
+        targetCtx.lineTo(w, h * 0.78);
+    }
+    targetCtx.lineTo(w, h);
+    targetCtx.lineTo(0, h);
+    targetCtx.closePath();
+
+    if (intensity > 0.02 && typeof targetCtx.createLinearGradient === 'function') {
+        const sandGrad = targetCtx.createLinearGradient(0, h * 0.75, 0, h);
+        sandGrad.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${0.40 * intensity + 0.05})`);
+        sandGrad.addColorStop(0.25, `rgba(${Math.min(255, r + 35)}, ${Math.min(255, g + 30)}, ${Math.min(255, b + 15)}, ${0.25 * intensity + 0.04})`);
+        sandGrad.addColorStop(1, 'rgba(8, 7, 18, 0.99)');
+        targetCtx.fillStyle = sandGrad;
+    } else {
+        targetCtx.fillStyle = 'rgba(8, 7, 16, 0.98)'; // No escuro
+    }
+    if (typeof targetCtx.fill === 'function') targetCtx.fill();
+
+    // 3. Espuma e orla que clareiam vivamente com o raio
+    targetCtx.beginPath();
+    targetCtx.moveTo(0, h * 0.79);
+    if (typeof targetCtx.bezierCurveTo === 'function') {
+        targetCtx.bezierCurveTo(w * 0.32, h * 0.75, w * 0.68, h * 0.83, w, h * 0.78);
+    } else {
+        targetCtx.lineTo(w, h * 0.78);
+    }
+    if (intensity > 0.04 && typeof targetCtx.stroke === 'function') {
+        targetCtx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${0.78 * intensity})`;
+        targetCtx.lineWidth = 2.2;
+        targetCtx.stroke();
+    } else if (typeof targetCtx.stroke === 'function') {
+        targetCtx.strokeStyle = 'rgba(20, 18, 35, 0.5)';
+        targetCtx.lineWidth = 1.0;
+        targetCtx.stroke();
+    }
+
+    if (typeof targetCtx.restore === 'function') targetCtx.restore();
+}
+
+export function drawPalmTree(targetCtx, baseX, baseY, height, leanDirection = 0.2, flashIntensity = 0, flashColor = null) {
+    if (!targetCtx || typeof targetCtx.beginPath !== 'function') return;
+    const { r, g, b } = parseColorToRgb(flashColor);
+    const intensity = Math.max(0, Math.min(1.0, flashIntensity));
+
+    if (typeof targetCtx.save === 'function') targetCtx.save();
+
+    const topX = baseX + height * leanDirection;
+    const topY = baseY - height;
+    const midX = baseX + (topX - baseX) * 0.55 + (leanDirection > 0 ? 12 : -12);
+    const midY = baseY - height * 0.55;
+
+    // 1. Tronco Curvado do Coqueiro
+    targetCtx.beginPath();
+    targetCtx.moveTo(baseX - 4.5, baseY);
+    if (typeof targetCtx.quadraticCurveTo === 'function') {
+        targetCtx.quadraticCurveTo(midX - 2.5, midY, topX - 2.0, topY);
+        targetCtx.lineTo(topX + 2.0, topY);
+        targetCtx.quadraticCurveTo(midX + 2.5, midY, baseX + 4.5, baseY);
+    } else {
+        targetCtx.lineTo(topX, topY);
+        targetCtx.lineTo(baseX, baseY);
+    }
+    targetCtx.closePath();
+
+    if (intensity > 0.02 && typeof targetCtx.createLinearGradient === 'function') {
+        const trunkGrad = targetCtx.createLinearGradient(baseX, baseY, topX, topY);
+        trunkGrad.addColorStop(0, 'rgba(8, 7, 15, 0.99)');
+        trunkGrad.addColorStop(0.7, `rgba(${Math.round(r * 0.6)}, ${Math.round(g * 0.55)}, ${Math.round(b * 0.5)}, ${0.45 * intensity + 0.08})`);
+        trunkGrad.addColorStop(1, `rgba(${r}, ${g}, ${b}, ${0.65 * intensity + 0.12})`);
+        targetCtx.fillStyle = trunkGrad;
+    } else {
+        targetCtx.fillStyle = 'rgba(7, 6, 14, 0.98)'; // No escuro
+    }
+    if (typeof targetCtx.fill === 'function') targetCtx.fill();
+
+    // Anéis segmentados do tronco iluminados pelo raio
+    if (intensity > 0.06 && typeof targetCtx.stroke === 'function') {
+        targetCtx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${0.55 * intensity})`;
+        targetCtx.lineWidth = 1.0;
+        const ringSteps = 7;
+        for (let s = 1; s < ringSteps; s++) {
+            const frac = s / ringSteps;
+            const rx = baseX + (topX - baseX) * frac;
+            const ry = baseY + (topY - baseY) * frac;
+            targetCtx.beginPath();
+            targetCtx.moveTo(rx - 3, ry);
+            targetCtx.lineTo(rx + 3, ry);
+            targetCtx.stroke();
+        }
+    }
+
+    // 2. Cocos no topo do coqueiro (cluster de 3 coquinhos)
+    const coconutOffsets = [
+        { dx: -3.5, dy: 1.5, rad: 3.2 },
+        { dx: 3.2, dy: 2.0, rad: 3.0 },
+        { dx: 0, dy: 4.5, rad: 3.4 }
+    ];
+    for (let c = 0; c < coconutOffsets.length; c++) {
+        const co = coconutOffsets[c];
+        targetCtx.beginPath();
+        if (typeof targetCtx.arc === 'function') {
+            targetCtx.arc(topX + co.dx, topY + co.dy, co.rad, 0, Math.PI * 2);
+        }
+        if (intensity > 0.05) {
+            targetCtx.fillStyle = `rgba(${Math.round(r * 0.7)}, ${Math.round(g * 0.65)}, ${Math.round(b * 0.45)}, ${0.55 * intensity + 0.1})`;
+        } else {
+            targetCtx.fillStyle = 'rgba(6, 5, 12, 0.99)';
+        }
+        if (typeof targetCtx.fill === 'function') targetCtx.fill();
+    }
+
+    // 3. Folhas/Palmas do Coqueiro (8 leques arqueados com folíolos)
+    const frondConfigs = [
+        { angle: -2.35, length: height * 0.46, droop: 24, arch: -16 }, // Esquerda baixa
+        { angle: -2.05, length: height * 0.52, droop: 22, arch: -14 }, // Esquerda média
+        { angle: -1.75, length: height * 0.56, droop: 18, arch: -10 }, // Esquerda alta
+        { angle: -1.45, length: height * 0.54, droop: 16, arch: 6 },   // Topo centro
+        { angle: -1.15, length: height * 0.55, droop: 18, arch: 10 },  // Direita alta
+        { angle: -0.85, length: height * 0.51, droop: 22, arch: 14 },  // Direita média
+        { angle: -0.55, length: height * 0.45, droop: 25, arch: 16 },  // Direita baixa
+        { angle: -2.70, length: height * 0.38, droop: 28, arch: -20 }  // Caída lateral
+    ];
+
+    for (let f = 0; f < frondConfigs.length; f++) {
+        const cfg = frondConfigs[f];
+        const endX = topX + Math.cos(cfg.angle) * cfg.length;
+        const endY = topY + Math.sin(cfg.angle) * cfg.length + cfg.droop;
+        const ctrlX = topX + Math.cos(cfg.angle) * (cfg.length * 0.55) + cfg.arch;
+        const ctrlY = topY + Math.sin(cfg.angle) * (cfg.length * 0.55) - 10;
+
+        // Nervura central da folha
+        targetCtx.beginPath();
+        targetCtx.moveTo(topX, topY);
+        if (typeof targetCtx.quadraticCurveTo === 'function') {
+            targetCtx.quadraticCurveTo(ctrlX, ctrlY, endX, endY);
+        } else {
+            targetCtx.lineTo(endX, endY);
+        }
+
+        if (intensity > 0.03 && typeof targetCtx.stroke === 'function') {
+            targetCtx.strokeStyle = `rgba(${Math.round(r * 0.65)}, ${Math.round(g * 0.85 + 40)}, ${Math.round(b * 0.65)}, ${0.75 * intensity + 0.08})`;
+            targetCtx.lineWidth = 2.2;
+            targetCtx.stroke();
+        } else if (typeof targetCtx.stroke === 'function') {
+            targetCtx.strokeStyle = 'rgba(6, 5, 12, 0.98)'; // No escuro
+            targetCtx.lineWidth = 2.0;
+            targetCtx.stroke();
+        }
+
+        // Folíolos / Pinas radiantes ao longo de cada folha
+        if (typeof targetCtx.stroke === 'function') {
+            const leafSteps = 6;
+            for (let lp = 1; lp <= leafSteps; lp++) {
+                const t = lp / leafSteps;
+                const lx = (1 - t) * (1 - t) * topX + 2 * (1 - t) * t * ctrlX + t * t * endX;
+                const ly = (1 - t) * (1 - t) * topY + 2 * (1 - t) * t * ctrlY + t * t * endY;
+                const leafLen = (1 - Math.abs(t - 0.5) * 1.5) * (height * 0.16);
+
+                targetCtx.beginPath();
+                targetCtx.moveTo(lx, ly);
+                targetCtx.lineTo(lx - leafLen * 0.7, ly + leafLen * 0.9);
+                targetCtx.moveTo(lx, ly);
+                targetCtx.lineTo(lx + leafLen * 0.7, ly + leafLen * 0.9);
+
+                if (intensity > 0.05) {
+                    targetCtx.strokeStyle = `rgba(${Math.round(r * 0.5)}, ${Math.round(g * 0.8 + 30)}, ${Math.round(b * 0.5)}, ${0.60 * intensity + 0.05})`;
+                    targetCtx.lineWidth = 1.3;
+                } else {
+                    targetCtx.strokeStyle = 'rgba(5, 4, 11, 0.96)';
+                    targetCtx.lineWidth = 1.2;
+                }
+                targetCtx.stroke();
+            }
+        }
+    }
+
+    if (typeof targetCtx.restore === 'function') targetCtx.restore();
+}
+
+export function renderRgbLandscape(targetCanvas, targetCtx, flashIntensity = 0, flashColor = null) {
+    if (!targetCanvas || !targetCtx) return;
+    const w = targetCanvas.width;
+    const h = targetCanvas.height;
+
+    // 1. Montanhas lá longe (no horizonte distante)
+    drawMountains(targetCtx, w, h, flashIntensity, flashColor);
+
+    // 2. Praia e Mar (com reflexo d'água e faixa de areia)
+    drawBeach(targetCtx, w, h, flashIntensity, flashColor);
+
+    // 3. Coqueiros no fundo ao longo da praia
+    // Lado Esquerdo: Dois coqueiros inclinados para o centro
+    drawPalmTree(targetCtx, w * 0.09, h * 0.90, h * 0.38, 0.28, flashIntensity, flashColor);
+    drawPalmTree(targetCtx, w * 0.18, h * 0.94, h * 0.44, 0.35, flashIntensity, flashColor);
+
+    // Lado Direito: Dois coqueiros inclinados para o centro
+    drawPalmTree(targetCtx, w * 0.84, h * 0.92, h * 0.42, -0.32, flashIntensity, flashColor);
+    drawPalmTree(targetCtx, w * 0.93, h * 0.88, h * 0.35, -0.24, flashIntensity, flashColor);
+}
+
 export function initRgbWeatherCanvas() {
     if (typeof document === 'undefined') return null;
     const canvas = document.getElementById('rgb-weather-canvas');
@@ -3983,11 +4347,25 @@ export function startRgbWeather() {
         const cycleElapsed = now - rgbWeatherCycleStart;
         const cloudElapsed = now - rgbCloudStartTime;
 
-        // 1. Nuvens no topo (balançando suavemente de um lado para o outro)
+        // Determinar a intensidade e cor do clarão dos raios ativos para iluminar a paisagem
+        let activeFlashIntensity = 0;
+        let activeFlashColor = RGB_LIGHTNING_COLORS[0];
+        for (let li = 0; li < rgbLightningList.length; li++) {
+            const bolt = rgbLightningList[li];
+            if (bolt && bolt.life > activeFlashIntensity) {
+                activeFlashIntensity = bolt.life;
+                activeFlashColor = bolt.color;
+            }
+        }
+
+        // 1. Paisagem de fundo no escuro (clareia com os raios: praia, coqueiros e montanhas)
+        renderRgbLandscape(targetCanvas, targetCtx, activeFlashIntensity, activeFlashColor);
+
+        // 2. Nuvens no topo (balançando suavemente de um lado para o outro)
         const swayOffset = Math.sin(cycleElapsed * 0.0008) * (w * 0.08);
         renderRgbClouds(targetCanvas, targetCtx, cloudElapsed, swayOffset);
 
-        // 2. Gotas de Chuva (7 cores sólidas distintas por gota, sem piscar)
+        // 3. Gotas de Chuva (7 cores sólidas distintas por gota, sem piscar)
         if (rgbWeatherPhase === 'rain') {
             const targetDropCount = Math.max(35, Math.min(65, Math.floor(w / 20)));
             while (rgbRainDrops.length < targetDropCount) {
@@ -22711,7 +23089,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.271';
+export const CURRENT_APP_VERSION = '1.0.272';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -39417,6 +39795,11 @@ if (typeof window !== 'undefined') {
     window.startRgbWeather = startRgbWeather;
     window.stopRgbWeather = stopRgbWeather;
     window.initRgbWeatherCanvas = initRgbWeatherCanvas;
+    window.renderRgbLandscape = renderRgbLandscape;
+    window.drawMountains = drawMountains;
+    window.drawBeach = drawBeach;
+    window.drawPalmTree = drawPalmTree;
+    window.parseColorToRgb = parseColorToRgb;
     window.RGB_RAIN_COLORS = RGB_RAIN_COLORS;
     window.RGB_CLOUD_COLOR_CYCLE = RGB_CLOUD_COLOR_CYCLE;
     window.RGB_LIGHTNING_COLORS = RGB_LIGHTNING_COLORS;
