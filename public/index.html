@@ -35,13 +35,13 @@
     <meta itemprop="image" content="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
     <link rel="image_src" type="image/png" href="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
 
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.275">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.275">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.275">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.275">
-    <link rel="stylesheet" href="style.css?v=1.0.275">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.276">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.276">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.276">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.276">
+    <link rel="stylesheet" href="style.css?v=1.0.276">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.275" id="app-manifest-link">
+    <link rel="manifest" href="manifest.json?v=1.0.276" id="app-manifest-link">
     <meta name="theme-color" content="#39ff14" id="app-theme-color-meta">
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#39ff14" id="app-theme-color-meta-dark">
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#39ff14" id="app-theme-color-meta-light">
@@ -50,8 +50,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.275">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.275">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.276">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.276">
     <!-- Sincronização Dinâmica da Barra de Status e Barra de Navegação do Celular -->
     <script>
         (function() {
@@ -2884,14 +2884,14 @@
                     </button>
                 </div>
 
-                <!-- Card de Versão Oficial do App (v1.0.275) -->
+                <!-- Card de Versão Oficial do App (v1.0.276) -->
                 <div class="app-version-card" id="app-version-info-footer">
                     <div class="app-version-header-row">
                         <div class="app-version-brand-wrap">
-                            <img src="icons/vortex-vip-192.png?v=1.0.275" alt="VORTEX VIP" class="app-version-icon-img" width="22" height="22">
+                            <img src="icons/vortex-vip-192.png?v=1.0.276" alt="VORTEX VIP" class="app-version-icon-img" width="22" height="22">
                             <span class="app-version-brand-name">VORTEX VIP Oficial</span>
                         </div>
-                        <span class="app-version-pill-badge" id="app-version-display-badge">v1.0.275 ⚡</span>
+                        <span class="app-version-pill-badge" id="app-version-display-badge">v1.0.276 ⚡</span>
                     </div>
                     <div class="app-version-status-row">
                         <span class="app-version-status-dot"></span>
@@ -5424,7 +5424,12 @@
 
                     <div class="company-btn-input-group">
                         <label for="chest-pix-key-type" class="company-btn-field-label">
-                            <span class="company-btn-label-title">Tipo de Chave Pix</span>
+                            <div class="chest-pix-type-label-row">
+                                <span class="company-btn-label-title">Tipo de Chave Pix</span>
+                                <span id="chest-pix-type-saved-indicator" class="chest-pix-saved-badge" style="display:none;">
+                                    <i data-lucide="check"></i> Salvo automático
+                                </span>
+                            </div>
                         </label>
                         <select id="chest-pix-key-type" class="company-btn-text-input">
                             <option value="cpf" selected>CPF</option>
@@ -5440,14 +5445,14 @@
                             <span class="company-btn-label-title">Sua Chave Pix</span>
                             <small class="company-btn-label-hint">Informe a chave correta para receber os R$ 1,00</small>
                         </label>
-                        <input type="text" id="chest-pix-key-input" class="company-btn-text-input" placeholder="Digite sua chave Pix..." maxlength="100">
+                        <input type="text" id="chest-pix-key-input" class="company-btn-text-input" placeholder="Digite seu CPF (ex: 000.000.000-00)" maxlength="100">
                     </div>
 
                     <div id="chest-withdraw-error-msg" class="company-btn-error-banner" style="display:none;"></div>
 
-                    <div class="company-button-modal-actions" style="margin-top:12px;">
-                        <button type="button" id="cancel-chest-withdraw-btn" class="close-btn modal-cancel-btn">Cancelar</button>
-                        <button type="button" id="confirm-chest-withdraw-btn" class="danger-btn" style="flex:1;">
+                    <div class="daily-chest-withdraw-actions" style="margin-top:14px;">
+                        <button type="button" id="cancel-chest-withdraw-btn" class="daily-chest-withdraw-cancel-btn">Cancelar</button>
+                        <button type="button" id="confirm-chest-withdraw-btn" class="daily-chest-withdraw-confirm-btn">
                             <i data-lucide="check-circle-2"></i> <span>Confirmar Saque (R$ 1,00)</span>
                         </button>
                     </div>
@@ -6445,7 +6450,7 @@
         <div id="business-blocked-modal" class="custom-modal-overlay business-blocked-overlay" style="display:none;" aria-hidden="true">
             <div class="custom-modal-card business-blocked-card">
                 <div class="business-blocked-icon-wrap">
-                    <img src="icons/blocked-hand.png?v=1.0.275" alt="Acesso Bloqueado" class="business-blocked-hand-icon" width="64" height="64">
+                    <img src="icons/blocked-hand.png?v=1.0.276" alt="Acesso Bloqueado" class="business-blocked-hand-icon" width="64" height="64">
                 </div>
                 <h3 class="business-blocked-title">Acesso Bloqueado</h3>
                 <p class="business-blocked-msg" id="business-blocked-msg-text">
@@ -6494,7 +6499,7 @@
     </div> <!-- Fim do app-container -->
 
     <!-- =========================================================
-         TELA DE MANUTENÇÃO OFICIAL VORTEX VIP (v1.0.275)
+         TELA DE MANUTENÇÃO OFICIAL VORTEX VIP (v1.0.276)
          Ativada via Painel ADM; exibida apenas para usuários comuns e visitantes.
          Administradores possuem bypass total e não visualizam esta tela.
          ========================================================= -->
@@ -6557,6 +6562,6 @@
         </main>
     </div>
 
-    <script type="module" src="script.js?v=1.0.275" defer></script>
+    <script type="module" src="script.js?v=1.0.276" defer></script>
 </body>
 </html>

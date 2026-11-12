@@ -23293,6 +23293,203 @@ video::-internal-media-controls-download-button {
     margin-top: 1px;
 }
 
+/* Indicador de Salvamento Automático do Tipo de Chave Pix (v1.0.276) */
+.chest-pix-type-label-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.chest-pix-saved-badge {
+    font-size: 0.70rem;
+    font-weight: 700;
+    color: #00e676;
+    background: rgba(0, 230, 118, 0.12);
+    border: 1px solid rgba(0, 230, 118, 0.35);
+    border-radius: 6px;
+    padding: 2px 7px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    animation: fadeInPixBadge 0.2s ease-out;
+}
+
+.chest-pix-saved-badge i,
+.chest-pix-saved-badge svg {
+    width: 11px !important;
+    height: 11px !important;
+    min-width: 11px !important;
+    stroke-width: 2.6 !important;
+    color: #00e676 !important;
+}
+
+@keyframes fadeInPixBadge {
+    from { opacity: 0; transform: translateY(-2px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== AÇÕES DO MODAL DE SAQUE PIX (BAÚ DIÁRIO v1.0.276) ===== */
+.daily-chest-withdraw-actions {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 12px !important;
+    margin-top: 14px !important;
+    padding-top: 14px !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+#cancel-chest-withdraw-btn,
+.daily-chest-withdraw-cancel-btn {
+    flex: 0 0 auto !important;
+    min-width: 90px !important;
+    width: auto !important;
+    height: 44px !important;
+    padding: 0 16px !important;
+    background: rgba(255, 255, 255, 0.06) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    color: var(--text-dim, #c0c0c0) !important;
+    border-radius: 12px !important;
+    font-size: 0.88rem !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: all 0.2s ease !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    text-decoration: none !important;
+}
+
+#cancel-chest-withdraw-btn:hover,
+.daily-chest-withdraw-cancel-btn:hover {
+    background: rgba(255, 255, 255, 0.12) !important;
+    color: #ffffff !important;
+    border-color: rgba(255, 255, 255, 0.28) !important;
+}
+
+#confirm-chest-withdraw-btn,
+.daily-chest-withdraw-confirm-btn {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    height: 44px !important;
+    padding: 0 16px !important;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+    border: 1px solid rgba(52, 211, 153, 0.5) !important;
+    color: #ffffff !important;
+    border-radius: 12px !important;
+    font-size: 0.86rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.2px !important;
+    cursor: pointer !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    white-space: nowrap !important;
+    box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4) !important;
+    transition: all 0.2s ease !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    text-decoration: none !important;
+}
+
+#confirm-chest-withdraw-btn:hover:not(:disabled),
+.daily-chest-withdraw-confirm-btn:hover:not(:disabled) {
+    transform: translateY(-1px) !important;
+    background: linear-gradient(135deg, #34d399 0%, #059669 100%) !important;
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.55) !important;
+}
+
+#confirm-chest-withdraw-btn:active:not(:disabled),
+.daily-chest-withdraw-confirm-btn:active:not(:disabled) {
+    transform: translateY(0) !important;
+}
+
+#confirm-chest-withdraw-btn:disabled,
+.daily-chest-withdraw-confirm-btn:disabled {
+    opacity: 0.6 !important;
+    cursor: not-allowed !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+#confirm-chest-withdraw-btn i,
+#confirm-chest-withdraw-btn svg,
+.daily-chest-withdraw-confirm-btn i,
+.daily-chest-withdraw-confirm-btn svg {
+    width: 18px !important;
+    height: 18px !important;
+    min-width: 18px !important;
+    min-height: 18px !important;
+    stroke: #ffffff !important;
+    stroke-width: 2.4 !important;
+    flex-shrink: 0 !important;
+    display: inline-block !important;
+    vertical-align: middle !important;
+}
+
+#confirm-chest-withdraw-btn span,
+.daily-chest-withdraw-confirm-btn span {
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    line-height: 1 !important;
+    display: inline-block !important;
+}
+
+/* Temas customizados para o botão de confirmação de saque */
+body.theme-rgb #confirm-chest-withdraw-btn,
+body.theme-rgb .daily-chest-withdraw-confirm-btn {
+    background: linear-gradient(135deg, #00e676, #00b0ff) !important;
+    border: 1px solid #00f0ff !important;
+    box-shadow: 0 0 16px rgba(0, 240, 255, 0.5) !important;
+    color: #ffffff !important;
+}
+
+body.theme-cyberpunk #confirm-chest-withdraw-btn,
+body.theme-cyberpunk .daily-chest-withdraw-confirm-btn {
+    background: linear-gradient(135deg, #ff007f, #00f0ff) !important;
+    border: 1px solid #00f0ff !important;
+    box-shadow: 0 0 16px rgba(255, 0, 127, 0.45) !important;
+    color: #ffffff !important;
+}
+
+body.theme-hacker #confirm-chest-withdraw-btn,
+body.theme-hacker .daily-chest-withdraw-confirm-btn {
+    background: linear-gradient(135deg, #00ff66, #008f11) !important;
+    border: 1px solid #00ff66 !important;
+    box-shadow: 0 0 16px rgba(0, 255, 102, 0.45) !important;
+    color: #0d1117 !important;
+}
+
+@media (max-width: 380px) {
+    #cancel-chest-withdraw-btn,
+    .daily-chest-withdraw-cancel-btn {
+        min-width: 76px !important;
+        padding: 0 10px !important;
+        font-size: 0.82rem !important;
+    }
+    #confirm-chest-withdraw-btn,
+    .daily-chest-withdraw-confirm-btn {
+        padding: 0 10px !important;
+        font-size: 0.78rem !important;
+        gap: 6px !important;
+    }
+    #confirm-chest-withdraw-btn i,
+    #confirm-chest-withdraw-btn svg,
+    .daily-chest-withdraw-confirm-btn i,
+    .daily-chest-withdraw-confirm-btn svg {
+        width: 16px !important;
+        height: 16px !important;
+        min-width: 16px !important;
+    }
+}
+
 /* Responsividade Especial para Telas Menores de Celular (Baú Diário & Saque) */
 @media (max-width: 440px), (max-height: 740px) {
     .daily-chest-modal-card,

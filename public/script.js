@@ -23089,7 +23089,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.275';
+export const CURRENT_APP_VERSION = '1.0.276';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -40173,6 +40173,11 @@ window.handleCallSwitchedToVideo = handleCallSwitchedToVideo;
     window.openDailyChestWithdrawModal = openDailyChestWithdrawModal;
     window.closeDailyChestWithdrawModal = closeDailyChestWithdrawModal;
     window.submitChestWithdrawal = submitChestWithdrawal;
+    window.saveChestPixKeyType = saveChestPixKeyType;
+    window.saveChestPixKey = saveChestPixKey;
+    window.getPixTypeLabel = getPixTypeLabel;
+    window.updatePixInputPlaceholder = updatePixInputPlaceholder;
+    window.showPixTypeSavedFeedback = showPixTypeSavedFeedback;
     window.updateDailyChestUI = updateDailyChestUI;
     window.canClaimDailyChest = canClaimDailyChest;
     window.canWithdrawDailyChest = canWithdrawDailyChest;
@@ -41042,6 +41047,108 @@ export function closeDailyChestModal() {
     if (burst) burst.style.display = 'none';
 }
 
+export function getPixTypeLabel(type) {
+    switch (type) {
+        case 'cpf': return 'CPF';
+        case 'telefone': return 'Telefone (com DDD)';
+        case 'email': return 'E-mail';
+        case 'aleatoria': return 'Chave Aleatória';
+        case 'cnpj': return 'CNPJ';
+        default: return type ? String(type).toUpperCase() : 'CPF';
+    }
+}
+
+export function updatePixInputPlaceholder(type) {
+    const inputEl = document.getElementById('chest-pix-key-input');
+    if (!inputEl) return;
+    switch (type) {
+        case 'cpf':
+            inputEl.placeholder = 'Digite seu CPF (ex: 000.000.000-00)';
+            break;
+        case 'telefone':
+            inputEl.placeholder = 'Digite seu Telefone com DDD (ex: 11999999999)';
+            break;
+        case 'email':
+            inputEl.placeholder = 'Digite seu E-mail (ex: seu.email@exemplo.com)';
+            break;
+        case 'aleatoria':
+            inputEl.placeholder = 'Cole sua Chave Aleatória (EVP)';
+            break;
+        case 'cnpj':
+            inputEl.placeholder = 'Digite seu CNPJ (ex: 00.000.000/0001-00)';
+            break;
+        default:
+            inputEl.placeholder = 'Digite sua chave Pix...';
+    }
+}
+
+export function showPixTypeSavedFeedback(selectedType) {
+    const badge = document.getElementById('chest-pix-type-saved-indicator');
+    if (badge) {
+        badge.style.display = 'inline-flex';
+        if (window.lucide && typeof window.lucide.createIcons === 'function') {
+            window.lucide.createIcons();
+        }
+        clearTimeout(badge._savedTimeout);
+        badge._savedTimeout = setTimeout(() => {
+            if (badge) badge.style.display = 'none';
+        }, 2500);
+    }
+    const label = getPixTypeLabel(selectedType);
+    showToast('Chave Pix Salva', `Tipo de chave definido para ${label} e salvo automaticamente.`, 'green');
+}
+
+export async function saveChestPixKeyType(selectedType) {
+    if (!selectedType) return;
+    try {
+        if (typeof localStorage !== 'undefined') {
+            localStorage.setItem('vortex_chest_pix_type', selectedType);
+            localStorage.setItem('vortex_pix_key_type', selectedType);
+        }
+    } catch (_) {}
+
+    if (currentProfile) {
+        currentProfile.pixKeyType = selectedType;
+    }
+
+    if (typeof updateDoc === 'function' && typeof db !== 'undefined' && currentUser && currentUser.uid) {
+        try {
+            await updateDoc(doc(db, 'users', currentUser.uid), {
+                pixKeyType: selectedType
+            });
+        } catch (err) {
+            console.warn('[VORTEX] Erro ao sincronizar pixKeyType no Firestore:', err);
+        }
+    }
+
+    updatePixInputPlaceholder(selectedType);
+    showPixTypeSavedFeedback(selectedType);
+}
+
+export async function saveChestPixKey(keyVal) {
+    if (!keyVal) return;
+    try {
+        if (typeof localStorage !== 'undefined') {
+            localStorage.setItem('vortex_chest_pix_key', keyVal);
+            localStorage.setItem('vortex_pix_key', keyVal);
+        }
+    } catch (_) {}
+
+    if (currentProfile) {
+        currentProfile.pixKey = keyVal;
+    }
+
+    if (typeof updateDoc === 'function' && typeof db !== 'undefined' && currentUser && currentUser.uid) {
+        try {
+            await updateDoc(doc(db, 'users', currentUser.uid), {
+                pixKey: keyVal
+            });
+        } catch (err) {
+            console.warn('[VORTEX] Erro ao sincronizar pixKey no Firestore:', err);
+        }
+    }
+}
+
 export function openDailyChestWithdrawModal() {
     if (!currentUser || !currentProfile) {
         showToast('Aviso', 'Faça login para solicitar saques.', 'orange');
@@ -41057,10 +41164,38 @@ export function openDailyChestWithdrawModal() {
         return;
     }
 
+    const pixTypeSelect = document.getElementById('chest-pix-key-type');
     const pixInput = document.getElementById('chest-pix-key-input');
-    if (pixInput && !pixInput.value && currentProfile.pixKey) {
-        pixInput.value = currentProfile.pixKey;
+
+    // 1. Restaurar tipo de chave Pix salvo automaticamente
+    let savedType = 'cpf';
+    if (currentProfile && currentProfile.pixKeyType) {
+        savedType = currentProfile.pixKeyType;
+    } else {
+        try {
+            if (typeof localStorage !== 'undefined') {
+                savedType = localStorage.getItem('vortex_chest_pix_type') || localStorage.getItem('vortex_pix_key_type') || 'cpf';
+            }
+        } catch (_) {}
     }
+    if (pixTypeSelect) {
+        pixTypeSelect.value = savedType;
+    }
+    updatePixInputPlaceholder(savedType);
+
+    // 2. Restaurar chave Pix salva
+    if (pixInput && !pixInput.value) {
+        let savedKey = currentProfile && currentProfile.pixKey;
+        if (!savedKey) {
+            try {
+                if (typeof localStorage !== 'undefined') {
+                    savedKey = localStorage.getItem('vortex_chest_pix_key') || localStorage.getItem('vortex_pix_key') || '';
+                }
+            } catch (_) {}
+        }
+        if (savedKey) pixInput.value = savedKey;
+    }
+
     const errorMsg = document.getElementById('chest-withdraw-error-msg');
     if (errorMsg) errorMsg.style.display = 'none';
 
@@ -41187,6 +41322,8 @@ export async function submitChestWithdrawal() {
         // O valor restante permanece na conta até que o usuário saque tudo (limite de 1 saque por dia se o valor for alto).
         const remainingBalance = Math.round(Math.max(0, balance - 1.00) * 100) / 100;
 
+        currentProfile.pixKey = pixKey;
+        currentProfile.pixKeyType = pixKeyType;
         currentProfile.rewardCoinsBalance = remainingBalance;
         currentProfile.lastWithdrawalDate = today;
         currentProfile.lastWithdrawalTimestamp = Date.now();
@@ -41195,6 +41332,8 @@ export async function submitChestWithdrawal() {
 
         if (typeof updateDoc === 'function' && typeof db !== 'undefined' && currentUser && currentUser.uid) {
             await updateDoc(doc(db, 'users', currentUser.uid), {
+                pixKey: pixKey,
+                pixKeyType: pixKeyType,
                 rewardCoinsBalance: remainingBalance,
                 lastWithdrawalDate: today,
                 lastWithdrawalTimestamp: Date.now(),
@@ -41205,6 +41344,10 @@ export async function submitChestWithdrawal() {
 
         try {
             if (typeof localStorage !== 'undefined') {
+                localStorage.setItem('vortex_chest_pix_type', pixKeyType);
+                localStorage.setItem('vortex_pix_key_type', pixKeyType);
+                localStorage.setItem('vortex_chest_pix_key', pixKey);
+                localStorage.setItem('vortex_pix_key', pixKey);
                 localStorage.setItem('vortex_pending_withdrawal', JSON.stringify(withdrawalData));
             }
         } catch (_) {}
@@ -41651,6 +41794,26 @@ export function initDailyChestControls() {
         if (e.target && e.target.id === 'daily-chest-withdraw-modal') closeDailyChestWithdrawModal();
     });
     document.getElementById('confirm-chest-withdraw-btn')?.addEventListener('click', submitChestWithdrawal);
+
+    // Auto-save do Tipo de Chave Pix (CPF, Telefone, E-mail, Chave Aleatória, CNPJ - v1.0.276)
+    const pixTypeSelect = document.getElementById('chest-pix-key-type');
+    if (pixTypeSelect) {
+        pixTypeSelect.addEventListener('change', (e) => {
+            const selectedType = e.target.value || 'cpf';
+            saveChestPixKeyType(selectedType);
+        });
+    }
+
+    // Auto-save da Chave Pix digitada pelo usuário
+    const pixKeyInput = document.getElementById('chest-pix-key-input');
+    if (pixKeyInput) {
+        const handlePixInputSave = () => {
+            const keyVal = (pixKeyInput.value || '').trim();
+            if (keyVal) saveChestPixKey(keyVal);
+        };
+        pixKeyInput.addEventListener('change', handlePixInputSave);
+        pixKeyInput.addEventListener('blur', handlePixInputSave);
+    }
 
     // Botões da Tela de Saque em Análise
     document.getElementById('close-withdrawal-review-btn')?.addEventListener('click', () => {

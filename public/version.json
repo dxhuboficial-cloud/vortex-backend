@@ -1,6 +1,6 @@
 {
-  "version": "1.0.275",
-  "build": 275,
+  "version": "1.0.276",
+  "build": 276,
   "releaseDate": "2026-11-12",
-  "notes": "Correção visual das montanhas no escuro, coqueiros tropicais sem teia e z-index dos cards no tema RGB v1.0.275"
+  "notes": "Salvamento automático do tipo de chave Pix (CPF, Telefone, E-mail, Chave Aleatória, CNPJ) e organização do botão Confirmar Saque e ícone v1.0.276"
 }
