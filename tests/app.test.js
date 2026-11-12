@@ -17756,12 +17756,12 @@ test('185. Animação de Fundo de Chuva de Meteoros e Estrela Cadente RGB (Tema 
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
   // 1. Integridade de Versionamento v1.0.266+
-  assert.ok(['1.0.266', '1.0.267', '1.0.268'].includes(versionJson.version), 'version.json deve ser 1.0.266 ou superior');
-  assert.ok(['1.0.266', '1.0.267', '1.0.268'].includes(manifest.version), 'manifest.json deve ser 1.0.266 ou superior');
-  assert.ok(['1.0.266', '1.0.267', '1.0.268'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.266 ou superior');
-  assert.ok(swContent.includes('vortex-vip-v1.0.266') || swContent.includes('vortex-vip-v1.0.267') || swContent.includes('vortex-vip-v1.0.268'), 'sw.js deve conter cache válido');
-  assert.ok(html.includes('script.js?v=1.0.266') || html.includes('script.js?v=1.0.267') || html.includes('script.js?v=1.0.268'), 'index.html deve referenciar script.js');
-  assert.ok(html.includes('style.css?v=1.0.266') || html.includes('style.css?v=1.0.267') || html.includes('style.css?v=1.0.268'), 'index.html deve referenciar style.css');
+  assert.ok(['1.0.266', '1.0.267', '1.0.268', '1.0.269'].includes(versionJson.version), 'version.json deve ser 1.0.266 ou superior');
+  assert.ok(['1.0.266', '1.0.267', '1.0.268', '1.0.269'].includes(manifest.version), 'manifest.json deve ser 1.0.266 ou superior');
+  assert.ok(['1.0.266', '1.0.267', '1.0.268', '1.0.269'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.266 ou superior');
+  assert.ok(swContent.includes('vortex-vip-v1.0.266') || swContent.includes('vortex-vip-v1.0.267') || swContent.includes('vortex-vip-v1.0.268') || swContent.includes('vortex-vip-v1.0.269'), 'sw.js deve conter cache válido');
+  assert.ok(html.includes('script.js?v=1.0.266') || html.includes('script.js?v=1.0.267') || html.includes('script.js?v=1.0.268') || html.includes('script.js?v=1.0.269'), 'index.html deve referenciar script.js');
+  assert.ok(html.includes('style.css?v=1.0.266') || html.includes('style.css?v=1.0.267') || html.includes('style.css?v=1.0.268') || html.includes('style.css?v=1.0.269'), 'index.html deve referenciar style.css');
 
   // 2. Elementos Canvas no HTML
   assert.ok(html.includes('id="cyberpark-meteor-canvas"'), 'index.html deve conter #cyberpark-meteor-canvas');
@@ -17827,12 +17827,12 @@ test('186. Camadas de Z-Index para Meteoros no Fundo dos Posts no Tema Cyber Par
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
   // 1. Integridade de Versionamento v1.0.267+
-  assert.ok(['1.0.267', '1.0.268'].includes(versionJson.version), 'version.json deve ser 1.0.267 ou 1.0.268');
-  assert.ok(['1.0.267', '1.0.268'].includes(manifest.version), 'manifest.json deve ser 1.0.267 ou 1.0.268');
-  assert.ok(['1.0.267', '1.0.268'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.267 ou 1.0.268');
-  assert.ok(swContent.includes('vortex-vip-v1.0.267') || swContent.includes('vortex-vip-v1.0.268'), 'sw.js deve conter cache v1.0.267+');
-  assert.ok(html.includes('script.js?v=1.0.267') || html.includes('script.js?v=1.0.268'), 'index.html deve referenciar script.js?v=1.0.267+');
-  assert.ok(html.includes('style.css?v=1.0.267') || html.includes('style.css?v=1.0.268'), 'index.html deve referenciar style.css?v=1.0.267+');
+  assert.ok(['1.0.267', '1.0.268', '1.0.269'].includes(versionJson.version), 'version.json deve ser 1.0.267+');
+  assert.ok(['1.0.267', '1.0.268', '1.0.269'].includes(manifest.version), 'manifest.json deve ser 1.0.267+');
+  assert.ok(['1.0.267', '1.0.268', '1.0.269'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.267+');
+  assert.ok(swContent.includes('vortex-vip-v1.0.267') || swContent.includes('vortex-vip-v1.0.268') || swContent.includes('vortex-vip-v1.0.269'), 'sw.js deve conter cache v1.0.267+');
+  assert.ok(html.includes('script.js?v=1.0.267') || html.includes('script.js?v=1.0.268') || html.includes('script.js?v=1.0.269'), 'index.html deve referenciar script.js?v=1.0.267+');
+  assert.ok(html.includes('style.css?v=1.0.267') || html.includes('style.css?v=1.0.268') || html.includes('style.css?v=1.0.269'), 'index.html deve referenciar style.css?v=1.0.267+');
 
   // 2. Elementos Canvas e Overlay no DOM
   assert.ok(html.includes('id="cyberpark-meteor-canvas"'), 'index.html deve conter #cyberpark-meteor-canvas');
@@ -17871,13 +17871,13 @@ test('187. Chuva de Meteoros e Estrela Cadente RGB no Desktop Chat Placeholder e
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
-  // 1. Integridade de Versionamento v1.0.268
-  assert.strictEqual(versionJson.version, '1.0.268', 'version.json deve ser 1.0.268');
-  assert.strictEqual(manifest.version, '1.0.268', 'manifest.json deve ser 1.0.268');
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.268', 'CURRENT_APP_VERSION deve ser 1.0.268');
-  assert.ok(swContent.includes('vortex-vip-v1.0.268'), 'sw.js deve conter cache v1.0.268');
-  assert.ok(html.includes('script.js?v=1.0.268'), 'index.html deve referenciar script.js?v=1.0.268');
-  assert.ok(html.includes('style.css?v=1.0.268'), 'index.html deve referenciar style.css?v=1.0.268');
+  // 1. Integridade de Versionamento v1.0.268+
+  assert.ok(['1.0.268', '1.0.269'].includes(versionJson.version), 'version.json deve ser 1.0.268 ou 1.0.269');
+  assert.ok(['1.0.268', '1.0.269'].includes(manifest.version), 'manifest.json deve ser 1.0.268 ou 1.0.269');
+  assert.ok(['1.0.268', '1.0.269'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.268 ou 1.0.269');
+  assert.ok(swContent.includes('vortex-vip-v1.0.268') || swContent.includes('vortex-vip-v1.0.269'), 'sw.js deve conter cache v1.0.268+');
+  assert.ok(html.includes('script.js?v=1.0.268') || html.includes('script.js?v=1.0.269'), 'index.html deve referenciar script.js?v=1.0.268+');
+  assert.ok(html.includes('style.css?v=1.0.268') || html.includes('style.css?v=1.0.269'), 'index.html deve referenciar style.css?v=1.0.268+');
 
   // 2. Elementos Canvas no HTML dentro de #desktop-chat-placeholder e #chat-window
   assert.ok(html.includes('id="desktop-meteor-canvas"'), 'index.html deve conter #desktop-meteor-canvas no desktop-chat-placeholder');
@@ -17898,6 +17898,108 @@ test('187. Chuva de Meteoros e Estrela Cadente RGB no Desktop Chat Placeholder e
   assert.strictEqual(typeof win.stopCyberMeteors, 'function', 'stopCyberMeteors deve ser função');
 
   // 6. Balanço de chaves do CSS
+  let openBraces = 0, closeBraces = 0;
+  for (const ch of css) {
+    if (ch === '{') openBraces++;
+    if (ch === '}') closeBraces++;
+  }
+  assert.strictEqual(openBraces, closeBraces, 'CSS deve ter chaves perfeitamente balanceadas');
+});
+
+test('188. Bolinhas de Estrela no Fundo Cósmico em 3 Tamanhos (Grande, Média, Pequena) no Tema Cyber Park v1.0.269', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+  const doc = win.document;
+  const html = fs.readFileSync('public/index.html', 'utf8');
+  const css = fs.readFileSync('public/style.css', 'utf8');
+  const manifest = JSON.parse(fs.readFileSync('public/manifest.json', 'utf8'));
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+
+  // 1. Integridade de Versionamento v1.0.269
+  assert.strictEqual(versionJson.version, '1.0.269', 'version.json deve ser 1.0.269');
+  assert.strictEqual(manifest.version, '1.0.269', 'manifest.json deve ser 1.0.269');
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.269', 'CURRENT_APP_VERSION deve ser 1.0.269');
+  assert.ok(swContent.includes('vortex-vip-v1.0.269'), 'sw.js deve conter cache v1.0.269');
+  assert.ok(html.includes('script.js?v=1.0.269'), 'index.html deve referenciar script.js?v=1.0.269');
+  assert.ok(html.includes('style.css?v=1.0.269'), 'index.html deve referenciar style.css?v=1.0.269');
+
+  // 2. Existência de configurações e funções de estrelas no window
+  assert.strictEqual(typeof win.createCyberStar, 'function', 'createCyberStar deve ser função');
+  assert.strictEqual(typeof win.initCyberStars, 'function', 'initCyberStars deve ser função');
+  assert.strictEqual(typeof win.renderCyberStars, 'function', 'renderCyberStars deve ser função');
+  assert.ok(win.CYBERPARK_STAR_SIZES, 'CYBERPARK_STAR_SIZES deve estar definido');
+
+  // 3. Validação dos 3 Tamanhos Requisitados: Grande, Pequena, Médio
+  assert.ok(win.CYBERPARK_STAR_SIZES.grande, 'Deve conter tamanho grande');
+  assert.ok(win.CYBERPARK_STAR_SIZES.medio, 'Deve conter tamanho médio');
+  assert.ok(win.CYBERPARK_STAR_SIZES.pequena, 'Deve conter tamanho pequena');
+
+  // Validar raios/escalas distintas
+  assert.ok(win.CYBERPARK_STAR_SIZES.grande.minR > win.CYBERPARK_STAR_SIZES.medio.maxR, 'Estrela grande deve ser maior que a média');
+  assert.ok(win.CYBERPARK_STAR_SIZES.medio.minR > win.CYBERPARK_STAR_SIZES.pequena.maxR, 'Estrela média deve ser maior que a pequena');
+
+  // 4. Criação individual com categoria forçada
+  const starGrande = win.createCyberStar(800, 600, 'grande');
+  assert.strictEqual(starGrande.sizeCategory, 'grande', 'Estrela grande deve ter sizeCategory grande');
+  assert.ok(starGrande.radius >= 3.0, 'Estrela grande deve ter raio proporcionalmente expressivo (>= 3.0px)');
+  assert.ok(starGrande.glowBlur >= 8, 'Estrela grande deve ter brilho halo intenso');
+
+  const starMedia = win.createCyberStar(800, 600, 'medio');
+  assert.ok(starMedia.sizeCategory === 'medio' || starMedia.categoria === 'médio', 'Estrela média deve ter categoria média');
+  assert.ok(starMedia.radius >= 1.7 && starMedia.radius <= 2.8, 'Estrela média deve ter raio médio (~1.8-2.6px)');
+
+  const starPequena = win.createCyberStar(800, 600, 'pequena');
+  assert.strictEqual(starPequena.sizeCategory, 'pequena', 'Estrela pequena deve ter sizeCategory pequena');
+  assert.ok(starPequena.radius <= 1.5, 'Estrela pequena deve ter raio delicado (<= 1.5px)');
+
+  // 5. Inicialização do pool de estrelas (initCyberStars)
+  const pool = win.initCyberStars(1200, 800, 60);
+  assert.ok(Array.isArray(pool), 'initCyberStars deve retornar array');
+  assert.strictEqual(pool.length, 60, 'Pool deve ter exatamente 60 estrelas');
+
+  const hasGrandes = pool.some(s => s.sizeCategory === 'grande');
+  const hasMedias = pool.some(s => s.sizeCategory === 'medio' || s.categoria === 'médio');
+  const hasPequenas = pool.some(s => s.sizeCategory === 'pequena');
+
+  assert.ok(hasGrandes, 'Pool deve conter estrelas grandes');
+  assert.ok(hasMedias, 'Pool deve conter estrelas médias');
+  assert.ok(hasPequenas, 'Pool deve conter estrelas pequenas');
+
+  // 6. Todas as estrelas devem possuir coordenadas normalizadas nx, ny e cores estelares válidas
+  for (const s of pool) {
+    assert.ok(s.nx >= 0 && s.nx <= 1, 'nx deve estar normalizado entre 0 e 1');
+    assert.ok(s.ny >= 0 && s.ny <= 1, 'ny deve estar normalizado entre 0 e 1');
+    assert.ok(s.color && s.color.startsWith('#'), 'Cor da estrela deve ser código hexadecimal');
+    assert.ok(typeof s.twinkleSpeed === 'number' && s.twinkleSpeed > 0, 'Estrela deve ter velocidade de cintilação');
+  }
+
+  // 7. Renderização sem erros no contexto 2D
+  const mockCtx = {
+    save: () => {},
+    restore: () => {},
+    beginPath: () => {},
+    arc: () => {},
+    fill: () => {},
+    globalAlpha: 1,
+    fillStyle: '#fff',
+    shadowColor: '#fff',
+    shadowBlur: 0
+  };
+  assert.doesNotThrow(() => {
+    win.renderCyberStars({ width: 800, height: 600 }, mockCtx);
+  }, 'renderCyberStars deve executar sem lançar exceções');
+
+  // 8. Ciclo de Vida: startCyberMeteors e stopCyberMeteors
+  win.startCyberMeteors();
+  const starsActive = win.getCyberStars ? win.getCyberStars() : win.cyberStars;
+  assert.ok(Array.isArray(starsActive) && starsActive.length > 0, 'startCyberMeteors deve ativar pool de estrelas');
+
+  win.stopCyberMeteors();
+  const starsStopped = win.getCyberStars ? win.getCyberStars() : win.cyberStars;
+  assert.strictEqual(starsStopped.length, 0, 'stopCyberMeteors deve limpar o pool de estrelas');
+
+  // 9. Balanço de chaves do CSS
   let openBraces = 0, closeBraces = 0;
   for (const ch of css) {
     if (ch === '{') openBraces++;

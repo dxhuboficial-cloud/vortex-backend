@@ -3159,11 +3159,139 @@ export const CYBERPARK_METEOR_COLORS = [
     { name: 'rosa', hex: '#ff007f', glow: 'rgba(255, 0, 127, 0.95)', tail: 'rgba(255, 0, 127, 0.8)', fade: 'rgba(255, 0, 127, 0)' }
 ];
 
+// Configuração e tamanhos das bolinhas de estrela no fundo cósmico do tema Cyber Park (Grande, Média e Pequena)
+export const CYBERPARK_STAR_SIZES = {
+    pequena: { minR: 0.8, maxR: 1.4, baseAlpha: 0.45, glowBlur: 2, label: 'pequena' },
+    medio:   { minR: 1.8, maxR: 2.6, baseAlpha: 0.65, glowBlur: 5, label: 'médio' },
+    grande:  { minR: 3.2, maxR: 4.5, baseAlpha: 0.85, glowBlur: 10, label: 'grande' }
+};
+
 let cyberMeteorsAnimId = null;
 let cyberMeteors = [];
+export let cyberStars = [];
 let cyberSparkles = [];
 let cyberMeteorsInitialized = false;
 let lastRgbShootingStarTime = 0;
+
+export function getCyberStars() {
+    return cyberStars;
+}
+
+export function createCyberStar(w, h, forcedSizeCategory) {
+    let sizeCategory = forcedSizeCategory;
+    if (sizeCategory === 'médio') sizeCategory = 'medio';
+    if (!sizeCategory) {
+        const rand = Math.random();
+        if (rand < 0.52) {
+            sizeCategory = 'pequena';
+        } else if (rand < 0.82) {
+            sizeCategory = 'medio';
+        } else {
+            sizeCategory = 'grande';
+        }
+    }
+
+    const cfg = CYBERPARK_STAR_SIZES[sizeCategory] || CYBERPARK_STAR_SIZES.pequena;
+    const radius = cfg.minR + Math.random() * (cfg.maxR - cfg.minR);
+    const starColors = [
+        '#ffffff', // Branco estelar puro
+        '#e0f7fa', // Ciano gelo suave
+        '#80deea', // Neon ciano
+        '#fffde7', // Amarelo estelar suave
+        '#ffe600', // Neon amarelo
+        '#fce4ec', // Rosa suave
+        '#ff80ab', // Neon rosa
+        '#ea80fc', // Roxo neon suave
+        '#b9f6ca', // Verde menta suave
+        '#82b1ff'  // Azul neon suave
+    ];
+    const color = starColors[Math.floor(Math.random() * starColors.length)];
+
+    const nx = Math.random();
+    const ny = Math.random();
+    const x = nx * (w || 800);
+    const y = ny * (h || 600);
+
+    return {
+        x,
+        y,
+        nx,
+        ny,
+        radius,
+        sizeCategory,
+        categoria: (sizeCategory === 'medio') ? 'médio' : sizeCategory,
+        color,
+        baseAlpha: cfg.baseAlpha,
+        alpha: cfg.baseAlpha,
+        glowBlur: cfg.glowBlur,
+        twinkleSpeed: 0.02 + Math.random() * 0.035,
+        twinklePhase: Math.random() * Math.PI * 2
+    };
+}
+
+export function initCyberStars(w, h, count) {
+    const starCount = count || Math.max(45, Math.min(90, Math.floor((w || 800) / 18)));
+    cyberStars = [];
+    for (let i = 0; i < starCount; i++) {
+        let cat;
+        if (i % 6 === 0) {
+            cat = 'grande';
+        } else if (i % 3 === 0) {
+            cat = 'medio';
+        } else {
+            cat = 'pequena';
+        }
+        cyberStars.push(createCyberStar(w, h, cat));
+    }
+    return cyberStars;
+}
+
+export function renderCyberStars(targetCanvas, targetCtx) {
+    if (!targetCanvas || !targetCtx || typeof targetCtx.beginPath !== 'function') return;
+    if (!cyberStars || cyberStars.length === 0) return;
+    const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    const t = now * 0.002;
+
+    for (let i = 0; i < cyberStars.length; i++) {
+        const s = cyberStars[i];
+        const posX = s.nx * targetCanvas.width;
+        const posY = s.ny * targetCanvas.height;
+
+        const twinkle = Math.sin(t * s.twinkleSpeed * 100 + s.twinklePhase);
+        const alpha = Math.max(0.18, Math.min(1.0, s.baseAlpha + twinkle * 0.28));
+
+        if (typeof targetCtx.save === 'function') targetCtx.save();
+        targetCtx.globalAlpha = alpha;
+
+        if (s.glowBlur > 0 && typeof targetCtx.shadowBlur !== 'undefined') {
+            targetCtx.shadowColor = s.color;
+            targetCtx.shadowBlur = s.glowBlur;
+        }
+
+        targetCtx.beginPath();
+        if (typeof targetCtx.arc === 'function') {
+            targetCtx.arc(posX, posY, s.radius, 0, Math.PI * 2);
+        }
+        targetCtx.fillStyle = s.color;
+        if (typeof targetCtx.fill === 'function') targetCtx.fill();
+
+        // Para estrelas grandes ("bolinha grande"), adicionar núcleo brilhante
+        if (s.sizeCategory === 'grande') {
+            targetCtx.beginPath();
+            if (typeof targetCtx.arc === 'function') {
+                targetCtx.arc(posX, posY, s.radius * 0.42, 0, Math.PI * 2);
+            }
+            targetCtx.fillStyle = '#ffffff';
+            if (typeof targetCtx.shadowBlur !== 'undefined') {
+                targetCtx.shadowColor = '#ffffff';
+                targetCtx.shadowBlur = 4;
+            }
+            if (typeof targetCtx.fill === 'function') targetCtx.fill();
+        }
+
+        if (typeof targetCtx.restore === 'function') targetCtx.restore();
+    }
+}
 
 export function createCyberMeteor(w, h, isFirstSpawn, forcedColorIndex) {
     const color = (forcedColorIndex !== undefined && CYBERPARK_METEOR_COLORS[forcedColorIndex])
@@ -3287,6 +3415,9 @@ export function initCyberMeteorsCanvas() {
             const forcedColor = i % CYBERPARK_METEOR_COLORS.length;
             cyberMeteors.push(createCyberMeteor(canvas ? canvas.width : winW, canvas ? canvas.height : winH, true, forcedColor));
         }
+
+        // Criar ou redimensionar pool de bolinhas de estrela no fundo (grande, média e pequena)
+        initCyberStars(canvas ? canvas.width : winW, canvas ? canvas.height : winH);
     }
 
     if (!cyberMeteorsInitialized && typeof window !== 'undefined' && window.addEventListener) {
@@ -3303,6 +3434,11 @@ export function startCyberMeteors() {
     const { canvas, ctx } = setup;
     if (cyberMeteorsAnimId) return;
 
+    // Garantir que as bolinhas de estrela do fundo estejam ativas
+    if (!cyberStars || cyberStars.length === 0) {
+        initCyberStars(canvas ? canvas.width : 800, canvas ? canvas.height : 600);
+    }
+
     // Disparar a primeira estrela cadente RGB logo nos primeiros 2.5 segundos, e depois exatamente a cada 20 segundos
     if (!lastRgbShootingStarTime) {
         lastRgbShootingStarTime = Date.now() - 17500;
@@ -3311,6 +3447,9 @@ export function startCyberMeteors() {
     function renderMeteors(targetCanvas, targetCtx, meteorsList) {
         if (!targetCanvas || !targetCtx || typeof targetCtx.clearRect !== 'function') return;
         targetCtx.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
+
+        // 0. Desenhar as bolinhas de estrela no fundo cósmico (grande, média e pequena)
+        renderCyberStars(targetCanvas, targetCtx);
 
         // 1. Atualizar e desenhar os meteoros
         for (let i = meteorsList.length - 1; i >= 0; i--) {
@@ -3514,6 +3653,7 @@ export function stopCyberMeteors() {
         cyberMeteorsAnimId = null;
     }
     cyberSparkles = [];
+    cyberStars = [];
     if (typeof document !== 'undefined') {
         const canvas = document.getElementById('cyberpark-meteor-canvas');
         if (canvas && typeof canvas.getContext === 'function') {
@@ -21971,7 +22111,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.268';
+export const CURRENT_APP_VERSION = '1.0.269';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -38647,6 +38787,20 @@ if (typeof window !== 'undefined') {
     window.createCyberMeteor = createCyberMeteor;
     window.createRgbShootingStar = createRgbShootingStar;
     window.CYBERPARK_METEOR_COLORS = CYBERPARK_METEOR_COLORS;
+    window.CYBERPARK_STAR_SIZES = CYBERPARK_STAR_SIZES;
+    window.createCyberStar = createCyberStar;
+    window.initCyberStars = initCyberStars;
+    window.renderCyberStars = renderCyberStars;
+    window.getCyberStars = getCyberStars;
+    try {
+        Object.defineProperty(window, 'cyberStars', {
+            get() { return cyberStars; },
+            set(v) { cyberStars = v; },
+            configurable: true
+        });
+    } catch (_) {
+        window.cyberStars = cyberStars;
+    }
     window.formatChatMessageText = formatChatMessageText;
     window.EMOJI_CATEGORIES = EMOJI_CATEGORIES;
     window.insertEmojiIntoChatInput = insertEmojiIntoChatInput;
