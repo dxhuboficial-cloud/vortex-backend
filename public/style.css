@@ -28200,21 +28200,53 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
    TIGRINHO VIP DA FORTUNA (v1.0.254)
    ========================================================================== */
 
-/* Sub-abas de navegação entre jogos */
+/* Sub-abas de navegação entre jogos (Barra de rolagem horizontal ↔️ v1.0.277) */
 .games-subtabs-nav {
     display: flex;
-    gap: 8px;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 10px;
     width: 100%;
-    margin-bottom: 2px;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    padding: 4px 2px 8px 2px;
+    margin-bottom: 4px;
+    box-sizing: border-box;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 170, 0, 0.55) rgba(255, 255, 255, 0.06);
+}
+
+.games-subtabs-nav::-webkit-scrollbar {
+    height: 6px;
+}
+
+.games-subtabs-nav::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 999px;
+}
+
+.games-subtabs-nav::-webkit-scrollbar-thumb {
+    background: linear-gradient(90deg, #ffaa00, #ff5500);
+    border-radius: 999px;
+}
+
+.games-subtabs-nav::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(90deg, #ffcc00, #ff7700);
 }
 
 .games-subtab-btn {
-    flex: 1;
-    display: flex;
+    flex: 0 0 auto;
+    min-width: max-content;
+    white-space: nowrap;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
-    padding: 10px 14px;
+    padding: 10px 16px;
     border-radius: 14px;
     background: rgba(255, 255, 255, 0.04);
     border: 1.5px solid rgba(255, 255, 255, 0.1);
@@ -28224,6 +28256,11 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
     cursor: pointer;
     transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     outline: none;
+    box-sizing: border-box;
+}
+
+.games-subtab-btn span {
+    white-space: nowrap;
 }
 
 .games-subtab-btn:hover {
@@ -28244,11 +28281,16 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
     color: #fff;
     font-size: 0.62rem;
     font-weight: 900;
-    padding: 2px 6px;
+    padding: 3px 7px;
     border-radius: 8px;
     letter-spacing: 0.5px;
     box-shadow: 0 0 8px rgba(255, 59, 48, 0.6);
     animation: pulseHot 1.5s infinite;
+    white-space: nowrap;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
 }
 
 .game-tab-free-badge {
@@ -28257,8 +28299,13 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
     color: #34c759;
     font-size: 0.62rem;
     font-weight: 800;
-    padding: 2px 6px;
+    padding: 3px 7px;
     border-radius: 8px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
 }
 
 @keyframes pulseHot {
@@ -29113,10 +29160,15 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
     color: #000;
     font-size: 0.62rem;
     font-weight: 800;
-    padding: 2px 7px;
+    padding: 3px 7px;
     border-radius: 12px;
     box-shadow: 0 0 10px rgba(0, 245, 255, 0.45);
     letter-spacing: 0.5px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
 }
 
 .diamante-game-card {

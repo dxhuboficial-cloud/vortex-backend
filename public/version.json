@@ -1,6 +1,6 @@
 {
-  "version": "1.0.276",
-  "build": 276,
+  "version": "1.0.277",
+  "build": 277,
   "releaseDate": "2026-11-12",
-  "notes": "Salvamento automático do tipo de chave Pix (CPF, Telefone, E-mail, Chave Aleatória, CNPJ) e organização do botão Confirmar Saque e ícone v1.0.276"
+  "notes": "Barra de rolagem horizontal para os 3 botões de jogos evitando quebra ou corte dos títulos v1.0.277"
 }

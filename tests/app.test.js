@@ -18610,15 +18610,15 @@ test('195. Salvamento Automático do Tipo de Chave Pix (CPF, Telefone, E-mail, C
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
-  // 1. Integridade de Versionamento v1.0.276 (Build 276)
-  assert.strictEqual(versionJson.version, '1.0.276', 'version.json deve ser 1.0.276');
-  assert.strictEqual(versionJson.build, 276, 'build em version.json deve ser 276');
-  assert.strictEqual(manifest.version, '1.0.276', 'manifest.json deve ser 1.0.276');
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.276', 'CURRENT_APP_VERSION deve ser 1.0.276');
-  assert.ok(swContent.includes('vortex-vip-v1.0.276'), 'sw.js deve conter cache v1.0.276');
-  assert.ok(html.includes('script.js?v=1.0.276'), 'index.html deve referenciar script.js?v=1.0.276');
-  assert.ok(html.includes('style.css?v=1.0.276'), 'index.html deve referenciar style.css?v=1.0.276');
-  assert.ok(privacyHtml.includes('v1.0.276'), 'privacy.html deve referenciar v1.0.276');
+  // 1. Integridade de Versionamento v1.0.276+ (Build 276+)
+  assert.ok(['1.0.276', '1.0.277'].includes(versionJson.version), 'version.json deve ser 1.0.276 ou superior');
+  assert.ok([276, 277].includes(versionJson.build), 'build em version.json deve ser 276 ou superior');
+  assert.ok(['1.0.276', '1.0.277'].includes(manifest.version), 'manifest.json deve ser 1.0.276 ou superior');
+  assert.ok(['1.0.276', '1.0.277'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.276 ou superior');
+  assert.ok(swContent.includes('vortex-vip-v1.0.276') || swContent.includes('vortex-vip-v1.0.277'), 'sw.js deve conter cache v1.0.276+');
+  assert.ok(html.includes('script.js?v=1.0.276') || html.includes('script.js?v=1.0.277'), 'index.html deve referenciar script.js?v=1.0.276+');
+  assert.ok(html.includes('style.css?v=1.0.276') || html.includes('style.css?v=1.0.277'), 'index.html deve referenciar style.css?v=1.0.276+');
+  assert.ok(privacyHtml.includes('v1.0.276') || privacyHtml.includes('v1.0.277'), 'privacy.html deve referenciar v1.0.276+');
 
   // 2. Elementos no HTML: Select com opções de Chave Pix e Botões Organizados
   assert.ok(html.includes('id="chest-pix-key-type"'), 'index.html deve conter select de tipo de chave Pix');
@@ -18728,4 +18728,62 @@ test('195. Salvamento Automático do Tipo de Chave Pix (CPF, Telefone, E-mail, C
     if (ch === '}') closeBraces195++;
   }
   assert.strictEqual(openBraces195, closeBraces195, 'CSS deve ter chaves perfeitamente balanceadas');
+});
+
+test('196. Barra de Rolagem Horizontal para os 3 Botões de Jogos (Tigrinho VIP, Caça Diamantes, Roleta da Sorte) v1.0.277', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+  const html = fs.readFileSync('public/index.html', 'utf8');
+  const css = fs.readFileSync('public/style.css', 'utf8');
+  const privacyHtml = fs.readFileSync('public/privacy.html', 'utf8');
+  const manifest = JSON.parse(fs.readFileSync('public/manifest.json', 'utf8'));
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+
+  // 1. Integridade de Versionamento v1.0.277 (Build 277)
+  assert.strictEqual(versionJson.version, '1.0.277', 'version.json deve ser 1.0.277');
+  assert.strictEqual(versionJson.build, 277, 'build em version.json deve ser 277');
+  assert.strictEqual(manifest.version, '1.0.277', 'manifest.json deve ser 1.0.277');
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.277', 'CURRENT_APP_VERSION deve ser 1.0.277');
+  assert.ok(swContent.includes('vortex-vip-v1.0.277'), 'sw.js deve conter cache v1.0.277');
+  assert.ok(html.includes('script.js?v=1.0.277'), 'index.html deve referenciar script.js?v=1.0.277');
+  assert.ok(html.includes('style.css?v=1.0.277'), 'index.html deve referenciar style.css?v=1.0.277');
+  assert.ok(privacyHtml.includes('v1.0.277'), 'privacy.html deve referenciar v1.0.277');
+
+  // 2. Presença dos 3 Botões de Jogos no HTML
+  assert.ok(html.includes('id="games-subtabs-nav"'), 'index.html deve conter #games-subtabs-nav');
+  assert.ok(html.includes('id="tab-btn-tigrinho"'), 'index.html deve conter botão Tigrinho VIP');
+  assert.ok(html.includes('id="tab-btn-diamante"'), 'index.html deve conter botão Caça Diamantes');
+  assert.ok(html.includes('id="tab-btn-roleta"'), 'index.html deve conter botão Roleta da Sorte');
+
+  // 3. Regras CSS da Barra de Rolagem Horizontal (.games-subtabs-nav)
+  const navMatch = css.match(/\.games-subtabs-nav\s*\{([^}]+)\}/);
+  assert.ok(navMatch, 'CSS deve conter bloco .games-subtabs-nav');
+  assert.ok(navMatch[1].includes('overflow-x: auto'), '.games-subtabs-nav deve ter overflow-x: auto');
+  assert.ok(navMatch[1].includes('flex-wrap: nowrap'), '.games-subtabs-nav deve ter flex-wrap: nowrap');
+  assert.ok(navMatch[1].includes('-webkit-overflow-scrolling: touch'), '.games-subtabs-nav deve suportar rolagem suave em mobile');
+  assert.ok(css.includes('.games-subtabs-nav::-webkit-scrollbar'), 'CSS deve estilizar a barra de rolagem horizontal');
+
+  // 4. Regras CSS dos Botões para não Quebrar ou Cortar Título (.games-subtab-btn)
+  const btnMatch = css.match(/\.games-subtab-btn\s*\{([^}]+)\}/);
+  assert.ok(btnMatch, 'CSS deve conter bloco .games-subtab-btn');
+  assert.ok(btnMatch[1].includes('flex: 0 0 auto'), '.games-subtab-btn deve ter flex: 0 0 auto para manter largura natural lado a lado');
+  assert.ok(btnMatch[1].includes('white-space: nowrap'), '.games-subtab-btn deve ter white-space: nowrap para o título não quebrar');
+  assert.ok(btnMatch[1].includes('min-width: max-content'), '.games-subtab-btn deve ter min-width: max-content');
+
+  // 5. Badges com white-space: nowrap
+  const hotBadgeMatch = css.match(/\.game-tab-hot-badge\s*\{([^}]+)\}/);
+  const minesBadgeMatch = css.match(/\.game-tab-mines-badge\s*\{([^}]+)\}/);
+  const freeBadgeMatch = css.match(/\.game-tab-free-badge\s*\{([^}]+)\}/);
+  assert.ok(hotBadgeMatch && hotBadgeMatch[1].includes('white-space: nowrap'), 'Badge HOT deve ter white-space: nowrap');
+  assert.ok(minesBadgeMatch && minesBadgeMatch[1].includes('white-space: nowrap'), 'Badge NOVO deve ter white-space: nowrap');
+  assert.ok(freeBadgeMatch && freeBadgeMatch[1].includes('white-space: nowrap'), 'Badge GRÁTIS deve ter white-space: nowrap');
+
+  // 6. Balanço de Chaves do CSS
+  let openBraces196 = 0, closeBraces196 = 0;
+  for (const ch of css) {
+    if (ch === '{') openBraces196++;
+    if (ch === '}') closeBraces196++;
+  }
+  assert.strictEqual(openBraces196, closeBraces196, 'CSS deve ter chaves perfeitamente balanceadas');
 });
