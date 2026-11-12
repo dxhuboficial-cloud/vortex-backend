@@ -9290,7 +9290,9 @@ body.theme-hacker .feed-matrix-canvas {
    + Estrela Cadente RGB a cada 20 segundos
    ========================================================================== */
 .cyberpark-meteor-canvas,
-.feed-meteor-canvas {
+.feed-meteor-canvas,
+.desktop-meteor-canvas,
+.chat-meteor-canvas {
     position: fixed;
     top: 0;
     left: 0;
@@ -9303,19 +9305,26 @@ body.theme-hacker .feed-matrix-canvas {
     display: none;
 }
 
-.feed-meteor-canvas {
+.feed-meteor-canvas,
+.desktop-meteor-canvas,
+.chat-meteor-canvas {
     position: absolute !important;
     top: 0 !important;
     left: 0 !important;
     width: 100% !important;
     height: 100% !important;
+    pointer-events: none !important;
     z-index: 0 !important;
 }
 
 body.theme-cyberpark .cyberpark-meteor-canvas,
 body.theme-cyberpark .feed-meteor-canvas,
+body.theme-cyberpark .desktop-meteor-canvas,
+body.theme-cyberpark .chat-meteor-canvas,
 body.theme-cyberpunk .cyberpark-meteor-canvas,
-body.theme-cyberpunk .feed-meteor-canvas {
+body.theme-cyberpunk .feed-meteor-canvas,
+body.theme-cyberpunk .desktop-meteor-canvas,
+body.theme-cyberpunk .chat-meteor-canvas {
     display: block;
     opacity: 0.95;
 }
@@ -9426,6 +9435,50 @@ body.theme-cyberpunk .feed-card .feed-body,
 body.theme-cyberpark .feed-card .feed-body,
 body.theme-cyberpunk .feed-card .feed-actions,
 body.theme-cyberpark .feed-card .feed-actions {
+    position: relative !important;
+    z-index: 2 !important;
+}
+
+/* Desktop Chat Placeholder & Chat Window no Tema Cyber Park / Cyberpunk (v1.0.268) */
+body.theme-cyberpunk .desktop-chat-placeholder,
+body.theme-cyberpark .desktop-chat-placeholder {
+    background: radial-gradient(circle at 50% 50%, rgba(255, 0, 127, 0.05) 0%, rgba(8, 9, 17, 0.95) 80%) !important;
+    border-left: 1px solid rgba(255, 230, 0, 0.25) !important;
+    position: relative !important;
+    overflow: hidden !important;
+}
+
+body.theme-cyberpunk .desktop-placeholder-badge,
+body.theme-cyberpark .desktop-placeholder-badge {
+    border-color: #ffe600 !important;
+    box-shadow: 0 0 25px rgba(255, 230, 0, 0.45), inset 0 0 15px rgba(255, 0, 127, 0.25) !important;
+    background: rgba(255, 230, 0, 0.1) !important;
+}
+
+body.theme-cyberpunk .desktop-placeholder-icon,
+body.theme-cyberpark .desktop-placeholder-icon {
+    color: #ffe600 !important;
+    filter: drop-shadow(0 0 10px rgba(255, 230, 0, 0.7));
+}
+
+body.theme-cyberpunk .desktop-placeholder-content,
+body.theme-cyberpark .desktop-placeholder-content {
+    position: relative !important;
+    z-index: 2 !important;
+}
+
+body.theme-cyberpunk .chat-window,
+body.theme-cyberpark .chat-window {
+    position: relative !important;
+    overflow: hidden !important;
+}
+
+body.theme-cyberpunk .chat-window-header,
+body.theme-cyberpark .chat-window-header,
+body.theme-cyberpunk .messages-container,
+body.theme-cyberpark .messages-container,
+body.theme-cyberpunk .chat-input-bar,
+body.theme-cyberpark .chat-input-bar {
     position: relative !important;
     z-index: 2 !important;
 }

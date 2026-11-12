@@ -3248,7 +3248,9 @@ export function initCyberMeteorsCanvas() {
     if (typeof document === 'undefined') return null;
     const canvas = document.getElementById('cyberpark-meteor-canvas');
     const feedCanvas = document.getElementById('feed-meteor-canvas');
-    if (!canvas && !feedCanvas) return null;
+    const desktopCanvas = document.getElementById('desktop-meteor-canvas');
+    const chatCanvas = document.getElementById('chat-meteor-canvas');
+    if (!canvas && !feedCanvas && !desktopCanvas && !chatCanvas) return null;
     const ctx = (canvas && typeof canvas.getContext === 'function') ? canvas.getContext('2d') : null;
 
     function resize() {
@@ -3264,6 +3266,18 @@ export function initCyberMeteorsCanvas() {
             const parent = feedCanvas.parentElement;
             feedCanvas.width = (parent && parent.clientWidth) || winW;
             feedCanvas.height = (parent && parent.clientHeight) || winH;
+        }
+
+        if (desktopCanvas) {
+            const parent = desktopCanvas.parentElement;
+            desktopCanvas.width = (parent && parent.clientWidth) || winW;
+            desktopCanvas.height = (parent && parent.clientHeight) || winH;
+        }
+
+        if (chatCanvas) {
+            const parent = chatCanvas.parentElement;
+            chatCanvas.width = (parent && parent.clientWidth) || winW;
+            chatCanvas.height = (parent && parent.clientHeight) || winH;
         }
 
         // Criar pool inicial de meteoros garantindo que todas as 6 cores estejam ativas
@@ -3433,15 +3447,56 @@ export function startCyberMeteors() {
             cyberMeteors.push(createRgbShootingStar(w, h));
         }
 
-        // Desenhar no canvas principal
-        renderMeteors(canvas, ctx, cyberMeteors);
+        // 1. Desenhar no canvas principal se presente
+        if (canvas && ctx) {
+            renderMeteors(canvas, ctx, cyberMeteors);
+        }
 
-        // Desenhar no canvas do Feed Reels se presente e ativo
+        // 2. Desenhar no canvas do Feed Reels se presente e ativo
         const feedCanvas = (typeof document !== 'undefined') ? document.getElementById('feed-meteor-canvas') : null;
         if (feedCanvas && typeof feedCanvas.getContext === 'function') {
-            const feedCtx = feedCanvas.getContext('2d');
-            if (feedCanvas.width && feedCtx) {
-                renderMeteors(feedCanvas, feedCtx, cyberMeteors);
+            const parent = feedCanvas.parentElement;
+            if (parent && parent.clientWidth > 0 && parent.clientHeight > 0) {
+                if (feedCanvas.width !== parent.clientWidth || feedCanvas.height !== parent.clientHeight) {
+                    feedCanvas.width = parent.clientWidth;
+                    feedCanvas.height = parent.clientHeight;
+                }
+                const feedCtx = feedCanvas.getContext('2d');
+                if (feedCtx) {
+                    renderMeteors(feedCanvas, feedCtx, cyberMeteors);
+                }
+            }
+        }
+
+        // 3. Desenhar no canvas do Desktop Placeholder se presente e ativo
+        const desktopCanvas = (typeof document !== 'undefined') ? document.getElementById('desktop-meteor-canvas') : null;
+        if (desktopCanvas && typeof desktopCanvas.getContext === 'function') {
+            const parent = desktopCanvas.parentElement;
+            if (parent && parent.clientWidth > 0 && parent.clientHeight > 0) {
+                if (desktopCanvas.width !== parent.clientWidth || desktopCanvas.height !== parent.clientHeight) {
+                    desktopCanvas.width = parent.clientWidth;
+                    desktopCanvas.height = parent.clientHeight;
+                }
+                const desktopCtx = desktopCanvas.getContext('2d');
+                if (desktopCtx) {
+                    renderMeteors(desktopCanvas, desktopCtx, cyberMeteors);
+                }
+            }
+        }
+
+        // 4. Desenhar no canvas da Janela de Chat se presente e ativo
+        const chatCanvas = (typeof document !== 'undefined') ? document.getElementById('chat-meteor-canvas') : null;
+        if (chatCanvas && typeof chatCanvas.getContext === 'function') {
+            const parent = chatCanvas.parentElement;
+            if (parent && parent.clientWidth > 0 && parent.clientHeight > 0) {
+                if (chatCanvas.width !== parent.clientWidth || chatCanvas.height !== parent.clientHeight) {
+                    chatCanvas.width = parent.clientWidth;
+                    chatCanvas.height = parent.clientHeight;
+                }
+                const chatCtx = chatCanvas.getContext('2d');
+                if (chatCtx) {
+                    renderMeteors(chatCanvas, chatCtx, cyberMeteors);
+                }
             }
         }
     }
@@ -3469,6 +3524,16 @@ export function stopCyberMeteors() {
         if (feedCanvas && typeof feedCanvas.getContext === 'function') {
             const feedCtx = feedCanvas.getContext('2d');
             if (feedCtx && typeof feedCtx.clearRect === 'function') feedCtx.clearRect(0, 0, feedCanvas.width || 800, feedCanvas.height || 600);
+        }
+        const desktopCanvas = document.getElementById('desktop-meteor-canvas');
+        if (desktopCanvas && typeof desktopCanvas.getContext === 'function') {
+            const desktopCtx = desktopCanvas.getContext('2d');
+            if (desktopCtx && typeof desktopCtx.clearRect === 'function') desktopCtx.clearRect(0, 0, desktopCanvas.width || 800, desktopCanvas.height || 600);
+        }
+        const chatCanvas = document.getElementById('chat-meteor-canvas');
+        if (chatCanvas && typeof chatCanvas.getContext === 'function') {
+            const chatCtx = chatCanvas.getContext('2d');
+            if (chatCtx && typeof chatCtx.clearRect === 'function') chatCtx.clearRect(0, 0, chatCanvas.width || 800, chatCanvas.height || 600);
         }
     }
 }
@@ -21906,7 +21971,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.267';
+export const CURRENT_APP_VERSION = '1.0.268';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;

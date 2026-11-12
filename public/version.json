@@ -1,6 +1,6 @@
 {
-  "version": "1.0.267",
-  "build": 267,
+  "version": "1.0.268",
+  "build": 268,
   "releaseDate": "2026-11-12",
-  "notes": "Correção de camadas z-index: meteoros do tema Cyber Park passam no fundo dos posts no feed reels v1.0.267"
+  "notes": "Chuva de meteoros neon e estrela cadente RGB do tema Cyber Park ativos na tela Desktop Chat Placeholder e Janela de Conversa v1.0.268"
 }

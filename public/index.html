@@ -35,13 +35,13 @@
     <meta itemprop="image" content="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
     <link rel="image_src" type="image/png" href="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
 
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.267">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.267">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.267">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.267">
-    <link rel="stylesheet" href="style.css?v=1.0.267">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.268">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.268">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.268">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.268">
+    <link rel="stylesheet" href="style.css?v=1.0.268">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.267" id="app-manifest-link">
+    <link rel="manifest" href="manifest.json?v=1.0.268" id="app-manifest-link">
     <meta name="theme-color" content="#39ff14" id="app-theme-color-meta">
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#39ff14" id="app-theme-color-meta-dark">
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#39ff14" id="app-theme-color-meta-light">
@@ -50,8 +50,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.267">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.267">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.268">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.268">
     <!-- Sincronização Dinâmica da Barra de Status e Barra de Navegação do Celular -->
     <script>
         (function() {
@@ -915,6 +915,8 @@
 
         <!-- Placeholder Desktop para quando nenhuma conversa estiver aberta -->
         <div id="desktop-chat-placeholder" class="desktop-chat-placeholder">
+            <!-- Canvas de Chuva de Meteoros Neon no Desktop Placeholder (Tema Cyber Park VIP) -->
+            <canvas id="desktop-meteor-canvas" class="desktop-meteor-canvas cyberpark-meteor-canvas" aria-hidden="true"></canvas>
             <div class="desktop-placeholder-content">
                 <div class="desktop-placeholder-badge">
                     <i data-lucide="zap" class="desktop-placeholder-icon"></i>
@@ -930,6 +932,8 @@
 
         <!-- Janela de Chat em Tempo Real -->
         <div id="chat-window" class="chat-window">
+            <!-- Canvas de Chuva de Meteoros Neon na Conversa (Tema Cyber Park VIP) -->
+            <canvas id="chat-meteor-canvas" class="chat-meteor-canvas cyberpark-meteor-canvas" aria-hidden="true"></canvas>
             <header class="chat-window-header" id="chat-normal-header">
                 <div class="chat-header-left">
                     <div class="header-icon-btn" id="close-chat" title="Voltar" aria-label="Voltar">
@@ -2877,14 +2881,14 @@
                     </button>
                 </div>
 
-                <!-- Card de Versão Oficial do App (v1.0.267) -->
+                <!-- Card de Versão Oficial do App (v1.0.268) -->
                 <div class="app-version-card" id="app-version-info-footer">
                     <div class="app-version-header-row">
                         <div class="app-version-brand-wrap">
-                            <img src="icons/vortex-vip-192.png?v=1.0.267" alt="VORTEX VIP" class="app-version-icon-img" width="22" height="22">
+                            <img src="icons/vortex-vip-192.png?v=1.0.268" alt="VORTEX VIP" class="app-version-icon-img" width="22" height="22">
                             <span class="app-version-brand-name">VORTEX VIP Oficial</span>
                         </div>
-                        <span class="app-version-pill-badge" id="app-version-display-badge">v1.0.267 ⚡</span>
+                        <span class="app-version-pill-badge" id="app-version-display-badge">v1.0.268 ⚡</span>
                     </div>
                     <div class="app-version-status-row">
                         <span class="app-version-status-dot"></span>
@@ -6436,7 +6440,7 @@
         <div id="business-blocked-modal" class="custom-modal-overlay business-blocked-overlay" style="display:none;" aria-hidden="true">
             <div class="custom-modal-card business-blocked-card">
                 <div class="business-blocked-icon-wrap">
-                    <img src="icons/blocked-hand.png?v=1.0.267" alt="Acesso Bloqueado" class="business-blocked-hand-icon" width="64" height="64">
+                    <img src="icons/blocked-hand.png?v=1.0.268" alt="Acesso Bloqueado" class="business-blocked-hand-icon" width="64" height="64">
                 </div>
                 <h3 class="business-blocked-title">Acesso Bloqueado</h3>
                 <p class="business-blocked-msg" id="business-blocked-msg-text">
@@ -6485,7 +6489,7 @@
     </div> <!-- Fim do app-container -->
 
     <!-- =========================================================
-         TELA DE MANUTENÇÃO OFICIAL VORTEX VIP (v1.0.267)
+         TELA DE MANUTENÇÃO OFICIAL VORTEX VIP (v1.0.268)
          Ativada via Painel ADM; exibida apenas para usuários comuns e visitantes.
          Administradores possuem bypass total e não visualizam esta tela.
          ========================================================= -->
@@ -6548,6 +6552,6 @@
         </main>
     </div>
 
-    <script type="module" src="script.js?v=1.0.267" defer></script>
+    <script type="module" src="script.js?v=1.0.268" defer></script>
 </body>
 </html>
