@@ -1,6 +1,6 @@
 {
-  "version": "1.0.266",
-  "build": 266,
+  "version": "1.0.267",
+  "build": 267,
   "releaseDate": "2026-11-12",
-  "notes": "Animação de fundo para o tema Cyber Park com chuva de meteoros caindo para a esquerda (6 cores neon) e estrela cadente RGB a cada 20s v1.0.266"
+  "notes": "Correção de camadas z-index: meteoros do tema Cyber Park passam no fundo dos posts no feed reels v1.0.267"
 }

@@ -21906,7 +21906,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.266';
+export const CURRENT_APP_VERSION = '1.0.267';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -33730,6 +33730,9 @@ document.getElementById('feed-btn')?.addEventListener('click', () => {
     document.getElementById('screenshot-gallery-overlay')?.classList.remove('active');
     if (typeof initBinaryMatrixCanvas === 'function') {
         initBinaryMatrixCanvas();
+    }
+    if (typeof initCyberMeteorsCanvas === 'function') {
+        initCyberMeteorsCanvas();
     }
     setupFeedSearchListeners();
 });

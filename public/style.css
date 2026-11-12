@@ -9297,7 +9297,7 @@ body.theme-hacker .feed-matrix-canvas {
     width: 100vw;
     height: 100vh;
     pointer-events: none;
-    z-index: 1;
+    z-index: 0;
     opacity: 0;
     transition: opacity 0.6s ease;
     display: none;
@@ -9305,8 +9305,11 @@ body.theme-hacker .feed-matrix-canvas {
 
 .feed-meteor-canvas {
     position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
     width: 100% !important;
     height: 100% !important;
+    z-index: 0 !important;
 }
 
 body.theme-cyberpark .cyberpark-meteor-canvas,
@@ -9345,6 +9348,86 @@ body.theme-cyberpunk .message.received {
 }
 body.theme-cyberpunk .danger-btn {
     box-shadow: 0 0 12px rgba(255, 230, 0, 0.4) !important;
+}
+
+/* Feed Reels & Posts no Tema Cyber Park / Cyberpunk (Meteoros no Fundo dos Posts - v1.0.267) */
+body.theme-cyberpunk .feed-overlay,
+body.theme-cyberpark .feed-overlay {
+    background: radial-gradient(circle at 15% 15%, #180a2b 0%, #080911 85%) !important;
+}
+
+body.theme-cyberpunk .feed-overlay .gallery-header,
+body.theme-cyberpark .feed-overlay .gallery-header {
+    background: rgba(15, 16, 29, 0.95) !important;
+    border-bottom: 1px solid rgba(255, 230, 0, 0.35) !important;
+    box-shadow: 0 0 15px rgba(255, 0, 127, 0.15) !important;
+    position: relative !important;
+    z-index: 2 !important;
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+}
+
+body.theme-cyberpunk .feed-overlay .gallery-header .post-creator-title,
+body.theme-cyberpark .feed-overlay .gallery-header .post-creator-title {
+    color: #ffe600 !important;
+    text-shadow: 0 0 10px rgba(255, 230, 0, 0.5);
+}
+
+body.theme-cyberpunk .feed-overlay .gallery-back-icon,
+body.theme-cyberpark .feed-overlay .gallery-back-icon {
+    border: 1px solid rgba(255, 230, 0, 0.45) !important;
+    background: rgba(255, 230, 0, 0.12) !important;
+    color: #ffe600 !important;
+}
+
+body.theme-cyberpunk .feed-overlay .feed-search-bar-row,
+body.theme-cyberpark .feed-overlay .feed-search-bar-row {
+    background: rgba(15, 16, 29, 0.92) !important;
+    border-bottom: 1px solid rgba(255, 230, 0, 0.2) !important;
+    position: relative !important;
+    z-index: 2 !important;
+}
+
+body.theme-cyberpunk .feed-overlay .feed-filter-bar,
+body.theme-cyberpark .feed-overlay .feed-filter-bar {
+    background: rgba(15, 16, 29, 0.92) !important;
+    border-bottom: 1px solid rgba(255, 230, 0, 0.2) !important;
+    position: relative !important;
+    z-index: 2 !important;
+}
+
+body.theme-cyberpunk .feed-overlay .feed-list,
+body.theme-cyberpark .feed-overlay .feed-list {
+    position: relative !important;
+    z-index: 2 !important;
+    background: transparent !important;
+}
+
+body.theme-cyberpunk .feed-card,
+body.theme-cyberpark .feed-card,
+body.theme-cyberpunk .post-card,
+body.theme-cyberpark .post-card,
+body.theme-cyberpunk .admin-post-preview-card,
+body.theme-cyberpark .admin-post-preview-card,
+body.theme-cyberpunk .share-modal-card,
+body.theme-cyberpark .share-modal-card {
+    position: relative !important;
+    z-index: 2 !important;
+    background: #0f101d !important;
+    border: 1px solid rgba(255, 230, 0, 0.32) !important;
+    box-shadow: 0 0 18px rgba(255, 0, 127, 0.12), 0 0 8px rgba(0, 240, 255, 0.1) !important;
+}
+
+body.theme-cyberpunk .feed-card .feed-header,
+body.theme-cyberpark .feed-card .feed-header,
+body.theme-cyberpunk .feed-card .feed-media,
+body.theme-cyberpark .feed-card .feed-media,
+body.theme-cyberpunk .feed-card .feed-body,
+body.theme-cyberpark .feed-card .feed-body,
+body.theme-cyberpunk .feed-card .feed-actions,
+body.theme-cyberpark .feed-card .feed-actions {
+    position: relative !important;
+    z-index: 2 !important;
 }
 
 /* 2. Hacker ("Racke") Terminal */
