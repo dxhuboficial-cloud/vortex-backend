@@ -17756,12 +17756,12 @@ test('185. Animação de Fundo de Chuva de Meteoros e Estrela Cadente RGB (Tema 
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
   // 1. Integridade de Versionamento v1.0.266+
-  assert.ok(['1.0.266', '1.0.267', '1.0.268', '1.0.269', '1.0.270', '1.0.271', '1.0.272'].includes(versionJson.version), 'version.json deve ser 1.0.266 ou superior');
-  assert.ok(['1.0.266', '1.0.267', '1.0.268', '1.0.269', '1.0.270', '1.0.271', '1.0.272'].includes(manifest.version), 'manifest.json deve ser 1.0.266 ou superior');
-  assert.ok(['1.0.266', '1.0.267', '1.0.268', '1.0.269', '1.0.270', '1.0.271', '1.0.272'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.266 ou superior');
-  assert.ok(swContent.includes('vortex-vip-v1.0.266') || swContent.includes('vortex-vip-v1.0.267') || swContent.includes('vortex-vip-v1.0.268') || swContent.includes('vortex-vip-v1.0.269') || swContent.includes('vortex-vip-v1.0.270') || swContent.includes('vortex-vip-v1.0.271') || swContent.includes('vortex-vip-v1.0.272'), 'sw.js deve conter cache válido');
-  assert.ok(html.includes('script.js?v=1.0.266') || html.includes('script.js?v=1.0.267') || html.includes('script.js?v=1.0.268') || html.includes('script.js?v=1.0.269') || html.includes('script.js?v=1.0.270') || html.includes('script.js?v=1.0.271') || html.includes('script.js?v=1.0.272'), 'index.html deve referenciar script.js');
-  assert.ok(html.includes('style.css?v=1.0.266') || html.includes('style.css?v=1.0.267') || html.includes('style.css?v=1.0.268') || html.includes('style.css?v=1.0.269') || html.includes('style.css?v=1.0.270') || html.includes('style.css?v=1.0.271') || html.includes('style.css?v=1.0.272'), 'index.html deve referenciar style.css');
+  assert.ok(['1.0.266', '1.0.267', '1.0.268', '1.0.269', '1.0.270', '1.0.271', '1.0.272', '1.0.273'].includes(versionJson.version), 'version.json deve ser 1.0.266 ou superior');
+  assert.ok(['1.0.266', '1.0.267', '1.0.268', '1.0.269', '1.0.270', '1.0.271', '1.0.272', '1.0.273'].includes(manifest.version), 'manifest.json deve ser 1.0.266 ou superior');
+  assert.ok(['1.0.266', '1.0.267', '1.0.268', '1.0.269', '1.0.270', '1.0.271', '1.0.272', '1.0.273'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.266 ou superior');
+  assert.ok(swContent.includes('vortex-vip-v1.0.266') || swContent.includes('vortex-vip-v1.0.267') || swContent.includes('vortex-vip-v1.0.268') || swContent.includes('vortex-vip-v1.0.269') || swContent.includes('vortex-vip-v1.0.270') || swContent.includes('vortex-vip-v1.0.271') || swContent.includes('vortex-vip-v1.0.272') || swContent.includes('vortex-vip-v1.0.273'), 'sw.js deve conter cache válido');
+  assert.ok(html.includes('script.js?v=1.0.266') || html.includes('script.js?v=1.0.267') || html.includes('script.js?v=1.0.268') || html.includes('script.js?v=1.0.269') || html.includes('script.js?v=1.0.270') || html.includes('script.js?v=1.0.271') || html.includes('script.js?v=1.0.272') || html.includes('script.js?v=1.0.273'), 'index.html deve referenciar script.js');
+  assert.ok(html.includes('style.css?v=1.0.266') || html.includes('style.css?v=1.0.267') || html.includes('style.css?v=1.0.268') || html.includes('style.css?v=1.0.269') || html.includes('style.css?v=1.0.270') || html.includes('style.css?v=1.0.271') || html.includes('style.css?v=1.0.272') || html.includes('style.css?v=1.0.273'), 'index.html deve referenciar style.css');
 
   // 2. Elementos Canvas no HTML
   assert.ok(html.includes('id="cyberpark-meteor-canvas"'), 'index.html deve conter #cyberpark-meteor-canvas');
@@ -17827,12 +17827,12 @@ test('186. Camadas de Z-Index para Meteoros no Fundo dos Posts no Tema Cyber Par
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
   // 1. Integridade de Versionamento v1.0.267+
-  assert.ok(['1.0.267', '1.0.268', '1.0.269', '1.0.270', '1.0.271', '1.0.272'].includes(versionJson.version), 'version.json deve ser 1.0.267+');
-  assert.ok(['1.0.267', '1.0.268', '1.0.269', '1.0.270', '1.0.271', '1.0.272'].includes(manifest.version), 'manifest.json deve ser 1.0.267+');
-  assert.ok(['1.0.267', '1.0.268', '1.0.269', '1.0.270', '1.0.271', '1.0.272'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.267+');
-  assert.ok(swContent.includes('vortex-vip-v1.0.267') || swContent.includes('vortex-vip-v1.0.268') || swContent.includes('vortex-vip-v1.0.269') || swContent.includes('vortex-vip-v1.0.270') || swContent.includes('vortex-vip-v1.0.271') || swContent.includes('vortex-vip-v1.0.272'), 'sw.js deve conter cache v1.0.267+');
-  assert.ok(html.includes('script.js?v=1.0.267') || html.includes('script.js?v=1.0.268') || html.includes('script.js?v=1.0.269') || html.includes('script.js?v=1.0.270') || html.includes('script.js?v=1.0.271') || html.includes('script.js?v=1.0.272'), 'index.html deve referenciar script.js?v=1.0.267+');
-  assert.ok(html.includes('style.css?v=1.0.267') || html.includes('style.css?v=1.0.268') || html.includes('style.css?v=1.0.269') || html.includes('style.css?v=1.0.270') || html.includes('style.css?v=1.0.271') || html.includes('style.css?v=1.0.272'), 'index.html deve referenciar style.css?v=1.0.267+');
+  assert.ok(['1.0.267', '1.0.268', '1.0.269', '1.0.270', '1.0.271', '1.0.272', '1.0.273'].includes(versionJson.version), 'version.json deve ser 1.0.267+');
+  assert.ok(['1.0.267', '1.0.268', '1.0.269', '1.0.270', '1.0.271', '1.0.272', '1.0.273'].includes(manifest.version), 'manifest.json deve ser 1.0.267+');
+  assert.ok(['1.0.267', '1.0.268', '1.0.269', '1.0.270', '1.0.271', '1.0.272', '1.0.273'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.267+');
+  assert.ok(swContent.includes('vortex-vip-v1.0.267') || swContent.includes('vortex-vip-v1.0.268') || swContent.includes('vortex-vip-v1.0.269') || swContent.includes('vortex-vip-v1.0.270') || swContent.includes('vortex-vip-v1.0.271') || swContent.includes('vortex-vip-v1.0.272') || swContent.includes('vortex-vip-v1.0.273'), 'sw.js deve conter cache v1.0.267+');
+  assert.ok(html.includes('script.js?v=1.0.267') || html.includes('script.js?v=1.0.268') || html.includes('script.js?v=1.0.269') || html.includes('script.js?v=1.0.270') || html.includes('script.js?v=1.0.271') || html.includes('script.js?v=1.0.272') || html.includes('script.js?v=1.0.273'), 'index.html deve referenciar script.js?v=1.0.267+');
+  assert.ok(html.includes('style.css?v=1.0.267') || html.includes('style.css?v=1.0.268') || html.includes('style.css?v=1.0.269') || html.includes('style.css?v=1.0.270') || html.includes('style.css?v=1.0.271') || html.includes('style.css?v=1.0.272') || html.includes('style.css?v=1.0.273'), 'index.html deve referenciar style.css?v=1.0.267+');
 
   // 2. Elementos Canvas e Overlay no DOM
   assert.ok(html.includes('id="cyberpark-meteor-canvas"'), 'index.html deve conter #cyberpark-meteor-canvas');
@@ -17872,12 +17872,12 @@ test('187. Chuva de Meteoros e Estrela Cadente RGB no Desktop Chat Placeholder e
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
   // 1. Integridade de Versionamento v1.0.268+
-  assert.ok(['1.0.268', '1.0.269', '1.0.270', '1.0.271', '1.0.272'].includes(versionJson.version), 'version.json deve ser 1.0.268+');
-  assert.ok(['1.0.268', '1.0.269', '1.0.270', '1.0.271', '1.0.272'].includes(manifest.version), 'manifest.json deve ser 1.0.268+');
-  assert.ok(['1.0.268', '1.0.269', '1.0.270', '1.0.271', '1.0.272'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.268+');
-  assert.ok(swContent.includes('vortex-vip-v1.0.268') || swContent.includes('vortex-vip-v1.0.269') || swContent.includes('vortex-vip-v1.0.270') || swContent.includes('vortex-vip-v1.0.271') || swContent.includes('vortex-vip-v1.0.272'), 'sw.js deve conter cache v1.0.268+');
-  assert.ok(html.includes('script.js?v=1.0.268') || html.includes('script.js?v=1.0.269') || html.includes('script.js?v=1.0.270') || html.includes('script.js?v=1.0.271') || html.includes('script.js?v=1.0.272'), 'index.html deve referenciar script.js?v=1.0.268+');
-  assert.ok(html.includes('style.css?v=1.0.268') || html.includes('style.css?v=1.0.269') || html.includes('style.css?v=1.0.270') || html.includes('style.css?v=1.0.271') || html.includes('style.css?v=1.0.272'), 'index.html deve referenciar style.css?v=1.0.268+');
+  assert.ok(['1.0.268', '1.0.269', '1.0.270', '1.0.271', '1.0.272', '1.0.273'].includes(versionJson.version), 'version.json deve ser 1.0.268+');
+  assert.ok(['1.0.268', '1.0.269', '1.0.270', '1.0.271', '1.0.272', '1.0.273'].includes(manifest.version), 'manifest.json deve ser 1.0.268+');
+  assert.ok(['1.0.268', '1.0.269', '1.0.270', '1.0.271', '1.0.272', '1.0.273'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.268+');
+  assert.ok(swContent.includes('vortex-vip-v1.0.268') || swContent.includes('vortex-vip-v1.0.269') || swContent.includes('vortex-vip-v1.0.270') || swContent.includes('vortex-vip-v1.0.271') || swContent.includes('vortex-vip-v1.0.272') || swContent.includes('vortex-vip-v1.0.273'), 'sw.js deve conter cache v1.0.268+');
+  assert.ok(html.includes('script.js?v=1.0.268') || html.includes('script.js?v=1.0.269') || html.includes('script.js?v=1.0.270') || html.includes('script.js?v=1.0.271') || html.includes('script.js?v=1.0.272') || html.includes('script.js?v=1.0.273'), 'index.html deve referenciar script.js?v=1.0.268+');
+  assert.ok(html.includes('style.css?v=1.0.268') || html.includes('style.css?v=1.0.269') || html.includes('style.css?v=1.0.270') || html.includes('style.css?v=1.0.271') || html.includes('style.css?v=1.0.272') || html.includes('style.css?v=1.0.273'), 'index.html deve referenciar style.css?v=1.0.268+');
 
   // 2. Elementos Canvas no HTML dentro de #desktop-chat-placeholder
   assert.ok(html.includes('id="desktop-meteor-canvas"'), 'index.html deve conter #desktop-meteor-canvas no desktop-chat-placeholder');
@@ -17915,12 +17915,12 @@ test('188. Bolinhas de Estrela no Fundo Cósmico em 3 Tamanhos (Grande, Média, 
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
   // 1. Integridade de Versionamento v1.0.269+
-  assert.ok(['1.0.269', '1.0.270', '1.0.271', '1.0.272'].includes(versionJson.version), 'version.json deve ser 1.0.269+');
-  assert.ok(['1.0.269', '1.0.270', '1.0.271', '1.0.272'].includes(manifest.version), 'manifest.json deve ser 1.0.269+');
-  assert.ok(['1.0.269', '1.0.270', '1.0.271', '1.0.272'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.269+');
-  assert.ok(swContent.includes('vortex-vip-v1.0.269') || swContent.includes('vortex-vip-v1.0.270') || swContent.includes('vortex-vip-v1.0.271') || swContent.includes('vortex-vip-v1.0.272'), 'sw.js deve conter cache v1.0.269+');
-  assert.ok(html.includes('script.js?v=1.0.269') || html.includes('script.js?v=1.0.270') || html.includes('script.js?v=1.0.271') || html.includes('script.js?v=1.0.272'), 'index.html deve referenciar script.js?v=1.0.269+');
-  assert.ok(html.includes('style.css?v=1.0.269') || html.includes('style.css?v=1.0.270') || html.includes('style.css?v=1.0.271') || html.includes('style.css?v=1.0.272'), 'index.html deve referenciar style.css?v=1.0.269+');
+  assert.ok(['1.0.269', '1.0.270', '1.0.271', '1.0.272', '1.0.273'].includes(versionJson.version), 'version.json deve ser 1.0.269+');
+  assert.ok(['1.0.269', '1.0.270', '1.0.271', '1.0.272', '1.0.273'].includes(manifest.version), 'manifest.json deve ser 1.0.269+');
+  assert.ok(['1.0.269', '1.0.270', '1.0.271', '1.0.272', '1.0.273'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.269+');
+  assert.ok(swContent.includes('vortex-vip-v1.0.269') || swContent.includes('vortex-vip-v1.0.270') || swContent.includes('vortex-vip-v1.0.271') || swContent.includes('vortex-vip-v1.0.272') || swContent.includes('vortex-vip-v1.0.273'), 'sw.js deve conter cache v1.0.269+');
+  assert.ok(html.includes('script.js?v=1.0.269') || html.includes('script.js?v=1.0.270') || html.includes('script.js?v=1.0.271') || html.includes('script.js?v=1.0.272') || html.includes('script.js?v=1.0.273'), 'index.html deve referenciar script.js?v=1.0.269+');
+  assert.ok(html.includes('style.css?v=1.0.269') || html.includes('style.css?v=1.0.270') || html.includes('style.css?v=1.0.271') || html.includes('style.css?v=1.0.272') || html.includes('style.css?v=1.0.273'), 'index.html deve referenciar style.css?v=1.0.269+');
 
   // 2. Existência de configurações e funções de estrelas no window
   assert.strictEqual(typeof win.createCyberStar, 'function', 'createCyberStar deve ser função');
@@ -18017,12 +18017,12 @@ test('189. Correção de Layout da Janela de Conversa: Remoção de Meteoros no 
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
   // 1. Integridade de Versionamento v1.0.270+
-  assert.ok(['1.0.270', '1.0.271', '1.0.272'].includes(versionJson.version), 'version.json deve ser 1.0.270 ou superior');
-  assert.ok(['1.0.270', '1.0.271', '1.0.272'].includes(manifest.version), 'manifest.json deve ser 1.0.270 ou superior');
-  assert.ok(['1.0.270', '1.0.271', '1.0.272'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.270 ou superior');
-  assert.ok(swContent.includes('vortex-vip-v1.0.270') || swContent.includes('vortex-vip-v1.0.271') || swContent.includes('vortex-vip-v1.0.272'), 'sw.js deve conter cache v1.0.270+');
-  assert.ok(html.includes('script.js?v=1.0.270') || html.includes('script.js?v=1.0.271') || html.includes('script.js?v=1.0.272'), 'index.html deve referenciar script.js?v=1.0.270+');
-  assert.ok(html.includes('style.css?v=1.0.270') || html.includes('style.css?v=1.0.271') || html.includes('style.css?v=1.0.272'), 'index.html deve referenciar style.css?v=1.0.270+');
+  assert.ok(['1.0.270', '1.0.271', '1.0.272', '1.0.273'].includes(versionJson.version), 'version.json deve ser 1.0.270 ou superior');
+  assert.ok(['1.0.270', '1.0.271', '1.0.272', '1.0.273'].includes(manifest.version), 'manifest.json deve ser 1.0.270 ou superior');
+  assert.ok(['1.0.270', '1.0.271', '1.0.272', '1.0.273'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.270 ou superior');
+  assert.ok(swContent.includes('vortex-vip-v1.0.270') || swContent.includes('vortex-vip-v1.0.271') || swContent.includes('vortex-vip-v1.0.272') || swContent.includes('vortex-vip-v1.0.273'), 'sw.js deve conter cache v1.0.270+');
+  assert.ok(html.includes('script.js?v=1.0.270') || html.includes('script.js?v=1.0.271') || html.includes('script.js?v=1.0.272') || html.includes('script.js?v=1.0.273'), 'index.html deve referenciar script.js?v=1.0.270+');
+  assert.ok(html.includes('style.css?v=1.0.270') || html.includes('style.css?v=1.0.271') || html.includes('style.css?v=1.0.272') || html.includes('style.css?v=1.0.273'), 'index.html deve referenciar style.css?v=1.0.270+');
 
   // 2. Ausência de canvas de meteoros dentro da janela de conversa (#chat-window)
   assert.ok(!html.includes('id="chat-meteor-canvas"'), 'index.html NÃO deve conter #chat-meteor-canvas no chat-window');
@@ -18065,12 +18065,12 @@ test('190. Clima Dinâmico no Tema RGB: Nuvens Oscilantes a cada 30s, Chuva em 7
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
   // 1. Integridade de Versionamento v1.0.271+
-  assert.ok(['1.0.271', '1.0.272'].includes(versionJson.version), 'version.json deve ser 1.0.271 ou 1.0.272');
-  assert.ok(['1.0.271', '1.0.272'].includes(manifest.version), 'manifest.json deve ser 1.0.271 ou 1.0.272');
-  assert.ok(['1.0.271', '1.0.272'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.271 ou 1.0.272');
-  assert.ok(swContent.includes('vortex-vip-v1.0.271') || swContent.includes('vortex-vip-v1.0.272'), 'sw.js deve conter cache v1.0.271+');
-  assert.ok(html.includes('script.js?v=1.0.271') || html.includes('script.js?v=1.0.272'), 'index.html deve referenciar script.js?v=1.0.271+');
-  assert.ok(html.includes('style.css?v=1.0.271') || html.includes('style.css?v=1.0.272'), 'index.html deve referenciar style.css?v=1.0.271+');
+  assert.ok(['1.0.271', '1.0.272', '1.0.273'].includes(versionJson.version), 'version.json deve ser 1.0.271+');
+  assert.ok(['1.0.271', '1.0.272', '1.0.273'].includes(manifest.version), 'manifest.json deve ser 1.0.271+');
+  assert.ok(['1.0.271', '1.0.272', '1.0.273'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.271+');
+  assert.ok(swContent.includes('vortex-vip-v1.0.271') || swContent.includes('vortex-vip-v1.0.272') || swContent.includes('vortex-vip-v1.0.273'), 'sw.js deve conter cache v1.0.271+');
+  assert.ok(html.includes('script.js?v=1.0.271') || html.includes('script.js?v=1.0.272') || html.includes('script.js?v=1.0.273'), 'index.html deve referenciar script.js?v=1.0.271+');
+  assert.ok(html.includes('style.css?v=1.0.271') || html.includes('style.css?v=1.0.272') || html.includes('style.css?v=1.0.273'), 'index.html deve referenciar style.css?v=1.0.271+');
 
   // 2. Elementos Canvas presentes no Início e Feed (e NUNCA dentro de chat-window)
   assert.ok(html.includes('id="rgb-weather-canvas"'), 'index.html deve conter #rgb-weather-canvas no início');
@@ -18186,13 +18186,13 @@ test('191. Paisagem de Praia com Coqueiros e Montanhas no Escuro Clareadas pelos
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
-  // 1. Integridade de Versionamento v1.0.272
-  assert.strictEqual(versionJson.version, '1.0.272', 'version.json deve ser 1.0.272');
-  assert.strictEqual(manifest.version, '1.0.272', 'manifest.json deve ser 1.0.272');
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.272', 'CURRENT_APP_VERSION deve ser 1.0.272');
-  assert.ok(swContent.includes('vortex-vip-v1.0.272'), 'sw.js deve conter cache v1.0.272');
-  assert.ok(html.includes('script.js?v=1.0.272'), 'index.html deve referenciar script.js?v=1.0.272');
-  assert.ok(html.includes('style.css?v=1.0.272'), 'index.html deve referenciar style.css?v=1.0.272');
+  // 1. Integridade de Versionamento v1.0.272+
+  assert.ok(['1.0.272', '1.0.273'].includes(versionJson.version), 'version.json deve ser 1.0.272 ou 1.0.273');
+  assert.ok(['1.0.272', '1.0.273'].includes(manifest.version), 'manifest.json deve ser 1.0.272 ou 1.0.273');
+  assert.ok(['1.0.272', '1.0.273'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.272 ou 1.0.273');
+  assert.ok(swContent.includes('vortex-vip-v1.0.272') || swContent.includes('vortex-vip-v1.0.273'), 'sw.js deve conter cache v1.0.272+');
+  assert.ok(html.includes('script.js?v=1.0.272') || html.includes('script.js?v=1.0.273'), 'index.html deve referenciar script.js?v=1.0.272+');
+  assert.ok(html.includes('style.css?v=1.0.272') || html.includes('style.css?v=1.0.273'), 'index.html deve referenciar style.css?v=1.0.272+');
 
   // 2. Existência e exportação das funções da paisagem
   assert.strictEqual(typeof win.renderRgbLandscape, 'function', 'renderRgbLandscape deve ser função exportada');
@@ -18282,4 +18282,73 @@ test('191. Paisagem de Praia com Coqueiros e Montanhas no Escuro Clareadas pelos
     if (ch === '}') closeBraces191++;
   }
   assert.strictEqual(openBraces191, closeBraces191, 'CSS deve ter chaves perfeitamente balanceadas');
+});
+
+test('192. Posicionamento das Montanhas no Fundo do Horizonte Distante Atrás da Praia e Coqueiros v1.0.273', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+  const doc = win.document;
+  const html = fs.readFileSync('public/index.html', 'utf8');
+  const css = fs.readFileSync('public/style.css', 'utf8');
+  const manifest = JSON.parse(fs.readFileSync('public/manifest.json', 'utf8'));
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+
+  // 1. Integridade de Versionamento v1.0.273
+  assert.strictEqual(versionJson.version, '1.0.273', 'version.json deve ser 1.0.273');
+  assert.strictEqual(manifest.version, '1.0.273', 'manifest.json deve ser 1.0.273');
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.273', 'CURRENT_APP_VERSION deve ser 1.0.273');
+  assert.ok(swContent.includes('vortex-vip-v1.0.273'), 'sw.js deve conter cache v1.0.273');
+  assert.ok(html.includes('script.js?v=1.0.273'), 'index.html deve referenciar script.js?v=1.0.273');
+  assert.ok(html.includes('style.css?v=1.0.273'), 'index.html deve referenciar style.css?v=1.0.273');
+
+  // 2. Mock com rastreamento de coordenadas de desenho
+  const pointsDrawn = [];
+  function createCoordsTrackerMock() {
+    return {
+      save: () => {},
+      restore: () => {},
+      beginPath: () => {},
+      closePath: () => {},
+      stroke: () => {},
+      fill: () => {},
+      arc: () => {},
+      fillRect: () => {},
+      moveTo: (x, y) => { pointsDrawn.push({ op: 'moveTo', x, y }); },
+      lineTo: (x, y) => { pointsDrawn.push({ op: 'lineTo', x, y }); },
+      bezierCurveTo: (cp1x, cp1y, cp2x, cp2y, x, y) => {
+        pointsDrawn.push({ op: 'bezier', cp1y, cp2y, y });
+      },
+      quadraticCurveTo: (cpx, cpy, x, y) => {
+        pointsDrawn.push({ op: 'quad', cpy, y });
+      },
+      createLinearGradient: () => ({ addColorStop: () => {} })
+    };
+  }
+
+  const trackerMock = createCoordsTrackerMock();
+  const w = 1000;
+  const h = 800;
+
+  // 3. Desenhar montanhas e validar que todos os pontos ficam no horizonte ao fundo (y >= 0.65 * h)
+  win.drawMountains(trackerMock, w, h, 0, null);
+
+  const mountainYCoords = pointsDrawn.map(p => p.y || p.cp1y || p.cp2y).filter(y => typeof y === 'number');
+  assert.ok(mountainYCoords.length > 5, 'Deve traçar múltiplos pontos para as montanhas ao fundo');
+
+  // Validar que nenhum cume ultrapassa o céu médio (todos os pontos da montanha ficam no fundo, >= 0.65 * h)
+  const minY = Math.min(...mountainYCoords);
+  assert.ok(minY >= h * 0.65, `Cume mais alto da montanha (${minY}) deve ficar no horizonte ao fundo (>= ${h * 0.65}) e não no meio da tela`);
+
+  // 4. Validar que as funções de praia e coqueiro continuam ativas e no primeiro plano
+  assert.strictEqual(typeof win.drawBeach, 'function', 'drawBeach deve existir');
+  assert.strictEqual(typeof win.drawPalmTree, 'function', 'drawPalmTree deve existir');
+
+  // 5. Balanço de chaves do CSS
+  let openBraces192 = 0, closeBraces192 = 0;
+  for (const ch of css) {
+    if (ch === '{') openBraces192++;
+    if (ch === '}') closeBraces192++;
+  }
+  assert.strictEqual(openBraces192, closeBraces192, 'CSS deve ter chaves perfeitamente balanceadas');
 });

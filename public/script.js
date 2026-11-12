@@ -3944,79 +3944,82 @@ export function drawMountains(targetCtx, w, h, flashIntensity = 0, flashColor = 
 
     if (typeof targetCtx.save === 'function') targetCtx.save();
 
-    // 1. Resplendor atmosférico no horizonte atrás das montanhas quando o raio cai
+    // 1. Resplendor atmosférico no horizonte distante atrás das montanhas quando o raio cai
     if (intensity > 0.05 && typeof targetCtx.createLinearGradient === 'function') {
-        const skyGlow = targetCtx.createLinearGradient(0, h * 0.38, 0, h * 0.76);
+        const skyGlow = targetCtx.createLinearGradient(0, h * 0.58, 0, h * 0.82);
         skyGlow.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0)`);
         skyGlow.addColorStop(0.65, `rgba(${r}, ${g}, ${b}, ${0.28 * intensity})`);
         skyGlow.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
         targetCtx.fillStyle = skyGlow;
         if (typeof targetCtx.fillRect === 'function') {
-            targetCtx.fillRect(0, h * 0.35, w, h * 0.42);
+            targetCtx.fillRect(0, h * 0.56, w, h * 0.28);
         }
     }
 
-    // 2. Montanhas Distantes lá longe (Picos mais altos e pontiagudos)
+    // 2. Montanhas Distantes no Fundo (Camada 1: Linha de picos ao fundo no horizonte distante)
     targetCtx.beginPath();
-    targetCtx.moveTo(0, h * 0.76);
-    targetCtx.lineTo(0, h * 0.63);
-    targetCtx.lineTo(w * 0.08, h * 0.58);
-    targetCtx.lineTo(w * 0.18, h * 0.48); // Pico 1
-    targetCtx.lineTo(w * 0.28, h * 0.56);
-    targetCtx.lineTo(w * 0.38, h * 0.44); // Pico 2 (Alto)
-    targetCtx.lineTo(w * 0.48, h * 0.54);
-    targetCtx.lineTo(w * 0.58, h * 0.46); // Pico 3
-    targetCtx.lineTo(w * 0.68, h * 0.55);
-    targetCtx.lineTo(w * 0.78, h * 0.42); // Pico 4 (Alto)
-    targetCtx.lineTo(w * 0.88, h * 0.52);
-    targetCtx.lineTo(w * 0.95, h * 0.49); // Pico 5
-    targetCtx.lineTo(w, h * 0.58);
-    targetCtx.lineTo(w, h * 0.78);
-    targetCtx.lineTo(0, h * 0.78);
+    targetCtx.moveTo(0, h * 0.82);
+    targetCtx.lineTo(0, h * 0.74);
+    if (typeof targetCtx.bezierCurveTo === 'function') {
+        targetCtx.bezierCurveTo(w * 0.08, h * 0.70, w * 0.16, h * 0.73, w * 0.24, h * 0.70);
+        targetCtx.bezierCurveTo(w * 0.32, h * 0.67, w * 0.40, h * 0.73, w * 0.48, h * 0.69);
+        targetCtx.bezierCurveTo(w * 0.56, h * 0.66, w * 0.64, h * 0.72, w * 0.72, h * 0.68);
+        targetCtx.bezierCurveTo(w * 0.80, h * 0.65, w * 0.88, h * 0.73, w * 0.95, h * 0.70);
+        targetCtx.bezierCurveTo(w * 0.98, h * 0.72, w * 0.99, h * 0.73, w, h * 0.72);
+    } else {
+        targetCtx.lineTo(w * 0.25, h * 0.70);
+        targetCtx.lineTo(w * 0.50, h * 0.68);
+        targetCtx.lineTo(w * 0.75, h * 0.69);
+        targetCtx.lineTo(w, h * 0.72);
+    }
+    targetCtx.lineTo(w, h * 0.84);
+    targetCtx.lineTo(0, h * 0.84);
     targetCtx.closePath();
 
     if (intensity > 0.02 && typeof targetCtx.createLinearGradient === 'function') {
-        const farGrad = targetCtx.createLinearGradient(0, h * 0.42, 0, h * 0.78);
+        const farGrad = targetCtx.createLinearGradient(0, h * 0.65, 0, h * 0.84);
         farGrad.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${0.24 * intensity + 0.04})`);
-        farGrad.addColorStop(0.55, `rgba(${Math.round(r * 0.4)}, ${Math.round(g * 0.4)}, ${Math.round(b * 0.4)}, ${0.12 * intensity + 0.03})`);
+        farGrad.addColorStop(0.5, `rgba(${Math.round(r * 0.4)}, ${Math.round(g * 0.4)}, ${Math.round(b * 0.4)}, ${0.12 * intensity + 0.03})`);
         farGrad.addColorStop(1, 'rgba(5, 4, 12, 0.98)');
         targetCtx.fillStyle = farGrad;
     } else {
-        targetCtx.fillStyle = 'rgba(6, 5, 14, 0.96)'; // No escuro
+        targetCtx.fillStyle = 'rgba(8, 7, 16, 0.96)'; // No escuro, silhueta suave distante no fundo
     }
     if (typeof targetCtx.fill === 'function') targetCtx.fill();
 
-    // Contorno iluminado dos picos distantes quando o raio clareia
+    // Contorno iluminado dos picos distantes ao fundo
     if (intensity > 0.05 && typeof targetCtx.stroke === 'function') {
         targetCtx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${0.45 * intensity})`;
-        targetCtx.lineWidth = 1.3;
+        targetCtx.lineWidth = 1.4;
         targetCtx.stroke();
     }
 
-    // 3. Montanhas Intermediárias (Cumes mais próximos criando relevo)
+    // 3. Montanhas Intermediárias ao fundo (Camada 2: colinas e cumes mais próximos da linha da água)
     targetCtx.beginPath();
-    targetCtx.moveTo(0, h * 0.78);
-    targetCtx.lineTo(0, h * 0.67);
-    targetCtx.lineTo(w * 0.12, h * 0.60);
-    targetCtx.lineTo(w * 0.24, h * 0.54); // Cume 1
-    targetCtx.lineTo(w * 0.35, h * 0.63);
-    targetCtx.lineTo(w * 0.52, h * 0.51); // Cume 2
-    targetCtx.lineTo(w * 0.66, h * 0.60);
-    targetCtx.lineTo(w * 0.82, h * 0.54); // Cume 3
-    targetCtx.lineTo(w * 0.92, h * 0.64);
-    targetCtx.lineTo(w, h * 0.62);
-    targetCtx.lineTo(w, h * 0.80);
-    targetCtx.lineTo(0, h * 0.80);
+    targetCtx.moveTo(0, h * 0.84);
+    targetCtx.lineTo(0, h * 0.76);
+    if (typeof targetCtx.bezierCurveTo === 'function') {
+        targetCtx.bezierCurveTo(w * 0.10, h * 0.73, w * 0.18, h * 0.77, w * 0.28, h * 0.74);
+        targetCtx.bezierCurveTo(w * 0.38, h * 0.71, w * 0.46, h * 0.76, w * 0.55, h * 0.72);
+        targetCtx.bezierCurveTo(w * 0.65, h * 0.70, w * 0.74, h * 0.75, w * 0.84, h * 0.72);
+        targetCtx.bezierCurveTo(w * 0.92, h * 0.74, w * 0.97, h * 0.77, w, h * 0.75);
+    } else {
+        targetCtx.lineTo(w * 0.30, h * 0.74);
+        targetCtx.lineTo(w * 0.60, h * 0.72);
+        targetCtx.lineTo(w, h * 0.75);
+    }
+    targetCtx.lineTo(w, h * 0.84);
+    targetCtx.lineTo(0, h * 0.84);
     targetCtx.closePath();
 
     if (intensity > 0.02 && typeof targetCtx.createLinearGradient === 'function') {
-        const midGrad = targetCtx.createLinearGradient(0, h * 0.51, 0, h * 0.80);
+        const midGrad = targetCtx.createLinearGradient(0, h * 0.70, 0, h * 0.84);
         midGrad.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${0.34 * intensity + 0.05})`);
-        midGrad.addColorStop(0.5, `rgba(${Math.round(r * 0.6)}, ${Math.round(g * 0.6)}, ${Math.round(b * 0.6)}, ${0.18 * intensity + 0.04})`);
-        midGrad.addColorStop(1, 'rgba(6, 5, 15, 0.99)');
+        midGrad.addColorStop(0.5, `rgba(${Math.round(r * 0.5)}, ${Math.round(g * 0.5)}, ${Math.round(b * 0.5)}, ${0.16 * intensity + 0.04})`);
+        midGrad.addColorStop(1, 'rgba(6, 5, 14, 0.99)');
         targetCtx.fillStyle = midGrad;
     } else {
-        targetCtx.fillStyle = 'rgba(7, 6, 16, 0.97)'; // No escuro
+        targetCtx.fillStyle = 'rgba(10, 8, 18, 0.97)'; // No escuro
     }
     if (typeof targetCtx.fill === 'function') targetCtx.fill();
 
@@ -4036,20 +4039,20 @@ export function drawBeach(targetCtx, w, h, flashIntensity = 0, flashColor = null
 
     if (typeof targetCtx.save === 'function') targetCtx.save();
 
-    // 1. Superfície do Mar / Água entre montanhas e praia
+    // 1. Superfície do Mar / Água refletindo o céu entre as montanhas ao fundo e a praia
     targetCtx.beginPath();
-    targetCtx.moveTo(0, h * 0.70);
-    targetCtx.lineTo(w, h * 0.70);
-    targetCtx.lineTo(w, h * 0.84);
+    targetCtx.moveTo(0, h * 0.75);
+    targetCtx.lineTo(w, h * 0.75);
+    targetCtx.lineTo(w, h * 0.85);
     if (typeof targetCtx.bezierCurveTo === 'function') {
-        targetCtx.bezierCurveTo(w * 0.65, h * 0.81, w * 0.35, h * 0.83, 0, h * 0.79);
+        targetCtx.bezierCurveTo(w * 0.65, h * 0.83, w * 0.35, h * 0.84, 0, h * 0.82);
     } else {
-        targetCtx.lineTo(0, h * 0.84);
+        targetCtx.lineTo(0, h * 0.85);
     }
     targetCtx.closePath();
 
     if (intensity > 0.02 && typeof targetCtx.createLinearGradient === 'function') {
-        const waterGrad = targetCtx.createLinearGradient(0, h * 0.70, 0, h * 0.84);
+        const waterGrad = targetCtx.createLinearGradient(0, h * 0.75, 0, h * 0.85);
         waterGrad.addColorStop(0, 'rgba(4, 4, 12, 0.98)');
         waterGrad.addColorStop(0.5, `rgba(${Math.round(r * 0.35)}, ${Math.round(g * 0.5)}, ${Math.round(b * 0.85)}, ${0.28 * intensity + 0.02})`);
         waterGrad.addColorStop(1, `rgba(${r}, ${g}, ${b}, ${0.35 * intensity + 0.02})`);
@@ -4059,56 +4062,56 @@ export function drawBeach(targetCtx, w, h, flashIntensity = 0, flashColor = null
     }
     if (typeof targetCtx.fill === 'function') targetCtx.fill();
 
-    // Reflexo do relâmpago na água
+    // Reflexo do relâmpago na água do mar
     if (intensity > 0.08 && typeof targetCtx.stroke === 'function') {
         targetCtx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${0.45 * intensity})`;
         targetCtx.lineWidth = 1.4;
         targetCtx.beginPath();
-        targetCtx.moveTo(w * 0.35, h * 0.74);
-        targetCtx.lineTo(w * 0.65, h * 0.74);
-        targetCtx.moveTo(w * 0.40, h * 0.77);
-        targetCtx.lineTo(w * 0.60, h * 0.77);
+        targetCtx.moveTo(w * 0.30, h * 0.78);
+        targetCtx.lineTo(w * 0.70, h * 0.78);
+        targetCtx.moveTo(w * 0.38, h * 0.80);
+        targetCtx.lineTo(w * 0.62, h * 0.80);
         targetCtx.stroke();
     }
 
-    // 2. Faixa de Areia da Praia (curvada e orgânica em primeiro plano)
+    // 2. Faixa de Areia da Praia em primeiro plano (curvada e orgânica)
     targetCtx.beginPath();
-    targetCtx.moveTo(0, h * 0.79);
+    targetCtx.moveTo(0, h * 0.82);
     if (typeof targetCtx.bezierCurveTo === 'function') {
-        targetCtx.bezierCurveTo(w * 0.32, h * 0.75, w * 0.68, h * 0.83, w, h * 0.78);
+        targetCtx.bezierCurveTo(w * 0.30, h * 0.79, w * 0.70, h * 0.84, w, h * 0.81);
     } else {
-        targetCtx.lineTo(w, h * 0.78);
+        targetCtx.lineTo(w, h * 0.81);
     }
     targetCtx.lineTo(w, h);
     targetCtx.lineTo(0, h);
     targetCtx.closePath();
 
     if (intensity > 0.02 && typeof targetCtx.createLinearGradient === 'function') {
-        const sandGrad = targetCtx.createLinearGradient(0, h * 0.75, 0, h);
+        const sandGrad = targetCtx.createLinearGradient(0, h * 0.79, 0, h);
         sandGrad.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${0.40 * intensity + 0.05})`);
         sandGrad.addColorStop(0.25, `rgba(${Math.min(255, r + 35)}, ${Math.min(255, g + 30)}, ${Math.min(255, b + 15)}, ${0.25 * intensity + 0.04})`);
         sandGrad.addColorStop(1, 'rgba(8, 7, 18, 0.99)');
         targetCtx.fillStyle = sandGrad;
     } else {
-        targetCtx.fillStyle = 'rgba(8, 7, 16, 0.98)'; // No escuro
+        targetCtx.fillStyle = 'rgba(9, 8, 18, 0.98)'; // No escuro
     }
     if (typeof targetCtx.fill === 'function') targetCtx.fill();
 
-    // 3. Espuma e orla que clareiam vivamente com o raio
+    // 3. Linha de espuma da orla que brilha quando o raio cai
     targetCtx.beginPath();
-    targetCtx.moveTo(0, h * 0.79);
+    targetCtx.moveTo(0, h * 0.82);
     if (typeof targetCtx.bezierCurveTo === 'function') {
-        targetCtx.bezierCurveTo(w * 0.32, h * 0.75, w * 0.68, h * 0.83, w, h * 0.78);
+        targetCtx.bezierCurveTo(w * 0.30, h * 0.79, w * 0.70, h * 0.84, w, h * 0.81);
     } else {
-        targetCtx.lineTo(w, h * 0.78);
+        targetCtx.lineTo(w, h * 0.81);
     }
     if (intensity > 0.04 && typeof targetCtx.stroke === 'function') {
         targetCtx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${0.78 * intensity})`;
-        targetCtx.lineWidth = 2.2;
+        targetCtx.lineWidth = 2.4;
         targetCtx.stroke();
     } else if (typeof targetCtx.stroke === 'function') {
-        targetCtx.strokeStyle = 'rgba(20, 18, 35, 0.5)';
-        targetCtx.lineWidth = 1.0;
+        targetCtx.strokeStyle = 'rgba(25, 22, 40, 0.6)';
+        targetCtx.lineWidth = 1.2;
         targetCtx.stroke();
     }
 
@@ -4124,16 +4127,16 @@ export function drawPalmTree(targetCtx, baseX, baseY, height, leanDirection = 0.
 
     const topX = baseX + height * leanDirection;
     const topY = baseY - height;
-    const midX = baseX + (topX - baseX) * 0.55 + (leanDirection > 0 ? 12 : -12);
-    const midY = baseY - height * 0.55;
+    const midX = baseX + (topX - baseX) * 0.52 + (leanDirection > 0 ? 14 : -14);
+    const midY = baseY - height * 0.52;
 
-    // 1. Tronco Curvado do Coqueiro
+    // 1. Tronco Curvado e Robusto do Coqueiro em Primeiro Plano
     targetCtx.beginPath();
-    targetCtx.moveTo(baseX - 4.5, baseY);
+    targetCtx.moveTo(baseX - 6, baseY);
     if (typeof targetCtx.quadraticCurveTo === 'function') {
-        targetCtx.quadraticCurveTo(midX - 2.5, midY, topX - 2.0, topY);
-        targetCtx.lineTo(topX + 2.0, topY);
-        targetCtx.quadraticCurveTo(midX + 2.5, midY, baseX + 4.5, baseY);
+        targetCtx.quadraticCurveTo(midX - 3.5, midY, topX - 2.5, topY);
+        targetCtx.lineTo(topX + 2.5, topY);
+        targetCtx.quadraticCurveTo(midX + 3.5, midY, baseX + 6, baseY);
     } else {
         targetCtx.lineTo(topX, topY);
         targetCtx.lineTo(baseX, baseY);
@@ -4143,35 +4146,43 @@ export function drawPalmTree(targetCtx, baseX, baseY, height, leanDirection = 0.
     if (intensity > 0.02 && typeof targetCtx.createLinearGradient === 'function') {
         const trunkGrad = targetCtx.createLinearGradient(baseX, baseY, topX, topY);
         trunkGrad.addColorStop(0, 'rgba(8, 7, 15, 0.99)');
-        trunkGrad.addColorStop(0.7, `rgba(${Math.round(r * 0.6)}, ${Math.round(g * 0.55)}, ${Math.round(b * 0.5)}, ${0.45 * intensity + 0.08})`);
-        trunkGrad.addColorStop(1, `rgba(${r}, ${g}, ${b}, ${0.65 * intensity + 0.12})`);
+        trunkGrad.addColorStop(0.7, `rgba(${Math.round(r * 0.6)}, ${Math.round(g * 0.55)}, ${Math.round(b * 0.5)}, ${0.45 * intensity + 0.10})`);
+        trunkGrad.addColorStop(1, `rgba(${r}, ${g}, ${b}, ${0.68 * intensity + 0.15})`);
         targetCtx.fillStyle = trunkGrad;
     } else {
-        targetCtx.fillStyle = 'rgba(7, 6, 14, 0.98)'; // No escuro
+        targetCtx.fillStyle = 'rgba(14, 12, 22, 0.98)'; // Silhueta nítida no escuro
     }
     if (typeof targetCtx.fill === 'function') targetCtx.fill();
 
-    // Anéis segmentados do tronco iluminados pelo raio
-    if (intensity > 0.06 && typeof targetCtx.stroke === 'function') {
-        targetCtx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${0.55 * intensity})`;
+    // Contorno suave do tronco para definição
+    if (typeof targetCtx.stroke === 'function') {
+        targetCtx.strokeStyle = (intensity > 0.05) ? `rgba(${r}, ${g}, ${b}, ${0.55 * intensity})` : 'rgba(32, 28, 48, 0.75)';
         targetCtx.lineWidth = 1.0;
-        const ringSteps = 7;
+        targetCtx.stroke();
+    }
+
+    // Anéis segmentados do tronco iluminados pelo raio
+    if (intensity > 0.05 && typeof targetCtx.stroke === 'function') {
+        targetCtx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${0.60 * intensity})`;
+        targetCtx.lineWidth = 1.2;
+        const ringSteps = 8;
         for (let s = 1; s < ringSteps; s++) {
             const frac = s / ringSteps;
             const rx = baseX + (topX - baseX) * frac;
             const ry = baseY + (topY - baseY) * frac;
             targetCtx.beginPath();
-            targetCtx.moveTo(rx - 3, ry);
-            targetCtx.lineTo(rx + 3, ry);
+            targetCtx.moveTo(rx - 4, ry);
+            targetCtx.lineTo(rx + 4, ry);
             targetCtx.stroke();
         }
     }
 
-    // 2. Cocos no topo do coqueiro (cluster de 3 coquinhos)
+    // 2. Cocos no topo do coqueiro (cluster de 4 coquinhos)
     const coconutOffsets = [
-        { dx: -3.5, dy: 1.5, rad: 3.2 },
-        { dx: 3.2, dy: 2.0, rad: 3.0 },
-        { dx: 0, dy: 4.5, rad: 3.4 }
+        { dx: -4.0, dy: 1.5, rad: 3.5 },
+        { dx: 3.8, dy: 2.0, rad: 3.2 },
+        { dx: -1.0, dy: 4.8, rad: 3.6 },
+        { dx: 2.5, dy: 5.5, rad: 3.0 }
     ];
     for (let c = 0; c < coconutOffsets.length; c++) {
         const co = coconutOffsets[c];
@@ -4180,23 +4191,23 @@ export function drawPalmTree(targetCtx, baseX, baseY, height, leanDirection = 0.
             targetCtx.arc(topX + co.dx, topY + co.dy, co.rad, 0, Math.PI * 2);
         }
         if (intensity > 0.05) {
-            targetCtx.fillStyle = `rgba(${Math.round(r * 0.7)}, ${Math.round(g * 0.65)}, ${Math.round(b * 0.45)}, ${0.55 * intensity + 0.1})`;
+            targetCtx.fillStyle = `rgba(${Math.round(r * 0.7)}, ${Math.round(g * 0.65)}, ${Math.round(b * 0.45)}, ${0.60 * intensity + 0.12})`;
         } else {
-            targetCtx.fillStyle = 'rgba(6, 5, 12, 0.99)';
+            targetCtx.fillStyle = 'rgba(8, 7, 14, 0.99)';
         }
         if (typeof targetCtx.fill === 'function') targetCtx.fill();
     }
 
-    // 3. Folhas/Palmas do Coqueiro (8 leques arqueados com folíolos)
+    // 3. Folhas/Palmas do Coqueiro Tropicais (8 leques arqueados)
     const frondConfigs = [
-        { angle: -2.35, length: height * 0.46, droop: 24, arch: -16 }, // Esquerda baixa
-        { angle: -2.05, length: height * 0.52, droop: 22, arch: -14 }, // Esquerda média
-        { angle: -1.75, length: height * 0.56, droop: 18, arch: -10 }, // Esquerda alta
-        { angle: -1.45, length: height * 0.54, droop: 16, arch: 6 },   // Topo centro
-        { angle: -1.15, length: height * 0.55, droop: 18, arch: 10 },  // Direita alta
-        { angle: -0.85, length: height * 0.51, droop: 22, arch: 14 },  // Direita média
-        { angle: -0.55, length: height * 0.45, droop: 25, arch: 16 },  // Direita baixa
-        { angle: -2.70, length: height * 0.38, droop: 28, arch: -20 }  // Caída lateral
+        { angle: -2.45, length: height * 0.50, droop: 26, arch: -18 }, // Esquerda baixa
+        { angle: -2.15, length: height * 0.56, droop: 24, arch: -15 }, // Esquerda média
+        { angle: -1.80, length: height * 0.60, droop: 20, arch: -10 }, // Esquerda alta
+        { angle: -1.45, length: height * 0.58, droop: 18, arch: 6 },   // Topo centro
+        { angle: -1.15, length: height * 0.59, droop: 20, arch: 10 },  // Direita alta
+        { angle: -0.85, length: height * 0.55, droop: 24, arch: 15 },  // Direita média
+        { angle: -0.55, length: height * 0.48, droop: 27, arch: 18 },  // Direita baixa
+        { angle: -2.85, length: height * 0.42, droop: 30, arch: -22 }  // Caída lateral
     ];
 
     for (let f = 0; f < frondConfigs.length; f++) {
@@ -4204,9 +4215,9 @@ export function drawPalmTree(targetCtx, baseX, baseY, height, leanDirection = 0.
         const endX = topX + Math.cos(cfg.angle) * cfg.length;
         const endY = topY + Math.sin(cfg.angle) * cfg.length + cfg.droop;
         const ctrlX = topX + Math.cos(cfg.angle) * (cfg.length * 0.55) + cfg.arch;
-        const ctrlY = topY + Math.sin(cfg.angle) * (cfg.length * 0.55) - 10;
+        const ctrlY = topY + Math.sin(cfg.angle) * (cfg.length * 0.55) - 12;
 
-        // Nervura central da folha
+        // Nervura principal da folha
         targetCtx.beginPath();
         targetCtx.moveTo(topX, topY);
         if (typeof targetCtx.quadraticCurveTo === 'function') {
@@ -4216,35 +4227,44 @@ export function drawPalmTree(targetCtx, baseX, baseY, height, leanDirection = 0.
         }
 
         if (intensity > 0.03 && typeof targetCtx.stroke === 'function') {
-            targetCtx.strokeStyle = `rgba(${Math.round(r * 0.65)}, ${Math.round(g * 0.85 + 40)}, ${Math.round(b * 0.65)}, ${0.75 * intensity + 0.08})`;
-            targetCtx.lineWidth = 2.2;
+            targetCtx.strokeStyle = `rgba(${Math.round(r * 0.65)}, ${Math.round(g * 0.85 + 40)}, ${Math.round(b * 0.65)}, ${0.75 * intensity + 0.10})`;
+            targetCtx.lineWidth = 2.4;
             targetCtx.stroke();
         } else if (typeof targetCtx.stroke === 'function') {
-            targetCtx.strokeStyle = 'rgba(6, 5, 12, 0.98)'; // No escuro
+            targetCtx.strokeStyle = 'rgba(12, 26, 18, 0.95)'; // Verde profundo noturno
             targetCtx.lineWidth = 2.0;
             targetCtx.stroke();
         }
 
-        // Folíolos / Pinas radiantes ao longo de cada folha
+        // Folíolos / Pinas radiantes em leque tropical
         if (typeof targetCtx.stroke === 'function') {
-            const leafSteps = 6;
+            const leafSteps = 7;
             for (let lp = 1; lp <= leafSteps; lp++) {
                 const t = lp / leafSteps;
                 const lx = (1 - t) * (1 - t) * topX + 2 * (1 - t) * t * ctrlX + t * t * endX;
                 const ly = (1 - t) * (1 - t) * topY + 2 * (1 - t) * t * ctrlY + t * t * endY;
-                const leafLen = (1 - Math.abs(t - 0.5) * 1.5) * (height * 0.16);
+                const leafLen = (1 - Math.abs(t - 0.5) * 1.4) * (height * 0.18);
+
+                // Tangente da curva para orientar as folhas naturalmente
+                const dx = 2 * (1 - t) * (ctrlX - topX) + 2 * t * (endX - ctrlX);
+                const dy = 2 * (1 - t) * (ctrlY - topY) + 2 * t * (endY - ctrlY);
+                const tangent = Math.atan2(dy, dx);
+                const normal = tangent + Math.PI * 0.5;
+
+                const nx = Math.cos(normal) * leafLen * 0.85;
+                const ny = Math.sin(normal) * leafLen * 0.85;
 
                 targetCtx.beginPath();
                 targetCtx.moveTo(lx, ly);
-                targetCtx.lineTo(lx - leafLen * 0.7, ly + leafLen * 0.9);
+                targetCtx.lineTo(lx + nx, ly + ny + leafLen * 0.35);
                 targetCtx.moveTo(lx, ly);
-                targetCtx.lineTo(lx + leafLen * 0.7, ly + leafLen * 0.9);
+                targetCtx.lineTo(lx - nx, ly - ny + leafLen * 0.35);
 
                 if (intensity > 0.05) {
-                    targetCtx.strokeStyle = `rgba(${Math.round(r * 0.5)}, ${Math.round(g * 0.8 + 30)}, ${Math.round(b * 0.5)}, ${0.60 * intensity + 0.05})`;
-                    targetCtx.lineWidth = 1.3;
+                    targetCtx.strokeStyle = `rgba(${Math.round(r * 0.5)}, ${Math.round(g * 0.85 + 30)}, ${Math.round(b * 0.5)}, ${0.65 * intensity + 0.08})`;
+                    targetCtx.lineWidth = 1.4;
                 } else {
-                    targetCtx.strokeStyle = 'rgba(5, 4, 11, 0.96)';
+                    targetCtx.strokeStyle = 'rgba(14, 30, 20, 0.90)';
                     targetCtx.lineWidth = 1.2;
                 }
                 targetCtx.stroke();
@@ -4260,20 +4280,20 @@ export function renderRgbLandscape(targetCanvas, targetCtx, flashIntensity = 0, 
     const w = targetCanvas.width;
     const h = targetCanvas.height;
 
-    // 1. Montanhas lá longe (no horizonte distante)
+    // 1. Montanhas no fundo (lá longe no horizonte distante, suaves e na camada mais ao fundo)
     drawMountains(targetCtx, w, h, flashIntensity, flashColor);
 
-    // 2. Praia e Mar (com reflexo d'água e faixa de areia)
+    // 2. Praia e Mar (com reflexo d'água e faixa de areia em primeiro plano)
     drawBeach(targetCtx, w, h, flashIntensity, flashColor);
 
-    // 3. Coqueiros no fundo ao longo da praia
-    // Lado Esquerdo: Dois coqueiros inclinados para o centro
-    drawPalmTree(targetCtx, w * 0.09, h * 0.90, h * 0.38, 0.28, flashIntensity, flashColor);
-    drawPalmTree(targetCtx, w * 0.18, h * 0.94, h * 0.44, 0.35, flashIntensity, flashColor);
+    // 3. Coqueiros em primeiro plano na praia (em frente às montanhas!)
+    // Lado Esquerdo: Dois coqueiros tropicais curvados
+    drawPalmTree(targetCtx, w * 0.07, h * 0.98, h * 0.46, 0.24, flashIntensity, flashColor);
+    drawPalmTree(targetCtx, w * 0.16, h * 0.94, h * 0.40, 0.32, flashIntensity, flashColor);
 
-    // Lado Direito: Dois coqueiros inclinados para o centro
-    drawPalmTree(targetCtx, w * 0.84, h * 0.92, h * 0.42, -0.32, flashIntensity, flashColor);
-    drawPalmTree(targetCtx, w * 0.93, h * 0.88, h * 0.35, -0.24, flashIntensity, flashColor);
+    // Lado Direito: Dois coqueiros tropicais curvados
+    drawPalmTree(targetCtx, w * 0.84, h * 0.94, h * 0.42, -0.30, flashIntensity, flashColor);
+    drawPalmTree(targetCtx, w * 0.93, h * 0.98, h * 0.48, -0.22, flashIntensity, flashColor);
 }
 
 export function initRgbWeatherCanvas() {
@@ -23089,7 +23109,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.272';
+export const CURRENT_APP_VERSION = '1.0.273';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
