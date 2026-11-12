@@ -3944,88 +3944,142 @@ export function drawMountains(targetCtx, w, h, flashIntensity = 0, flashColor = 
 
     if (typeof targetCtx.save === 'function') targetCtx.save();
 
-    // 1. Resplendor atmosférico no horizonte distante atrás das montanhas quando o raio cai
+    // 1. Resplendor atmosférico no horizonte e céu atrás das montanhas quando o raio cai
     if (intensity > 0.05 && typeof targetCtx.createLinearGradient === 'function') {
-        const skyGlow = targetCtx.createLinearGradient(0, h * 0.58, 0, h * 0.82);
+        const skyGlow = targetCtx.createLinearGradient(0, h * 0.35, 0, h * 0.75);
         skyGlow.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0)`);
-        skyGlow.addColorStop(0.65, `rgba(${r}, ${g}, ${b}, ${0.28 * intensity})`);
+        skyGlow.addColorStop(0.5, `rgba(${r}, ${g}, ${b}, ${0.32 * intensity})`);
         skyGlow.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
         targetCtx.fillStyle = skyGlow;
         if (typeof targetCtx.fillRect === 'function') {
-            targetCtx.fillRect(0, h * 0.56, w, h * 0.28);
+            targetCtx.fillRect(0, h * 0.32, w, h * 0.44);
         }
     }
 
-    // 2. Montanhas Distantes no Fundo (Camada 1: Linha de picos ao fundo no horizonte distante)
+    // 2. Cadeia de Montanhas Distantes no Fundo (Camada 1: Picos mais altos no plano de fundo)
+    // Cumes majestosos se elevando entre y = 0.42*h e 0.52*h, visíveis em todo o fundo da tela
     targetCtx.beginPath();
-    targetCtx.moveTo(0, h * 0.82);
-    targetCtx.lineTo(0, h * 0.74);
+    targetCtx.moveTo(0, h * 0.70);
     if (typeof targetCtx.bezierCurveTo === 'function') {
-        targetCtx.bezierCurveTo(w * 0.08, h * 0.70, w * 0.16, h * 0.73, w * 0.24, h * 0.70);
-        targetCtx.bezierCurveTo(w * 0.32, h * 0.67, w * 0.40, h * 0.73, w * 0.48, h * 0.69);
-        targetCtx.bezierCurveTo(w * 0.56, h * 0.66, w * 0.64, h * 0.72, w * 0.72, h * 0.68);
-        targetCtx.bezierCurveTo(w * 0.80, h * 0.65, w * 0.88, h * 0.73, w * 0.95, h * 0.70);
-        targetCtx.bezierCurveTo(w * 0.98, h * 0.72, w * 0.99, h * 0.73, w, h * 0.72);
+        targetCtx.bezierCurveTo(w * 0.06, h * 0.58, w * 0.10, h * 0.47, w * 0.16, h * 0.46); // Pico 1
+        targetCtx.bezierCurveTo(w * 0.22, h * 0.45, w * 0.26, h * 0.58, w * 0.32, h * 0.56); // Vale 1
+        targetCtx.bezierCurveTo(w * 0.38, h * 0.54, w * 0.42, h * 0.42, w * 0.48, h * 0.43); // Pico Principal 2
+        targetCtx.bezierCurveTo(w * 0.54, h * 0.44, w * 0.58, h * 0.57, w * 0.64, h * 0.55); // Vale 2
+        targetCtx.bezierCurveTo(w * 0.70, h * 0.53, w * 0.76, h * 0.45, w * 0.82, h * 0.47); // Pico 3
+        targetCtx.bezierCurveTo(w * 0.88, h * 0.49, w * 0.94, h * 0.60, w, h * 0.66);         // Encosta Direita
     } else {
-        targetCtx.lineTo(w * 0.25, h * 0.70);
-        targetCtx.lineTo(w * 0.50, h * 0.68);
-        targetCtx.lineTo(w * 0.75, h * 0.69);
-        targetCtx.lineTo(w, h * 0.72);
+        targetCtx.lineTo(w * 0.16, h * 0.46);
+        targetCtx.lineTo(w * 0.32, h * 0.56);
+        targetCtx.lineTo(w * 0.48, h * 0.43);
+        targetCtx.lineTo(w * 0.64, h * 0.55);
+        targetCtx.lineTo(w * 0.82, h * 0.47);
+        targetCtx.lineTo(w, h * 0.66);
     }
-    targetCtx.lineTo(w, h * 0.84);
-    targetCtx.lineTo(0, h * 0.84);
+    targetCtx.lineTo(w, h);
+    targetCtx.lineTo(0, h);
     targetCtx.closePath();
 
     if (intensity > 0.02 && typeof targetCtx.createLinearGradient === 'function') {
-        const farGrad = targetCtx.createLinearGradient(0, h * 0.65, 0, h * 0.84);
-        farGrad.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${0.24 * intensity + 0.04})`);
-        farGrad.addColorStop(0.5, `rgba(${Math.round(r * 0.4)}, ${Math.round(g * 0.4)}, ${Math.round(b * 0.4)}, ${0.12 * intensity + 0.03})`);
-        farGrad.addColorStop(1, 'rgba(5, 4, 12, 0.98)');
+        const farGrad = targetCtx.createLinearGradient(0, h * 0.42, 0, h * 0.80);
+        farGrad.addColorStop(0, `rgba(${Math.min(255, r + 45)}, ${Math.min(255, g + 45)}, ${Math.min(255, b + 45)}, ${0.40 * intensity + 0.15})`);
+        farGrad.addColorStop(0.45, `rgba(${Math.round(r * 0.55 + 20)}, ${Math.round(g * 0.55 + 25)}, ${Math.round(b * 0.55 + 40)}, ${0.28 * intensity + 0.20})`);
+        farGrad.addColorStop(1, 'rgba(10, 14, 26, 0.98)');
         targetCtx.fillStyle = farGrad;
+    } else if (typeof targetCtx.createLinearGradient === 'function') {
+        // No escuro: silhueta azulada noturna distintamente visível contra o fundo preto
+        const nightFarGrad = targetCtx.createLinearGradient(0, h * 0.42, 0, h * 0.80);
+        nightFarGrad.addColorStop(0, 'rgba(28, 36, 58, 0.95)');   // Cume azul marinho noturno
+        nightFarGrad.addColorStop(0.5, 'rgba(18, 24, 40, 0.97)'); // Meio
+        nightFarGrad.addColorStop(1, 'rgba(10, 14, 24, 0.99)');   // Base
+        targetCtx.fillStyle = nightFarGrad;
     } else {
-        targetCtx.fillStyle = 'rgba(8, 7, 16, 0.96)'; // No escuro, silhueta suave distante no fundo
+        targetCtx.fillStyle = 'rgba(24, 32, 52, 0.96)';
     }
     if (typeof targetCtx.fill === 'function') targetCtx.fill();
 
-    // Contorno iluminado dos picos distantes ao fundo
-    if (intensity > 0.05 && typeof targetCtx.stroke === 'function') {
-        targetCtx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${0.45 * intensity})`;
-        targetCtx.lineWidth = 1.4;
+    // Contorno/Cresta iluminada dos picos distantes ao fundo
+    if (typeof targetCtx.stroke === 'function') {
+        if (intensity > 0.04) {
+            targetCtx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${0.80 * intensity + 0.25})`;
+            targetCtx.lineWidth = 2.0;
+        } else {
+            targetCtx.strokeStyle = 'rgba(65, 82, 125, 0.55)'; // Borda sutil de luar no escuro
+            targetCtx.lineWidth = 1.4;
+        }
         targetCtx.stroke();
     }
 
-    // 3. Montanhas Intermediárias ao fundo (Camada 2: colinas e cumes mais próximos da linha da água)
+    // 3. Montanhas Intermediárias ao fundo (Camada 2: cristas e elevações em plano médio do horizonte)
     targetCtx.beginPath();
-    targetCtx.moveTo(0, h * 0.84);
-    targetCtx.lineTo(0, h * 0.76);
+    targetCtx.moveTo(0, h * 0.74);
     if (typeof targetCtx.bezierCurveTo === 'function') {
-        targetCtx.bezierCurveTo(w * 0.10, h * 0.73, w * 0.18, h * 0.77, w * 0.28, h * 0.74);
-        targetCtx.bezierCurveTo(w * 0.38, h * 0.71, w * 0.46, h * 0.76, w * 0.55, h * 0.72);
-        targetCtx.bezierCurveTo(w * 0.65, h * 0.70, w * 0.74, h * 0.75, w * 0.84, h * 0.72);
-        targetCtx.bezierCurveTo(w * 0.92, h * 0.74, w * 0.97, h * 0.77, w, h * 0.75);
+        targetCtx.bezierCurveTo(w * 0.08, h * 0.68, w * 0.18, h * 0.55, w * 0.28, h * 0.54); // Cume A
+        targetCtx.bezierCurveTo(w * 0.38, h * 0.53, w * 0.44, h * 0.67, w * 0.54, h * 0.64); // Vale A
+        targetCtx.bezierCurveTo(w * 0.64, h * 0.61, w * 0.72, h * 0.52, w * 0.80, h * 0.53); // Cume B
+        targetCtx.bezierCurveTo(w * 0.88, h * 0.54, w * 0.94, h * 0.68, w, h * 0.72);         // Encosta B
     } else {
-        targetCtx.lineTo(w * 0.30, h * 0.74);
-        targetCtx.lineTo(w * 0.60, h * 0.72);
-        targetCtx.lineTo(w, h * 0.75);
+        targetCtx.lineTo(w * 0.28, h * 0.54);
+        targetCtx.lineTo(w * 0.54, h * 0.64);
+        targetCtx.lineTo(w * 0.80, h * 0.53);
+        targetCtx.lineTo(w, h * 0.72);
     }
-    targetCtx.lineTo(w, h * 0.84);
-    targetCtx.lineTo(0, h * 0.84);
+    targetCtx.lineTo(w, h);
+    targetCtx.lineTo(0, h);
     targetCtx.closePath();
 
     if (intensity > 0.02 && typeof targetCtx.createLinearGradient === 'function') {
-        const midGrad = targetCtx.createLinearGradient(0, h * 0.70, 0, h * 0.84);
-        midGrad.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${0.34 * intensity + 0.05})`);
-        midGrad.addColorStop(0.5, `rgba(${Math.round(r * 0.5)}, ${Math.round(g * 0.5)}, ${Math.round(b * 0.5)}, ${0.16 * intensity + 0.04})`);
-        midGrad.addColorStop(1, 'rgba(6, 5, 14, 0.99)');
+        const midGrad = targetCtx.createLinearGradient(0, h * 0.52, 0, h * 0.82);
+        midGrad.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${0.48 * intensity + 0.18})`);
+        midGrad.addColorStop(0.45, `rgba(${Math.round(r * 0.6)}, ${Math.round(g * 0.6)}, ${Math.round(b * 0.6 + 20)}, ${0.30 * intensity + 0.18})`);
+        midGrad.addColorStop(1, 'rgba(8, 12, 22, 0.99)');
         targetCtx.fillStyle = midGrad;
+    } else if (typeof targetCtx.createLinearGradient === 'function') {
+        const nightMidGrad = targetCtx.createLinearGradient(0, h * 0.52, 0, h * 0.82);
+        nightMidGrad.addColorStop(0, 'rgba(20, 28, 46, 0.96)');
+        nightMidGrad.addColorStop(0.5, 'rgba(14, 18, 32, 0.98)');
+        nightMidGrad.addColorStop(1, 'rgba(8, 10, 20, 0.99)');
+        targetCtx.fillStyle = nightMidGrad;
     } else {
-        targetCtx.fillStyle = 'rgba(10, 8, 18, 0.97)'; // No escuro
+        targetCtx.fillStyle = 'rgba(18, 24, 40, 0.98)';
     }
     if (typeof targetCtx.fill === 'function') targetCtx.fill();
 
-    if (intensity > 0.05 && typeof targetCtx.stroke === 'function') {
-        targetCtx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${0.58 * intensity})`;
-        targetCtx.lineWidth = 1.6;
+    if (typeof targetCtx.stroke === 'function') {
+        if (intensity > 0.04) {
+            targetCtx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${0.90 * intensity + 0.30})`;
+            targetCtx.lineWidth = 2.2;
+        } else {
+            targetCtx.strokeStyle = 'rgba(52, 68, 105, 0.50)';
+            targetCtx.lineWidth = 1.4;
+        }
+        targetCtx.stroke();
+    }
+
+    // 4. Cristas/Arestas das montanhas para dar relevo tridimensional
+    if (typeof targetCtx.stroke === 'function') {
+        targetCtx.beginPath();
+        // Aresta do pico 1
+        targetCtx.moveTo(w * 0.48, h * 0.43);
+        if (typeof targetCtx.quadraticCurveTo === 'function') {
+            targetCtx.quadraticCurveTo(w * 0.46, h * 0.56, w * 0.43, h * 0.70);
+        } else {
+            targetCtx.lineTo(w * 0.43, h * 0.70);
+        }
+        // Aresta do pico 2
+        targetCtx.moveTo(w * 0.80, h * 0.53);
+        if (typeof targetCtx.quadraticCurveTo === 'function') {
+            targetCtx.quadraticCurveTo(w * 0.77, h * 0.62, w * 0.74, h * 0.74);
+        } else {
+            targetCtx.lineTo(w * 0.74, h * 0.74);
+        }
+
+        if (intensity > 0.04) {
+            targetCtx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${0.55 * intensity + 0.15})`;
+            targetCtx.lineWidth = 1.6;
+        } else {
+            targetCtx.strokeStyle = 'rgba(42, 54, 85, 0.40)';
+            targetCtx.lineWidth = 1.2;
+        }
         targetCtx.stroke();
     }
 
@@ -4040,78 +4094,79 @@ export function drawBeach(targetCtx, w, h, flashIntensity = 0, flashColor = null
     if (typeof targetCtx.save === 'function') targetCtx.save();
 
     // 1. Superfície do Mar / Água refletindo o céu entre as montanhas ao fundo e a praia
+    // Inicia em y = 0.72*h para deixar as montanhas visíveis no fundo
     targetCtx.beginPath();
-    targetCtx.moveTo(0, h * 0.75);
-    targetCtx.lineTo(w, h * 0.75);
-    targetCtx.lineTo(w, h * 0.85);
+    targetCtx.moveTo(0, h * 0.72);
+    targetCtx.lineTo(w, h * 0.72);
+    targetCtx.lineTo(w, h * 0.82);
     if (typeof targetCtx.bezierCurveTo === 'function') {
-        targetCtx.bezierCurveTo(w * 0.65, h * 0.83, w * 0.35, h * 0.84, 0, h * 0.82);
+        targetCtx.bezierCurveTo(w * 0.65, h * 0.80, w * 0.35, h * 0.81, 0, h * 0.79);
     } else {
-        targetCtx.lineTo(0, h * 0.85);
+        targetCtx.lineTo(0, h * 0.82);
     }
     targetCtx.closePath();
 
     if (intensity > 0.02 && typeof targetCtx.createLinearGradient === 'function') {
-        const waterGrad = targetCtx.createLinearGradient(0, h * 0.75, 0, h * 0.85);
-        waterGrad.addColorStop(0, 'rgba(4, 4, 12, 0.98)');
-        waterGrad.addColorStop(0.5, `rgba(${Math.round(r * 0.35)}, ${Math.round(g * 0.5)}, ${Math.round(b * 0.85)}, ${0.28 * intensity + 0.02})`);
-        waterGrad.addColorStop(1, `rgba(${r}, ${g}, ${b}, ${0.35 * intensity + 0.02})`);
+        const waterGrad = targetCtx.createLinearGradient(0, h * 0.72, 0, h * 0.82);
+        waterGrad.addColorStop(0, 'rgba(8, 12, 24, 0.98)');
+        waterGrad.addColorStop(0.5, `rgba(${Math.round(r * 0.40)}, ${Math.round(g * 0.55)}, ${Math.round(b * 0.85)}, ${0.35 * intensity + 0.08})`);
+        waterGrad.addColorStop(1, `rgba(${r}, ${g}, ${b}, ${0.45 * intensity + 0.10})`);
         targetCtx.fillStyle = waterGrad;
     } else {
-        targetCtx.fillStyle = 'rgba(5, 5, 14, 0.98)';
+        targetCtx.fillStyle = 'rgba(10, 14, 28, 0.96)';
     }
     if (typeof targetCtx.fill === 'function') targetCtx.fill();
 
     // Reflexo do relâmpago na água do mar
-    if (intensity > 0.08 && typeof targetCtx.stroke === 'function') {
-        targetCtx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${0.45 * intensity})`;
-        targetCtx.lineWidth = 1.4;
+    if (intensity > 0.06 && typeof targetCtx.stroke === 'function') {
+        targetCtx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${0.55 * intensity})`;
+        targetCtx.lineWidth = 1.6;
         targetCtx.beginPath();
-        targetCtx.moveTo(w * 0.30, h * 0.78);
-        targetCtx.lineTo(w * 0.70, h * 0.78);
-        targetCtx.moveTo(w * 0.38, h * 0.80);
-        targetCtx.lineTo(w * 0.62, h * 0.80);
+        targetCtx.moveTo(w * 0.25, h * 0.75);
+        targetCtx.lineTo(w * 0.75, h * 0.75);
+        targetCtx.moveTo(w * 0.32, h * 0.77);
+        targetCtx.lineTo(w * 0.68, h * 0.77);
         targetCtx.stroke();
     }
 
     // 2. Faixa de Areia da Praia em primeiro plano (curvada e orgânica)
     targetCtx.beginPath();
-    targetCtx.moveTo(0, h * 0.82);
+    targetCtx.moveTo(0, h * 0.79);
     if (typeof targetCtx.bezierCurveTo === 'function') {
-        targetCtx.bezierCurveTo(w * 0.30, h * 0.79, w * 0.70, h * 0.84, w, h * 0.81);
+        targetCtx.bezierCurveTo(w * 0.30, h * 0.77, w * 0.70, h * 0.82, w, h * 0.79);
     } else {
-        targetCtx.lineTo(w, h * 0.81);
+        targetCtx.lineTo(w, h * 0.79);
     }
     targetCtx.lineTo(w, h);
     targetCtx.lineTo(0, h);
     targetCtx.closePath();
 
     if (intensity > 0.02 && typeof targetCtx.createLinearGradient === 'function') {
-        const sandGrad = targetCtx.createLinearGradient(0, h * 0.79, 0, h);
-        sandGrad.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${0.40 * intensity + 0.05})`);
-        sandGrad.addColorStop(0.25, `rgba(${Math.min(255, r + 35)}, ${Math.min(255, g + 30)}, ${Math.min(255, b + 15)}, ${0.25 * intensity + 0.04})`);
-        sandGrad.addColorStop(1, 'rgba(8, 7, 18, 0.99)');
+        const sandGrad = targetCtx.createLinearGradient(0, h * 0.77, 0, h);
+        sandGrad.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${0.45 * intensity + 0.08})`);
+        sandGrad.addColorStop(0.25, `rgba(${Math.min(255, r + 35)}, ${Math.min(255, g + 30)}, ${Math.min(255, b + 15)}, ${0.30 * intensity + 0.06})`);
+        sandGrad.addColorStop(1, 'rgba(12, 10, 22, 0.99)');
         targetCtx.fillStyle = sandGrad;
     } else {
-        targetCtx.fillStyle = 'rgba(9, 8, 18, 0.98)'; // No escuro
+        targetCtx.fillStyle = 'rgba(14, 12, 24, 0.98)'; // No escuro
     }
     if (typeof targetCtx.fill === 'function') targetCtx.fill();
 
     // 3. Linha de espuma da orla que brilha quando o raio cai
     targetCtx.beginPath();
-    targetCtx.moveTo(0, h * 0.82);
+    targetCtx.moveTo(0, h * 0.79);
     if (typeof targetCtx.bezierCurveTo === 'function') {
-        targetCtx.bezierCurveTo(w * 0.30, h * 0.79, w * 0.70, h * 0.84, w, h * 0.81);
+        targetCtx.bezierCurveTo(w * 0.30, h * 0.77, w * 0.70, h * 0.82, w, h * 0.79);
     } else {
-        targetCtx.lineTo(w, h * 0.81);
+        targetCtx.lineTo(w, h * 0.79);
     }
     if (intensity > 0.04 && typeof targetCtx.stroke === 'function') {
-        targetCtx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${0.78 * intensity})`;
-        targetCtx.lineWidth = 2.4;
+        targetCtx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${0.85 * intensity + 0.15})`;
+        targetCtx.lineWidth = 2.5;
         targetCtx.stroke();
     } else if (typeof targetCtx.stroke === 'function') {
-        targetCtx.strokeStyle = 'rgba(25, 22, 40, 0.6)';
-        targetCtx.lineWidth = 1.2;
+        targetCtx.strokeStyle = 'rgba(50, 65, 95, 0.55)';
+        targetCtx.lineWidth = 1.3;
         targetCtx.stroke();
     }
 
@@ -4132,11 +4187,11 @@ export function drawPalmTree(targetCtx, baseX, baseY, height, leanDirection = 0.
 
     // 1. Tronco Curvado e Robusto do Coqueiro em Primeiro Plano
     targetCtx.beginPath();
-    targetCtx.moveTo(baseX - 6, baseY);
+    targetCtx.moveTo(baseX - 7, baseY);
     if (typeof targetCtx.quadraticCurveTo === 'function') {
-        targetCtx.quadraticCurveTo(midX - 3.5, midY, topX - 2.5, topY);
-        targetCtx.lineTo(topX + 2.5, topY);
-        targetCtx.quadraticCurveTo(midX + 3.5, midY, baseX + 6, baseY);
+        targetCtx.quadraticCurveTo(midX - 4, midY, topX - 3, topY);
+        targetCtx.lineTo(topX + 3, topY);
+        targetCtx.quadraticCurveTo(midX + 4, midY, baseX + 7, baseY);
     } else {
         targetCtx.lineTo(topX, topY);
         targetCtx.lineTo(baseX, baseY);
@@ -4145,44 +4200,44 @@ export function drawPalmTree(targetCtx, baseX, baseY, height, leanDirection = 0.
 
     if (intensity > 0.02 && typeof targetCtx.createLinearGradient === 'function') {
         const trunkGrad = targetCtx.createLinearGradient(baseX, baseY, topX, topY);
-        trunkGrad.addColorStop(0, 'rgba(8, 7, 15, 0.99)');
-        trunkGrad.addColorStop(0.7, `rgba(${Math.round(r * 0.6)}, ${Math.round(g * 0.55)}, ${Math.round(b * 0.5)}, ${0.45 * intensity + 0.10})`);
-        trunkGrad.addColorStop(1, `rgba(${r}, ${g}, ${b}, ${0.68 * intensity + 0.15})`);
+        trunkGrad.addColorStop(0, 'rgba(10, 8, 18, 0.99)');
+        trunkGrad.addColorStop(0.7, `rgba(${Math.round(r * 0.65)}, ${Math.round(g * 0.60)}, ${Math.round(b * 0.55)}, ${0.50 * intensity + 0.12})`);
+        trunkGrad.addColorStop(1, `rgba(${r}, ${g}, ${b}, ${0.75 * intensity + 0.18})`);
         targetCtx.fillStyle = trunkGrad;
     } else {
-        targetCtx.fillStyle = 'rgba(14, 12, 22, 0.98)'; // Silhueta nítida no escuro
+        targetCtx.fillStyle = 'rgba(18, 15, 28, 0.98)'; // Silhueta nítida no escuro
     }
     if (typeof targetCtx.fill === 'function') targetCtx.fill();
 
     // Contorno suave do tronco para definição
     if (typeof targetCtx.stroke === 'function') {
-        targetCtx.strokeStyle = (intensity > 0.05) ? `rgba(${r}, ${g}, ${b}, ${0.55 * intensity})` : 'rgba(32, 28, 48, 0.75)';
-        targetCtx.lineWidth = 1.0;
+        targetCtx.strokeStyle = (intensity > 0.05) ? `rgba(${r}, ${g}, ${b}, ${0.60 * intensity})` : 'rgba(42, 36, 60, 0.80)';
+        targetCtx.lineWidth = 1.2;
         targetCtx.stroke();
     }
 
     // Anéis segmentados do tronco iluminados pelo raio
     if (intensity > 0.05 && typeof targetCtx.stroke === 'function') {
-        targetCtx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${0.60 * intensity})`;
-        targetCtx.lineWidth = 1.2;
+        targetCtx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${0.65 * intensity})`;
+        targetCtx.lineWidth = 1.3;
         const ringSteps = 8;
         for (let s = 1; s < ringSteps; s++) {
             const frac = s / ringSteps;
             const rx = baseX + (topX - baseX) * frac;
             const ry = baseY + (topY - baseY) * frac;
             targetCtx.beginPath();
-            targetCtx.moveTo(rx - 4, ry);
-            targetCtx.lineTo(rx + 4, ry);
+            targetCtx.moveTo(rx - 5, ry);
+            targetCtx.lineTo(rx + 5, ry);
             targetCtx.stroke();
         }
     }
 
     // 2. Cocos no topo do coqueiro (cluster de 4 coquinhos)
     const coconutOffsets = [
-        { dx: -4.0, dy: 1.5, rad: 3.5 },
-        { dx: 3.8, dy: 2.0, rad: 3.2 },
-        { dx: -1.0, dy: 4.8, rad: 3.6 },
-        { dx: 2.5, dy: 5.5, rad: 3.0 }
+        { dx: -4.5, dy: 1.5, rad: 3.8 },
+        { dx: 4.2, dy: 2.0, rad: 3.5 },
+        { dx: -1.2, dy: 5.2, rad: 4.0 },
+        { dx: 3.0, dy: 6.0, rad: 3.4 }
     ];
     for (let c = 0; c < coconutOffsets.length; c++) {
         const co = coconutOffsets[c];
@@ -4191,23 +4246,23 @@ export function drawPalmTree(targetCtx, baseX, baseY, height, leanDirection = 0.
             targetCtx.arc(topX + co.dx, topY + co.dy, co.rad, 0, Math.PI * 2);
         }
         if (intensity > 0.05) {
-            targetCtx.fillStyle = `rgba(${Math.round(r * 0.7)}, ${Math.round(g * 0.65)}, ${Math.round(b * 0.45)}, ${0.60 * intensity + 0.12})`;
+            targetCtx.fillStyle = `rgba(${Math.round(r * 0.75)}, ${Math.round(g * 0.70)}, ${Math.round(b * 0.50)}, ${0.65 * intensity + 0.15})`;
         } else {
-            targetCtx.fillStyle = 'rgba(8, 7, 14, 0.99)';
+            targetCtx.fillStyle = 'rgba(12, 10, 20, 0.99)';
         }
         if (typeof targetCtx.fill === 'function') targetCtx.fill();
     }
 
     // 3. Folhas/Palmas do Coqueiro Tropicais (8 leques arqueados)
     const frondConfigs = [
-        { angle: -2.45, length: height * 0.50, droop: 26, arch: -18 }, // Esquerda baixa
-        { angle: -2.15, length: height * 0.56, droop: 24, arch: -15 }, // Esquerda média
-        { angle: -1.80, length: height * 0.60, droop: 20, arch: -10 }, // Esquerda alta
-        { angle: -1.45, length: height * 0.58, droop: 18, arch: 6 },   // Topo centro
-        { angle: -1.15, length: height * 0.59, droop: 20, arch: 10 },  // Direita alta
-        { angle: -0.85, length: height * 0.55, droop: 24, arch: 15 },  // Direita média
-        { angle: -0.55, length: height * 0.48, droop: 27, arch: 18 },  // Direita baixa
-        { angle: -2.85, length: height * 0.42, droop: 30, arch: -22 }  // Caída lateral
+        { angle: -2.45, length: height * 0.52, droop: 26, arch: -18 }, // Esquerda baixa
+        { angle: -2.15, length: height * 0.58, droop: 24, arch: -15 }, // Esquerda média
+        { angle: -1.80, length: height * 0.62, droop: 20, arch: -10 }, // Esquerda alta
+        { angle: -1.45, length: height * 0.60, droop: 18, arch: 6 },   // Topo centro
+        { angle: -1.15, length: height * 0.61, droop: 20, arch: 10 },  // Direita alta
+        { angle: -0.85, length: height * 0.57, droop: 24, arch: 15 },  // Direita média
+        { angle: -0.55, length: height * 0.50, droop: 27, arch: 18 },  // Direita baixa
+        { angle: -2.85, length: height * 0.44, droop: 30, arch: -22 }  // Caída lateral
     ];
 
     for (let f = 0; f < frondConfigs.length; f++) {
@@ -4227,23 +4282,23 @@ export function drawPalmTree(targetCtx, baseX, baseY, height, leanDirection = 0.
         }
 
         if (intensity > 0.03 && typeof targetCtx.stroke === 'function') {
-            targetCtx.strokeStyle = `rgba(${Math.round(r * 0.65)}, ${Math.round(g * 0.85 + 40)}, ${Math.round(b * 0.65)}, ${0.75 * intensity + 0.10})`;
-            targetCtx.lineWidth = 2.4;
+            targetCtx.strokeStyle = `rgba(${Math.round(r * 0.65)}, ${Math.round(g * 0.85 + 40)}, ${Math.round(b * 0.65)}, ${0.80 * intensity + 0.12})`;
+            targetCtx.lineWidth = 2.5;
             targetCtx.stroke();
         } else if (typeof targetCtx.stroke === 'function') {
-            targetCtx.strokeStyle = 'rgba(12, 26, 18, 0.95)'; // Verde profundo noturno
-            targetCtx.lineWidth = 2.0;
+            targetCtx.strokeStyle = 'rgba(16, 36, 26, 0.96)'; // Verde profundo noturno nítido
+            targetCtx.lineWidth = 2.2;
             targetCtx.stroke();
         }
 
         // Folíolos / Pinas radiantes em leque tropical
         if (typeof targetCtx.stroke === 'function') {
-            const leafSteps = 7;
+            const leafSteps = 8;
             for (let lp = 1; lp <= leafSteps; lp++) {
                 const t = lp / leafSteps;
                 const lx = (1 - t) * (1 - t) * topX + 2 * (1 - t) * t * ctrlX + t * t * endX;
                 const ly = (1 - t) * (1 - t) * topY + 2 * (1 - t) * t * ctrlY + t * t * endY;
-                const leafLen = (1 - Math.abs(t - 0.5) * 1.4) * (height * 0.18);
+                const leafLen = (1 - Math.abs(t - 0.5) * 1.4) * (height * 0.20);
 
                 // Tangente da curva para orientar as folhas naturalmente
                 const dx = 2 * (1 - t) * (ctrlX - topX) + 2 * t * (endX - ctrlX);
@@ -4261,11 +4316,11 @@ export function drawPalmTree(targetCtx, baseX, baseY, height, leanDirection = 0.
                 targetCtx.lineTo(lx - nx, ly - ny + leafLen * 0.35);
 
                 if (intensity > 0.05) {
-                    targetCtx.strokeStyle = `rgba(${Math.round(r * 0.5)}, ${Math.round(g * 0.85 + 30)}, ${Math.round(b * 0.5)}, ${0.65 * intensity + 0.08})`;
-                    targetCtx.lineWidth = 1.4;
+                    targetCtx.strokeStyle = `rgba(${Math.round(r * 0.50)}, ${Math.round(g * 0.85 + 30)}, ${Math.round(b * 0.50)}, ${0.70 * intensity + 0.10})`;
+                    targetCtx.lineWidth = 1.5;
                 } else {
-                    targetCtx.strokeStyle = 'rgba(14, 30, 20, 0.90)';
-                    targetCtx.lineWidth = 1.2;
+                    targetCtx.strokeStyle = 'rgba(20, 44, 30, 0.92)'; // Verde tropical visível no escuro
+                    targetCtx.lineWidth = 1.3;
                 }
                 targetCtx.stroke();
             }
@@ -4280,20 +4335,20 @@ export function renderRgbLandscape(targetCanvas, targetCtx, flashIntensity = 0, 
     const w = targetCanvas.width;
     const h = targetCanvas.height;
 
-    // 1. Montanhas no fundo (lá longe no horizonte distante, suaves e na camada mais ao fundo)
+    // 1. Montanhas no fundo (visíveis no plano de fundo através da tela, com relevo noturno)
     drawMountains(targetCtx, w, h, flashIntensity, flashColor);
 
     // 2. Praia e Mar (com reflexo d'água e faixa de areia em primeiro plano)
     drawBeach(targetCtx, w, h, flashIntensity, flashColor);
 
-    // 3. Coqueiros em primeiro plano na praia (em frente às montanhas!)
+    // 3. Coqueiros em primeiro plano na praia (emoldurando a paisagem)
     // Lado Esquerdo: Dois coqueiros tropicais curvados
-    drawPalmTree(targetCtx, w * 0.07, h * 0.98, h * 0.46, 0.24, flashIntensity, flashColor);
-    drawPalmTree(targetCtx, w * 0.16, h * 0.94, h * 0.40, 0.32, flashIntensity, flashColor);
+    drawPalmTree(targetCtx, w * 0.08, h * 0.98, h * 0.44, 0.22, flashIntensity, flashColor);
+    drawPalmTree(targetCtx, w * 0.17, h * 0.94, h * 0.38, 0.30, flashIntensity, flashColor);
 
     // Lado Direito: Dois coqueiros tropicais curvados
-    drawPalmTree(targetCtx, w * 0.84, h * 0.94, h * 0.42, -0.30, flashIntensity, flashColor);
-    drawPalmTree(targetCtx, w * 0.93, h * 0.98, h * 0.48, -0.22, flashIntensity, flashColor);
+    drawPalmTree(targetCtx, w * 0.83, h * 0.94, h * 0.40, -0.28, flashIntensity, flashColor);
+    drawPalmTree(targetCtx, w * 0.92, h * 0.98, h * 0.46, -0.20, flashIntensity, flashColor);
 }
 
 export function initRgbWeatherCanvas() {
@@ -23109,7 +23164,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.273';
+export const CURRENT_APP_VERSION = '1.0.274';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
