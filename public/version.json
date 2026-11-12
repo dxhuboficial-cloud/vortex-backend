@@ -1,6 +1,6 @@
 {
-  "version": "1.0.277",
-  "build": 277,
+  "version": "1.0.278",
+  "build": 278,
   "releaseDate": "2026-11-12",
-  "notes": "Barra de rolagem horizontal para os 3 botões de jogos evitando quebra ou corte dos títulos v1.0.277"
+  "notes": "Correção de altura e flex-shrink: 0 na barra de rolagem horizontal dos 3 botões de jogos para não ficar amassado v1.0.278"
 }

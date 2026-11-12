@@ -18611,14 +18611,14 @@ test('195. Salvamento Automático do Tipo de Chave Pix (CPF, Telefone, E-mail, C
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
   // 1. Integridade de Versionamento v1.0.276+ (Build 276+)
-  assert.ok(['1.0.276', '1.0.277'].includes(versionJson.version), 'version.json deve ser 1.0.276 ou superior');
-  assert.ok([276, 277].includes(versionJson.build), 'build em version.json deve ser 276 ou superior');
-  assert.ok(['1.0.276', '1.0.277'].includes(manifest.version), 'manifest.json deve ser 1.0.276 ou superior');
-  assert.ok(['1.0.276', '1.0.277'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.276 ou superior');
-  assert.ok(swContent.includes('vortex-vip-v1.0.276') || swContent.includes('vortex-vip-v1.0.277'), 'sw.js deve conter cache v1.0.276+');
-  assert.ok(html.includes('script.js?v=1.0.276') || html.includes('script.js?v=1.0.277'), 'index.html deve referenciar script.js?v=1.0.276+');
-  assert.ok(html.includes('style.css?v=1.0.276') || html.includes('style.css?v=1.0.277'), 'index.html deve referenciar style.css?v=1.0.276+');
-  assert.ok(privacyHtml.includes('v1.0.276') || privacyHtml.includes('v1.0.277'), 'privacy.html deve referenciar v1.0.276+');
+  assert.ok(['1.0.276', '1.0.277', '1.0.278'].includes(versionJson.version), 'version.json deve ser 1.0.276 ou superior');
+  assert.ok([276, 277, 278].includes(versionJson.build), 'build em version.json deve ser 276 ou superior');
+  assert.ok(['1.0.276', '1.0.277', '1.0.278'].includes(manifest.version), 'manifest.json deve ser 1.0.276 ou superior');
+  assert.ok(['1.0.276', '1.0.277', '1.0.278'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.276 ou superior');
+  assert.ok(swContent.includes('vortex-vip-v1.0.276') || swContent.includes('vortex-vip-v1.0.277') || swContent.includes('vortex-vip-v1.0.278'), 'sw.js deve conter cache v1.0.276+');
+  assert.ok(html.includes('script.js?v=1.0.276') || html.includes('script.js?v=1.0.277') || html.includes('script.js?v=1.0.278'), 'index.html deve referenciar script.js?v=1.0.276+');
+  assert.ok(html.includes('style.css?v=1.0.276') || html.includes('style.css?v=1.0.277') || html.includes('style.css?v=1.0.278'), 'index.html deve referenciar style.css?v=1.0.276+');
+  assert.ok(privacyHtml.includes('v1.0.276') || privacyHtml.includes('v1.0.277') || privacyHtml.includes('v1.0.278'), 'privacy.html deve referenciar v1.0.276+');
 
   // 2. Elementos no HTML: Select com opções de Chave Pix e Botões Organizados
   assert.ok(html.includes('id="chest-pix-key-type"'), 'index.html deve conter select de tipo de chave Pix');
@@ -18740,15 +18740,15 @@ test('196. Barra de Rolagem Horizontal para os 3 Botões de Jogos (Tigrinho VIP,
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
-  // 1. Integridade de Versionamento v1.0.277 (Build 277)
-  assert.strictEqual(versionJson.version, '1.0.277', 'version.json deve ser 1.0.277');
-  assert.strictEqual(versionJson.build, 277, 'build em version.json deve ser 277');
-  assert.strictEqual(manifest.version, '1.0.277', 'manifest.json deve ser 1.0.277');
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.277', 'CURRENT_APP_VERSION deve ser 1.0.277');
-  assert.ok(swContent.includes('vortex-vip-v1.0.277'), 'sw.js deve conter cache v1.0.277');
-  assert.ok(html.includes('script.js?v=1.0.277'), 'index.html deve referenciar script.js?v=1.0.277');
-  assert.ok(html.includes('style.css?v=1.0.277'), 'index.html deve referenciar style.css?v=1.0.277');
-  assert.ok(privacyHtml.includes('v1.0.277'), 'privacy.html deve referenciar v1.0.277');
+  // 1. Integridade de Versionamento v1.0.278 (Build 278)
+  assert.strictEqual(versionJson.version, '1.0.278', 'version.json deve ser 1.0.278');
+  assert.strictEqual(versionJson.build, 278, 'build em version.json deve ser 278');
+  assert.strictEqual(manifest.version, '1.0.278', 'manifest.json deve ser 1.0.278');
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.278', 'CURRENT_APP_VERSION deve ser 1.0.278');
+  assert.ok(swContent.includes('vortex-vip-v1.0.278'), 'sw.js deve conter cache v1.0.278');
+  assert.ok(html.includes('script.js?v=1.0.278'), 'index.html deve referenciar script.js?v=1.0.278');
+  assert.ok(html.includes('style.css?v=1.0.278'), 'index.html deve referenciar style.css?v=1.0.278');
+  assert.ok(privacyHtml.includes('v1.0.278'), 'privacy.html deve referenciar v1.0.278');
 
   // 2. Presença dos 3 Botões de Jogos no HTML
   assert.ok(html.includes('id="games-subtabs-nav"'), 'index.html deve conter #games-subtabs-nav');
@@ -18756,9 +18756,11 @@ test('196. Barra de Rolagem Horizontal para os 3 Botões de Jogos (Tigrinho VIP,
   assert.ok(html.includes('id="tab-btn-diamante"'), 'index.html deve conter botão Caça Diamantes');
   assert.ok(html.includes('id="tab-btn-roleta"'), 'index.html deve conter botão Roleta da Sorte');
 
-  // 3. Regras CSS da Barra de Rolagem Horizontal (.games-subtabs-nav)
+  // 3. Regras CSS da Barra de Rolagem Horizontal (.games-subtabs-nav) sem amassar verticalmente
   const navMatch = css.match(/\.games-subtabs-nav\s*\{([^}]+)\}/);
   assert.ok(navMatch, 'CSS deve conter bloco .games-subtabs-nav');
+  assert.ok(navMatch[1].includes('flex-shrink: 0'), '.games-subtabs-nav deve ter flex-shrink: 0 para não ficar amassado');
+  assert.ok(navMatch[1].includes('min-height: 60px'), '.games-subtabs-nav deve ter min-height: 60px para garantir altura dos botões + scrollbar');
   assert.ok(navMatch[1].includes('overflow-x: auto'), '.games-subtabs-nav deve ter overflow-x: auto');
   assert.ok(navMatch[1].includes('flex-wrap: nowrap'), '.games-subtabs-nav deve ter flex-wrap: nowrap');
   assert.ok(navMatch[1].includes('-webkit-overflow-scrolling: touch'), '.games-subtabs-nav deve suportar rolagem suave em mobile');

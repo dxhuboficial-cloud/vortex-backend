@@ -28200,7 +28200,7 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
    TIGRINHO VIP DA FORTUNA (v1.0.254)
    ========================================================================== */
 
-/* Sub-abas de navegação entre jogos (Barra de rolagem horizontal ↔️ v1.0.277) */
+/* Sub-abas de navegação entre jogos (Barra de rolagem horizontal ↔️ v1.0.278) */
 .games-subtabs-nav {
     display: flex;
     flex-direction: row;
@@ -28209,11 +28209,14 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
     gap: 10px;
     width: 100%;
     max-width: 100%;
+    flex-shrink: 0;
+    min-height: 60px;
+    height: auto;
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
     scroll-behavior: smooth;
-    padding: 4px 2px 8px 2px;
+    padding: 6px 2px 10px 2px;
     margin-bottom: 4px;
     box-sizing: border-box;
     scrollbar-width: thin;
@@ -28240,7 +28243,9 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
 
 .games-subtab-btn {
     flex: 0 0 auto;
+    flex-shrink: 0;
     min-width: max-content;
+    min-height: 44px;
     white-space: nowrap;
     display: inline-flex;
     align-items: center;
