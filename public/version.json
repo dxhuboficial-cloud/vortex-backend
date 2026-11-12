@@ -1,6 +1,6 @@
 {
-  "version": "1.0.265",
-  "build": 265,
-  "releaseDate": "2026-11-10",
-  "notes": "Estilização refinada dos botões de ação Ver Formulário e Bloquear no Painel ADM v1.0.265"
+  "version": "1.0.266",
+  "build": 266,
+  "releaseDate": "2026-11-12",
+  "notes": "Animação de fundo para o tema Cyber Park com chuva de meteoros caindo para a esquerda (6 cores neon) e estrela cadente RGB a cada 20s v1.0.266"
 }

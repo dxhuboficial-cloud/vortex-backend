@@ -3145,6 +3145,334 @@ export function stopBinaryMatrix() {
     }
 }
 
+// ==========================================================================
+// VORTEX VIP ⚡ - CHUVA DE METEOROS NEON DO TEMA CYBER PARK (v1.0.266)
+// Vários meteoros caindo de lado para o lado esquerdo (vermelho, azul, verde, amarelo, roxo, rosa)
+// + Estrela Cadente RGB a cada 20 segundos
+// ==========================================================================
+export const CYBERPARK_METEOR_COLORS = [
+    { name: 'vermelha', hex: '#ff1744', glow: 'rgba(255, 23, 68, 0.95)', tail: 'rgba(255, 23, 68, 0.8)', fade: 'rgba(255, 23, 68, 0)' },
+    { name: 'azul', hex: '#00e5ff', glow: 'rgba(0, 229, 255, 0.95)', tail: 'rgba(0, 229, 255, 0.8)', fade: 'rgba(0, 229, 255, 0)' },
+    { name: 'verde', hex: '#00ff66', glow: 'rgba(0, 255, 102, 0.95)', tail: 'rgba(0, 255, 102, 0.8)', fade: 'rgba(0, 255, 102, 0)' },
+    { name: 'amarelo', hex: '#ffe600', glow: 'rgba(255, 230, 0, 0.95)', tail: 'rgba(255, 230, 0, 0.8)', fade: 'rgba(255, 230, 0, 0)' },
+    { name: 'roxo', hex: '#b026ff', glow: 'rgba(176, 38, 255, 0.95)', tail: 'rgba(176, 38, 255, 0.8)', fade: 'rgba(176, 38, 255, 0)' },
+    { name: 'rosa', hex: '#ff007f', glow: 'rgba(255, 0, 127, 0.95)', tail: 'rgba(255, 0, 127, 0.8)', fade: 'rgba(255, 0, 127, 0)' }
+];
+
+let cyberMeteorsAnimId = null;
+let cyberMeteors = [];
+let cyberSparkles = [];
+let cyberMeteorsInitialized = false;
+let lastRgbShootingStarTime = 0;
+
+export function createCyberMeteor(w, h, isFirstSpawn, forcedColorIndex) {
+    const color = (forcedColorIndex !== undefined && CYBERPARK_METEOR_COLORS[forcedColorIndex])
+        ? CYBERPARK_METEOR_COLORS[forcedColorIndex]
+        : CYBERPARK_METEOR_COLORS[Math.floor(Math.random() * CYBERPARK_METEOR_COLORS.length)];
+
+    // Ângulo: ~34° a 44° abaixo do horizonte apontando para a esquerda (caindo de lado para a esquerda)
+    const angleDeg = 34 + Math.random() * 8;
+    const angleRad = angleDeg * (Math.PI / 180);
+
+    const speed = 7 + Math.random() * 7; // velocidade: 7 a 14 px por frame
+    const length = 110 + Math.random() * 130; // comprimento do rastro: 110 a 240 px
+    const lineWidth = 1.6 + Math.random() * 1.2;
+    const radius = 2.0 + Math.random() * 1.0;
+
+    // Vetor de deslocamento da cabeça (caindo para a esquerda)
+    const vx = -Math.cos(angleRad) * speed;
+    const vy = Math.sin(angleRad) * speed;
+
+    // Vetor da cauda (estende-se no sentido inverso, para trás e para cima)
+    const tailDx = Math.cos(angleRad) * length;
+    const tailDy = -Math.sin(angleRad) * length;
+
+    let x, y;
+    if (isFirstSpawn) {
+        x = Math.random() * (w + 200) - 100;
+        y = Math.random() * (h + 200) - 100;
+    } else {
+        if (Math.random() > 0.45) {
+            x = Math.random() * (w + 350);
+            y = -Math.random() * 80 - 20;
+        } else {
+            x = w + Math.random() * 80 + 20;
+            y = Math.random() * (h * 0.7) - 40;
+        }
+    }
+
+    return {
+        x,
+        y,
+        vx,
+        vy,
+        length,
+        tailDx,
+        tailDy,
+        lineWidth,
+        radius,
+        color,
+        isRgb: false
+    };
+}
+
+export function createRgbShootingStar(w, h) {
+    const angleDeg = 35 + Math.random() * 5;
+    const angleRad = angleDeg * (Math.PI / 180);
+    const speed = 18 + Math.random() * 6; // velocidade veloz e majestosa
+    const length = 380 + Math.random() * 140; // rastro longo e espetacular
+    const vx = -Math.cos(angleRad) * speed;
+    const vy = Math.sin(angleRad) * speed;
+    const tailDx = Math.cos(angleRad) * length;
+    const tailDy = -Math.sin(angleRad) * length;
+
+    const x = w * (0.6 + Math.random() * 0.4) + 100;
+    const y = -70 - Math.random() * 40;
+
+    return {
+        x,
+        y,
+        vx,
+        vy,
+        length,
+        tailDx,
+        tailDy,
+        lineWidth: 3.5,
+        radius: 4.0,
+        color: null,
+        isRgb: true
+    };
+}
+
+export function initCyberMeteorsCanvas() {
+    if (typeof document === 'undefined') return null;
+    const canvas = document.getElementById('cyberpark-meteor-canvas');
+    const feedCanvas = document.getElementById('feed-meteor-canvas');
+    if (!canvas && !feedCanvas) return null;
+    const ctx = (canvas && typeof canvas.getContext === 'function') ? canvas.getContext('2d') : null;
+
+    function resize() {
+        const winW = (typeof window !== 'undefined' && window.innerWidth) ? window.innerWidth : 800;
+        const winH = (typeof window !== 'undefined' && window.innerHeight) ? window.innerHeight : 600;
+
+        if (canvas) {
+            canvas.width = winW;
+            canvas.height = winH;
+        }
+
+        if (feedCanvas) {
+            const parent = feedCanvas.parentElement;
+            feedCanvas.width = (parent && parent.clientWidth) || winW;
+            feedCanvas.height = (parent && parent.clientHeight) || winH;
+        }
+
+        // Criar pool inicial de meteoros garantindo que todas as 6 cores estejam ativas
+        const targetCount = Math.max(14, Math.min(26, Math.floor(winW / 65)));
+        cyberMeteors = [];
+        for (let i = 0; i < targetCount; i++) {
+            const forcedColor = i % CYBERPARK_METEOR_COLORS.length;
+            cyberMeteors.push(createCyberMeteor(canvas ? canvas.width : winW, canvas ? canvas.height : winH, true, forcedColor));
+        }
+    }
+
+    if (!cyberMeteorsInitialized && typeof window !== 'undefined' && window.addEventListener) {
+        window.addEventListener('resize', resize);
+        cyberMeteorsInitialized = true;
+    }
+    resize();
+    return { canvas, ctx };
+}
+
+export function startCyberMeteors() {
+    const setup = initCyberMeteorsCanvas();
+    if (!setup) return;
+    const { canvas, ctx } = setup;
+    if (cyberMeteorsAnimId) return;
+
+    // Disparar a primeira estrela cadente RGB logo nos primeiros 2.5 segundos, e depois exatamente a cada 20 segundos
+    if (!lastRgbShootingStarTime) {
+        lastRgbShootingStarTime = Date.now() - 17500;
+    }
+
+    function renderMeteors(targetCanvas, targetCtx, meteorsList) {
+        if (!targetCanvas || !targetCtx || typeof targetCtx.clearRect !== 'function') return;
+        targetCtx.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
+
+        // 1. Atualizar e desenhar os meteoros
+        for (let i = meteorsList.length - 1; i >= 0; i--) {
+            const m = meteorsList[i];
+            m.x += m.vx;
+            m.y += m.vy;
+
+            const headX = m.x;
+            const headY = m.y;
+            const tailX = m.x + m.tailDx;
+            const tailY = m.y + m.tailDy;
+
+            // Criar gradiente do rastro
+            if (typeof targetCtx.createLinearGradient === 'function') {
+                const grad = targetCtx.createLinearGradient(headX, headY, tailX, tailY);
+                if (m.isRgb) {
+                    grad.addColorStop(0.00, '#ffffff');
+                    grad.addColorStop(0.10, 'rgba(255, 23, 68, 0.95)');   // Vermelho
+                    grad.addColorStop(0.24, 'rgba(255, 153, 0, 0.9)');    // Laranja
+                    grad.addColorStop(0.40, 'rgba(255, 230, 0, 0.85)');   // Amarelo
+                    grad.addColorStop(0.56, 'rgba(0, 255, 102, 0.8)');    // Verde
+                    grad.addColorStop(0.72, 'rgba(0, 229, 255, 0.75)');   // Azul Ciano
+                    grad.addColorStop(0.86, 'rgba(176, 38, 255, 0.65)');  // Roxo
+                    grad.addColorStop(1.00, 'rgba(255, 0, 127, 0)');      // Rosa transparente
+                } else {
+                    const c = m.color;
+                    grad.addColorStop(0.00, '#ffffff');
+                    grad.addColorStop(0.12, c.glow);
+                    grad.addColorStop(0.48, c.tail);
+                    grad.addColorStop(1.00, c.fade);
+                }
+
+                if (typeof targetCtx.save === 'function') targetCtx.save();
+                targetCtx.strokeStyle = grad;
+                targetCtx.lineWidth = m.lineWidth;
+                targetCtx.lineCap = 'round';
+                targetCtx.beginPath();
+                targetCtx.moveTo(headX, headY);
+                targetCtx.lineTo(tailX, tailY);
+                targetCtx.stroke();
+
+                // Cabeça luminosa
+                targetCtx.beginPath();
+                targetCtx.arc(headX, headY, m.radius, 0, Math.PI * 2);
+                targetCtx.fillStyle = '#ffffff';
+                targetCtx.shadowColor = m.isRgb ? '#00e5ff' : m.color.glow;
+                targetCtx.shadowBlur = m.isRgb ? 14 : 7;
+                targetCtx.fill();
+
+                // Brilho de estrela em cruz para a Estrela Cadente RGB
+                if (m.isRgb) {
+                    targetCtx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+                    targetCtx.lineWidth = 1.2;
+                    targetCtx.beginPath();
+                    targetCtx.moveTo(headX - 6, headY);
+                    targetCtx.lineTo(headX + 6, headY);
+                    targetCtx.moveTo(headX, headY - 6);
+                    targetCtx.lineTo(headX + 6, headY);
+                    targetCtx.stroke();
+
+                    // Adicionar faíscas estelares ao rastro da estrela cadente RGB
+                    if (Math.random() > 0.25) {
+                        const t = Math.random() * 0.75;
+                        cyberSparkles.push({
+                            x: headX + m.tailDx * t + (Math.random() - 0.5) * 6,
+                            y: headY + m.tailDy * t + (Math.random() - 0.5) * 6,
+                            vx: (Math.random() - 0.5) * 0.8,
+                            vy: (Math.random() - 0.5) * 0.8,
+                            life: 1.0,
+                            decay: 0.03 + Math.random() * 0.03,
+                            size: 1.4 + Math.random() * 1.4,
+                            color: ['#ff1744', '#ffe600', '#00ff66', '#00e5ff', '#b026ff', '#ff007f'][Math.floor(Math.random() * 6)]
+                        });
+                    }
+                }
+                if (typeof targetCtx.restore === 'function') targetCtx.restore();
+            }
+
+            // Checar se saiu da tela (caindo para esquerda e baixo)
+            const isOffscreen = (headX < -m.length && tailX < 0) || (headY > targetCanvas.height + m.length && tailY > targetCanvas.height);
+            if (isOffscreen) {
+                if (m.isRgb) {
+                    // Remover a estrela cadente RGB (espera os 20 segundos para a próxima)
+                    meteorsList.splice(i, 1);
+                } else {
+                    // Respawnar meteoro comum
+                    const forcedColor = Math.floor(Math.random() * CYBERPARK_METEOR_COLORS.length);
+                    meteorsList[i] = createCyberMeteor(targetCanvas.width, targetCanvas.height, false, forcedColor);
+                }
+            }
+        }
+
+        // 2. Atualizar e desenhar faíscas estelares
+        for (let j = cyberSparkles.length - 1; j >= 0; j--) {
+            const sp = cyberSparkles[j];
+            sp.x += sp.vx;
+            sp.y += sp.vy;
+            sp.life -= sp.decay;
+            if (sp.life <= 0) {
+                cyberSparkles.splice(j, 1);
+                continue;
+            }
+            if (typeof targetCtx.save === 'function') targetCtx.save();
+            targetCtx.globalAlpha = Math.max(0, sp.life);
+            targetCtx.fillStyle = sp.color;
+            targetCtx.shadowColor = sp.color;
+            targetCtx.shadowBlur = 6;
+            targetCtx.beginPath();
+            targetCtx.arc(sp.x, sp.y, sp.size, 0, Math.PI * 2);
+            targetCtx.fill();
+            if (typeof targetCtx.restore === 'function') targetCtx.restore();
+        }
+    }
+
+    function animateMeteors() {
+        if (typeof document !== 'undefined' && document.body) {
+            const isCyber = document.body.classList.contains('theme-cyberpark') || document.body.classList.contains('theme-cyberpunk');
+            if (!isCyber) {
+                stopCyberMeteors();
+                return;
+            }
+        }
+
+        if (typeof requestAnimationFrame === 'function') {
+            cyberMeteorsAnimId = requestAnimationFrame(animateMeteors);
+        }
+
+        // Checar timer de 20 segundos para a Estrela Cadente RGB
+        const now = Date.now();
+        if (now - lastRgbShootingStarTime >= 20000) {
+            lastRgbShootingStarTime = now;
+            const w = canvas ? canvas.width : 800;
+            const h = canvas ? canvas.height : 600;
+            cyberMeteors.push(createRgbShootingStar(w, h));
+        }
+
+        // Desenhar no canvas principal
+        renderMeteors(canvas, ctx, cyberMeteors);
+
+        // Desenhar no canvas do Feed Reels se presente e ativo
+        const feedCanvas = (typeof document !== 'undefined') ? document.getElementById('feed-meteor-canvas') : null;
+        if (feedCanvas && typeof feedCanvas.getContext === 'function') {
+            const feedCtx = feedCanvas.getContext('2d');
+            if (feedCanvas.width && feedCtx) {
+                renderMeteors(feedCanvas, feedCtx, cyberMeteors);
+            }
+        }
+    }
+
+    if (typeof requestAnimationFrame === 'function') {
+        cyberMeteorsAnimId = requestAnimationFrame(animateMeteors);
+    }
+}
+
+export function stopCyberMeteors() {
+    if (cyberMeteorsAnimId) {
+        if (typeof cancelAnimationFrame === 'function') {
+            cancelAnimationFrame(cyberMeteorsAnimId);
+        }
+        cyberMeteorsAnimId = null;
+    }
+    cyberSparkles = [];
+    if (typeof document !== 'undefined') {
+        const canvas = document.getElementById('cyberpark-meteor-canvas');
+        if (canvas && typeof canvas.getContext === 'function') {
+            const ctx = canvas.getContext('2d');
+            if (ctx && typeof ctx.clearRect === 'function') ctx.clearRect(0, 0, canvas.width || 800, canvas.height || 600);
+        }
+        const feedCanvas = document.getElementById('feed-meteor-canvas');
+        if (feedCanvas && typeof feedCanvas.getContext === 'function') {
+            const feedCtx = feedCanvas.getContext('2d');
+            if (feedCtx && typeof feedCtx.clearRect === 'function') feedCtx.clearRect(0, 0, feedCanvas.width || 800, feedCanvas.height || 600);
+        }
+    }
+}
+
 let rgbThemeChromaInterval = null;
 let rgbThemeHue = 0;
 
@@ -3908,6 +4236,12 @@ export function applyUserTheme() {
     document.body.classList.toggle('theme-cyberpunk', activeVipTheme === 'cyberpark');
     document.body.classList.toggle('theme-hacker', activeVipTheme === 'hacker');
     document.body.classList.toggle('theme-rgb', activeVipTheme === 'rgb');
+
+    if (activeVipTheme === 'cyberpark') {
+        startCyberMeteors();
+    } else {
+        stopCyberMeteors();
+    }
 
     if (activeVipTheme === 'hacker') {
         startBinaryMatrix();
@@ -21572,7 +21906,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.265';
+export const CURRENT_APP_VERSION = '1.0.266';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -38239,6 +38573,12 @@ if (typeof window !== 'undefined') {
     window.initBinaryMatrixCanvas = initBinaryMatrixCanvas;
     window.startBinaryMatrix = startBinaryMatrix;
     window.stopBinaryMatrix = stopBinaryMatrix;
+    window.initCyberMeteorsCanvas = initCyberMeteorsCanvas;
+    window.startCyberMeteors = startCyberMeteors;
+    window.stopCyberMeteors = stopCyberMeteors;
+    window.createCyberMeteor = createCyberMeteor;
+    window.createRgbShootingStar = createRgbShootingStar;
+    window.CYBERPARK_METEOR_COLORS = CYBERPARK_METEOR_COLORS;
     window.formatChatMessageText = formatChatMessageText;
     window.EMOJI_CATEGORIES = EMOJI_CATEGORIES;
     window.insertEmojiIntoChatInput = insertEmojiIntoChatInput;

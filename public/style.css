@@ -9285,6 +9285,39 @@ body.theme-hacker .feed-matrix-canvas {
 }
 
 /* ==========================================================================
+   Canvas de Chuva de Meteoros Neon (Tema Cyber Park VIP)
+   Meteoros caindo de lado para o lado esquerdo (Vermelho, Azul, Verde, Amarelo, Roxo, Rosa)
+   + Estrela Cadente RGB a cada 20 segundos
+   ========================================================================== */
+.cyberpark-meteor-canvas,
+.feed-meteor-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0;
+    transition: opacity 0.6s ease;
+    display: none;
+}
+
+.feed-meteor-canvas {
+    position: absolute !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+body.theme-cyberpark .cyberpark-meteor-canvas,
+body.theme-cyberpark .feed-meteor-canvas,
+body.theme-cyberpunk .cyberpark-meteor-canvas,
+body.theme-cyberpunk .feed-meteor-canvas {
+    display: block;
+    opacity: 0.95;
+}
+
+/* ==========================================================================
    Temas Exclusivos VORTEX VIP (Cyberpunk, Hacker e RGB)
    ========================================================================== */
 /* 1. Cyberpunk ("cyber Park") */
