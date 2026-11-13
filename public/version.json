@@ -1,6 +1,6 @@
 {
-  "version": "1.0.280",
-  "build": 280,
+  "version": "1.0.281",
+  "build": 281,
   "releaseDate": "2026-11-13",
-  "notes": "Novo botão e modal de Programa Tester Beta nas configurações com descrição, solicitação e aprovação automática pelo sistema em 24 horas v1.0.280"
+  "notes": "Nova função de Ligação em Grupo para contatos: convidar até 4 pessoas para se juntar à ligação v1.0.281"
 }

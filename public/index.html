@@ -35,13 +35,13 @@
     <meta itemprop="image" content="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
     <link rel="image_src" type="image/png" href="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
 
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.280">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.280">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.280">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.280">
-    <link rel="stylesheet" href="style.css?v=1.0.280">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.281">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.281">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.281">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.281">
+    <link rel="stylesheet" href="style.css?v=1.0.281">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.280" id="app-manifest-link">
+    <link rel="manifest" href="manifest.json?v=1.0.281" id="app-manifest-link">
     <meta name="theme-color" content="#39ff14" id="app-theme-color-meta">
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#39ff14" id="app-theme-color-meta-dark">
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#39ff14" id="app-theme-color-meta-light">
@@ -50,8 +50,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.280">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.280">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.281">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.281">
     <!-- Sincronização Dinâmica da Barra de Status e Barra de Navegação do Celular -->
     <script>
         (function() {
@@ -1533,6 +1533,7 @@
         <!-- Overlay de Chamada de Vídeo WebRTC -->
         <div id="video-call-overlay" class="video-call-overlay">
             <video id="remote-webcam-feed" autoplay playsinline class="remote-video"></video>
+            <div id="group-call-participants-grid" class="group-call-participants-grid" style="display:none;"></div>
             
             <div class="local-video-pip" id="local-video-wrapper">
                 <video id="local-webcam-feed" autoplay playsinline muted class="local-video"></video>
@@ -1543,7 +1544,8 @@
             </div>
 
             <div class="call-header">
-                <span><i data-lucide="lock" class="call-lock-icon"></i> Criptografia Quântica VIP P2P</span>
+                <span id="call-header-label"><i data-lucide="lock" class="call-lock-icon"></i> Criptografia Quântica VIP P2P</span>
+                <span id="group-call-count-badge" class="group-call-count-badge" style="display:none;">Ligação em Grupo</span>
             </div>
 
             <div class="call-user-info" id="call-user-info-box">
@@ -1557,6 +1559,10 @@
                 <div class="call-action-btn" id="mute-mic-btn" title="Silenciar Microfone" aria-label="Silenciar Microfone"><i data-lucide="mic"></i></div>
                 <div class="call-action-btn" id="toggle-camera-btn" title="Desligar Câmera" aria-label="Desligar Câmera"><i data-lucide="video"></i></div>
                 <div class="call-action-btn" id="switch-camera-btn" title="Alternar Câmera" aria-label="Alternar Câmera"><i data-lucide="refresh-cw"></i></div>
+                <div class="call-action-btn group-invite-btn" id="invite-group-call-btn" title="Convidar para Ligação em Grupo (até 4 pessoas)" aria-label="Convidar para Ligação em Grupo">
+                    <i data-lucide="user-plus"></i>
+                    <span id="group-call-invite-btn-badge" class="group-call-invite-btn-badge" style="display:none;">0/4</span>
+                </div>
                 <div class="call-action-btn end-call" id="end-call-btn" title="Desligar Chamada" aria-label="Desligar Chamada"><i data-lucide="phone-off"></i></div>
             </div>
         </div>
@@ -1564,11 +1570,11 @@
         <!-- Overlay de Chamada Recebida -->
         <div id="incoming-call-overlay" class="incoming-call-overlay">
             <div class="incoming-call-card">
-                <div class="incoming-badge"><i data-lucide="phone-incoming"></i> CHAMADA VIP RECEBIDA</div>
+                <div class="incoming-badge" id="incoming-caller-badge"><i data-lucide="phone-incoming"></i> CHAMADA VIP RECEBIDA</div>
                 <div id="incoming-caller-avatar" class="avatar lg call-pulse-avatar incoming-caller-border"></div>
                 <h2 id="incoming-caller-name" class="incoming-caller-title">Nome</h2>
                 <span id="incoming-caller-username" class="incoming-caller-handle">@username</span>
-                <p class="incoming-caller-desc">Chamada de Vídeo e Áudio P2P Criptografada</p>
+                <p class="incoming-caller-desc" id="incoming-caller-desc">Chamada de Vídeo e Áudio P2P Criptografada</p>
 
                 <div class="incoming-actions">
                     <button id="decline-call-btn" class="call-action-btn end-call" title="Recusar Chamada">
@@ -2856,7 +2862,7 @@
                     </button>
                 </div>
 
-                <!-- Item de Configuração: Programa Tester Beta VORTEX VIP ⚡ (v1.0.280) -->
+                <!-- Item de Configuração: Programa Tester Beta VORTEX VIP ⚡ (v1.0.281) -->
                 <div class="setting-item beta-tester-setting-row" id="beta-tester-setting-item">
                     <div class="setting-info">
                         <div class="beta-tester-setting-header-row">
@@ -2900,14 +2906,14 @@
                     </button>
                 </div>
 
-                <!-- Card de Versão Oficial do App (v1.0.280) -->
+                <!-- Card de Versão Oficial do App (v1.0.281) -->
                 <div class="app-version-card" id="app-version-info-footer">
                     <div class="app-version-header-row">
                         <div class="app-version-brand-wrap">
-                            <img src="icons/vortex-vip-192.png?v=1.0.280" alt="VORTEX VIP" class="app-version-icon-img" width="22" height="22">
+                            <img src="icons/vortex-vip-192.png?v=1.0.281" alt="VORTEX VIP" class="app-version-icon-img" width="22" height="22">
                             <span class="app-version-brand-name">VORTEX VIP Oficial</span>
                         </div>
-                        <span class="app-version-pill-badge" id="app-version-display-badge">v1.0.280 ⚡</span>
+                        <span class="app-version-pill-badge" id="app-version-display-badge">v1.0.281 ⚡</span>
                     </div>
                     <div class="app-version-status-row">
                         <span class="app-version-status-dot"></span>
@@ -5179,9 +5185,76 @@
                         </div>
                         <i data-lucide="chevron-right" class="call-type-arrow"></i>
                     </button>
+
+                    <button type="button" id="start-group-call-opt-btn" class="call-type-option-btn group-call-opt" title="Ligação em Grupo (convidar até 4 pessoas)">
+                        <div class="call-type-icon-box group-icon-box">
+                            <i data-lucide="users"></i>
+                        </div>
+                        <div class="call-type-text-box">
+                            <span class="call-type-btn-title">Ligação em Grupo <span class="group-call-opt-tag">Até 4</span></span>
+                            <span class="call-type-btn-desc">Convide até 4 contatos para entrar na mesma ligação</span>
+                        </div>
+                        <i data-lucide="chevron-right" class="call-type-arrow"></i>
+                    </button>
                 </div>
 
                 <button type="button" id="cancel-call-type-modal-btn" class="close-btn modal-cancel-btn" style="margin-top: 14px; width: 100%;">Cancelar</button>
+            </div>
+        </div>
+
+        <!-- Modal de Convite para Ligação em Grupo (até 4 pessoas) (v1.0.281) -->
+        <div id="group-call-invite-modal" class="custom-modal-overlay" style="display:none;" aria-hidden="true">
+            <div class="custom-modal-card group-call-invite-card">
+                <div class="panel-top-bar" style="padding:14px 18px;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <i data-lucide="users" style="color:#00f5ff; width:20px; height:20px;"></i>
+                        <h3 class="modal-title" id="group-call-invite-modal-title" style="font-size:1.02rem; margin:0; color:#fff;">Ligação em Grupo</h3>
+                    </div>
+                    <div class="header-icon-btn" id="close-group-call-invite-modal" title="Fechar" aria-label="Fechar">
+                        <i data-lucide="x"></i>
+                    </div>
+                </div>
+
+                <div class="group-call-invite-body">
+                    <div class="group-call-base-contact-bar" id="group-call-base-contact-bar" style="display:none;">
+                        <div class="avatar sm" id="group-call-base-contact-avatar"></div>
+                        <div class="group-call-base-contact-meta">
+                            <span class="group-call-base-label">Contato na ligação</span>
+                            <strong id="group-call-base-contact-name">Contato</strong>
+                        </div>
+                        <span class="group-call-base-pill">Incluso</span>
+                    </div>
+
+                    <div class="group-call-mode-selector" id="group-call-mode-selector">
+                        <button type="button" class="group-call-mode-btn active" id="group-call-mode-video-btn" data-mode="video">
+                            <i data-lucide="video"></i> <span>Vídeo em Grupo</span>
+                        </button>
+                        <button type="button" class="group-call-mode-btn" id="group-call-mode-audio-btn" data-mode="audio">
+                            <i data-lucide="phone"></i> <span>Áudio em Grupo</span>
+                        </button>
+                    </div>
+
+                    <div class="group-call-limit-row">
+                        <span class="group-call-limit-hint">Escolha quem convidar para entrar na ligação:</span>
+                        <span class="group-call-limit-pill" id="group-call-invite-counter">0 / 4 convidados</span>
+                    </div>
+
+                    <div class="group-call-search-box">
+                        <i data-lucide="search"></i>
+                        <input type="text" id="group-call-invite-search" placeholder="Buscar contato por nome ou @usuario..." autocomplete="off">
+                    </div>
+
+                    <div class="group-call-invite-contacts-list" id="group-call-invite-contacts-list">
+                        <!-- Lista de contatos injetada via JS -->
+                    </div>
+
+                    <div class="group-call-invite-footer">
+                        <button type="button" class="group-call-confirm-btn" id="confirm-group-call-invite-btn">
+                            <i data-lucide="phone-forwarded"></i> <span id="confirm-group-call-invite-btn-text">Convidar e Ligar</span>
+                        </button>
+                        <button type="button" class="close-btn modal-cancel-btn" id="cancel-group-call-invite-btn">Cancelar</button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -6157,7 +6230,7 @@
             </div>
         </div>
 
-        <!-- Modal Oficial do Programa Tester Beta VORTEX VIP ⚡ (v1.0.280) -->
+        <!-- Modal Oficial do Programa Tester Beta VORTEX VIP ⚡ (v1.0.281) -->
         <div id="beta-tester-modal" class="custom-modal-overlay" style="display:none;" aria-hidden="true">
             <div class="custom-modal-card beta-tester-modal-card">
                 <div class="panel-top-bar" style="padding:14px 18px;">
@@ -6540,7 +6613,7 @@
         <div id="business-blocked-modal" class="custom-modal-overlay business-blocked-overlay" style="display:none;" aria-hidden="true">
             <div class="custom-modal-card business-blocked-card">
                 <div class="business-blocked-icon-wrap">
-                    <img src="icons/blocked-hand.png?v=1.0.280" alt="Acesso Bloqueado" class="business-blocked-hand-icon" width="64" height="64">
+                    <img src="icons/blocked-hand.png?v=1.0.281" alt="Acesso Bloqueado" class="business-blocked-hand-icon" width="64" height="64">
                 </div>
                 <h3 class="business-blocked-title">Acesso Bloqueado</h3>
                 <p class="business-blocked-msg" id="business-blocked-msg-text">
@@ -6589,7 +6662,7 @@
     </div> <!-- Fim do app-container -->
 
     <!-- =========================================================
-         TELA DE MANUTENÇÃO OFICIAL VORTEX VIP (v1.0.280)
+         TELA DE MANUTENÇÃO OFICIAL VORTEX VIP (v1.0.281)
          Ativada via Painel ADM; exibida apenas para usuários comuns e visitantes.
          Administradores possuem bypass total e não visualizam esta tela.
          ========================================================= -->
@@ -6652,6 +6725,6 @@
         </main>
     </div>
 
-    <script type="module" src="script.js?v=1.0.280" defer></script>
+    <script type="module" src="script.js?v=1.0.281" defer></script>
 </body>
 </html>

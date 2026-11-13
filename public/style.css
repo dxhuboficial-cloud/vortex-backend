@@ -31416,6 +31416,486 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
     opacity: 1;
 }
 
+/* ===== VORTEX VIP: LIGAÇÃO EM GRUPO (ATÉ 4 CONVIDADOS) (v1.0.281) ===== */
+.call-type-option-btn.group-call-opt:hover,
+.call-type-option-btn.group-call-opt:active {
+    background: rgba(168, 85, 247, 0.14);
+    border-color: rgba(192, 132, 252, 0.55);
+    box-shadow: 0 4px 18px rgba(168, 85, 247, 0.28);
+}
+
+.group-icon-box {
+    background: linear-gradient(135deg, rgba(168, 85, 247, 0.28), rgba(0, 245, 255, 0.28));
+    color: #e9d5ff;
+    border: 1px solid rgba(192, 132, 252, 0.45);
+}
+
+.group-call-opt-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 7px;
+    margin-left: 6px;
+    border-radius: 999px;
+    font-size: 0.65rem;
+    font-weight: 800;
+    background: rgba(168, 85, 247, 0.22);
+    border: 1px solid rgba(192, 132, 252, 0.45);
+    color: #d8b4fe;
+    vertical-align: middle;
+}
+
+.call-action-btn.group-invite-btn {
+    position: relative;
+    background: rgba(168, 85, 247, 0.22);
+    border: 1px solid rgba(192, 132, 252, 0.45);
+}
+
+.call-action-btn.group-invite-btn:hover {
+    background: rgba(168, 85, 247, 0.38);
+    box-shadow: 0 0 14px rgba(168, 85, 247, 0.45);
+}
+
+.group-call-invite-btn-badge {
+    position: absolute;
+    top: -5px;
+    right: -6px;
+    min-width: 22px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: #00f5ff;
+    color: #050810;
+    font-size: 0.62rem;
+    font-weight: 900;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+.group-call-count-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    background: rgba(168, 85, 247, 0.22);
+    border: 1px solid rgba(192, 132, 252, 0.45);
+    color: #e9d5ff;
+    font-size: 0.72rem;
+    font-weight: 800;
+}
+
+.video-call-overlay.group-call-mode #remote-webcam-feed {
+    display: none !important;
+}
+
+.video-call-overlay.group-call-mode .call-user-info {
+    position: relative;
+    z-index: 4;
+    gap: 4px;
+    margin-bottom: 6px;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+}
+
+.video-call-overlay.group-call-mode .call-user-info .call-pulse-avatar {
+    display: none;
+}
+
+.video-call-overlay.group-call-mode .call-user-info h2 {
+    font-size: 1.05rem;
+    margin: 0;
+}
+
+.group-call-participants-grid {
+    position: relative;
+    z-index: 3;
+    flex: 1;
+    width: 100%;
+    max-width: 820px;
+    margin: 6px auto 12px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+    gap: 10px;
+    align-content: center;
+    overflow-y: auto;
+    padding: 4px;
+    box-sizing: border-box;
+}
+
+.group-call-participant-tile {
+    position: relative;
+    min-height: 155px;
+    border-radius: 16px;
+    overflow: hidden;
+    background: linear-gradient(145deg, rgba(20, 24, 38, 0.94), rgba(10, 14, 24, 0.96));
+    border: 1.5px solid rgba(255, 255, 255, 0.12);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+.group-call-participant-tile.status-connected {
+    border-color: rgba(57, 255, 20, 0.48);
+    box-shadow: 0 0 18px rgba(57, 255, 20, 0.14);
+}
+
+.group-call-participant-tile.status-ringing {
+    border-color: rgba(250, 204, 21, 0.45);
+}
+
+.group-call-participant-tile.status-declined,
+.group-call-participant-tile.status-left {
+    opacity: 0.6;
+    border-color: rgba(255, 59, 48, 0.35);
+}
+
+.group-call-tile-video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 1;
+}
+
+.group-call-tile-avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background-color: rgba(168, 85, 247, 0.25);
+    background-size: cover;
+    background-position: center;
+    border: 2px solid rgba(0, 245, 255, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: #fff;
+    z-index: 2;
+}
+
+.group-call-tile-footer {
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    z-index: 3;
+    background: rgba(6, 8, 14, 0.78);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    border-radius: 10px;
+    padding: 5px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+}
+
+.group-call-tile-name {
+    font-size: 0.76rem;
+    font-weight: 700;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.group-call-tile-status {
+    font-size: 0.65rem;
+    font-weight: 800;
+    padding: 2px 6px;
+    border-radius: 999px;
+    flex-shrink: 0;
+}
+
+.group-call-tile-status.ringing {
+    background: rgba(250, 204, 21, 0.2);
+    color: #fde047;
+}
+
+.group-call-tile-status.connected {
+    background: rgba(57, 255, 20, 0.2);
+    color: #39ff14;
+}
+
+.group-call-tile-status.declined,
+.group-call-tile-status.left {
+    background: rgba(255, 59, 48, 0.2);
+    color: #ff6b6b;
+}
+
+.group-call-invite-card {
+    max-width: 440px;
+    width: 94%;
+    max-height: 88vh;
+    display: flex;
+    flex-direction: column;
+    border-radius: 20px;
+    background: linear-gradient(145deg, rgba(16, 20, 34, 0.98), rgba(10, 14, 24, 0.98));
+    border: 1px solid rgba(0, 245, 255, 0.35);
+    box-shadow: 0 14px 44px rgba(0, 0, 0, 0.85), 0 0 26px rgba(0, 245, 255, 0.16);
+    overflow: hidden;
+}
+
+.group-call-invite-body {
+    padding: 12px 18px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow-y: auto;
+    max-height: calc(88vh - 64px);
+}
+
+.group-call-base-contact-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(0, 245, 255, 0.08);
+    border: 1px solid rgba(0, 245, 255, 0.25);
+}
+
+.group-call-base-contact-meta {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+}
+
+.group-call-base-label {
+    font-size: 0.68rem;
+    color: #94a3b8;
+}
+
+.group-call-base-contact-meta strong {
+    font-size: 0.88rem;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.group-call-base-pill {
+    font-size: 0.68rem;
+    font-weight: 800;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: rgba(57, 255, 20, 0.16);
+    border: 1px solid rgba(57, 255, 20, 0.4);
+    color: #39ff14;
+}
+
+.group-call-mode-selector {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.group-call-mode-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 9px 10px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #cbd5e1;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.group-call-mode-btn.active {
+    background: rgba(0, 245, 255, 0.16);
+    border-color: rgba(0, 245, 255, 0.5);
+    color: #00f5ff;
+}
+
+.group-call-limit-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.group-call-limit-hint {
+    font-size: 0.78rem;
+    color: #cbd5e1;
+}
+
+.group-call-limit-pill {
+    font-size: 0.74rem;
+    font-weight: 800;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: rgba(168, 85, 247, 0.18);
+    border: 1px solid rgba(192, 132, 252, 0.45);
+    color: #d8b4fe;
+}
+
+.group-call-limit-pill.at-limit {
+    background: rgba(57, 255, 20, 0.16);
+    border-color: rgba(57, 255, 20, 0.45);
+    color: #39ff14;
+}
+
+.group-call-search-box {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.group-call-search-box i,
+.group-call-search-box svg {
+    width: 16px;
+    height: 16px;
+    color: #94a3b8;
+}
+
+.group-call-search-box input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #fff;
+    font-size: 0.85rem;
+}
+
+.group-call-invite-contacts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 250px;
+    overflow-y: auto;
+    padding-right: 2px;
+}
+
+.group-call-contact-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 11px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    cursor: pointer;
+    transition: all 0.18s ease;
+    text-align: left;
+    width: 100%;
+}
+
+.group-call-contact-row:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.group-call-contact-row.selected {
+    background: rgba(0, 245, 255, 0.12);
+    border-color: rgba(0, 245, 255, 0.5);
+}
+
+.group-call-contact-row.already-invited {
+    opacity: 0.72;
+    cursor: default;
+    border-color: rgba(57, 255, 20, 0.35);
+}
+
+.group-call-contact-meta {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+}
+
+.group-call-contact-name {
+    font-size: 0.86rem;
+    font-weight: 700;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.group-call-contact-username {
+    font-size: 0.73rem;
+    color: #94a3b8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.group-call-contact-check {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.25);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 900;
+    color: #050810;
+    flex-shrink: 0;
+}
+
+.group-call-contact-row.selected .group-call-contact-check {
+    background: #00f5ff;
+    border-color: #00f5ff;
+}
+
+.group-call-contact-row.already-invited .group-call-contact-check {
+    width: auto;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(57, 255, 20, 0.2);
+    border-color: rgba(57, 255, 20, 0.45);
+    color: #39ff14;
+    font-size: 0.66rem;
+}
+
+.group-call-invite-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 2px;
+}
+
+.group-call-confirm-btn {
+    width: 100%;
+    min-height: 48px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 1px solid rgba(0, 245, 255, 0.55);
+    background: linear-gradient(135deg, #00c6ff 0%, #7c3aed 100%);
+    color: #ffffff;
+    font-size: 0.94rem;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.group-call-confirm-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
 
 
 

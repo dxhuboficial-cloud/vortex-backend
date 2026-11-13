@@ -231,6 +231,22 @@ let currentFacingMode = 'user';
 let vibrationInterval = null;
 let hasUserInteracted = false;
 
+export const MAX_GROUP_CALL_INVITES = 4;
+let activeGroupCallId = null;
+let activeGroupCallIsVideo = true;
+let isGroupCallActive = false;
+const groupCallPeerConnections = new Map();
+const groupCallRemoteStreams = new Map();
+const groupCallSignalsUnsubscribes = new Map();
+let groupCallRoomUnsubscribe = null;
+let groupCallParticipantsMap = new Map();
+const groupCallInvitedUids = new Set();
+let groupCallSentInviteCallDocIds = [];
+const selectedGroupInviteUids = new Set();
+let groupCallModalContext = 'new';
+let groupCallModalBaseContact = null;
+let groupCallPreferVideo = true;
+
 const pinState = {
     currentPinInput: "",
     newPinInput: "",
@@ -5557,6 +5573,7 @@ function detachListeners() {
     if (activeCallDocUnsubscribe) activeCallDocUnsubscribe();
     if (callerCandidatesUnsubscribe) callerCandidatesUnsubscribe();
     if (calleeCandidatesUnsubscribe) calleeCandidatesUnsubscribe();
+    if (typeof cleanupGroupCallState === 'function') cleanupGroupCallState({ notifyRemote: false });
     if (currentStoryDocUnsubscribe) currentStoryDocUnsubscribe();
     if (managedGroupUnsubscribe) managedGroupUnsubscribe();
     if (blockedUnsubscribe) blockedUnsubscribe();
@@ -23093,7 +23110,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.280';
+export const CURRENT_APP_VERSION = '1.0.281';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -30412,9 +30429,22 @@ export async function startCall(isVideo = true) {
 
     if (overlay) {
         overlay.classList.add('active');
+        overlay.classList.remove('group-call-mode');
         if (!isVideo) overlay.classList.add('audio-call-mode');
         else overlay.classList.remove('audio-call-mode');
     }
+    isGroupCallActive = false;
+    activeGroupCallId = null;
+    groupCallInvitedUids.clear();
+    groupCallParticipantsMap.clear();
+    const gGrid = document.getElementById('group-call-participants-grid');
+    if (gGrid) {
+        gGrid.innerHTML = '';
+        gGrid.style.display = 'none';
+    }
+    const gCountBadge = document.getElementById('group-call-count-badge');
+    if (gCountBadge) gCountBadge.style.display = 'none';
+    updateGroupCallInviteBadgeUI();
     if (localPip) localPip.style.display = isVideo ? '' : 'none';
     if (switchCamBtn) switchCamBtn.style.display = isVideo ? 'flex' : 'none';
 
@@ -30539,7 +30569,12 @@ export async function startCall(isVideo = true) {
                     }
                     endCall();
                 } else if (data.status === 'ended') {
-                    endCall();
+                    if (!isGroupCallActive) endCall();
+                }
+
+                if (data.upgradedToGroupCallId && !isGroupCallActive) {
+                    migrateActiveP2PCallToGroup(data.upgradedToGroupCallId, data.upgradedIsVideo !== false);
+                    return;
                 }
 
                 if (data.type === 'video' || data.isVideoCall || data.hasVideo || data.switchedToVideoAt) {
@@ -30607,11 +30642,21 @@ function listenToIncomingCalls() {
             if (avatarEl) avatarEl.style.backgroundImage = callData.callerAvatar ? `url('${callData.callerAvatar}')` : '';
 
             const isVideoCall = callData.type !== 'audio';
+            const isGroupInvite = Boolean(callData.isGroupCall && callData.groupCallId);
             const isCallerMuted = Boolean(callData.callerUid && isContactMuted(callData.callerUid));
+            const incomingBadgeEl = document.getElementById('incoming-caller-badge');
+            if (incomingBadgeEl) {
+                incomingBadgeEl.innerHTML = isGroupInvite
+                    ? `<i data-lucide="users"></i> LIGAÇÃO EM GRUPO VIP`
+                    : `<i data-lucide="phone-incoming"></i> CHAMADA VIP RECEBIDA`;
+            }
             const descEl = document.getElementById('incoming-caller-desc');
             if (descEl) {
                 if (isCallerMuted) {
                     descEl.innerHTML = `<span class="incoming-muted-call-badge"><i data-lucide="bell-off"></i> Chamada Silenciosa (Contato Silenciado)</span>`;
+                } else if (isGroupInvite) {
+                    const countText = callData.participantCount ? ` (${callData.participantCount} na sala)` : '';
+                    descEl.innerText = `Convite para Ligação em Grupo${countText} • ${isVideoCall ? 'Vídeo' : 'Áudio'}`;
                 } else {
                     descEl.innerText = isVideoCall 
                         ? 'Chamada de Vídeo e Áudio P2P Criptografada'
@@ -30672,13 +30717,25 @@ async function acceptIncomingCall() {
     try {
         const callDocRef = doc(db, 'calls', currentCallId);
         const callSnap = await getDoc(callDocRef);
-        const callData = callSnap.data() || {};
+        const callData = (callSnap && typeof callSnap.data === 'function' ? callSnap.data() : {}) || {};
         const isVideo = callData.type !== 'audio';
 
+        if (callData.isGroupCall && callData.groupCallId) {
+            await updateDoc(callDocRef, {
+                status: 'connected',
+                answeredAt: Date.now()
+            }).catch(() => {});
+            return await joinGroupCall(callData.groupCallId, isVideo, currentCallId);
+        }
+
+        isGroupCallActive = false;
+        activeGroupCallId = null;
         if (overlay) {
+            overlay.classList.remove('group-call-mode');
             if (!isVideo) overlay.classList.add('audio-call-mode');
             else overlay.classList.remove('audio-call-mode');
         }
+        updateGroupCallInviteBadgeUI();
         if (localPip) localPip.style.display = isVideo ? '' : 'none';
         if (switchCamBtn) switchCamBtn.style.display = isVideo ? 'flex' : 'none';
 
@@ -30786,7 +30843,11 @@ async function acceptIncomingCall() {
             if (snap && (typeof snap.exists === 'function' ? snap.exists() : !!snap.exists) && typeof snap.data === 'function') {
                 const data = snap.data();
                 if (data.status === 'ended') {
-                    endCall();
+                    if (!isGroupCallActive) endCall();
+                    return;
+                }
+                if (data.upgradedToGroupCallId && !isGroupCallActive) {
+                    migrateActiveP2PCallToGroup(data.upgradedToGroupCallId, data.upgradedIsVideo !== false);
                     return;
                 }
                 if (data.type === 'video' || data.isVideoCall || data.hasVideo || data.switchedToVideoAt) {
@@ -30803,12 +30864,20 @@ async function acceptIncomingCall() {
 
 async function declineIncomingCall() {
     if (!currentCallId) return;
+    const declinedCallId = currentCallId;
     dismissIncomingCallUI();
+    try {
+        const snap = await getDoc(doc(db, 'calls', declinedCallId));
+        const callData = snap && snap.exists && snap.exists() ? snap.data() : null;
+        if (callData && callData.isGroupCall && callData.groupCallId && currentUser) {
+            await markGroupCallParticipantStatus(callData.groupCallId, currentUser.uid, 'declined');
+        }
+    } catch (_) {}
     if (activeCallRecordContext) {
         recordCallInChat(activeCallRecordContext, 'rejected', 0);
         activeCallRecordContext = null;
     }
-    await updateDoc(doc(db, 'calls', currentCallId), { status: 'rejected', endedAt: Date.now() }).catch(() => {});
+    await updateDoc(doc(db, 'calls', declinedCallId), { status: 'rejected', endedAt: Date.now() }).catch(() => {});
     currentCallId = null;
 }
 
@@ -30831,6 +30900,10 @@ async function endCall() {
     if (callerCandidatesUnsubscribe) {
         callerCandidatesUnsubscribe();
         callerCandidatesUnsubscribe = null;
+    }
+
+    if (isGroupCallActive || activeGroupCallId) {
+        await cleanupGroupCallState({ notifyRemote: true });
     }
 
     if (activeCallRecordContext) {
@@ -30978,6 +31051,1087 @@ document.getElementById('call-type-modal')?.addEventListener('click', (e) => {
 document.getElementById('end-call-btn')?.addEventListener('click', endCall);
 document.getElementById('accept-call-btn')?.addEventListener('click', acceptIncomingCall);
 document.getElementById('decline-call-btn')?.addEventListener('click', declineIncomingCall);
+
+/* ==========================================================================
+   LIGAÇÃO EM GRUPO PARA CONTATOS (CONVIDAR ATÉ 4 PESSOAS) - v1.0.281
+   ========================================================================== */
+
+export async function getAvailableContactsForGroupCall() {
+    const mapByUid = new Map();
+    const myUid = currentUser?.uid || '';
+
+    if (typeof contactUserDataMap !== 'undefined' && contactUserDataMap instanceof Map) {
+        contactUserDataMap.forEach((uData, cUid) => {
+            const uid = (uData && (uData.uid || uData.id)) || cUid;
+            if (!uid || uid === myUid) return;
+            if (uData?.isGroup) return;
+            if (typeof blockedContactsSet !== 'undefined' && blockedContactsSet.has(uid)) return;
+            if (typeof isUserAccountDeleted === 'function' && isUserAccountDeleted(uid)) return;
+            if (uData?.isDeleted || uData?.deleted) return;
+            mapByUid.set(uid, { ...uData, uid });
+        });
+    }
+
+    if (myUid && typeof db !== 'undefined' && db && typeof collection === 'function' && typeof getDocs === 'function') {
+        try {
+            const snap = await getDocs(collection(db, 'users', myUid, 'contacts'));
+            if (snap && typeof snap.forEach === 'function') {
+                snap.forEach((docSnap) => {
+                    const data = typeof docSnap.data === 'function' ? docSnap.data() : (docSnap.data || {});
+                    const uid = data.uid || docSnap.id;
+                    if (!uid || uid === myUid) return;
+                    if (data.isGroup) return;
+                    if (typeof blockedContactsSet !== 'undefined' && blockedContactsSet.has(uid)) return;
+                    if (typeof isUserAccountDeleted === 'function' && isUserAccountDeleted(uid)) return;
+                    if (data.isDeleted || data.deleted) return;
+                    if (!mapByUid.has(uid)) {
+                        mapByUid.set(uid, { ...data, uid });
+                    }
+                });
+            }
+        } catch (_) {}
+    }
+
+    return Array.from(mapByUid.values()).sort((a, b) =>
+        String(a.name || a.username || '').localeCompare(String(b.name || b.username || ''), 'pt-BR')
+    );
+}
+
+export function getGroupCallRemainingInviteSlots() {
+    const activeInvitedCount = isGroupCallActive ? groupCallInvitedUids.size : 0;
+    return Math.max(0, MAX_GROUP_CALL_INVITES - activeInvitedCount);
+}
+
+export function updateGroupCallInviteBadgeUI() {
+    const btnBadge = document.getElementById('group-call-invite-btn-badge');
+    const countBadge = document.getElementById('group-call-count-badge');
+    const headerLabel = document.getElementById('call-header-label');
+    const callNameEl = document.getElementById('call-name');
+    const invitedCount = Math.min(MAX_GROUP_CALL_INVITES, groupCallInvitedUids.size);
+    const participantsTotal = Math.max(1, groupCallParticipantsMap.size);
+
+    if (btnBadge) {
+        if (isGroupCallActive || invitedCount > 0) {
+            btnBadge.style.display = 'inline-flex';
+            btnBadge.innerText = `${invitedCount}/${MAX_GROUP_CALL_INVITES}`;
+        } else {
+            btnBadge.style.display = 'inline-flex';
+            btnBadge.innerText = '+';
+        }
+    }
+
+    if (countBadge) {
+        if (isGroupCallActive) {
+            countBadge.style.display = 'inline-flex';
+            countBadge.innerText = `Grupo • ${participantsTotal} na sala • ${invitedCount}/${MAX_GROUP_CALL_INVITES} convidados`;
+        } else {
+            countBadge.style.display = 'none';
+        }
+    }
+
+    if (headerLabel) {
+        headerLabel.innerHTML = isGroupCallActive
+            ? `<i data-lucide="users" class="call-lock-icon"></i> Ligação em Grupo VORTEX VIP ⚡`
+            : `<i data-lucide="lock" class="call-lock-icon"></i> Criptografia Quântica VIP P2P`;
+    }
+
+    if (isGroupCallActive && callNameEl) {
+        callNameEl.innerText = `Ligação em Grupo (${participantsTotal})`;
+    }
+}
+
+export function renderGroupCallParticipantsGrid() {
+    const grid = document.getElementById('group-call-participants-grid');
+    if (!grid) return;
+
+    if (!isGroupCallActive) {
+        grid.innerHTML = '';
+        grid.style.display = 'none';
+        return;
+    }
+
+    grid.style.display = 'grid';
+    const myUid = currentUser?.uid || '';
+    const entries = Array.from(groupCallParticipantsMap.values()).filter(p => p && p.uid && p.uid !== myUid);
+
+    if (entries.length === 0) {
+        grid.innerHTML = `<div class="group-call-participant-tile status-ringing"><div class="group-call-tile-avatar">👥</div><div class="group-call-tile-footer"><span class="group-call-tile-name">Aguardando participantes...</span><span class="group-call-tile-status ringing">Chamando</span></div></div>`;
+        return;
+    }
+
+    const statusLabelMap = {
+        connected: 'Conectado',
+        ringing: 'Chamando...',
+        declined: 'Recusou',
+        left: 'Saiu'
+    };
+
+    grid.innerHTML = '';
+    entries.forEach((participant) => {
+        const uid = participant.uid;
+        const status = participant.status || 'ringing';
+        const displayName = participant.name || 'Contato';
+        const initial = displayName.charAt(0).toUpperCase();
+        const tile = document.createElement('div');
+        tile.className = `group-call-participant-tile status-${status}`;
+        tile.dataset.uid = uid;
+
+        const remoteParticipantStream = groupCallRemoteStreams.get(uid);
+        const hasRemoteVideo = Boolean(remoteParticipantStream && typeof remoteParticipantStream.getVideoTracks === 'function' && remoteParticipantStream.getVideoTracks().length > 0 && activeGroupCallIsVideo);
+
+        if (hasRemoteVideo) {
+            const vid = document.createElement('video');
+            vid.className = 'group-call-tile-video';
+            vid.autoplay = true;
+            vid.playsInline = true;
+            vid.srcObject = remoteParticipantStream;
+            tile.appendChild(vid);
+        }
+
+        const avatarDiv = document.createElement('div');
+        avatarDiv.className = 'group-call-tile-avatar';
+        if (participant.avatar) {
+            avatarDiv.style.backgroundImage = `url('${participant.avatar}')`;
+        } else {
+            avatarDiv.innerText = initial;
+        }
+        if (hasRemoteVideo) {
+            avatarDiv.style.display = 'none';
+        }
+        tile.appendChild(avatarDiv);
+
+        const footerDiv = document.createElement('div');
+        footerDiv.className = 'group-call-tile-footer';
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'group-call-tile-name';
+        nameSpan.innerText = displayName;
+        const statusSpan = document.createElement('span');
+        statusSpan.className = `group-call-tile-status ${status}`;
+        statusSpan.innerText = statusLabelMap[status] || 'Chamando...';
+        footerDiv.appendChild(nameSpan);
+        footerDiv.appendChild(statusSpan);
+        tile.appendChild(footerDiv);
+
+        grid.appendChild(tile);
+    });
+}
+
+export function updateGroupCallInviteCounterUI() {
+    const counterEl = document.getElementById('group-call-invite-counter');
+    const confirmBtn = document.getElementById('confirm-group-call-invite-btn');
+    const confirmText = document.getElementById('confirm-group-call-invite-btn-text');
+
+    const alreadyInvited = isGroupCallActive ? groupCallInvitedUids.size : 0;
+    const totalUsed = Math.min(MAX_GROUP_CALL_INVITES, alreadyInvited + selectedGroupInviteUids.size);
+    const remaining = Math.max(0, MAX_GROUP_CALL_INVITES - alreadyInvited);
+
+    if (counterEl) {
+        counterEl.innerText = `${totalUsed} / ${MAX_GROUP_CALL_INVITES} convidados`;
+        counterEl.classList.toggle('at-limit', totalUsed >= MAX_GROUP_CALL_INVITES);
+    }
+
+    if (confirmBtn) {
+        const disabled = selectedGroupInviteUids.size === 0 || (groupCallModalContext === 'invite-in-call' && remaining === 0);
+        confirmBtn.disabled = disabled;
+    }
+
+    if (confirmText) {
+        if (groupCallModalContext === 'invite-in-call') {
+            confirmText.innerText = remaining === 0
+                ? 'Limite de 4 Convidados Atingido'
+                : `Convidar para Ligação (${selectedGroupInviteUids.size})`;
+        } else {
+            confirmText.innerText = `Iniciar Ligação em Grupo (${selectedGroupInviteUids.size})`;
+        }
+    }
+}
+
+export function renderGroupCallInviteContactsList(contactsList = null) {
+    const listEl = document.getElementById('group-call-invite-contacts-list');
+    if (!listEl) return;
+
+    const searchInput = document.getElementById('group-call-invite-search');
+    const queryStr = String(searchInput?.value || '').trim().toLowerCase();
+    const pool = Array.isArray(contactsList) ? contactsList : (window._cachedGroupCallContacts || []);
+    const baseUid = groupCallModalBaseContact?.uid || '';
+
+    const filtered = pool.filter((c) => {
+        if (!c || !c.uid) return false;
+        if (groupCallModalContext === 'new' && baseUid && c.uid === baseUid) return false;
+        if (!queryStr) return true;
+        const name = String(c.name || '').toLowerCase();
+        const username = String(c.username || '').toLowerCase();
+        return name.includes(queryStr) || username.includes(queryStr);
+    });
+
+    if (filtered.length === 0) {
+        listEl.innerHTML = `<div class="gallery-empty-state" style="padding:18px 10px;"><p style="margin:0;color:#94a3b8;font-size:0.84rem;">Nenhum contato disponível para convidar.</p></div>`;
+        updateGroupCallInviteCounterUI();
+        return;
+    }
+
+    listEl.innerHTML = '';
+    filtered.forEach((contact) => {
+        const uid = contact.uid;
+        const isAlreadyInvited = (isGroupCallActive && groupCallInvitedUids.has(uid))
+            || (!isGroupCallActive && currentCallId && activeChatContact && activeChatContact.uid === uid);
+        const isSelected = selectedGroupInviteUids.has(uid);
+        const displayName = contact.name || 'Contato';
+        const handle = contact.username || '@usuario';
+
+        const row = document.createElement('button');
+        row.type = 'button';
+        row.className = `group-call-contact-row${isSelected ? ' selected' : ''}${isAlreadyInvited ? ' already-invited' : ''}`;
+        row.dataset.uid = uid;
+        if (isAlreadyInvited) row.disabled = true;
+
+        row.innerHTML = `
+            <div class="avatar sm" style="${contact.avatar ? `background-image:url('${contact.avatar}')` : ''}">${!contact.avatar ? displayName.charAt(0).toUpperCase() : ''}</div>
+            <div class="group-call-contact-meta">
+                <span class="group-call-contact-name">${typeof escapeHTML === 'function' ? escapeHTML(displayName) : displayName}</span>
+                <span class="group-call-contact-username">${typeof escapeHTML === 'function' ? escapeHTML(handle) : handle}</span>
+            </div>
+            <span class="group-call-contact-check">${isAlreadyInvited ? 'Na ligação' : (isSelected ? '✓' : '')}</span>
+        `;
+
+        row.onclick = () => {
+            if (!isAlreadyInvited) {
+                toggleGroupCallInviteContact(uid);
+            }
+        };
+
+        listEl.appendChild(row);
+    });
+
+    updateGroupCallInviteCounterUI();
+}
+
+export function toggleGroupCallInviteContact(uid) {
+    if (!uid) return false;
+    if (isGroupCallActive && groupCallInvitedUids.has(uid)) {
+        showToast('Já na Ligação', 'Este contato já foi convidado para a ligação.', 'blue');
+        return false;
+    }
+
+    if (selectedGroupInviteUids.has(uid)) {
+        selectedGroupInviteUids.delete(uid);
+        renderGroupCallInviteContactsList();
+        return true;
+    }
+
+    const alreadyInvited = isGroupCallActive ? groupCallInvitedUids.size : 0;
+    if (alreadyInvited + selectedGroupInviteUids.size >= MAX_GROUP_CALL_INVITES) {
+        showToast('Limite Atingido', `Você pode convidar no máximo ${MAX_GROUP_CALL_INVITES} pessoas para se juntar à ligação em grupo.`, 'orange');
+        return false;
+    }
+
+    selectedGroupInviteUids.add(uid);
+    renderGroupCallInviteContactsList();
+    return true;
+}
+
+export async function openGroupCallInviteModal(options = {}) {
+    if (!currentUser) return;
+    if (isUserBanned(currentProfile)) {
+        showToast('Conta Suspensa', 'Sua conta está banida.', 'red');
+        return;
+    }
+    if (isUserRestricted(currentProfile)) {
+        showRestrictionActionNotice();
+        return;
+    }
+
+    const overlayEl = document.getElementById('video-call-overlay');
+    const isInOngoingCall = Boolean(isGroupCallActive || currentCallId || peerConnection || (overlayEl && overlayEl.classList.contains('active')));
+    const mode = options.mode || (isInOngoingCall ? 'invite-in-call' : 'new');
+    groupCallModalContext = mode;
+
+    const candidateBase = options.baseContact !== undefined ? options.baseContact : activeChatContact;
+    groupCallModalBaseContact = (candidateBase && !candidateBase.isGroup && candidateBase.uid && candidateBase.uid !== currentUser.uid)
+        ? candidateBase
+        : null;
+
+    selectedGroupInviteUids.clear();
+    const searchInput = document.getElementById('group-call-invite-search');
+    if (searchInput) searchInput.value = '';
+
+    const modalTitle = document.getElementById('group-call-invite-modal-title');
+    if (modalTitle) {
+        modalTitle.innerText = mode === 'invite-in-call'
+            ? 'Convidar para Ligação em Grupo'
+            : 'Nova Ligação em Grupo';
+    }
+
+    const baseBar = document.getElementById('group-call-base-contact-bar');
+    const baseName = document.getElementById('group-call-base-contact-name');
+    const baseAvatar = document.getElementById('group-call-base-contact-avatar');
+    if (baseBar) {
+        if (groupCallModalBaseContact && mode === 'new') {
+            baseBar.style.display = 'flex';
+            if (baseName) baseName.innerText = groupCallModalBaseContact.name || 'Contato';
+            if (baseAvatar) {
+                if (groupCallModalBaseContact.avatar) {
+                    baseAvatar.style.backgroundImage = `url('${groupCallModalBaseContact.avatar}')`;
+                    baseAvatar.innerText = '';
+                } else {
+                    baseAvatar.style.backgroundImage = '';
+                    baseAvatar.innerText = (groupCallModalBaseContact.name || 'C').charAt(0).toUpperCase();
+                }
+            }
+        } else {
+            baseBar.style.display = 'none';
+        }
+    }
+
+    const modeSelector = document.getElementById('group-call-mode-selector');
+    if (modeSelector) {
+        modeSelector.style.display = mode === 'new' ? 'grid' : 'none';
+    }
+
+    const contacts = await getAvailableContactsForGroupCall();
+    window._cachedGroupCallContacts = contacts;
+    renderGroupCallInviteContactsList(contacts);
+
+    const modal = document.getElementById('group-call-invite-modal');
+    if (modal) {
+        modal.style.display = 'flex';
+        modal.classList.add('active');
+        modal.setAttribute('aria-hidden', 'false');
+    }
+    if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+}
+
+export function closeGroupCallInviteModal() {
+    const modal = document.getElementById('group-call-invite-modal');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.classList.remove('active');
+        modal.setAttribute('aria-hidden', 'true');
+    }
+}
+
+export async function markGroupCallParticipantStatus(roomId, uid, status) {
+    if (!roomId || !uid || typeof db === 'undefined' || !db) return;
+    try {
+        const roomRef = doc(db, 'groupCalls', roomId);
+        const snap = await getDoc(roomRef);
+        if (!snap || !(typeof snap.exists === 'function' ? snap.exists() : !!snap.exists)) return;
+        const data = (typeof snap.data === 'function' ? snap.data() : snap.data) || {};
+        const participants = { ...(data.participants || {}) };
+        if (participants[uid]) {
+            participants[uid] = { ...participants[uid], status, updatedAt: Date.now() };
+            await updateDoc(roomRef, { participants });
+        }
+    } catch (_) {}
+}
+
+async function createMeshPeerForParticipant(roomId, targetUid, isVideo) {
+    if (!roomId || !targetUid || !currentUser || targetUid === currentUser.uid) return null;
+    if (groupCallPeerConnections.has(targetUid)) return groupCallPeerConnections.get(targetUid);
+
+    const pc = new RTCPeerConnection(rtcServers);
+    groupCallPeerConnections.set(targetUid, pc);
+
+    const remStream = new MediaStream();
+    groupCallRemoteStreams.set(targetUid, remStream);
+
+    if (localStream && typeof localStream.getTracks === 'function') {
+        localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+    }
+
+    pc.ontrack = (event) => {
+        if (event && event.streams && event.streams[0]) {
+            event.streams[0].getTracks().forEach(track => remStream.addTrack(track));
+        } else if (event && event.track) {
+            remStream.addTrack(event.track);
+        }
+        renderGroupCallParticipantsGrid();
+    };
+
+    const myUid = currentUser.uid;
+    const pairId = [myUid, targetUid].sort().join('_');
+    const signalDocRef = doc(db, 'groupCalls', roomId, 'signals', pairId);
+    const candidatesColRef = collection(db, 'groupCalls', roomId, 'signals', pairId, 'candidates');
+    const isOfferer = myUid < targetUid;
+
+    pc.onicecandidate = (event) => {
+        if (event && event.candidate) {
+            addDoc(candidatesColRef, {
+                fromUid: myUid,
+                candidate: event.candidate.toJSON ? event.candidate.toJSON() : event.candidate
+            }).catch(() => {});
+        }
+    };
+
+    const unsubSignal = onSnapshot(signalDocRef, async (snap) => {
+        if (!snap || !(typeof snap.exists === 'function' ? snap.exists() : !!snap.exists)) return;
+        const sigData = (typeof snap.data === 'function' ? snap.data() : snap.data) || {};
+        if (isOfferer && sigData.answer && !pc.currentRemoteDescription) {
+            await pc.setRemoteDescription(new RTCSessionDescription(sigData.answer)).catch(() => {});
+        } else if (!isOfferer && sigData.offer && !pc.currentRemoteDescription) {
+            await pc.setRemoteDescription(new RTCSessionDescription(sigData.offer)).catch(() => {});
+            const answerDesc = await pc.createAnswer();
+            await pc.setLocalDescription(answerDesc);
+            await setDoc(signalDocRef, {
+                answer: { sdp: answerDesc.sdp, type: answerDesc.type },
+                answeredBy: myUid,
+                updatedAt: Date.now()
+            }, { merge: true }).catch(() => {});
+        }
+    });
+
+    const unsubCand = onSnapshot(candidatesColRef, (snap) => {
+        if (snap && typeof snap.docChanges === 'function') {
+            snap.docChanges().forEach(async (change) => {
+                if (change.type === 'added') {
+                    const cData = typeof change.doc.data === 'function' ? change.doc.data() : change.doc.data;
+                    if (cData && cData.fromUid !== myUid && cData.candidate) {
+                        await pc.addIceCandidate(new RTCIceCandidate(cData.candidate)).catch(() => {});
+                    }
+                }
+            });
+        }
+    });
+
+    groupCallSignalsUnsubscribes.set(`${pairId}_sig`, unsubSignal);
+    groupCallSignalsUnsubscribes.set(`${pairId}_cand`, unsubCand);
+
+    if (isOfferer) {
+        const offerDesc = await pc.createOffer();
+        await pc.setLocalDescription(offerDesc);
+        await setDoc(signalDocRef, {
+            pairId,
+            offerBy: myUid,
+            offer: { sdp: offerDesc.sdp, type: offerDesc.type },
+            isVideo: !!isVideo,
+            createdAt: Date.now()
+        }, { merge: true }).catch(() => {});
+    }
+
+    return pc;
+}
+
+function subscribeToGroupCallRoom(roomId, isVideo) {
+    if (groupCallRoomUnsubscribe) {
+        groupCallRoomUnsubscribe();
+        groupCallRoomUnsubscribe = null;
+    }
+
+    const roomRef = doc(db, 'groupCalls', roomId);
+    groupCallRoomUnsubscribe = onSnapshot(roomRef, async (snap) => {
+        if (!snap || !(typeof snap.exists === 'function' ? snap.exists() : !!snap.exists)) return;
+        const roomData = (typeof snap.data === 'function' ? snap.data() : snap.data) || {};
+
+        if (roomData.status === 'ended') {
+            if (isGroupCallActive && activeGroupCallId === roomId) {
+                showToast('Ligação em Grupo', 'A ligação em grupo foi encerrada.', 'blue');
+                endCall();
+            }
+            return;
+        }
+
+        const participantsObj = roomData.participants || {};
+        groupCallParticipantsMap = new Map(Object.entries(participantsObj));
+        groupCallInvitedUids.clear();
+        (Array.isArray(roomData.invitedUids) ? roomData.invitedUids : []).forEach(u => groupCallInvitedUids.add(u));
+
+        const connectedPeers = Object.values(participantsObj).filter(p => p && p.uid && p.uid !== currentUser?.uid && p.status === 'connected');
+        const statusEl = document.getElementById('call-status');
+        const timerEl = document.getElementById('call-timer');
+
+        if (connectedPeers.length > 0) {
+            ringtoneSound.pause();
+            ringtoneSound.currentTime = 0;
+            if (statusEl) {
+                statusEl.innerText = activeGroupCallIsVideo
+                    ? `Conectado em Grupo (${connectedPeers.length + 1} na sala)`
+                    : `Áudio em Grupo (${connectedPeers.length + 1} na sala)`;
+            }
+            if (timerEl) timerEl.style.display = 'block';
+            if (!callTimerInterval) {
+                callSeconds = 0;
+                callTimerInterval = setInterval(() => {
+                    callSeconds++;
+                    const mins = String(Math.floor(callSeconds / 60)).padStart(2, '0');
+                    const secs = String(callSeconds % 60).padStart(2, '0');
+                    if (timerEl) timerEl.innerText = `${mins}:${secs}`;
+                }, 1000);
+            }
+            for (const peer of connectedPeers) {
+                await createMeshPeerForParticipant(roomId, peer.uid, activeGroupCallIsVideo);
+            }
+        }
+
+        renderGroupCallParticipantsGrid();
+        updateGroupCallInviteBadgeUI();
+        if (window.lucide && typeof window.lucide.createIcons === 'function') lucide.createIcons();
+    });
+}
+
+async function dispatchGroupCallInvites(roomId, targets = [], isVideo = true, participantCount = 2) {
+    if (!currentUser || !Array.isArray(targets) || targets.length === 0) return [];
+    const createdIds = [];
+    for (const target of targets) {
+        const tUid = target?.uid;
+        if (!tUid || tUid === currentUser.uid) continue;
+        try {
+            const inviteRef = await addDoc(collection(db, 'calls'), {
+                callerUid: currentUser.uid,
+                callerName: currentProfile?.name || currentUser.displayName || 'Contato VIP',
+                callerUsername: currentProfile?.username || '@usuario',
+                callerAvatar: currentProfile?.avatar || '',
+                calleeUid: tUid,
+                calleeName: target.name || 'Contato',
+                isGroupCall: true,
+                groupCallId: roomId,
+                participantCount,
+                chatId: [currentUser.uid, tUid].sort().join('_'),
+                status: 'ringing',
+                type: isVideo ? 'video' : 'audio',
+                createdAt: Date.now()
+            });
+            createdIds.push(inviteRef.id);
+            groupCallSentInviteCallDocIds.push(inviteRef.id);
+            notifyCallPush(inviteRef.id);
+        } catch (err) {
+            console.warn('[VORTEX] Falha ao enviar convite de ligação em grupo para', tUid, err);
+        }
+    }
+    return createdIds;
+}
+
+export async function startGroupCall(options = {}) {
+    if (!currentUser) return null;
+    if (isUserBanned(currentProfile)) {
+        showToast('Conta Suspensa', 'Sua conta está banida.', 'red');
+        return null;
+    }
+    if (isUserRestricted(currentProfile)) {
+        showRestrictionActionNotice();
+        return null;
+    }
+
+    const isVideo = options.isVideo !== false;
+    const baseContact = options.baseContact || null;
+    const rawInvited = Array.isArray(options.invitedContacts) ? options.invitedContacts : [];
+    const uniqueInvited = [];
+    const seen = new Set([currentUser.uid]);
+    for (const c of rawInvited) {
+        const uid = typeof c === 'string' ? c : c?.uid;
+        if (!uid || seen.has(uid)) continue;
+        if (blockedContactsSet.has(uid)) continue;
+        seen.add(uid);
+        const full = (typeof c === 'object' && c) ? c : ((typeof contactUserDataMap !== 'undefined' && contactUserDataMap.get(uid)) || { uid, name: 'Contato' });
+        uniqueInvited.push({ ...full, uid });
+        if (uniqueInvited.length >= MAX_GROUP_CALL_INVITES) break;
+    }
+
+    if (uniqueInvited.length === 0) {
+        showToast('Selecione Contatos', 'Escolha pelo menos 1 contato para iniciar a ligação em grupo.', 'orange');
+        return null;
+    }
+
+    const overlay = document.getElementById('video-call-overlay');
+    const nameEl = document.getElementById('call-name');
+    const statusEl = document.getElementById('call-status');
+    const timerEl = document.getElementById('call-timer');
+    const userInfoBox = document.getElementById('call-user-info-box');
+    const localPip = document.getElementById('local-video-wrapper');
+    const switchCamBtn = document.getElementById('switch-camera-btn');
+
+    activeGroupCallIsVideo = isVideo;
+    isGroupCallActive = true;
+    groupCallInvitedUids.clear();
+    uniqueInvited.forEach(c => groupCallInvitedUids.add(c.uid));
+
+    const participantsObj = {
+        [currentUser.uid]: {
+            uid: currentUser.uid,
+            name: currentProfile?.name || currentUser.displayName || 'Você',
+            avatar: currentProfile?.avatar || '',
+            username: currentProfile?.username || '',
+            status: 'connected',
+            joinedAt: Date.now()
+        }
+    };
+
+    const dispatchTargets = [...uniqueInvited];
+    if (baseContact && baseContact.uid && !seen.has(baseContact.uid) && !blockedContactsSet.has(baseContact.uid)) {
+        participantsObj[baseContact.uid] = {
+            uid: baseContact.uid,
+            name: baseContact.name || 'Contato',
+            avatar: baseContact.avatar || '',
+            username: baseContact.username || '',
+            status: 'ringing',
+            invitedBy: currentUser.uid
+        };
+        dispatchTargets.unshift(baseContact);
+    }
+
+    uniqueInvited.forEach(c => {
+        participantsObj[c.uid] = {
+            uid: c.uid,
+            name: c.name || 'Contato',
+            avatar: c.avatar || '',
+            username: c.username || '',
+            status: 'ringing',
+            invitedBy: currentUser.uid
+        };
+    });
+
+    groupCallParticipantsMap = new Map(Object.entries(participantsObj));
+
+    if (overlay) {
+        overlay.classList.add('active', 'group-call-mode');
+        if (!isVideo) overlay.classList.add('audio-call-mode');
+        else overlay.classList.remove('audio-call-mode');
+    }
+    if (userInfoBox) {
+        userInfoBox.classList.remove('video-active');
+        if (!isVideo) userInfoBox.classList.add('audio-only-call');
+        else userInfoBox.classList.remove('audio-only-call');
+    }
+    if (localPip) localPip.style.display = isVideo ? '' : 'none';
+    if (switchCamBtn) switchCamBtn.style.display = isVideo ? 'flex' : 'none';
+    if (timerEl) {
+        timerEl.style.display = 'none';
+        timerEl.innerText = '00:00';
+    }
+    if (nameEl) nameEl.innerText = `Ligação em Grupo (${groupCallParticipantsMap.size})`;
+    if (statusEl) statusEl.innerText = `Chamando ${dispatchTargets.length} contato(s)...`;
+
+    renderGroupCallParticipantsGrid();
+    updateGroupCallInviteBadgeUI();
+
+    playSound(clickSound);
+    ringtoneSound.play().catch(() => {});
+
+    try {
+        isCallMuted = false;
+        isCameraOff = !isVideo;
+        updateCameraToggleButtonUI(isCameraOff);
+
+        if (!localStream) {
+            const callMedia = await requestCallMedia(isVideo);
+            localStream = callMedia.stream;
+            if (!callMedia.hasVideo || !isVideo) {
+                if (localPip) localPip.style.display = 'none';
+                if (switchCamBtn) switchCamBtn.style.display = 'none';
+            }
+            const localFeed = document.getElementById('local-webcam-feed');
+            if (localFeed && callMedia.hasVideo) localFeed.srcObject = localStream;
+        }
+
+        const roomDocRef = await addDoc(collection(db, 'groupCalls'), {
+            hostUid: currentUser.uid,
+            hostName: currentProfile?.name || currentUser.displayName || 'Você',
+            callType: isVideo ? 'video' : 'audio',
+            status: 'active',
+            maxInvites: MAX_GROUP_CALL_INVITES,
+            invitedUids: Array.from(groupCallInvitedUids),
+            participantUids: Object.keys(participantsObj),
+            participants: participantsObj,
+            createdAt: Date.now()
+        });
+
+        activeGroupCallId = roomDocRef.id;
+        subscribeToGroupCallRoom(activeGroupCallId, isVideo);
+        await dispatchGroupCallInvites(activeGroupCallId, dispatchTargets, isVideo, groupCallParticipantsMap.size);
+
+        showToast('Ligação em Grupo ⚡', `Convite enviado para ${dispatchTargets.length} pessoa(s) (máximo ${MAX_GROUP_CALL_INVITES} convidados).`, 'green');
+        return activeGroupCallId;
+    } catch (err) {
+        console.error('Erro ao iniciar ligação em grupo:', err);
+        showToast('Erro na Ligação em Grupo', 'Não foi possível iniciar a ligação em grupo.', 'red');
+        await endCall();
+        return null;
+    }
+}
+
+export async function inviteContactsToCurrentCall(invitedContacts = []) {
+    if (!currentUser) return false;
+    const rawList = Array.isArray(invitedContacts) ? invitedContacts : [];
+    const remainingSlots = getGroupCallRemainingInviteSlots();
+
+    if (remainingSlots <= 0) {
+        showToast('Limite Atingido', `Máximo de ${MAX_GROUP_CALL_INVITES} pessoas convidadas por ligação em grupo atingido.`, 'orange');
+        return false;
+    }
+
+    const validNewContacts = [];
+    for (const item of rawList) {
+        const uid = typeof item === 'string' ? item : item?.uid;
+        if (!uid || uid === currentUser.uid || groupCallInvitedUids.has(uid) || blockedContactsSet.has(uid)) continue;
+        const full = (typeof item === 'object' && item) ? item : ((typeof contactUserDataMap !== 'undefined' && contactUserDataMap.get(uid)) || { uid, name: 'Contato' });
+        validNewContacts.push({ ...full, uid });
+        if (validNewContacts.length >= remainingSlots) break;
+    }
+
+    if (validNewContacts.length === 0) {
+        showToast('Nenhum Novo Convidado', 'Selecione ao menos 1 contato ainda não convidado.', 'orange');
+        return false;
+    }
+
+    // Caso 1: Já estamos em uma sala de ligação em grupo ativa
+    if (isGroupCallActive && activeGroupCallId) {
+        const roomRef = doc(db, 'groupCalls', activeGroupCallId);
+        const snap = await getDoc(roomRef);
+        const data = (snap && (typeof snap.exists === 'function' ? snap.exists() : !!snap.exists) ? (typeof snap.data === 'function' ? snap.data() : snap.data) : {}) || {};
+        const participantsObj = { ...(data.participants || Object.fromEntries(groupCallParticipantsMap)) };
+        const updatedInvited = new Set(Array.isArray(data.invitedUids) ? data.invitedUids : Array.from(groupCallInvitedUids));
+
+        for (const c of validNewContacts) {
+            if (updatedInvited.size >= MAX_GROUP_CALL_INVITES) break;
+            updatedInvited.add(c.uid);
+            participantsObj[c.uid] = {
+                uid: c.uid,
+                name: c.name || 'Contato',
+                avatar: c.avatar || '',
+                username: c.username || '',
+                status: 'ringing',
+                invitedBy: currentUser.uid
+            };
+        }
+
+        groupCallInvitedUids.clear();
+        updatedInvited.forEach(u => groupCallInvitedUids.add(u));
+        groupCallParticipantsMap = new Map(Object.entries(participantsObj));
+
+        await updateDoc(roomRef, {
+            invitedUids: Array.from(updatedInvited),
+            participantUids: Object.keys(participantsObj),
+            participants: participantsObj
+        });
+
+        await dispatchGroupCallInvites(activeGroupCallId, validNewContacts, activeGroupCallIsVideo, groupCallParticipantsMap.size);
+        renderGroupCallParticipantsGrid();
+        updateGroupCallInviteBadgeUI();
+        showToast('Convites Enviados ⚡', `${validNewContacts.length} contato(s) convidado(s) (${groupCallInvitedUids.size}/${MAX_GROUP_CALL_INVITES}).`, 'green');
+        return true;
+    }
+
+    // Caso 2: Chamada P2P 1-para-1 em andamento -> promover para Ligação em Grupo
+    const overlay = document.getElementById('video-call-overlay');
+    const isVideoNow = !(overlay && overlay.classList.contains('audio-call-mode'));
+    activeGroupCallIsVideo = isVideoNow;
+    isGroupCallActive = true;
+
+    const participantsObj = {
+        [currentUser.uid]: {
+            uid: currentUser.uid,
+            name: currentProfile?.name || currentUser.displayName || 'Você',
+            avatar: currentProfile?.avatar || '',
+            username: currentProfile?.username || '',
+            status: 'connected',
+            joinedAt: Date.now()
+        }
+    };
+
+    const existingContactUid = activeCallRecordContext?.calleeUid === currentUser.uid
+        ? activeCallRecordContext?.callerUid
+        : (activeCallRecordContext?.calleeUid || activeChatContact?.uid);
+    const existingContactName = activeCallRecordContext?.calleeUid === currentUser.uid
+        ? activeCallRecordContext?.callerName
+        : (activeCallRecordContext?.calleeName || activeChatContact?.name);
+
+    if (existingContactUid && existingContactUid !== currentUser.uid) {
+        const cached = (typeof contactUserDataMap !== 'undefined' && contactUserDataMap.get(existingContactUid)) || {};
+        participantsObj[existingContactUid] = {
+            uid: existingContactUid,
+            name: existingContactName || cached.name || 'Contato',
+            avatar: cached.avatar || '',
+            username: cached.username || '',
+            status: activeCallRecordContext?.isConnected ? 'connected' : 'ringing',
+            joinedAt: Date.now()
+        };
+    }
+
+    groupCallInvitedUids.clear();
+    validNewContacts.forEach(c => {
+        groupCallInvitedUids.add(c.uid);
+        participantsObj[c.uid] = {
+            uid: c.uid,
+            name: c.name || 'Contato',
+            avatar: c.avatar || '',
+            username: c.username || '',
+            status: 'ringing',
+            invitedBy: currentUser.uid
+        };
+    });
+
+    groupCallParticipantsMap = new Map(Object.entries(participantsObj));
+
+    const roomDocRef = await addDoc(collection(db, 'groupCalls'), {
+        hostUid: currentUser.uid,
+        hostName: currentProfile?.name || currentUser.displayName || 'Você',
+        callType: isVideoNow ? 'video' : 'audio',
+        status: 'active',
+        maxInvites: MAX_GROUP_CALL_INVITES,
+        invitedUids: Array.from(groupCallInvitedUids),
+        participantUids: Object.keys(participantsObj),
+        participants: participantsObj,
+        createdAt: Date.now()
+    });
+
+    activeGroupCallId = roomDocRef.id;
+
+    // Notifica a outra ponta da chamada P2P (caso exista) para entrar automaticamente na sala em grupo
+    const oldCallId = currentCallId;
+    if (activeCallDocUnsubscribe) { activeCallDocUnsubscribe(); activeCallDocUnsubscribe = null; }
+    if (calleeCandidatesUnsubscribe) { calleeCandidatesUnsubscribe(); calleeCandidatesUnsubscribe = null; }
+    if (callerCandidatesUnsubscribe) { callerCandidatesUnsubscribe(); callerCandidatesUnsubscribe = null; }
+    if (peerConnection) { peerConnection.close(); peerConnection = null; }
+    activeCallRecordContext = null;
+
+    if (oldCallId) {
+        await updateDoc(doc(db, 'calls', oldCallId), {
+            upgradedToGroupCallId: activeGroupCallId,
+            upgradedIsVideo: isVideoNow
+        }).catch(() => {});
+        currentCallId = null;
+    }
+
+    if (overlay) {
+        overlay.classList.add('active', 'group-call-mode');
+    }
+    renderGroupCallParticipantsGrid();
+    updateGroupCallInviteBadgeUI();
+    subscribeToGroupCallRoom(activeGroupCallId, isVideoNow);
+    await dispatchGroupCallInvites(activeGroupCallId, validNewContacts, isVideoNow, groupCallParticipantsMap.size);
+
+    showToast('Ligação em Grupo Ativada ⚡', `${validNewContacts.length} pessoa(s) convidada(s) (${groupCallInvitedUids.size}/${MAX_GROUP_CALL_INVITES}).`, 'green');
+    return true;
+}
+
+async function migrateActiveP2PCallToGroup(roomId, isVideo = true) {
+    if (!roomId || !currentUser || isGroupCallActive) return;
+    if (activeCallDocUnsubscribe) { activeCallDocUnsubscribe(); activeCallDocUnsubscribe = null; }
+    if (calleeCandidatesUnsubscribe) { calleeCandidatesUnsubscribe(); calleeCandidatesUnsubscribe = null; }
+    if (callerCandidatesUnsubscribe) { callerCandidatesUnsubscribe(); callerCandidatesUnsubscribe = null; }
+    if (peerConnection) { peerConnection.close(); peerConnection = null; }
+    activeCallRecordContext = null;
+    currentCallId = null;
+    await joinGroupCall(roomId, isVideo, null);
+}
+
+export async function joinGroupCall(roomId, isVideo = true, inviteCallDocId = null) {
+    if (!roomId || !currentUser) return false;
+    dismissIncomingCallUI();
+
+    activeGroupCallId = roomId;
+    activeGroupCallIsVideo = isVideo;
+    isGroupCallActive = true;
+
+    const overlay = document.getElementById('video-call-overlay');
+    const nameEl = document.getElementById('call-name');
+    const statusEl = document.getElementById('call-status');
+    const timerEl = document.getElementById('call-timer');
+    const userInfoBox = document.getElementById('call-user-info-box');
+    const localPip = document.getElementById('local-video-wrapper');
+    const switchCamBtn = document.getElementById('switch-camera-btn');
+
+    if (overlay) {
+        overlay.classList.add('active', 'group-call-mode');
+        if (!isVideo) overlay.classList.add('audio-call-mode');
+        else overlay.classList.remove('audio-call-mode');
+    }
+    if (localPip) localPip.style.display = isVideo ? '' : 'none';
+    if (switchCamBtn) switchCamBtn.style.display = isVideo ? 'flex' : 'none';
+
+    try {
+        if (!localStream) {
+            isCallMuted = false;
+            isCameraOff = !isVideo;
+            updateCameraToggleButtonUI(isCameraOff);
+            const callMedia = await requestCallMedia(isVideo);
+            localStream = callMedia.stream;
+            if (!callMedia.hasVideo || !isVideo) {
+                if (userInfoBox) userInfoBox.classList.add('audio-only-call');
+                if (localPip) localPip.style.display = 'none';
+                if (switchCamBtn) switchCamBtn.style.display = 'none';
+            }
+            const localFeed = document.getElementById('local-webcam-feed');
+            if (localFeed && callMedia.hasVideo) localFeed.srcObject = localStream;
+        }
+
+        const roomRef = doc(db, 'groupCalls', roomId);
+        const snap = await getDoc(roomRef);
+        const data = (snap && (typeof snap.exists === 'function' ? snap.exists() : !!snap.exists) ? (typeof snap.data === 'function' ? snap.data() : snap.data) : {}) || {};
+        const participantsObj = { ...(data.participants || {}) };
+        participantsObj[currentUser.uid] = {
+            ...(participantsObj[currentUser.uid] || {}),
+            uid: currentUser.uid,
+            name: currentProfile?.name || currentUser.displayName || 'Você',
+            avatar: currentProfile?.avatar || '',
+            username: currentProfile?.username || '',
+            status: 'connected',
+            joinedAt: Date.now()
+        };
+
+        await updateDoc(roomRef, {
+            participantUids: Object.keys(participantsObj),
+            participants: participantsObj
+        }).catch(() => {});
+
+        if (inviteCallDocId) {
+            currentCallId = inviteCallDocId;
+        }
+
+        groupCallParticipantsMap = new Map(Object.entries(participantsObj));
+        groupCallInvitedUids.clear();
+        (Array.isArray(data.invitedUids) ? data.invitedUids : []).forEach(u => groupCallInvitedUids.add(u));
+
+        if (nameEl) nameEl.innerText = `Ligação em Grupo (${groupCallParticipantsMap.size})`;
+        if (statusEl) statusEl.innerText = isVideo ? 'Conectado em Grupo • Vídeo' : 'Conectado em Grupo • Áudio';
+        if (timerEl && !callTimerInterval) {
+            timerEl.style.display = 'block';
+            callSeconds = 0;
+            callTimerInterval = setInterval(() => {
+                callSeconds++;
+                const mins = String(Math.floor(callSeconds / 60)).padStart(2, '0');
+                const secs = String(callSeconds % 60).padStart(2, '0');
+                if (timerEl) timerEl.innerText = `${mins}:${secs}`;
+            }, 1000);
+        }
+
+        subscribeToGroupCallRoom(roomId, isVideo);
+        renderGroupCallParticipantsGrid();
+        updateGroupCallInviteBadgeUI();
+        return true;
+    } catch (err) {
+        console.error('Erro ao entrar na ligação em grupo:', err);
+        return false;
+    }
+}
+
+export async function cleanupGroupCallState({ notifyRemote = true } = {}) {
+    const closingRoomId = activeGroupCallId;
+    const invitesToEnd = [...groupCallSentInviteCallDocIds];
+
+    if (groupCallRoomUnsubscribe) {
+        groupCallRoomUnsubscribe();
+        groupCallRoomUnsubscribe = null;
+    }
+    groupCallSignalsUnsubscribes.forEach((unsub) => {
+        if (typeof unsub === 'function') unsub();
+    });
+    groupCallSignalsUnsubscribes.clear();
+
+    groupCallPeerConnections.forEach((pc) => {
+        try { pc.close(); } catch (_) {}
+    });
+    groupCallPeerConnections.clear();
+    groupCallRemoteStreams.clear();
+
+    isGroupCallActive = false;
+    activeGroupCallId = null;
+    groupCallInvitedUids.clear();
+    groupCallSentInviteCallDocIds = [];
+    groupCallParticipantsMap.clear();
+    selectedGroupInviteUids.clear();
+
+    const overlay = document.getElementById('video-call-overlay');
+    if (overlay) overlay.classList.remove('group-call-mode');
+    const grid = document.getElementById('group-call-participants-grid');
+    if (grid) {
+        grid.innerHTML = '';
+        grid.style.display = 'none';
+    }
+    updateGroupCallInviteBadgeUI();
+    closeGroupCallInviteModal();
+
+    if (notifyRemote && closingRoomId && currentUser && typeof db !== 'undefined' && db) {
+        try {
+            const roomRef = doc(db, 'groupCalls', closingRoomId);
+            const snap = await getDoc(roomRef);
+            if (snap && (typeof snap.exists === 'function' ? snap.exists() : !!snap.exists)) {
+                const data = (typeof snap.data === 'function' ? snap.data() : snap.data) || {};
+                const participantsObj = { ...(data.participants || {}) };
+                if (participantsObj[currentUser.uid]) {
+                    participantsObj[currentUser.uid] = { ...participantsObj[currentUser.uid], status: 'left', leftAt: Date.now() };
+                }
+                const remainingConnected = Object.values(participantsObj).filter(p => p && p.status === 'connected');
+                await updateDoc(roomRef, {
+                    participants: participantsObj,
+                    status: remainingConnected.length === 0 ? 'ended' : (data.status || 'active'),
+                    ...(remainingConnected.length === 0 ? { endedAt: Date.now() } : {})
+                }).catch(() => {});
+
+                if (remainingConnected.length === 0) {
+                    for (const invId of invitesToEnd) {
+                        await updateDoc(doc(db, 'calls', invId), { status: 'ended', endedAt: Date.now() }).catch(() => {});
+                    }
+                }
+            }
+        } catch (_) {}
+    }
+}
+
+export function initGroupCallUI() {
+    const startGroupOptBtn = document.getElementById('start-group-call-opt-btn');
+    const inviteInCallBtn = document.getElementById('invite-group-call-btn');
+    const closeModalBtn = document.getElementById('close-group-call-invite-modal');
+    const cancelModalBtn = document.getElementById('cancel-group-call-invite-btn');
+    const confirmModalBtn = document.getElementById('confirm-group-call-invite-btn');
+    const searchInput = document.getElementById('group-call-invite-search');
+    const videoModeBtn = document.getElementById('group-call-mode-video-btn');
+    const audioModeBtn = document.getElementById('group-call-mode-audio-btn');
+    const inviteModal = document.getElementById('group-call-invite-modal');
+
+    startGroupOptBtn?.addEventListener('click', async () => {
+        closeCallTypeModal();
+        await openGroupCallInviteModal({ mode: 'new', baseContact: activeChatContact });
+    });
+
+    inviteInCallBtn?.addEventListener('click', async () => {
+        playSound(clickSound);
+        await openGroupCallInviteModal({ mode: 'invite-in-call' });
+    });
+
+    closeModalBtn?.addEventListener('click', closeGroupCallInviteModal);
+    cancelModalBtn?.addEventListener('click', closeGroupCallInviteModal);
+
+    inviteModal?.addEventListener('click', (e) => {
+        if (e.target && e.target.id === 'group-call-invite-modal') {
+            closeGroupCallInviteModal();
+        }
+    });
+
+    searchInput?.addEventListener('input', () => {
+        renderGroupCallInviteContactsList();
+    });
+
+    videoModeBtn?.addEventListener('click', () => {
+        groupCallPreferVideo = true;
+        videoModeBtn.classList.add('active');
+        audioModeBtn?.classList.remove('active');
+    });
+
+    audioModeBtn?.addEventListener('click', () => {
+        groupCallPreferVideo = false;
+        audioModeBtn.classList.add('active');
+        videoModeBtn?.classList.remove('active');
+    });
+
+    confirmModalBtn?.addEventListener('click', async () => {
+        const pool = Array.isArray(window._cachedGroupCallContacts) ? window._cachedGroupCallContacts : [];
+        const selected = pool.filter(c => c && selectedGroupInviteUids.has(c.uid));
+        if (selected.length === 0) {
+            showToast('Selecione Contatos', 'Escolha até 4 contatos para convidar para a ligação.', 'orange');
+            return;
+        }
+        closeGroupCallInviteModal();
+        if (groupCallModalContext === 'invite-in-call') {
+            await inviteContactsToCurrentCall(selected);
+        } else {
+            await startGroupCall({
+                isVideo: groupCallPreferVideo,
+                baseContact: groupCallModalBaseContact,
+                invitedContacts: selected
+            });
+        }
+    });
+}
 
 document.getElementById('view-call-history-trigger')?.addEventListener('click', () => {
     document.getElementById('chat-dropdown-menu')?.classList.remove('active');
@@ -31311,6 +32465,21 @@ export async function switchToVideoCall() {
                 }
             }
         }
+        if (groupCallPeerConnections && groupCallPeerConnections.size > 0) {
+            for (const gPc of groupCallPeerConnections.values()) {
+                const gSenders = typeof gPc.getSenders === 'function' ? gPc.getSenders() : [];
+                const gVidSender = gSenders.find(s => (s.track && s.track.kind === 'video') || s.kind === 'video');
+                if (gVidSender && typeof gVidSender.replaceTrack === 'function') {
+                    await gVidSender.replaceTrack(newVideoTrack).catch(() => {});
+                } else if (typeof gPc.addTrack === 'function') {
+                    try { gPc.addTrack(newVideoTrack, localStream); } catch (_) {}
+                }
+            }
+            activeGroupCallIsVideo = true;
+            if (activeGroupCallId) {
+                await updateDoc(doc(db, 'groupCalls', activeGroupCallId), { callType: 'video' }).catch(() => {});
+            }
+        }
 
         if (overlay) {
             overlay.classList.remove('audio-call-mode');
@@ -31410,6 +32579,12 @@ document.getElementById('switch-camera-btn')?.addEventListener('click', async ()
             if (peerConnection) {
                 const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
                 if (sender) sender.replaceTrack(newVideoTrack);
+            }
+            if (groupCallPeerConnections && groupCallPeerConnections.size > 0) {
+                groupCallPeerConnections.forEach((gPc) => {
+                    const gSender = typeof gPc.getSenders === 'function' ? gPc.getSenders().find(s => s.track && s.track.kind === 'video') : null;
+                    if (gSender && typeof gSender.replaceTrack === 'function') gSender.replaceTrack(newVideoTrack);
+                });
             }
         } catch (e) {
             console.warn(e);
@@ -40486,6 +41661,23 @@ window.handleCallSwitchedToVideo = handleCallSwitchedToVideo;
     window.closeBetaTesterModal = closeBetaTesterModal;
     window.requestBetaTesterAccess = requestBetaTesterAccess;
     window.initBetaTesterUI = initBetaTesterUI;
+    window.MAX_GROUP_CALL_INVITES = MAX_GROUP_CALL_INVITES;
+    window.getAvailableContactsForGroupCall = getAvailableContactsForGroupCall;
+    window.getGroupCallRemainingInviteSlots = getGroupCallRemainingInviteSlots;
+    window.updateGroupCallInviteBadgeUI = updateGroupCallInviteBadgeUI;
+    window.renderGroupCallParticipantsGrid = renderGroupCallParticipantsGrid;
+    window.openGroupCallInviteModal = openGroupCallInviteModal;
+    window.closeGroupCallInviteModal = closeGroupCallInviteModal;
+    window.toggleGroupCallInviteContact = toggleGroupCallInviteContact;
+    window.startGroupCall = startGroupCall;
+    window.inviteContactsToCurrentCall = inviteContactsToCurrentCall;
+    window.joinGroupCall = joinGroupCall;
+    window.cleanupGroupCallState = cleanupGroupCallState;
+    window.initGroupCallUI = initGroupCallUI;
+    window.acceptIncomingCall = acceptIncomingCall;
+    window.declineIncomingCall = declineIncomingCall;
+    window.endCall = endCall;
+    window.contactUserDataMap = contactUserDataMap;
     // Links & Risco da Plataforma (v1.0.233)
     window.analyzeUrlSecurity = analyzeUrlSecurity;
     window.registerPlatformLink = registerPlatformLink;
@@ -41197,6 +42389,7 @@ if (typeof window !== 'undefined') {
     initGlobalSecurityUI();
     initPrivacyPolicyUI();
     initBetaTesterUI();
+    initGroupCallUI();
     initLinkSecurityUI();
     initGamesControls();
     initBusinessVerificationEvents();

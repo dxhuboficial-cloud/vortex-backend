@@ -18611,14 +18611,14 @@ test('195. Salvamento Automático do Tipo de Chave Pix (CPF, Telefone, E-mail, C
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
   // 1. Integridade de Versionamento v1.0.276+ (Build 276+)
-  assert.ok(['1.0.276', '1.0.277', '1.0.278', '1.0.279', '1.0.280'].includes(versionJson.version), 'version.json deve ser 1.0.276 ou superior');
-  assert.ok([276, 277, 278, 279, 280].includes(versionJson.build), 'build em version.json deve ser 276 ou superior');
-  assert.ok(['1.0.276', '1.0.277', '1.0.278', '1.0.279', '1.0.280'].includes(manifest.version), 'manifest.json deve ser 1.0.276 ou superior');
-  assert.ok(['1.0.276', '1.0.277', '1.0.278', '1.0.279', '1.0.280'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.276 ou superior');
-  assert.ok(swContent.includes('vortex-vip-v1.0.276') || swContent.includes('vortex-vip-v1.0.277') || swContent.includes('vortex-vip-v1.0.278') || swContent.includes('vortex-vip-v1.0.279') || swContent.includes('vortex-vip-v1.0.280'), 'sw.js deve conter cache v1.0.276+');
-  assert.ok(html.includes('script.js?v=1.0.276') || html.includes('script.js?v=1.0.277') || html.includes('script.js?v=1.0.278') || html.includes('script.js?v=1.0.279') || html.includes('script.js?v=1.0.280'), 'index.html deve referenciar script.js?v=1.0.276+');
-  assert.ok(html.includes('style.css?v=1.0.276') || html.includes('style.css?v=1.0.277') || html.includes('style.css?v=1.0.278') || html.includes('style.css?v=1.0.279') || html.includes('style.css?v=1.0.280'), 'index.html deve referenciar style.css?v=1.0.276+');
-  assert.ok(privacyHtml.includes('v1.0.276') || privacyHtml.includes('v1.0.277') || privacyHtml.includes('v1.0.278') || privacyHtml.includes('v1.0.279') || privacyHtml.includes('v1.0.280'), 'privacy.html deve referenciar v1.0.276+');
+  assert.ok(['1.0.276', '1.0.277', '1.0.278', '1.0.279', '1.0.280', '1.0.281'].includes(versionJson.version), 'version.json deve ser 1.0.276 ou superior');
+  assert.ok([276, 277, 278, 279, 280, 281].includes(versionJson.build), 'build em version.json deve ser 276 ou superior');
+  assert.ok(['1.0.276', '1.0.277', '1.0.278', '1.0.279', '1.0.280', '1.0.281'].includes(manifest.version), 'manifest.json deve ser 1.0.276 ou superior');
+  assert.ok(['1.0.276', '1.0.277', '1.0.278', '1.0.279', '1.0.280', '1.0.281'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.276 ou superior');
+  assert.ok(swContent.includes('vortex-vip-v1.0.276') || swContent.includes('vortex-vip-v1.0.277') || swContent.includes('vortex-vip-v1.0.278') || swContent.includes('vortex-vip-v1.0.279') || swContent.includes('vortex-vip-v1.0.280') || swContent.includes('vortex-vip-v1.0.281'), 'sw.js deve conter cache v1.0.276+');
+  assert.ok(html.includes('script.js?v=1.0.276') || html.includes('script.js?v=1.0.277') || html.includes('script.js?v=1.0.278') || html.includes('script.js?v=1.0.279') || html.includes('script.js?v=1.0.280') || html.includes('script.js?v=1.0.281'), 'index.html deve referenciar script.js?v=1.0.276+');
+  assert.ok(html.includes('style.css?v=1.0.276') || html.includes('style.css?v=1.0.277') || html.includes('style.css?v=1.0.278') || html.includes('style.css?v=1.0.279') || html.includes('style.css?v=1.0.280') || html.includes('style.css?v=1.0.281'), 'index.html deve referenciar style.css?v=1.0.276+');
+  assert.ok(privacyHtml.includes('v1.0.276') || privacyHtml.includes('v1.0.277') || privacyHtml.includes('v1.0.278') || privacyHtml.includes('v1.0.279') || privacyHtml.includes('v1.0.280') || privacyHtml.includes('v1.0.281'), 'privacy.html deve referenciar v1.0.276+');
 
   // 2. Elementos no HTML: Select com opções de Chave Pix e Botões Organizados
   assert.ok(html.includes('id="chest-pix-key-type"'), 'index.html deve conter select de tipo de chave Pix');
@@ -18741,14 +18741,14 @@ test('196. Barra de Rolagem Horizontal para os 3 Botões de Jogos (Tigrinho VIP,
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
   // 1. Integridade de Versionamento v1.0.278+ (Build 278+)
-  assert.ok(['1.0.278', '1.0.279', '1.0.280'].includes(versionJson.version), 'version.json deve ser 1.0.278+');
-  assert.ok([278, 279, 280].includes(versionJson.build), 'build em version.json deve ser 278+');
-  assert.ok(['1.0.278', '1.0.279', '1.0.280'].includes(manifest.version), 'manifest.json deve ser 1.0.278+');
-  assert.ok(['1.0.278', '1.0.279', '1.0.280'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.278+');
-  assert.ok(swContent.includes('vortex-vip-v1.0.278') || swContent.includes('vortex-vip-v1.0.279') || swContent.includes('vortex-vip-v1.0.280'), 'sw.js deve conter cache v1.0.278+');
-  assert.ok(html.includes('script.js?v=1.0.278') || html.includes('script.js?v=1.0.279') || html.includes('script.js?v=1.0.280'), 'index.html deve referenciar script.js?v=1.0.278+');
-  assert.ok(html.includes('style.css?v=1.0.278') || html.includes('style.css?v=1.0.279') || html.includes('style.css?v=1.0.280'), 'index.html deve referenciar style.css?v=1.0.278+');
-  assert.ok(privacyHtml.includes('v1.0.278') || privacyHtml.includes('v1.0.279') || privacyHtml.includes('v1.0.280'), 'privacy.html deve referenciar v1.0.278+');
+  assert.ok(['1.0.278', '1.0.279', '1.0.280', '1.0.281'].includes(versionJson.version), 'version.json deve ser 1.0.278+');
+  assert.ok([278, 279, 280, 281].includes(versionJson.build), 'build em version.json deve ser 278+');
+  assert.ok(['1.0.278', '1.0.279', '1.0.280', '1.0.281'].includes(manifest.version), 'manifest.json deve ser 1.0.278+');
+  assert.ok(['1.0.278', '1.0.279', '1.0.280', '1.0.281'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.278+');
+  assert.ok(swContent.includes('vortex-vip-v1.0.278') || swContent.includes('vortex-vip-v1.0.279') || swContent.includes('vortex-vip-v1.0.280') || swContent.includes('vortex-vip-v1.0.281'), 'sw.js deve conter cache v1.0.278+');
+  assert.ok(html.includes('script.js?v=1.0.278') || html.includes('script.js?v=1.0.279') || html.includes('script.js?v=1.0.280') || html.includes('script.js?v=1.0.281'), 'index.html deve referenciar script.js?v=1.0.278+');
+  assert.ok(html.includes('style.css?v=1.0.278') || html.includes('style.css?v=1.0.279') || html.includes('style.css?v=1.0.280') || html.includes('style.css?v=1.0.281'), 'index.html deve referenciar style.css?v=1.0.278+');
+  assert.ok(privacyHtml.includes('v1.0.278') || privacyHtml.includes('v1.0.279') || privacyHtml.includes('v1.0.280') || privacyHtml.includes('v1.0.281'), 'privacy.html deve referenciar v1.0.278+');
 
   // 2. Presença dos 3 Botões de Jogos no HTML
   assert.ok(html.includes('id="games-subtabs-nav"'), 'index.html deve conter #games-subtabs-nav');
@@ -18801,14 +18801,14 @@ test('197. Botão Publicar Status (#publish-status-btn) com Tamanho Aumentado e 
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
   // 1. Integridade de Versionamento v1.0.279+ (Build 279+)
-  assert.ok(['1.0.279', '1.0.280'].includes(versionJson.version), 'version.json deve ser 1.0.279+');
-  assert.ok([279, 280].includes(versionJson.build), 'build em version.json deve ser 279+');
-  assert.ok(['1.0.279', '1.0.280'].includes(manifest.version), 'manifest.json deve ser 1.0.279+');
-  assert.ok(['1.0.279', '1.0.280'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.279+');
-  assert.ok(swContent.includes('vortex-vip-v1.0.279') || swContent.includes('vortex-vip-v1.0.280'), 'sw.js deve conter cache v1.0.279+');
-  assert.ok(html.includes('script.js?v=1.0.279') || html.includes('script.js?v=1.0.280'), 'index.html deve referenciar script.js?v=1.0.279+');
-  assert.ok(html.includes('style.css?v=1.0.279') || html.includes('style.css?v=1.0.280'), 'index.html deve referenciar style.css?v=1.0.279+');
-  assert.ok(privacyHtml.includes('v1.0.279') || privacyHtml.includes('v1.0.280'), 'privacy.html deve referenciar v1.0.279+');
+  assert.ok(['1.0.279', '1.0.280', '1.0.281'].includes(versionJson.version), 'version.json deve ser 1.0.279+');
+  assert.ok([279, 280, 281].includes(versionJson.build), 'build em version.json deve ser 279+');
+  assert.ok(['1.0.279', '1.0.280', '1.0.281'].includes(manifest.version), 'manifest.json deve ser 1.0.279+');
+  assert.ok(['1.0.279', '1.0.280', '1.0.281'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.279+');
+  assert.ok(swContent.includes('vortex-vip-v1.0.279') || swContent.includes('vortex-vip-v1.0.280') || swContent.includes('vortex-vip-v1.0.281'), 'sw.js deve conter cache v1.0.279+');
+  assert.ok(html.includes('script.js?v=1.0.279') || html.includes('script.js?v=1.0.280') || html.includes('script.js?v=1.0.281'), 'index.html deve referenciar script.js?v=1.0.279+');
+  assert.ok(html.includes('style.css?v=1.0.279') || html.includes('style.css?v=1.0.280') || html.includes('style.css?v=1.0.281'), 'index.html deve referenciar style.css?v=1.0.279+');
+  assert.ok(privacyHtml.includes('v1.0.279') || privacyHtml.includes('v1.0.280') || privacyHtml.includes('v1.0.281'), 'privacy.html deve referenciar v1.0.279+');
 
   // 2. Presença do botão #publish-status-btn no HTML
   assert.ok(html.includes('id="publish-status-btn"'), 'index.html deve conter #publish-status-btn');
@@ -18851,15 +18851,15 @@ test('198. Botão Tester Beta nas Configurações, Modal com Descrição, Solici
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
-  // 1. Integridade de Versionamento v1.0.280 (Build 280)
-  assert.strictEqual(versionJson.version, '1.0.280', 'version.json deve ser 1.0.280');
-  assert.strictEqual(versionJson.build, 280, 'build em version.json deve ser 280');
-  assert.strictEqual(manifest.version, '1.0.280', 'manifest.json deve ser 1.0.280');
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.280', 'CURRENT_APP_VERSION deve ser 1.0.280');
-  assert.ok(swContent.includes('vortex-vip-v1.0.280'), 'sw.js deve conter cache v1.0.280');
-  assert.ok(html.includes('script.js?v=1.0.280'), 'index.html deve referenciar script.js?v=1.0.280');
-  assert.ok(html.includes('style.css?v=1.0.280'), 'index.html deve referenciar style.css?v=1.0.280');
-  assert.ok(privacyHtml.includes('v1.0.280'), 'privacy.html deve referenciar v1.0.280');
+  // 1. Integridade de Versionamento v1.0.280+ (Build 280+)
+  assert.ok(['1.0.280', '1.0.281'].includes(versionJson.version), 'version.json deve ser 1.0.280+');
+  assert.ok([280, 281].includes(versionJson.build), 'build em version.json deve ser 280+');
+  assert.ok(['1.0.280', '1.0.281'].includes(manifest.version), 'manifest.json deve ser 1.0.280+');
+  assert.ok(['1.0.280', '1.0.281'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.280+');
+  assert.ok(swContent.includes('vortex-vip-v1.0.280') || swContent.includes('vortex-vip-v1.0.281'), 'sw.js deve conter cache v1.0.280+');
+  assert.ok(html.includes('script.js?v=1.0.280') || html.includes('script.js?v=1.0.281'), 'index.html deve referenciar script.js?v=1.0.280+');
+  assert.ok(html.includes('style.css?v=1.0.280') || html.includes('style.css?v=1.0.281'), 'index.html deve referenciar style.css?v=1.0.280+');
+  assert.ok(privacyHtml.includes('v1.0.280') || privacyHtml.includes('v1.0.281'), 'privacy.html deve referenciar v1.0.280+');
 
   // 2. Elementos no HTML (Configurações + Modal + Descrição + Botão Solicitar + Barra de 24h)
   assert.ok(html.includes('id="beta-tester-setting-item"'), 'Configurações deve conter #beta-tester-setting-item');
@@ -18929,4 +18929,124 @@ test('198. Botão Tester Beta nas Configurações, Modal com Descrição, Solici
     if (ch === '}') closeBraces198++;
   }
   assert.strictEqual(openBraces198, closeBraces198, 'CSS deve ter chaves perfeitamente balanceadas');
+});
+
+test('199. Ligação em Grupo para Contatos (Convidar até 4 Pessoas) v1.0.281', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+  const html = fs.readFileSync('public/index.html', 'utf8');
+  const css = fs.readFileSync('public/style.css', 'utf8');
+  const privacyHtml = fs.readFileSync('public/privacy.html', 'utf8');
+  const manifest = JSON.parse(fs.readFileSync('public/manifest.json', 'utf8'));
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+
+  // 1. Integridade de Versionamento v1.0.281 (Build 281)
+  assert.strictEqual(versionJson.version, '1.0.281', 'version.json deve ser 1.0.281');
+  assert.strictEqual(versionJson.build, 281, 'build em version.json deve ser 281');
+  assert.strictEqual(manifest.version, '1.0.281', 'manifest.json deve ser 1.0.281');
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.281', 'CURRENT_APP_VERSION deve ser 1.0.281');
+  assert.ok(swContent.includes('vortex-vip-v1.0.281'), 'sw.js deve conter cache v1.0.281');
+  assert.ok(html.includes('script.js?v=1.0.281'), 'index.html deve referenciar script.js?v=1.0.281');
+  assert.ok(html.includes('style.css?v=1.0.281'), 'index.html deve referenciar style.css?v=1.0.281');
+  assert.ok(privacyHtml.includes('v1.0.281'), 'privacy.html deve referenciar v1.0.281');
+
+  // 2. Elementos no HTML
+  assert.ok(html.includes('id="start-group-call-opt-btn"'), 'Modal de tipo de chamada deve conter opção Ligação em Grupo');
+  assert.ok(html.includes('id="invite-group-call-btn"'), 'Rodapé da ligação deve conter botão #invite-group-call-btn');
+  assert.ok(html.includes('id="group-call-invite-btn-badge"'), 'Botão de convite deve conter badge #group-call-invite-btn-badge');
+  assert.ok(html.includes('id="group-call-participants-grid"'), 'Overlay de chamada deve conter #group-call-participants-grid');
+  assert.ok(html.includes('id="group-call-invite-modal"'), 'HTML deve conter #group-call-invite-modal');
+  assert.ok(html.includes('id="group-call-invite-counter"'), 'Modal deve conter contador #group-call-invite-counter');
+  assert.ok(html.includes('id="group-call-invite-contacts-list"'), 'Modal deve conter #group-call-invite-contacts-list');
+  assert.ok(html.includes('id="confirm-group-call-invite-btn"'), 'Modal deve conter #confirm-group-call-invite-btn');
+  assert.ok(html.includes('id="incoming-caller-badge"') && html.includes('id="incoming-caller-desc"'), 'Chamada recebida deve expor IDs de badge e descrição');
+
+  // 3. Regras CSS
+  assert.ok(css.includes('.video-call-overlay.group-call-mode #remote-webcam-feed'), 'CSS deve esconder vídeo único no modo grupo');
+  assert.ok(css.includes('.group-call-participants-grid {'), 'CSS deve estilizar .group-call-participants-grid');
+  assert.ok(css.includes('.group-call-participant-tile {'), 'CSS deve estilizar .group-call-participant-tile');
+  assert.ok(css.includes('.group-call-invite-card {'), 'CSS deve estilizar .group-call-invite-card');
+  assert.ok(css.includes('.group-call-contact-row.selected {'), 'CSS deve estilizar contato selecionado');
+
+  // 4. Fluxo Completo de Ligação em Grupo e Limite Estrito de 4 Convidados
+  win.setCurrentUser({ uid: 'host_u1', displayName: 'Ana Host' });
+  win.setCurrentProfile({ uid: 'host_u1', name: 'Ana Host', username: '@anahost' });
+  win.initGroupCallUI();
+
+  assert.strictEqual(win.MAX_GROUP_CALL_INVITES, 4, 'Limite máximo de convidados deve ser 4');
+
+  // Popula 6 contatos (1 contato base + 5 candidatos disponíveis para testar limite de 4)
+  const baseContact = { uid: 'c_base', name: 'Bruno Contato', username: '@bruno' };
+  win.setActiveChatContact(baseContact);
+  win.contactUserDataMap.set('c_base', baseContact);
+  for (let idx = 1; idx <= 5; idx++) {
+    win.contactUserDataMap.set(`c_guest_${idx}`, { uid: `c_guest_${idx}`, name: `Convidado ${idx}`, username: `@guest${idx}` });
+  }
+
+  await win.openGroupCallInviteModal({ mode: 'new', baseContact });
+  assert.strictEqual(env.elements['group-call-invite-modal'].style.display, 'flex', 'Modal de convite deve abrir');
+  assert.strictEqual(env.elements['group-call-base-contact-bar'].style.display, 'flex', 'Barra do contato base deve aparecer');
+
+  // Seleciona 4 convidados e verifica bloqueio no 5º
+  assert.strictEqual(win.toggleGroupCallInviteContact('c_guest_1'), true);
+  assert.strictEqual(win.toggleGroupCallInviteContact('c_guest_2'), true);
+  assert.strictEqual(win.toggleGroupCallInviteContact('c_guest_3'), true);
+  assert.strictEqual(win.toggleGroupCallInviteContact('c_guest_4'), true);
+  assert.strictEqual(win.toggleGroupCallInviteContact('c_guest_5'), false, 'Não deve permitir selecionar uma 5ª pessoa além das 4 permitidas');
+  assert.strictEqual(env.elements['group-call-invite-counter'].innerText, '4 / 4 convidados', 'Contador deve marcar 4 / 4 convidados');
+
+  win.closeGroupCallInviteModal();
+  const roomId = await win.startGroupCall({
+    isVideo: true,
+    baseContact,
+    invitedContacts: ['c_guest_1', 'c_guest_2', 'c_guest_3', 'c_guest_4', 'c_guest_5']
+  });
+
+  assert.ok(roomId, 'Deve criar sala em groupCalls');
+  const roomDoc = env.firestoreDocs[`groupCalls/${roomId}`];
+  assert.ok(roomDoc, 'Documento da sala deve existir no Firestore');
+  assert.strictEqual(roomDoc.invitedUids.length, 4, 'Deve registrar no máximo 4 convidados');
+  assert.strictEqual(env.elements['video-call-overlay'].classList.contains('group-call-mode'), true, 'Overlay deve ativar classe group-call-mode');
+  assert.strictEqual(env.elements['group-call-invite-btn-badge'].innerText, '4/4', 'Badge no rodapé deve indicar 4/4 convidados');
+
+  const callInviteDocs = Object.entries(env.firestoreDocs)
+    .filter(([k, v]) => k.startsWith('calls/') && v && v.groupCallId === roomId)
+    .map(([, v]) => v);
+  assert.strictEqual(callInviteDocs.length, 5, 'Deve disparar convite no Firestore para o contato base + os 4 convidados');
+  assert.ok(callInviteDocs.every(c => c.isGroupCall === true), 'Todos os convites devem marcar isGroupCall: true');
+
+  // Tentar convidar mais gente quando já atingiu 4 convidados deve retornar false
+  const blockedExtra = await win.inviteContactsToCurrentCall(['c_guest_5']);
+  assert.strictEqual(blockedExtra, false, 'Deve impedir convidar além de 4 pessoas');
+
+  await win.endCall();
+  assert.strictEqual(env.elements['video-call-overlay'].classList.contains('group-call-mode'), false, 'endCall deve desativar group-call-mode');
+
+  // 5. Teste de Upgrade de Ligação P2P Normal -> Ligação em Grupo durante a ligação
+  win.setActiveChatContact(baseContact);
+  await win.startCall(true);
+  const p2pCallId = Object.keys(env.firestoreDocs).find(k => k.startsWith('calls/') && !env.firestoreDocs[k].isGroupCall);
+  assert.ok(p2pCallId, 'Chamada P2P inicial deve ser criada em calls/');
+
+  const upgraded = await win.inviteContactsToCurrentCall(['c_guest_1', 'c_guest_2']);
+  assert.strictEqual(upgraded, true, 'Deve permitir convidar pessoas durante uma chamada P2P ativa');
+  assert.ok(env.firestoreDocs[p2pCallId].upgradedToGroupCallId, 'Chamada P2P original deve sinalizar upgradedToGroupCallId para o contato migrar');
+  assert.strictEqual(env.elements['video-call-overlay'].classList.contains('group-call-mode'), true, 'Overlay deve alternar para group-call-mode após upgrade');
+  assert.strictEqual(env.elements['group-call-invite-btn-badge'].innerText, '2/4', 'Badge deve indicar 2/4 convidados após convidar 2 pessoas');
+
+  // Ainda pode convidar mais 2 (total 4), e deve travar antes de um 5º
+  const addedMore = await win.inviteContactsToCurrentCall(['c_guest_3', 'c_guest_4', 'c_guest_5']);
+  assert.strictEqual(addedMore, true, 'Deve adicionar apenas as 2 vagas restantes até completar 4');
+  assert.strictEqual(env.elements['group-call-invite-btn-badge'].innerText, '4/4', 'Badge deve fechar exatamente em 4/4');
+
+  await win.endCall();
+
+  // 6. Balanço de Chaves do CSS
+  let openBraces199 = 0, closeBraces199 = 0;
+  for (const ch of css) {
+    if (ch === '{') openBraces199++;
+    if (ch === '}') closeBraces199++;
+  }
+  assert.strictEqual(openBraces199, closeBraces199, 'CSS deve ter chaves perfeitamente balanceadas');
 });
