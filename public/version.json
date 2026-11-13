@@ -1,6 +1,6 @@
 {
-  "version": "1.0.278",
-  "build": 278,
-  "releaseDate": "2026-11-12",
-  "notes": "Correção de altura e flex-shrink: 0 na barra de rolagem horizontal dos 3 botões de jogos para não ficar amassado v1.0.278"
+  "version": "1.0.279",
+  "build": 279,
+  "releaseDate": "2026-11-13",
+  "notes": "Aumento do tamanho e destaque do botão Publicar Status (#publish-status-btn) v1.0.279"
 }

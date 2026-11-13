@@ -18611,14 +18611,14 @@ test('195. Salvamento Automático do Tipo de Chave Pix (CPF, Telefone, E-mail, C
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
   // 1. Integridade de Versionamento v1.0.276+ (Build 276+)
-  assert.ok(['1.0.276', '1.0.277', '1.0.278'].includes(versionJson.version), 'version.json deve ser 1.0.276 ou superior');
-  assert.ok([276, 277, 278].includes(versionJson.build), 'build em version.json deve ser 276 ou superior');
-  assert.ok(['1.0.276', '1.0.277', '1.0.278'].includes(manifest.version), 'manifest.json deve ser 1.0.276 ou superior');
-  assert.ok(['1.0.276', '1.0.277', '1.0.278'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.276 ou superior');
-  assert.ok(swContent.includes('vortex-vip-v1.0.276') || swContent.includes('vortex-vip-v1.0.277') || swContent.includes('vortex-vip-v1.0.278'), 'sw.js deve conter cache v1.0.276+');
-  assert.ok(html.includes('script.js?v=1.0.276') || html.includes('script.js?v=1.0.277') || html.includes('script.js?v=1.0.278'), 'index.html deve referenciar script.js?v=1.0.276+');
-  assert.ok(html.includes('style.css?v=1.0.276') || html.includes('style.css?v=1.0.277') || html.includes('style.css?v=1.0.278'), 'index.html deve referenciar style.css?v=1.0.276+');
-  assert.ok(privacyHtml.includes('v1.0.276') || privacyHtml.includes('v1.0.277') || privacyHtml.includes('v1.0.278'), 'privacy.html deve referenciar v1.0.276+');
+  assert.ok(['1.0.276', '1.0.277', '1.0.278', '1.0.279'].includes(versionJson.version), 'version.json deve ser 1.0.276 ou superior');
+  assert.ok([276, 277, 278, 279].includes(versionJson.build), 'build em version.json deve ser 276 ou superior');
+  assert.ok(['1.0.276', '1.0.277', '1.0.278', '1.0.279'].includes(manifest.version), 'manifest.json deve ser 1.0.276 ou superior');
+  assert.ok(['1.0.276', '1.0.277', '1.0.278', '1.0.279'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.276 ou superior');
+  assert.ok(swContent.includes('vortex-vip-v1.0.276') || swContent.includes('vortex-vip-v1.0.277') || swContent.includes('vortex-vip-v1.0.278') || swContent.includes('vortex-vip-v1.0.279'), 'sw.js deve conter cache v1.0.276+');
+  assert.ok(html.includes('script.js?v=1.0.276') || html.includes('script.js?v=1.0.277') || html.includes('script.js?v=1.0.278') || html.includes('script.js?v=1.0.279'), 'index.html deve referenciar script.js?v=1.0.276+');
+  assert.ok(html.includes('style.css?v=1.0.276') || html.includes('style.css?v=1.0.277') || html.includes('style.css?v=1.0.278') || html.includes('style.css?v=1.0.279'), 'index.html deve referenciar style.css?v=1.0.276+');
+  assert.ok(privacyHtml.includes('v1.0.276') || privacyHtml.includes('v1.0.277') || privacyHtml.includes('v1.0.278') || privacyHtml.includes('v1.0.279'), 'privacy.html deve referenciar v1.0.276+');
 
   // 2. Elementos no HTML: Select com opções de Chave Pix e Botões Organizados
   assert.ok(html.includes('id="chest-pix-key-type"'), 'index.html deve conter select de tipo de chave Pix');
@@ -18740,15 +18740,15 @@ test('196. Barra de Rolagem Horizontal para os 3 Botões de Jogos (Tigrinho VIP,
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
-  // 1. Integridade de Versionamento v1.0.278 (Build 278)
-  assert.strictEqual(versionJson.version, '1.0.278', 'version.json deve ser 1.0.278');
-  assert.strictEqual(versionJson.build, 278, 'build em version.json deve ser 278');
-  assert.strictEqual(manifest.version, '1.0.278', 'manifest.json deve ser 1.0.278');
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.278', 'CURRENT_APP_VERSION deve ser 1.0.278');
-  assert.ok(swContent.includes('vortex-vip-v1.0.278'), 'sw.js deve conter cache v1.0.278');
-  assert.ok(html.includes('script.js?v=1.0.278'), 'index.html deve referenciar script.js?v=1.0.278');
-  assert.ok(html.includes('style.css?v=1.0.278'), 'index.html deve referenciar style.css?v=1.0.278');
-  assert.ok(privacyHtml.includes('v1.0.278'), 'privacy.html deve referenciar v1.0.278');
+  // 1. Integridade de Versionamento v1.0.278+ (Build 278+)
+  assert.ok(['1.0.278', '1.0.279'].includes(versionJson.version), 'version.json deve ser 1.0.278+');
+  assert.ok([278, 279].includes(versionJson.build), 'build em version.json deve ser 278+');
+  assert.ok(['1.0.278', '1.0.279'].includes(manifest.version), 'manifest.json deve ser 1.0.278+');
+  assert.ok(['1.0.278', '1.0.279'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.278+');
+  assert.ok(swContent.includes('vortex-vip-v1.0.278') || swContent.includes('vortex-vip-v1.0.279'), 'sw.js deve conter cache v1.0.278+');
+  assert.ok(html.includes('script.js?v=1.0.278') || html.includes('script.js?v=1.0.279'), 'index.html deve referenciar script.js?v=1.0.278+');
+  assert.ok(html.includes('style.css?v=1.0.278') || html.includes('style.css?v=1.0.279'), 'index.html deve referenciar style.css?v=1.0.278+');
+  assert.ok(privacyHtml.includes('v1.0.278') || privacyHtml.includes('v1.0.279'), 'privacy.html deve referenciar v1.0.278+');
 
   // 2. Presença dos 3 Botões de Jogos no HTML
   assert.ok(html.includes('id="games-subtabs-nav"'), 'index.html deve conter #games-subtabs-nav');
@@ -18788,4 +18788,55 @@ test('196. Barra de Rolagem Horizontal para os 3 Botões de Jogos (Tigrinho VIP,
     if (ch === '}') closeBraces196++;
   }
   assert.strictEqual(openBraces196, closeBraces196, 'CSS deve ter chaves perfeitamente balanceadas');
+});
+
+test('197. Botão Publicar Status (#publish-status-btn) com Tamanho Aumentado e Precedência sobre .danger-btn v1.0.279', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+  const html = fs.readFileSync('public/index.html', 'utf8');
+  const css = fs.readFileSync('public/style.css', 'utf8');
+  const privacyHtml = fs.readFileSync('public/privacy.html', 'utf8');
+  const manifest = JSON.parse(fs.readFileSync('public/manifest.json', 'utf8'));
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+
+  // 1. Integridade de Versionamento v1.0.279 (Build 279)
+  assert.strictEqual(versionJson.version, '1.0.279', 'version.json deve ser 1.0.279');
+  assert.strictEqual(versionJson.build, 279, 'build em version.json deve ser 279');
+  assert.strictEqual(manifest.version, '1.0.279', 'manifest.json deve ser 1.0.279');
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.279', 'CURRENT_APP_VERSION deve ser 1.0.279');
+  assert.ok(swContent.includes('vortex-vip-v1.0.279'), 'sw.js deve conter cache v1.0.279');
+  assert.ok(html.includes('script.js?v=1.0.279'), 'index.html deve referenciar script.js?v=1.0.279');
+  assert.ok(html.includes('style.css?v=1.0.279'), 'index.html deve referenciar style.css?v=1.0.279');
+  assert.ok(privacyHtml.includes('v1.0.279'), 'privacy.html deve referenciar v1.0.279');
+
+  // 2. Presença do botão #publish-status-btn no HTML
+  assert.ok(html.includes('id="publish-status-btn"'), 'index.html deve conter #publish-status-btn');
+  assert.ok(html.includes('class="danger-btn publish-status-action-btn"'), '#publish-status-btn deve manter classe publish-status-action-btn');
+
+  // 3. Regras CSS ampliadas para #publish-status-btn / .publish-status-action-btn
+  const basePublishMatch = css.match(/#publish-status-btn,\s*\.publish-status-action-btn\s*\{([^}]+)\}/);
+  assert.ok(basePublishMatch, 'CSS deve conter bloco #publish-status-btn, .publish-status-action-btn');
+  assert.ok(basePublishMatch[1].includes('min-height: 54px'), 'Botão Publicar Status deve ter min-height: 54px');
+  assert.ok(basePublishMatch[1].includes('padding: 15px 22px'), 'Botão Publicar Status deve ter padding: 15px 22px');
+  assert.ok(basePublishMatch[1].includes('font-size: 1.05rem'), 'Botão Publicar Status deve ter font-size: 1.05rem');
+  assert.ok(basePublishMatch[1].includes('border-radius: 14px'), 'Botão Publicar Status deve ter border-radius: 14px');
+
+  // 4. Regra específica após .danger-btn para garantir que não encolha dentro de .status-form-actions
+  const dangerIdx = css.indexOf('.danger-btn');
+  const formPublishMatch = css.match(/\.status-form-actions\s+#publish-status-btn\.publish-status-action-btn\s*\{([^}]+)\}/);
+  assert.ok(formPublishMatch, 'CSS deve conter bloco .status-form-actions #publish-status-btn.publish-status-action-btn');
+  const formPublishIdx = css.indexOf('.status-form-actions #publish-status-btn.publish-status-action-btn');
+  assert.ok(dangerIdx !== -1 && formPublishIdx > dangerIdx, 'Regra do botão Publicar Status deve vir depois de .danger-btn para ter precedência');
+  assert.ok(formPublishMatch[1].includes('min-height: 54px'), 'Regra específica deve garantir min-height: 54px');
+  assert.ok(formPublishMatch[1].includes('padding: 15px 22px'), 'Regra específica deve garantir padding: 15px 22px');
+  assert.ok(formPublishMatch[1].includes('font-size: 1.05rem'), 'Regra específica deve garantir font-size: 1.05rem');
+
+  // 5. Balanço de Chaves do CSS
+  let openBraces197 = 0, closeBraces197 = 0;
+  for (const ch of css) {
+    if (ch === '{') openBraces197++;
+    if (ch === '}') closeBraces197++;
+  }
+  assert.strictEqual(openBraces197, closeBraces197, 'CSS deve ter chaves perfeitamente balanceadas');
 });
