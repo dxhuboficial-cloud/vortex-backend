@@ -18611,14 +18611,14 @@ test('195. Salvamento Automático do Tipo de Chave Pix (CPF, Telefone, E-mail, C
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
   // 1. Integridade de Versionamento v1.0.276+ (Build 276+)
-  assert.ok(['1.0.276', '1.0.277', '1.0.278', '1.0.279'].includes(versionJson.version), 'version.json deve ser 1.0.276 ou superior');
-  assert.ok([276, 277, 278, 279].includes(versionJson.build), 'build em version.json deve ser 276 ou superior');
-  assert.ok(['1.0.276', '1.0.277', '1.0.278', '1.0.279'].includes(manifest.version), 'manifest.json deve ser 1.0.276 ou superior');
-  assert.ok(['1.0.276', '1.0.277', '1.0.278', '1.0.279'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.276 ou superior');
-  assert.ok(swContent.includes('vortex-vip-v1.0.276') || swContent.includes('vortex-vip-v1.0.277') || swContent.includes('vortex-vip-v1.0.278') || swContent.includes('vortex-vip-v1.0.279'), 'sw.js deve conter cache v1.0.276+');
-  assert.ok(html.includes('script.js?v=1.0.276') || html.includes('script.js?v=1.0.277') || html.includes('script.js?v=1.0.278') || html.includes('script.js?v=1.0.279'), 'index.html deve referenciar script.js?v=1.0.276+');
-  assert.ok(html.includes('style.css?v=1.0.276') || html.includes('style.css?v=1.0.277') || html.includes('style.css?v=1.0.278') || html.includes('style.css?v=1.0.279'), 'index.html deve referenciar style.css?v=1.0.276+');
-  assert.ok(privacyHtml.includes('v1.0.276') || privacyHtml.includes('v1.0.277') || privacyHtml.includes('v1.0.278') || privacyHtml.includes('v1.0.279'), 'privacy.html deve referenciar v1.0.276+');
+  assert.ok(['1.0.276', '1.0.277', '1.0.278', '1.0.279', '1.0.280'].includes(versionJson.version), 'version.json deve ser 1.0.276 ou superior');
+  assert.ok([276, 277, 278, 279, 280].includes(versionJson.build), 'build em version.json deve ser 276 ou superior');
+  assert.ok(['1.0.276', '1.0.277', '1.0.278', '1.0.279', '1.0.280'].includes(manifest.version), 'manifest.json deve ser 1.0.276 ou superior');
+  assert.ok(['1.0.276', '1.0.277', '1.0.278', '1.0.279', '1.0.280'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.276 ou superior');
+  assert.ok(swContent.includes('vortex-vip-v1.0.276') || swContent.includes('vortex-vip-v1.0.277') || swContent.includes('vortex-vip-v1.0.278') || swContent.includes('vortex-vip-v1.0.279') || swContent.includes('vortex-vip-v1.0.280'), 'sw.js deve conter cache v1.0.276+');
+  assert.ok(html.includes('script.js?v=1.0.276') || html.includes('script.js?v=1.0.277') || html.includes('script.js?v=1.0.278') || html.includes('script.js?v=1.0.279') || html.includes('script.js?v=1.0.280'), 'index.html deve referenciar script.js?v=1.0.276+');
+  assert.ok(html.includes('style.css?v=1.0.276') || html.includes('style.css?v=1.0.277') || html.includes('style.css?v=1.0.278') || html.includes('style.css?v=1.0.279') || html.includes('style.css?v=1.0.280'), 'index.html deve referenciar style.css?v=1.0.276+');
+  assert.ok(privacyHtml.includes('v1.0.276') || privacyHtml.includes('v1.0.277') || privacyHtml.includes('v1.0.278') || privacyHtml.includes('v1.0.279') || privacyHtml.includes('v1.0.280'), 'privacy.html deve referenciar v1.0.276+');
 
   // 2. Elementos no HTML: Select com opções de Chave Pix e Botões Organizados
   assert.ok(html.includes('id="chest-pix-key-type"'), 'index.html deve conter select de tipo de chave Pix');
@@ -18741,14 +18741,14 @@ test('196. Barra de Rolagem Horizontal para os 3 Botões de Jogos (Tigrinho VIP,
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
   // 1. Integridade de Versionamento v1.0.278+ (Build 278+)
-  assert.ok(['1.0.278', '1.0.279'].includes(versionJson.version), 'version.json deve ser 1.0.278+');
-  assert.ok([278, 279].includes(versionJson.build), 'build em version.json deve ser 278+');
-  assert.ok(['1.0.278', '1.0.279'].includes(manifest.version), 'manifest.json deve ser 1.0.278+');
-  assert.ok(['1.0.278', '1.0.279'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.278+');
-  assert.ok(swContent.includes('vortex-vip-v1.0.278') || swContent.includes('vortex-vip-v1.0.279'), 'sw.js deve conter cache v1.0.278+');
-  assert.ok(html.includes('script.js?v=1.0.278') || html.includes('script.js?v=1.0.279'), 'index.html deve referenciar script.js?v=1.0.278+');
-  assert.ok(html.includes('style.css?v=1.0.278') || html.includes('style.css?v=1.0.279'), 'index.html deve referenciar style.css?v=1.0.278+');
-  assert.ok(privacyHtml.includes('v1.0.278') || privacyHtml.includes('v1.0.279'), 'privacy.html deve referenciar v1.0.278+');
+  assert.ok(['1.0.278', '1.0.279', '1.0.280'].includes(versionJson.version), 'version.json deve ser 1.0.278+');
+  assert.ok([278, 279, 280].includes(versionJson.build), 'build em version.json deve ser 278+');
+  assert.ok(['1.0.278', '1.0.279', '1.0.280'].includes(manifest.version), 'manifest.json deve ser 1.0.278+');
+  assert.ok(['1.0.278', '1.0.279', '1.0.280'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.278+');
+  assert.ok(swContent.includes('vortex-vip-v1.0.278') || swContent.includes('vortex-vip-v1.0.279') || swContent.includes('vortex-vip-v1.0.280'), 'sw.js deve conter cache v1.0.278+');
+  assert.ok(html.includes('script.js?v=1.0.278') || html.includes('script.js?v=1.0.279') || html.includes('script.js?v=1.0.280'), 'index.html deve referenciar script.js?v=1.0.278+');
+  assert.ok(html.includes('style.css?v=1.0.278') || html.includes('style.css?v=1.0.279') || html.includes('style.css?v=1.0.280'), 'index.html deve referenciar style.css?v=1.0.278+');
+  assert.ok(privacyHtml.includes('v1.0.278') || privacyHtml.includes('v1.0.279') || privacyHtml.includes('v1.0.280'), 'privacy.html deve referenciar v1.0.278+');
 
   // 2. Presença dos 3 Botões de Jogos no HTML
   assert.ok(html.includes('id="games-subtabs-nav"'), 'index.html deve conter #games-subtabs-nav');
@@ -18800,15 +18800,15 @@ test('197. Botão Publicar Status (#publish-status-btn) com Tamanho Aumentado e 
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
-  // 1. Integridade de Versionamento v1.0.279 (Build 279)
-  assert.strictEqual(versionJson.version, '1.0.279', 'version.json deve ser 1.0.279');
-  assert.strictEqual(versionJson.build, 279, 'build em version.json deve ser 279');
-  assert.strictEqual(manifest.version, '1.0.279', 'manifest.json deve ser 1.0.279');
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.279', 'CURRENT_APP_VERSION deve ser 1.0.279');
-  assert.ok(swContent.includes('vortex-vip-v1.0.279'), 'sw.js deve conter cache v1.0.279');
-  assert.ok(html.includes('script.js?v=1.0.279'), 'index.html deve referenciar script.js?v=1.0.279');
-  assert.ok(html.includes('style.css?v=1.0.279'), 'index.html deve referenciar style.css?v=1.0.279');
-  assert.ok(privacyHtml.includes('v1.0.279'), 'privacy.html deve referenciar v1.0.279');
+  // 1. Integridade de Versionamento v1.0.279+ (Build 279+)
+  assert.ok(['1.0.279', '1.0.280'].includes(versionJson.version), 'version.json deve ser 1.0.279+');
+  assert.ok([279, 280].includes(versionJson.build), 'build em version.json deve ser 279+');
+  assert.ok(['1.0.279', '1.0.280'].includes(manifest.version), 'manifest.json deve ser 1.0.279+');
+  assert.ok(['1.0.279', '1.0.280'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.279+');
+  assert.ok(swContent.includes('vortex-vip-v1.0.279') || swContent.includes('vortex-vip-v1.0.280'), 'sw.js deve conter cache v1.0.279+');
+  assert.ok(html.includes('script.js?v=1.0.279') || html.includes('script.js?v=1.0.280'), 'index.html deve referenciar script.js?v=1.0.279+');
+  assert.ok(html.includes('style.css?v=1.0.279') || html.includes('style.css?v=1.0.280'), 'index.html deve referenciar style.css?v=1.0.279+');
+  assert.ok(privacyHtml.includes('v1.0.279') || privacyHtml.includes('v1.0.280'), 'privacy.html deve referenciar v1.0.279+');
 
   // 2. Presença do botão #publish-status-btn no HTML
   assert.ok(html.includes('id="publish-status-btn"'), 'index.html deve conter #publish-status-btn');
@@ -18839,4 +18839,94 @@ test('197. Botão Publicar Status (#publish-status-btn) com Tamanho Aumentado e 
     if (ch === '}') closeBraces197++;
   }
   assert.strictEqual(openBraces197, closeBraces197, 'CSS deve ter chaves perfeitamente balanceadas');
+});
+
+test('198. Botão Tester Beta nas Configurações, Modal com Descrição, Solicitação e Aprovação Automática em 24h v1.0.280', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+  const html = fs.readFileSync('public/index.html', 'utf8');
+  const css = fs.readFileSync('public/style.css', 'utf8');
+  const privacyHtml = fs.readFileSync('public/privacy.html', 'utf8');
+  const manifest = JSON.parse(fs.readFileSync('public/manifest.json', 'utf8'));
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+
+  // 1. Integridade de Versionamento v1.0.280 (Build 280)
+  assert.strictEqual(versionJson.version, '1.0.280', 'version.json deve ser 1.0.280');
+  assert.strictEqual(versionJson.build, 280, 'build em version.json deve ser 280');
+  assert.strictEqual(manifest.version, '1.0.280', 'manifest.json deve ser 1.0.280');
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.280', 'CURRENT_APP_VERSION deve ser 1.0.280');
+  assert.ok(swContent.includes('vortex-vip-v1.0.280'), 'sw.js deve conter cache v1.0.280');
+  assert.ok(html.includes('script.js?v=1.0.280'), 'index.html deve referenciar script.js?v=1.0.280');
+  assert.ok(html.includes('style.css?v=1.0.280'), 'index.html deve referenciar style.css?v=1.0.280');
+  assert.ok(privacyHtml.includes('v1.0.280'), 'privacy.html deve referenciar v1.0.280');
+
+  // 2. Elementos no HTML (Configurações + Modal + Descrição + Botão Solicitar + Barra de 24h)
+  assert.ok(html.includes('id="beta-tester-setting-item"'), 'Configurações deve conter #beta-tester-setting-item');
+  assert.ok(html.includes('id="open-beta-tester-modal-btn"'), 'Configurações deve conter botão #open-beta-tester-modal-btn');
+  assert.ok(html.includes('id="beta-tester-setting-badge"'), 'Configurações deve conter badge #beta-tester-setting-badge');
+  assert.ok(html.includes('id="beta-tester-modal"'), 'HTML deve conter #beta-tester-modal');
+  assert.ok(html.includes('id="beta-tester-description-card"'), 'Modal deve conter card de descrição #beta-tester-description-card');
+  assert.ok(html.includes('24 horas') && html.includes('aprovada automaticamente pelo sistema do VORTEX VIP'), 'Descrição deve explicar aprovação automática em 24 horas pelo sistema');
+  assert.ok(html.includes('id="beta-tester-status-card"'), 'Modal deve conter #beta-tester-status-card');
+  assert.ok(html.includes('id="beta-tester-progress-wrap"'), 'Modal deve conter #beta-tester-progress-wrap');
+  assert.ok(html.includes('id="request-beta-tester-btn"'), 'Modal deve conter botão #request-beta-tester-btn');
+
+  // 3. Regras CSS presentes
+  assert.ok(css.includes('.beta-tester-setting-row {'), 'CSS deve conter .beta-tester-setting-row');
+  assert.ok(css.includes('.beta-tester-open-btn {'), 'CSS deve conter .beta-tester-open-btn');
+  assert.ok(css.includes('.beta-tester-modal-card {'), 'CSS deve conter .beta-tester-modal-card');
+  assert.ok(css.includes('.beta-tester-status-card.state-pending {'), 'CSS deve estilizar .state-pending');
+  assert.ok(css.includes('.beta-tester-status-card.state-approved {'), 'CSS deve estilizar .state-approved');
+  assert.ok(css.includes('.beta-tester-request-btn {'), 'CSS deve conter .beta-tester-request-btn');
+
+  // 4. Fluxo Completo: Estado inicial -> Abrir Modal -> Solicitar -> Contagem 24h -> Aprovação Automática
+  win.setCurrentProfile({ uid: 'beta_user_test', name: 'Usuário', isBetaTester: false, betaTesterStatus: 'none' });
+  win.initBetaTesterUI();
+
+  assert.strictEqual(win.BETA_TESTER_WAIT_MS, 24 * 60 * 60 * 1000, 'Prazo de espera deve ser exatamente 24 horas em ms');
+  assert.strictEqual(win.getBetaTesterState().status, 'none', 'Estado inicial deve ser none');
+  assert.strictEqual(env.elements['request-beta-tester-btn'].disabled, false, 'Botão Solicitar deve iniciar habilitado');
+  assert.strictEqual(env.elements['beta-tester-setting-badge'].textContent, 'Disponível');
+
+  // Abrir modal
+  await win.openBetaTesterModal();
+  assert.strictEqual(env.elements['beta-tester-modal'].style.display, 'flex', 'Modal Tester Beta deve abrir com display: flex');
+
+  // Solicitar entrada no Teste Beta
+  const requestedState = await win.requestBetaTesterAccess();
+  assert.strictEqual(requestedState.status, 'pending', 'Após solicitar, status deve virar pending');
+  assert.strictEqual(requestedState.isBetaTester, false, 'Não deve aprovar imediatamente antes de 24h');
+  assert.ok(typeof requestedState.requestedAt === 'number' && requestedState.requestedAt > 0, 'Deve registrar timestamp requestedAt');
+  assert.strictEqual(env.elements['request-beta-tester-btn'].disabled, true, 'Botão Solicitar deve ficar desabilitado enquanto aguarda 24h');
+  assert.strictEqual(env.elements['beta-tester-progress-wrap'].style.display, 'flex', 'Barra de progresso 24h deve aparecer');
+  assert.strictEqual(env.elements['beta-tester-setting-badge'].textContent, 'Aguardando 24h');
+  assert.ok(env.elements['beta-tester-status-card'].classList.contains('state-pending'), 'Card de status deve ter classe state-pending');
+
+  // Verificar antes de 24h (ex: 23 horas depois): NÃO aprova ainda
+  const before24h = await win.checkBetaTesterAutoApproval({ now: requestedState.requestedAt + (23 * 60 * 60 * 1000), silent: true });
+  assert.strictEqual(before24h.approvedNow, false, 'Não deve aprovar antes de completar 24 horas');
+  assert.strictEqual(before24h.state.status, 'pending', 'Status deve permanecer pending com 23h');
+
+  // Verificar após completar 24h: APROVA AUTOMATICAMENTE
+  const after24h = await win.checkBetaTesterAutoApproval({ now: requestedState.requestedAt + (24 * 60 * 60 * 1000) });
+  assert.strictEqual(after24h.approvedNow, true, 'Deve aprovar automaticamente ao completar 24 horas');
+  assert.strictEqual(after24h.state.status, 'approved', 'Status deve passar para approved');
+  assert.strictEqual(after24h.state.isBetaTester, true, 'isBetaTester deve passar para true');
+  assert.strictEqual(win.getBetaTesterState().isBetaTester, true, 'Estado persistido deve confirmar isBetaTester: true');
+  assert.strictEqual(env.elements['beta-tester-setting-badge'].textContent, 'Ativo ⚡', 'Badge nas configurações deve mostrar Ativo ⚡');
+  assert.ok(env.elements['beta-tester-status-card'].classList.contains('state-approved'), 'Card de status deve ter classe state-approved');
+  assert.ok(env.elements['request-beta-tester-btn'].classList.contains('approved'), 'Botão deve receber classe approved');
+
+  // Fechar modal limpa visualização
+  win.closeBetaTesterModal();
+  assert.strictEqual(env.elements['beta-tester-modal'].style.display, 'none', 'Fechar modal deve aplicar display: none');
+
+  // 5. Balanço de Chaves do CSS
+  let openBraces198 = 0, closeBraces198 = 0;
+  for (const ch of css) {
+    if (ch === '{') openBraces198++;
+    if (ch === '}') closeBraces198++;
+  }
+  assert.strictEqual(openBraces198, closeBraces198, 'CSS deve ter chaves perfeitamente balanceadas');
 });

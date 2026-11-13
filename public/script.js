@@ -1878,6 +1878,8 @@ onAuthStateChanged(auth, async (user) => {
         pinnedChats = Array.isArray(currentProfile.pinnedChats) ? currentProfile.pinnedChats : [];
         applyUserTheme();
         updateProfileDOM();
+        if (typeof checkBetaTesterAutoApproval === 'function') checkBetaTesterAutoApproval({ silent: true });
+        if (typeof updateBetaTesterUI === 'function') updateBetaTesterUI();
         if (typeof updateChatPinUI === 'function') updateChatPinUI();
     if (typeof updateActiveChatMuteUI === 'function') updateActiveChatMuteUI();
         if (typeof applyPinnedSortToChatList === 'function') applyPinnedSortToChatList();
@@ -1896,6 +1898,8 @@ onAuthStateChanged(auth, async (user) => {
                 pinnedChats = Array.isArray(currentProfile.pinnedChats) ? currentProfile.pinnedChats : [];
                 applyUserTheme();
                 updateProfileDOM();
+                if (typeof checkBetaTesterAutoApproval === 'function') checkBetaTesterAutoApproval({ silent: true });
+                if (typeof updateBetaTesterUI === 'function') updateBetaTesterUI();
                 checkBannedAccountState();
                 updateAdminUIVisibility();
                 if (typeof updateChatPinUI === 'function') updateChatPinUI();
@@ -23089,7 +23093,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.279';
+export const CURRENT_APP_VERSION = '1.0.280';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -25037,6 +25041,368 @@ export function initPrivacyPolicyUI() {
             closePrivacyPolicyModal();
         }
     });
+}
+
+/* ==========================================================================
+   VORTEX VIP v1.0.280: PROGRAMA TESTER BETA (APROVAÇÃO AUTOMÁTICA EM 24H)
+   ========================================================================== */
+
+export const BETA_TESTER_WAIT_MS = 24 * 60 * 60 * 1000;
+let betaTesterCountdownInterval = null;
+
+export function getBetaTesterStorageKey(uid) {
+    const resolvedUid = uid || currentUser?.uid || currentProfile?.uid || 'guest';
+    return `vortex_beta_tester_${resolvedUid}`;
+}
+
+export function formatBetaCountdown(remainingMs) {
+    const safeMs = Math.max(0, Number(remainingMs) || 0);
+    const totalSeconds = Math.ceil(safeMs / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return `${String(hours).padStart(2, '0')}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`;
+}
+
+export function getBetaTesterState() {
+    let localState = null;
+    try {
+        const raw = localStorage.getItem(getBetaTesterStorageKey());
+        if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed && typeof parsed === 'object') {
+                localState = parsed;
+            }
+        }
+    } catch (_) {}
+
+    const profileStatus = currentProfile?.isBetaTester
+        ? 'approved'
+        : (currentProfile?.betaTesterStatus || 'none');
+    const profileReqAt = Number(currentProfile?.betaTesterRequestedAt) || null;
+    const profileAppAt = Number(currentProfile?.betaTesterApprovedAt) || null;
+
+    const localStatus = localState?.isBetaTester
+        ? 'approved'
+        : (localState?.status || 'none');
+    const localReqAt = Number(localState?.requestedAt) || null;
+    const localAppAt = Number(localState?.approvedAt) || null;
+
+    if (profileStatus === 'approved' || localStatus === 'approved') {
+        return {
+            status: 'approved',
+            isBetaTester: true,
+            requestedAt: profileReqAt || localReqAt || null,
+            approvedAt: profileAppAt || localAppAt || Date.now()
+        };
+    }
+
+    if (profileStatus === 'pending' || localStatus === 'pending') {
+        const candidates = [profileReqAt, localReqAt].filter((v) => Number.isFinite(v) && v > 0);
+        const earliestReqAt = candidates.length > 0 ? Math.min(...candidates) : Date.now();
+        return {
+            status: 'pending',
+            isBetaTester: false,
+            requestedAt: earliestReqAt,
+            approvedAt: null
+        };
+    }
+
+    return {
+        status: 'none',
+        isBetaTester: false,
+        requestedAt: null,
+        approvedAt: null
+    };
+}
+
+export function saveBetaTesterStateLocal(state, uid) {
+    const normalized = {
+        status: state?.status || 'none',
+        isBetaTester: Boolean(state?.isBetaTester || state?.status === 'approved'),
+        requestedAt: state?.requestedAt || null,
+        approvedAt: state?.approvedAt || null
+    };
+    try {
+        localStorage.setItem(getBetaTesterStorageKey(uid), JSON.stringify(normalized));
+    } catch (_) {}
+
+    if (!currentProfile) currentProfile = {};
+    currentProfile.betaTesterStatus = normalized.status;
+    currentProfile.isBetaTester = normalized.isBetaTester;
+    currentProfile.betaTesterRequestedAt = normalized.requestedAt;
+    currentProfile.betaTesterApprovedAt = normalized.approvedAt;
+    return normalized;
+}
+
+export async function persistBetaTesterStateFirestore(state) {
+    try {
+        const uid = currentUser?.uid || currentProfile?.uid;
+        if (!uid || typeof db === 'undefined' || !db || typeof doc !== 'function' || typeof updateDoc !== 'function') {
+            return false;
+        }
+        const userRef = doc(db, 'users', uid);
+        await updateDoc(userRef, {
+            betaTesterStatus: state.status,
+            isBetaTester: Boolean(state.isBetaTester),
+            betaTesterRequestedAt: state.requestedAt || null,
+            betaTesterApprovedAt: state.approvedAt || null
+        });
+        return true;
+    } catch (err) {
+        console.warn('[VORTEX] Aviso ao salvar status Tester Beta no Firestore:', err);
+        return false;
+    }
+}
+
+export function stopBetaTesterCountdown() {
+    if (betaTesterCountdownInterval) {
+        clearInterval(betaTesterCountdownInterval);
+        betaTesterCountdownInterval = null;
+    }
+}
+
+export async function checkBetaTesterAutoApproval(options = {}) {
+    const now = Number(options.now) || Date.now();
+    const state = getBetaTesterState();
+
+    if (state.status === 'pending' && Number.isFinite(state.requestedAt) && state.requestedAt > 0) {
+        const elapsed = now - state.requestedAt;
+        if (elapsed >= BETA_TESTER_WAIT_MS) {
+            const approvedState = saveBetaTesterStateLocal({
+                status: 'approved',
+                isBetaTester: true,
+                requestedAt: state.requestedAt,
+                approvedAt: state.requestedAt + BETA_TESTER_WAIT_MS
+            });
+            stopBetaTesterCountdown();
+            await persistBetaTesterStateFirestore(approvedState);
+            updateBetaTesterUI(now);
+            if (!options.silent && typeof showToast === 'function') {
+                showToast('Tester Beta Aprovado! ⚡', 'Parabéns! Após 24 horas, sua conta foi aprovada automaticamente pelo sistema VORTEX VIP ⚡.', 'green');
+            }
+            return { approvedNow: true, state: approvedState };
+        }
+    }
+
+    return { approvedNow: false, state };
+}
+
+export function updateBetaTesterUI(nowOverride) {
+    const now = Number(nowOverride) || Date.now();
+    const state = getBetaTesterState();
+
+    const settingBadge = document.getElementById('beta-tester-setting-badge');
+    const settingDesc = document.getElementById('beta-tester-setting-desc');
+    const settingOpenBtnText = document.getElementById('beta-tester-open-btn-text');
+
+    const statusCard = document.getElementById('beta-tester-status-card');
+    const statusTitle = document.getElementById('beta-tester-status-title');
+    const statusChip = document.getElementById('beta-tester-status-chip');
+    const statusMessage = document.getElementById('beta-tester-status-message');
+    const progressWrap = document.getElementById('beta-tester-progress-wrap');
+    const progressFill = document.getElementById('beta-tester-progress-fill');
+    const countdownText = document.getElementById('beta-tester-countdown-text');
+    const progressPercent = document.getElementById('beta-tester-progress-percent');
+    const requestBtn = document.getElementById('request-beta-tester-btn');
+    const requestBtnText = document.getElementById('request-beta-tester-btn-text');
+
+    if (statusCard) {
+        statusCard.classList.remove('state-none', 'state-pending', 'state-approved');
+        statusCard.classList.add(`state-${state.status}`);
+    }
+    if (settingBadge) {
+        settingBadge.classList.remove('status-none', 'status-pending', 'status-approved');
+        settingBadge.classList.add(`status-${state.status}`);
+    }
+
+    if (state.status === 'approved') {
+        if (settingBadge) settingBadge.textContent = 'Ativo ⚡';
+        if (settingDesc) settingDesc.textContent = 'Você é Tester Beta oficial do VORTEX VIP ⚡';
+        if (settingOpenBtnText) settingOpenBtnText.textContent = 'Ver Beta ⚡';
+
+        if (statusTitle) statusTitle.textContent = 'Aprovado Automaticamente ⚡';
+        if (statusChip) statusChip.textContent = 'Tester Beta Ativo';
+        const approvedDateStr = state.approvedAt ? new Date(state.approvedAt).toLocaleString('pt-BR') : 'Agora';
+        if (statusMessage) {
+            statusMessage.textContent = `Parabéns! Sua participação no Programa Tester Beta foi aprovada automaticamente pelo sistema VORTEX VIP ⚡ (${approvedDateStr}).`;
+        }
+        if (progressWrap) progressWrap.style.display = 'none';
+        if (requestBtn) {
+            requestBtn.disabled = true;
+            requestBtn.classList.add('approved');
+        }
+        if (requestBtnText) requestBtnText.textContent = 'Você já é Tester Beta ⚡';
+        return;
+    }
+
+    if (state.status === 'pending' && state.requestedAt) {
+        const elapsed = Math.max(0, now - state.requestedAt);
+        const remaining = Math.max(0, BETA_TESTER_WAIT_MS - elapsed);
+        const pct = Math.min(100, Math.max(0, Math.floor((elapsed / BETA_TESTER_WAIT_MS) * 100)));
+        const formattedRemaining = formatBetaCountdown(remaining);
+
+        if (settingBadge) settingBadge.textContent = 'Aguardando 24h';
+        if (settingDesc) settingDesc.textContent = `Solicitado • Faltam ${formattedRemaining} para aprovação automática`;
+        if (settingOpenBtnText) settingDesc && (settingOpenBtnText.textContent = 'Ver Status');
+
+        if (statusTitle) statusTitle.textContent = 'Solicitação em Análise (24h)';
+        if (statusChip) statusChip.textContent = 'Aguardando Sistema';
+        if (statusMessage) {
+            statusMessage.textContent = 'Sua solicitação foi recebida! Aguarde o prazo de 24 horas para ser aprovado automaticamente pelo sistema do VORTEX VIP ⚡.';
+        }
+        if (progressWrap) progressWrap.style.display = 'flex';
+        if (progressFill) progressFill.style.width = `${pct}%`;
+        if (countdownText) countdownText.textContent = `Faltam ${formattedRemaining} para aprovação automática`;
+        if (progressPercent) progressPercent.textContent = `${pct}%`;
+
+        if (requestBtn) {
+            requestBtn.disabled = true;
+            requestBtn.classList.remove('approved');
+        }
+        if (requestBtnText) requestBtnText.textContent = 'Solicitação Enviada • Aguarde 24h';
+        return;
+    }
+
+    if (settingBadge) settingBadge.textContent = 'Disponível';
+    if (settingDesc) settingDesc.textContent = 'Acesse novidades antes de todos • Aprovação automática em 24h';
+    if (settingOpenBtnText) settingOpenBtnText.textContent = 'Tester Beta';
+
+    if (statusTitle) statusTitle.textContent = 'Pronto para solicitar';
+    if (statusChip) statusChip.textContent = 'Não inscrito';
+    if (statusMessage) {
+        statusMessage.textContent = 'Clique no botão abaixo para enviar sua solicitação e aguardar 24 horas pela aprovação automática do sistema.';
+    }
+    if (progressWrap) progressWrap.style.display = 'none';
+    if (requestBtn) {
+        requestBtn.disabled = false;
+        requestBtn.classList.remove('approved');
+    }
+    if (requestBtnText) requestBtnText.textContent = 'Solicitar Entrada no Teste Beta';
+}
+
+export function startBetaTesterCountdown() {
+    stopBetaTesterCountdown();
+    const state = getBetaTesterState();
+    if (state.status !== 'pending') return;
+
+    betaTesterCountdownInterval = setInterval(() => {
+        const modal = document.getElementById('beta-tester-modal');
+        if (!modal || modal.style.display === 'none') {
+            stopBetaTesterCountdown();
+            return;
+        }
+        checkBetaTesterAutoApproval();
+        updateBetaTesterUI();
+    }, 1000);
+}
+
+export async function openBetaTesterModal() {
+    await checkBetaTesterAutoApproval();
+    updateBetaTesterUI();
+    const modal = document.getElementById('beta-tester-modal');
+    if (modal) {
+        modal.style.display = 'flex';
+        modal.setAttribute('aria-hidden', 'false');
+        if (window.lucide && typeof window.lucide.createIcons === 'function') {
+            window.lucide.createIcons();
+        }
+    }
+    if (getBetaTesterState().status === 'pending') {
+        startBetaTesterCountdown();
+    }
+}
+
+export function closeBetaTesterModal() {
+    stopBetaTesterCountdown();
+    const modal = document.getElementById('beta-tester-modal');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.setAttribute('aria-hidden', 'true');
+    }
+}
+
+export async function requestBetaTesterAccess() {
+    const check = await checkBetaTesterAutoApproval();
+    if (check.state.status === 'approved') {
+        updateBetaTesterUI();
+        if (typeof showToast === 'function') {
+            showToast('Tester Beta Ativo ⚡', 'Sua conta já está aprovada no Programa Tester Beta do VORTEX VIP ⚡!', 'green');
+        }
+        return check.state;
+    }
+
+    if (check.state.status === 'pending') {
+        updateBetaTesterUI();
+        const remaining = formatBetaCountdown(BETA_TESTER_WAIT_MS - (Date.now() - check.state.requestedAt));
+        if (typeof showToast === 'function') {
+            showToast('Solicitação em Andamento ⏳', `Aguarde ${remaining} para aprovação automática pelo sistema.`, 'orange');
+        }
+        return check.state;
+    }
+
+    const newState = saveBetaTesterStateLocal({
+        status: 'pending',
+        isBetaTester: false,
+        requestedAt: Date.now(),
+        approvedAt: null
+    });
+
+    if (typeof playSound === 'function' && typeof clickSound !== 'undefined') {
+        playSound(clickSound);
+    }
+
+    updateBetaTesterUI();
+    startBetaTesterCountdown();
+    await persistBetaTesterStateFirestore(newState);
+
+    if (typeof showToast === 'function') {
+        showToast('Solicitação Enviada! ⚡', 'Você solicitou entrada no Teste Beta. Aguarde 24 horas para aprovação automática pelo sistema VORTEX VIP ⚡!', 'cyan');
+    }
+    return newState;
+}
+
+export function initBetaTesterUI() {
+    const openBtn = document.getElementById('open-beta-tester-modal-btn');
+    const closeBtn = document.getElementById('close-beta-tester-modal');
+    const closeFooterBtn = document.getElementById('close-beta-tester-footer-btn');
+    const requestBtn = document.getElementById('request-beta-tester-btn');
+    const modal = document.getElementById('beta-tester-modal');
+
+    openBtn?.addEventListener('click', (e) => {
+        e.preventDefault();
+        openBetaTesterModal();
+    });
+
+    closeBtn?.addEventListener('click', (e) => {
+        e.preventDefault();
+        closeBetaTesterModal();
+    });
+
+    closeFooterBtn?.addEventListener('click', (e) => {
+        e.preventDefault();
+        closeBetaTesterModal();
+    });
+
+    requestBtn?.addEventListener('click', (e) => {
+        e.preventDefault();
+        requestBetaTesterAccess();
+    });
+
+    modal?.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            closeBetaTesterModal();
+        }
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal && modal.style.display !== 'none') {
+            closeBetaTesterModal();
+        }
+    });
+
+    checkBetaTesterAutoApproval({ silent: true });
+    updateBetaTesterUI();
 }
 
 /* ==========================================================================
@@ -36591,6 +36957,8 @@ document.getElementById('settings-btn')?.addEventListener('click', () => {
     if (verBadge) verBadge.innerText = `v${CURRENT_APP_VERSION} ⚡`;
     document.getElementById('settings-panel')?.classList.add('active');
     if (typeof updateCompanyChatbotSettingsUI === 'function') updateCompanyChatbotSettingsUI();
+    if (typeof checkBetaTesterAutoApproval === 'function') checkBetaTesterAutoApproval();
+    if (typeof updateBetaTesterUI === 'function') updateBetaTesterUI();
     updateInstallUIVisibility();
     if (isAppInstalledPwa()) {
         checkForAppUpdates();
@@ -40104,6 +40472,20 @@ window.handleCallSwitchedToVideo = handleCallSwitchedToVideo;
     window.openPrivacyPolicyModal = openPrivacyPolicyModal;
     window.closePrivacyPolicyModal = closePrivacyPolicyModal;
     window.initPrivacyPolicyUI = initPrivacyPolicyUI;
+    window.BETA_TESTER_WAIT_MS = BETA_TESTER_WAIT_MS;
+    window.getBetaTesterStorageKey = getBetaTesterStorageKey;
+    window.formatBetaCountdown = formatBetaCountdown;
+    window.getBetaTesterState = getBetaTesterState;
+    window.saveBetaTesterStateLocal = saveBetaTesterStateLocal;
+    window.persistBetaTesterStateFirestore = persistBetaTesterStateFirestore;
+    window.checkBetaTesterAutoApproval = checkBetaTesterAutoApproval;
+    window.updateBetaTesterUI = updateBetaTesterUI;
+    window.stopBetaTesterCountdown = stopBetaTesterCountdown;
+    window.startBetaTesterCountdown = startBetaTesterCountdown;
+    window.openBetaTesterModal = openBetaTesterModal;
+    window.closeBetaTesterModal = closeBetaTesterModal;
+    window.requestBetaTesterAccess = requestBetaTesterAccess;
+    window.initBetaTesterUI = initBetaTesterUI;
     // Links & Risco da Plataforma (v1.0.233)
     window.analyzeUrlSecurity = analyzeUrlSecurity;
     window.registerPlatformLink = registerPlatformLink;
@@ -40814,6 +41196,7 @@ if (typeof window !== 'undefined') {
     initPermissionsManager();
     initGlobalSecurityUI();
     initPrivacyPolicyUI();
+    initBetaTesterUI();
     initLinkSecurityUI();
     initGamesControls();
     initBusinessVerificationEvents();

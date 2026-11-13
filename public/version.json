@@ -1,6 +1,6 @@
 {
-  "version": "1.0.279",
-  "build": 279,
+  "version": "1.0.280",
+  "build": 280,
   "releaseDate": "2026-11-13",
-  "notes": "Aumento do tamanho e destaque do botão Publicar Status (#publish-status-btn) v1.0.279"
+  "notes": "Novo botão e modal de Programa Tester Beta nas configurações com descrição, solicitação e aprovação automática pelo sistema em 24 horas v1.0.280"
 }

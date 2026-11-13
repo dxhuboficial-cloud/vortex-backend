@@ -31081,6 +31081,341 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
     z-index: 999;
 }
 
+/* ===== VORTEX VIP: PROGRAMA TESTER BETA (v1.0.280) ===== */
+.beta-tester-setting-row {
+    background: linear-gradient(135deg, rgba(32, 18, 56, 0.85) 0%, rgba(15, 22, 40, 0.88) 100%) !important;
+    border: 1px solid rgba(168, 85, 247, 0.35) !important;
+    border-radius: 14px !important;
+    padding: 12px 14px !important;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.beta-tester-setting-row:hover {
+    border-color: rgba(192, 132, 252, 0.65) !important;
+    box-shadow: 0 4px 18px rgba(168, 85, 247, 0.2) !important;
+}
+
+.beta-tester-setting-header-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.beta-tester-setting-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 700;
+}
+
+.beta-tester-inline-icon {
+    width: 16px;
+    height: 16px;
+    color: #c084fc;
+}
+
+.beta-tester-setting-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.2px;
+}
+
+.beta-tester-setting-badge.status-none {
+    background: rgba(168, 85, 247, 0.18);
+    border: 1px solid rgba(192, 132, 252, 0.4);
+    color: #d8b4fe;
+}
+
+.beta-tester-setting-badge.status-pending {
+    background: rgba(250, 204, 21, 0.16);
+    border: 1px solid rgba(250, 204, 21, 0.45);
+    color: #fde047;
+}
+
+.beta-tester-setting-badge.status-approved {
+    background: rgba(57, 255, 20, 0.16);
+    border: 1px solid rgba(57, 255, 20, 0.45);
+    color: #39ff14;
+}
+
+.beta-tester-open-btn {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: linear-gradient(135deg, rgba(168, 85, 247, 0.24) 0%, rgba(0, 245, 255, 0.2) 100%) !important;
+    color: #e9d5ff !important;
+    border: 1px solid rgba(192, 132, 252, 0.5) !important;
+    font-weight: 700 !important;
+    font-size: 0.8rem !important;
+    padding: 8px 14px !important;
+    border-radius: 10px !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.beta-tester-open-btn i,
+.beta-tester-open-btn svg {
+    width: 15px;
+    height: 15px;
+}
+
+.beta-tester-open-btn:hover {
+    background: linear-gradient(135deg, rgba(168, 85, 247, 0.45) 0%, rgba(0, 245, 255, 0.35) 100%) !important;
+    box-shadow: 0 0 14px rgba(168, 85, 247, 0.4) !important;
+    transform: translateY(-1px);
+}
+
+.beta-tester-modal-card {
+    max-width: 540px;
+    width: 94%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    border-radius: 20px;
+    background: linear-gradient(145deg, rgba(18, 16, 36, 0.98), rgba(10, 14, 26, 0.98));
+    border: 1px solid rgba(168, 85, 247, 0.45);
+    box-shadow: 0 14px 44px rgba(0, 0, 0, 0.75), 0 0 28px rgba(168, 85, 247, 0.2);
+    overflow: hidden;
+}
+
+.beta-tester-modal-body {
+    padding: 16px 20px 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    max-height: calc(90vh - 68px);
+}
+
+.beta-tester-badge-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.beta-tester-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    background: rgba(168, 85, 247, 0.16);
+    border: 1px solid rgba(192, 132, 252, 0.4);
+    color: #d8b4fe;
+}
+
+.beta-tester-pill.cyan {
+    background: rgba(0, 245, 255, 0.12);
+    border-color: rgba(0, 245, 255, 0.35);
+    color: #00f5ff;
+}
+
+.beta-tester-pill.green {
+    background: rgba(57, 255, 20, 0.12);
+    border-color: rgba(57, 255, 20, 0.35);
+    color: #39ff14;
+}
+
+.beta-tester-pill i,
+.beta-tester-pill svg {
+    width: 13px;
+    height: 13px;
+}
+
+.beta-tester-description-card {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 12px 14px;
+    font-size: 0.88rem;
+    line-height: 1.5;
+    color: var(--text-main, #e5e7eb);
+}
+
+.beta-tester-benefits-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.beta-tester-benefit-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: 12px;
+    background: rgba(168, 85, 247, 0.07);
+    border: 1px solid rgba(168, 85, 247, 0.18);
+    font-size: 0.82rem;
+    color: var(--text-main, #e5e7eb);
+}
+
+.beta-tester-benefit-item i,
+.beta-tester-benefit-item svg {
+    width: 16px;
+    height: 16px;
+    color: #c084fc;
+    flex-shrink: 0;
+}
+
+.beta-tester-status-card {
+    border-radius: 14px;
+    padding: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.04);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.beta-tester-status-card.state-none {
+    border-color: rgba(192, 132, 252, 0.35);
+    background: rgba(168, 85, 247, 0.08);
+}
+
+.beta-tester-status-card.state-pending {
+    border-color: rgba(250, 204, 21, 0.45);
+    background: rgba(250, 204, 21, 0.08);
+}
+
+.beta-tester-status-card.state-approved {
+    border-color: rgba(57, 255, 20, 0.5);
+    background: rgba(57, 255, 20, 0.1);
+}
+
+.beta-tester-status-top-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.beta-tester-status-label {
+    font-weight: 800;
+    font-size: 0.92rem;
+    color: #ffffff;
+}
+
+.beta-tester-status-chip {
+    font-size: 0.72rem;
+    font-weight: 800;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #e5e7eb;
+}
+
+.beta-tester-status-card.state-pending .beta-tester-status-chip {
+    background: rgba(250, 204, 21, 0.22);
+    color: #fde047;
+}
+
+.beta-tester-status-card.state-approved .beta-tester-status-chip {
+    background: rgba(57, 255, 20, 0.22);
+    color: #39ff14;
+}
+
+.beta-tester-status-message {
+    font-size: 0.82rem;
+    line-height: 1.45;
+    color: var(--text-dim, #cbd5e1);
+    margin: 0;
+}
+
+.beta-tester-progress-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 4px;
+}
+
+.beta-tester-progress-track {
+    width: 100%;
+    height: 8px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.1);
+    overflow: hidden;
+}
+
+.beta-tester-progress-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #facc15, #00f5ff, #39ff14);
+    transition: width 0.4s ease;
+}
+
+.beta-tester-countdown-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #fde047;
+}
+
+.beta-tester-modal-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 2px;
+}
+
+.beta-tester-request-btn {
+    width: 100%;
+    min-height: 50px;
+    padding: 13px 18px;
+    border-radius: 14px;
+    border: 1px solid rgba(192, 132, 252, 0.65);
+    background: linear-gradient(135deg, #9333ea 0%, #06b6d4 100%);
+    color: #ffffff;
+    font-size: 0.96rem;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    box-shadow: 0 6px 20px rgba(147, 51, 234, 0.35);
+    transition: all 0.2s ease;
+}
+
+.beta-tester-request-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 24px rgba(6, 182, 212, 0.45);
+}
+
+.beta-tester-request-btn:disabled {
+    opacity: 0.78;
+    cursor: not-allowed;
+    background: linear-gradient(135deg, rgba(100, 116, 139, 0.35), rgba(51, 65, 85, 0.45));
+    border-color: rgba(148, 163, 184, 0.35);
+    box-shadow: none;
+}
+
+.beta-tester-request-btn.approved {
+    background: linear-gradient(135deg, rgba(57, 255, 20, 0.25), rgba(16, 185, 129, 0.35));
+    border-color: rgba(57, 255, 20, 0.6);
+    color: #39ff14;
+    opacity: 1;
+}
+
 
 
 
