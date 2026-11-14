@@ -35,13 +35,13 @@
     <meta itemprop="image" content="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
     <link rel="image_src" type="image/png" href="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
 
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.294">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.294">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.294">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.294">
-    <link rel="stylesheet" href="style.css?v=1.0.294">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.295">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.295">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.295">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.295">
+    <link rel="stylesheet" href="style.css?v=1.0.295">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.294" id="app-manifest-link">
+    <link rel="manifest" href="manifest.json?v=1.0.295" id="app-manifest-link">
     <meta name="theme-color" content="#39ff14" id="app-theme-color-meta">
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#39ff14" id="app-theme-color-meta-dark">
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#39ff14" id="app-theme-color-meta-light">
@@ -50,8 +50,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.294">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.294">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.295">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.295">
     <!-- Sincronização Dinâmica da Barra de Status e Barra de Navegação do Celular -->
     <script>
         (function() {
@@ -6935,7 +6935,7 @@
                                 <i data-lucide="badge-check" id="channel-verified-badge" class="verified-badge" style="display:none;" title="Verificado"></i>
                             </div>
                             <div id="channel-handle" class="channel-handle">@usuario</div>
-                            <div id="channel-stats" class="channel-stats">0 inscritos • 0 vídeos</div>
+                            <div id="channel-stats" class="channel-stats">0 inscritos • 0 seguidores • 0 vídeos</div>
                         </div>
                     </div>
 
@@ -7066,6 +7066,14 @@
                         <input type="url" id="channel-customize-link-input" class="channel-modal-input" maxlength="160" placeholder="https://seusite.com">
                     </div>
 
+                    <label class="channel-customize-toggle-card" for="channel-customize-show-followers-toggle">
+                        <span class="channel-customize-toggle-info">
+                            <strong>Mostrar seguidores na frente de inscritos</strong>
+                            <small>Exibe quantos seguidores você tem ao lado dos inscritos no cabeçalho do canal.</small>
+                        </span>
+                        <input type="checkbox" id="channel-customize-show-followers-toggle" class="channel-customize-checkbox" checked>
+                    </label>
+
                     <button type="button" id="save-channel-customize-btn" class="danger-btn save-profile-action-btn">Salvar Canal</button>
                 </div>
             </div>
@@ -7128,7 +7136,7 @@
                         <span id="channel-viewer-stats" class="channel-viewer-stats"></span>
                         <div class="channel-viewer-actions">
                             <button type="button" id="channel-viewer-follow-btn" class="post-follow-btn" data-action="follow-author" style="display:none;"><i data-lucide="user-plus"></i> <span>Seguir</span></button>
-                            <button type="button" id="channel-viewer-like-btn" class="channel-pill-btn"><i data-lucide="heart"></i> <span id="channel-viewer-like-count">0</span></button>
+                            <button type="button" id="channel-viewer-like-btn" class="channel-pill-btn" aria-pressed="false" title="Curtir"><i data-lucide="heart"></i> <span id="channel-viewer-like-count">0</span></button>
                             <button type="button" id="channel-viewer-open-feed-btn" class="channel-pill-btn">Ver no Feed</button>
                         </div>
                     </div>
@@ -7213,6 +7221,6 @@
         </main>
     </div>
 
-    <script type="module" src="script.js?v=1.0.294" defer></script>
+    <script type="module" src="script.js?v=1.0.295" defer></script>
 </body>
 </html>

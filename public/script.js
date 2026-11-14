@@ -23344,7 +23344,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.294';
+export const CURRENT_APP_VERSION = '1.0.295';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -33854,6 +33854,42 @@ export async function editPostComment(postId, commentIdOrIdx, newText) {
     }
 }
 
+export function syncPostLikeButtonsInDOM(postId, postObj = null) {
+    if (!postId || typeof document === 'undefined') return;
+    const post = postObj || ((typeof cachedFeedPosts !== 'undefined' && Array.isArray(cachedFeedPosts))
+        ? cachedFeedPosts.find(item => item && item.id === postId)
+        : null);
+    if (!post) return;
+
+    const likesArr = Array.isArray(post.likes) ? post.likes.filter(Boolean) : [];
+    const likesCount = likesArr.length;
+    const isLiked = Boolean(currentUser?.uid && likesArr.includes(currentUser.uid));
+
+    if (typeof document.querySelectorAll === 'function') {
+        document.querySelectorAll('.feed-action-btn').forEach(btn => {
+            if (btn?.dataset?.postId === postId && btn?.dataset?.action === 'like') {
+                btn.classList?.toggle('liked', isLiked);
+                btn.setAttribute?.('aria-pressed', isLiked ? 'true' : 'false');
+                btn.title = isLiked ? 'Curtido' : 'Curtir';
+                const countSpan = btn.querySelector?.('span');
+                if (countSpan) countSpan.innerText = String(likesCount);
+            }
+        });
+        document.querySelectorAll('.post-action-btn').forEach(btn => {
+            if (btn?.dataset?.postId === postId && btn?.dataset?.action === 'like-preview-post') {
+                btn.classList?.toggle('liked', isLiked);
+                btn.setAttribute?.('aria-pressed', isLiked ? 'true' : 'false');
+                const countSpan = btn.querySelector?.('span');
+                if (countSpan) countSpan.innerText = String(likesCount);
+            }
+        });
+    }
+
+    if (typeof activeChannelViewerPostId !== 'undefined' && activeChannelViewerPostId === postId) {
+        syncChannelViewerLikeButton(post);
+    }
+}
+
 export async function togglePostLike(postId, options = {}) {
     if (!currentUser) {
         showToast('Login necessário', 'Entre para curtir.', 'red');
@@ -33897,6 +33933,7 @@ export async function togglePostLike(postId, options = {}) {
             ? currentLikes.filter(uid => uid !== currentUser.uid)
             : [...currentLikes, currentUser.uid];
         post.likes = updatedLikes;
+        syncPostLikeButtonsInDOM(postId, post);
         await updateDoc(doc(db, 'posts', postId), { likes: updatedLikes });
 
         // Notificar o dono do post quando recebe uma curtida (apenas na primeira curtida)
@@ -35386,6 +35423,9 @@ export async function toggleFollowUser(targetUid, meta = {}) {
         }
 
         syncFollowButtonsInDOM(targetUid);
+        if (activeChannelUid === targetUid && document.getElementById('channel-panel')?.classList?.contains('active')) {
+            renderChannelScreen();
+        }
 
         await Promise.all([
             persistUserArrayMembership(currentUser.uid, 'following', targetUid, nowFollowing, { updatedAt: Date.now() }),
@@ -35475,7 +35515,9 @@ function renderPostsFeed(posts = []) {
                 const isPostAuthorCompany = !isPostAuthorAdmin && checkIsCompanyUser(post);
                 const resolvedAvatar = getLiveAuthorAvatar(post.authorUid, post.authorAvatar);
                 const avatar = resolvedAvatar ? `style="background-image: url('${resolvedAvatar}')"` : '';
-                const likes = Array.isArray(post.likes) ? post.likes.length : 0;
+                const likesArr = Array.isArray(post.likes) ? post.likes : [];
+                const likes = likesArr.length;
+                const userLiked = Boolean(currentUser?.uid && likesArr.includes(currentUser.uid));
                 const comments = (Array.isArray(post.comments) ? post.comments : []).filter(c => !isUserAccountDeleted(c.authorUid) && !c.isDeleted && !c.deleted);
                 const caption = post.caption || '';
                 const rawMedia = post.mediaData || (post.hasChunks && post.id && mediaChunkCache.get(`posts_${post.id}`)) || '';
@@ -35575,7 +35617,7 @@ function renderPostsFeed(posts = []) {
                             </div>
                         ` : ''}
                         <div class="post-actions">
-                            <button class="post-action-btn" type="button">❤ ${likes}</button>
+                            <button class="post-action-btn ${userLiked ? 'liked' : ''}" type="button" data-action="like-preview-post" data-post-id="${post.id}">❤ <span>${likes}</span></button>
                             <button class="post-action-btn" type="button" data-action="open-comment-modal" data-post-id="${post.id}">💬 ${comments.length}</button>
                             <button class="post-action-btn post-views-btn ${userViewed ? 'viewed' : ''}" type="button" data-action="post-views" data-post-id="${post.id}" title="Visualizações da publicação">
                                 <i data-lucide="eye"></i> <span data-post-views-count="${post.id}">${formattedViews}</span>
@@ -35592,6 +35634,13 @@ function renderPostsFeed(posts = []) {
             }).join('');
 
             resolvePostChunkedMedia(previewFeed, posts);
+
+            previewFeed.querySelectorAll('[data-action="like-preview-post"]').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const postId = btn.dataset.postId;
+                    if (postId) await togglePostLike(postId);
+                });
+            });
 
             previewFeed.querySelectorAll('[data-action="open-comment-modal"]').forEach(btn => {
                 btn.addEventListener('click', () => {
@@ -52343,6 +52392,13 @@ export function syncOpenChannelProfileIfMatches(uid) {
     syncChannelProfileAvatarAndMeta();
 }
 
+export function formatChannelStatsLine({ subscribersCount = 0, followersCount = 0, videosCount = 0, showFollowers = true } = {}) {
+    const subsLabel = `${subscribersCount} ${subscribersCount === 1 ? 'inscrito' : 'inscritos'}`;
+    const followersLabel = `${followersCount} ${followersCount === 1 ? 'seguidor' : 'seguidores'}`;
+    const videosLabel = `${videosCount} ${videosCount === 1 ? 'vídeo' : 'vídeos'}`;
+    return showFollowers ? `${subsLabel} • ${followersLabel} • ${videosLabel}` : `${subsLabel} • ${videosLabel}`;
+}
+
 export function renderChannelScreen() {
     const panel = document.getElementById('channel-panel');
     if (!panel) return;
@@ -52402,12 +52458,21 @@ export function renderChannelScreen() {
 
     const subscribersArr = Array.isArray(userData.channelSubscribers) ? userData.channelSubscribers : [];
     const subscribersCount = subscribersArr.length;
+    const followersCount = typeof getUserFollowersCount === 'function'
+        ? getUserFollowersCount(userData)
+        : (Array.isArray(userData.followers) ? userData.followers.length : 0);
+    const showFollowersInStats = userData.channelShowFollowers !== false;
     const allChannelVideos = getChannelMediaPostsForUser(uid, 'inicio');
     const videosCount = allChannelVideos.length;
 
     const statsEl = document.getElementById('channel-stats');
     if (statsEl) {
-        statsEl.innerText = `${subscribersCount} ${subscribersCount === 1 ? 'inscrito' : 'inscritos'} • ${videosCount} ${videosCount === 1 ? 'vídeo' : 'vídeos'}`;
+        statsEl.innerText = formatChannelStatsLine({
+            subscribersCount,
+            followersCount,
+            videosCount,
+            showFollowers: showFollowersInStats
+        });
     }
 
     // Bio + ...mais
@@ -52639,6 +52704,8 @@ export async function openUserChannelScreen(targetUid = null, fallbackData = nul
                     if (liveData.channelSubscribers !== undefined) currentProfile.channelSubscribers = liveData.channelSubscribers;
                     if (liveData.channelFollowerSources !== undefined) currentProfile.channelFollowerSources = liveData.channelFollowerSources;
                     if (liveData.channelCommunityPosts !== undefined) currentProfile.channelCommunityPosts = liveData.channelCommunityPosts;
+                    if (liveData.followers !== undefined) currentProfile.followers = liveData.followers;
+                    if (liveData.channelShowFollowers !== undefined) currentProfile.channelShowFollowers = liveData.channelShowFollowers;
                 }
                 if (document.getElementById('channel-panel')?.classList.contains('active')) {
                     renderChannelScreen();
@@ -52760,9 +52827,11 @@ export function openChannelCustomizeModal() {
     const nameInput = document.getElementById('channel-customize-name-input');
     const bioInput = document.getElementById('channel-customize-bio-input');
     const linkInput = document.getElementById('channel-customize-link-input');
+    const showFollowersToggle = document.getElementById('channel-customize-show-followers-toggle');
     if (nameInput) nameInput.value = userData.channelName || fullName || '';
     if (bioInput) bioInput.value = userData.channelBio || userData.status || '';
     if (linkInput) linkInput.value = userData.channelLink || userData.website1 || '';
+    if (showFollowersToggle) showFollowersToggle.checked = userData.channelShowFollowers !== false;
 
     modal.style.display = 'flex';
     modal.setAttribute('aria-hidden', 'false');
@@ -52774,6 +52843,7 @@ export async function saveChannelCustomizeModal() {
     const nameInput = document.getElementById('channel-customize-name-input');
     const bioInput = document.getElementById('channel-customize-bio-input');
     const linkInput = document.getElementById('channel-customize-link-input');
+    const showFollowersToggle = document.getElementById('channel-customize-show-followers-toggle');
 
     const channelName = (nameInput?.value || '').trim().slice(0, 40);
     const channelBio = (bioInput?.value || '').trim().slice(0, 300);
@@ -52784,15 +52854,18 @@ export async function saveChannelCustomizeModal() {
         return;
     }
     const channelLink = parsedLink ? parsedLink.href : '';
+    const channelShowFollowers = showFollowersToggle ? Boolean(showFollowersToggle.checked) : (currentProfile.channelShowFollowers !== false);
 
     currentProfile.channelName = channelName;
     currentProfile.channelBio = channelBio;
     currentProfile.channelLink = channelLink;
+    currentProfile.channelShowFollowers = channelShowFollowers;
 
     if (activeChannelUid === currentUser.uid && activeChannelUserData) {
         activeChannelUserData.channelName = channelName;
         activeChannelUserData.channelBio = channelBio;
         activeChannelUserData.channelLink = channelLink;
+        activeChannelUserData.channelShowFollowers = channelShowFollowers;
     }
 
     try {
@@ -52800,6 +52873,7 @@ export async function saveChannelCustomizeModal() {
             channelName,
             channelBio,
             channelLink,
+            channelShowFollowers,
             updatedAt: Date.now()
         }, { merge: true });
     } catch (err) {
@@ -53169,6 +53243,24 @@ export function openChannelManageModal() {
     if (window.lucide) lucide.createIcons();
 }
 
+export function syncChannelViewerLikeButton(post = null) {
+    const likeBtn = document.getElementById('channel-viewer-like-btn');
+    const likeCountEl = document.getElementById('channel-viewer-like-count');
+    const targetPost = post || (activeChannelViewerPostId && Array.isArray(cachedFeedPosts)
+        ? cachedFeedPosts.find(p => p && p.id === activeChannelViewerPostId)
+        : null);
+    const likesArr = Array.isArray(targetPost?.likes) ? targetPost.likes.filter(Boolean) : [];
+    const isLiked = Boolean(currentUser?.uid && likesArr.includes(currentUser.uid));
+
+    if (likeCountEl) likeCountEl.innerText = String(likesArr.length);
+    if (likeBtn) {
+        likeBtn.classList?.toggle('liked', isLiked);
+        likeBtn.setAttribute?.('aria-pressed', isLiked ? 'true' : 'false');
+        likeBtn.title = isLiked ? 'Curtido (clique para descurtir)' : 'Curtir';
+    }
+    return isLiked;
+}
+
 export function openChannelGridMediaViewer(postId) {
     const post = (Array.isArray(cachedFeedPosts) ? cachedFeedPosts : []).find(p => p && p.id === postId);
     const modal = document.getElementById('channel-media-viewer-modal');
@@ -53192,12 +53284,11 @@ export function openChannelGridMediaViewer(postId) {
     const titleEl = document.getElementById('channel-viewer-title');
     const capEl = document.getElementById('channel-viewer-caption');
     const statsEl = document.getElementById('channel-viewer-stats');
-    const likeCountEl = document.getElementById('channel-viewer-like-count');
     if (titleEl) titleEl.innerText = post.title || post.authorName || 'Vídeo do Canal';
     if (capEl) capEl.innerText = post.caption || '';
     const viewsCount = typeof getPostViewsCount === 'function' ? getPostViewsCount(post) : (post.viewsCount || 0);
     if (statsEl) statsEl.innerText = `${viewsCount} visualizações`;
-    if (likeCountEl) likeCountEl.innerText = String(Array.isArray(post.likes) ? post.likes.length : 0);
+    syncChannelViewerLikeButton(post);
 
     const viewerFollowBtn = document.getElementById('channel-viewer-follow-btn');
     if (viewerFollowBtn) {
@@ -53333,9 +53424,8 @@ function bindChannelScreenListeners() {
     document.getElementById('channel-viewer-like-btn')?.addEventListener('click', async () => {
         if (!activeChannelViewerPostId) return;
         await togglePostLike(activeChannelViewerPostId);
-        const post = cachedFeedPosts.find(p => p.id === activeChannelViewerPostId);
-        const likeCountEl = document.getElementById('channel-viewer-like-count');
-        if (likeCountEl && post) likeCountEl.innerText = String(Array.isArray(post.likes) ? post.likes.length : 0);
+        const post = cachedFeedPosts.find(p => p.id === activeChannelViewerPostId) || null;
+        syncChannelViewerLikeButton(post);
     });
     document.getElementById('channel-viewer-follow-btn')?.addEventListener('click', async () => {
         const btn = document.getElementById('channel-viewer-follow-btn');
@@ -53403,6 +53493,9 @@ if (typeof window !== 'undefined') {
     window.publishChannelCommunityPost = publishChannelCommunityPost;
     window.openChannelManageModal = openChannelManageModal;
     window.openChannelGridMediaViewer = openChannelGridMediaViewer;
+    window.syncChannelViewerLikeButton = syncChannelViewerLikeButton;
+    window.syncPostLikeButtonsInDOM = syncPostLikeButtonsInDOM;
+    window.formatChannelStatsLine = formatChannelStatsLine;
     window.syncChannelProfileAvatarAndMeta = syncChannelProfileAvatarAndMeta;
     window.isFollowingUser = isFollowingUser;
     window.getUserFollowersCount = getUserFollowersCount;

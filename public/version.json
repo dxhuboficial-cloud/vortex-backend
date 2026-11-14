@@ -1,6 +1,6 @@
 {
-  "version": "1.0.294",
-  "build": 294,
+  "version": "1.0.295",
+  "build": 295,
   "releaseDate": "2026-11-14",
-  "notes": "Play centralizado em vídeos/músicas, tag Imagens no Feed/Canal, Curtir avisos da Comunidade e métricas de seguidores vindos dos vídeos vs visita no canal v1.0.294"
+  "notes": "Exibir quantidade de seguidores ao lado de inscritos no canal (com opção de configuração) e destaque colorido nos botões de curtida ativos v1.0.295"
 }
