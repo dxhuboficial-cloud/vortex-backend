@@ -35,13 +35,13 @@
     <meta itemprop="image" content="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
     <link rel="image_src" type="image/png" href="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
 
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.284">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.284">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.284">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.284">
-    <link rel="stylesheet" href="style.css?v=1.0.284">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.285">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.285">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.285">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.285">
+    <link rel="stylesheet" href="style.css?v=1.0.285">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.284" id="app-manifest-link">
+    <link rel="manifest" href="manifest.json?v=1.0.285" id="app-manifest-link">
     <meta name="theme-color" content="#39ff14" id="app-theme-color-meta">
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#39ff14" id="app-theme-color-meta-dark">
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#39ff14" id="app-theme-color-meta-light">
@@ -50,8 +50,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.284">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.284">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.285">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.285">
     <!-- Sincronização Dinâmica da Barra de Status e Barra de Navegação do Celular -->
     <script>
         (function() {
@@ -1698,17 +1698,29 @@
                 </div>
 
                 <div class="setting-item">
-                    <label for="profile-name-input" class="setting-info"><span>Nome</span><small>Máx. 15 caracteres</small></label>
+                    <label for="profile-name-input" class="setting-info">
+                        <span>Nome</span>
+                        <small>Máx. 15 caracteres</small>
+                        <small id="profile-name-limit-hint" class="profile-edit-limit-hint">3/3 edições restantes neste mês</small>
+                    </label>
                     <input type="text" id="profile-name-input" placeholder="Seu Nome" title="Nome" maxlength="15" autocomplete="given-name">
                 </div>
 
                 <div class="setting-item">
-                    <label for="profile-lastname-input" class="setting-info"><span>Sobrenome</span><small>Máx. 15 caracteres</small></label>
+                    <label for="profile-lastname-input" class="setting-info">
+                        <span>Sobrenome</span>
+                        <small>Máx. 15 caracteres</small>
+                        <small id="profile-lastname-limit-hint" class="profile-edit-limit-hint">3/3 edições restantes neste mês</small>
+                    </label>
                     <input type="text" id="profile-lastname-input" placeholder="Sobrenome" title="Sobrenome" maxlength="15" autocomplete="family-name">
                 </div>
 
                 <div class="setting-item">
-                    <label for="profile-username-input" class="setting-info"><span>Nome de Usuário (@)</span><small>Exclusivo para buscas</small></label>
+                    <label for="profile-username-input" class="setting-info">
+                        <span>Nome de Usuário (@)</span>
+                        <small>Exclusivo para buscas</small>
+                        <small id="profile-username-limit-hint" class="profile-edit-limit-hint">3/3 edições restantes neste mês</small>
+                    </label>
                     <input type="text" id="profile-username-input" placeholder="username" title="Use apenas letras, números, ponto e sublinhado" aria-describedby="profile-username-help" required minlength="3" maxlength="30" pattern="[A-Za-z0-9_.]+" autocomplete="username">
                 </div>
 
@@ -1721,6 +1733,7 @@
                     <label for="profile-phone-input" class="setting-info">
                         <span class="profile-field-title"><i data-lucide="phone" class="profile-field-icon social-icon-phone"></i> Telefone</span>
                         <small>DDD + Número</small>
+                        <small id="profile-phone-limit-hint" class="profile-edit-limit-hint">3/3 edições restantes neste mês</small>
                     </label>
                     <input type="tel" id="profile-phone-input" placeholder="(11) 99999-9999" title="Número de Telefone" autocomplete="tel" inputmode="numeric" maxlength="15">
                 </div>
@@ -2910,10 +2923,10 @@
                 <div class="app-version-card" id="app-version-info-footer">
                     <div class="app-version-header-row">
                         <div class="app-version-brand-wrap">
-                            <img src="icons/vortex-vip-192.png?v=1.0.284" alt="VORTEX VIP" class="app-version-icon-img" width="22" height="22">
+                            <img src="icons/vortex-vip-192.png?v=1.0.285" alt="VORTEX VIP" class="app-version-icon-img" width="22" height="22">
                             <span class="app-version-brand-name">VORTEX VIP Oficial</span>
                         </div>
-                        <span class="app-version-pill-badge" id="app-version-display-badge">v1.0.284 ⚡</span>
+                        <span class="app-version-pill-badge" id="app-version-display-badge">v1.0.285 ⚡</span>
                     </div>
                     <div class="app-version-status-row">
                         <span class="app-version-status-dot"></span>
@@ -3316,7 +3329,7 @@
                     </div>
                 </div>
 
-                <!-- 11. Aba de IA Segurança, Moderação & Recomendação Inteligente (v1.0.284) -->
+                <!-- 11. Aba de IA Segurança, Moderação & Recomendação Inteligente (v1.0.285) -->
                 <div id="admin-view-ai-security" class="admin-view">
                     <div class="admin-ai-hero-card">
                         <div class="admin-ai-hero-top">
@@ -6749,7 +6762,7 @@
         <div id="business-blocked-modal" class="custom-modal-overlay business-blocked-overlay" style="display:none;" aria-hidden="true">
             <div class="custom-modal-card business-blocked-card">
                 <div class="business-blocked-icon-wrap">
-                    <img src="icons/blocked-hand.png?v=1.0.284" alt="Acesso Bloqueado" class="business-blocked-hand-icon" width="64" height="64">
+                    <img src="icons/blocked-hand.png?v=1.0.285" alt="Acesso Bloqueado" class="business-blocked-hand-icon" width="64" height="64">
                 </div>
                 <h3 class="business-blocked-title">Acesso Bloqueado</h3>
                 <p class="business-blocked-msg" id="business-blocked-msg-text">
@@ -6861,6 +6874,6 @@
         </main>
     </div>
 
-    <script type="module" src="script.js?v=1.0.284" defer></script>
+    <script type="module" src="script.js?v=1.0.285" defer></script>
 </body>
 </html>

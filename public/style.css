@@ -32273,6 +32273,29 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
     background: rgba(255, 77, 103, 0.08);
 }
 
+/* ===== LIMITE MENSAL DE EDIÇÃO DE PERFIL POR CAMPO (3x/MÊS) ===== */
+.profile-edit-limit-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: rgba(122, 233, 255, 0.85);
+    margin-top: 2px;
+}
+.profile-edit-limit-hint.warning {
+    color: #ffb74d;
+}
+.profile-edit-limit-hint.locked {
+    color: #ff6b81;
+    font-weight: 700;
+}
+.profile-input-locked {
+    opacity: 0.58 !important;
+    cursor: not-allowed !important;
+    border-color: rgba(255, 107, 129, 0.45) !important;
+}
+
 
 
 

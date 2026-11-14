@@ -1,6 +1,6 @@
 {
-  "version": "1.0.284",
-  "build": 284,
+  "version": "1.0.285",
+  "build": 285,
   "releaseDate": "2026-11-13",
-  "notes": "Sistema VORTEX AI Like Shield ✨ (v1.0.284): bloqueio temporário automático de 24 horas nas curtidas de posts para quem clica muito rápido, evitando spam, bots e auto-click"
+  "notes": "Limite mensal de edição de perfil por campo (v1.0.285): Nome, Sobrenome, Nome de Usuário e Telefone possuem limite independente de 3 edições por mês (30 dias), contabilizado somente quando o campo for realmente alterado"
 }

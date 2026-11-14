@@ -23194,7 +23194,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.284';
+export const CURRENT_APP_VERSION = '1.0.285';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -36946,6 +36946,10 @@ document.getElementById('profile-btn')?.addEventListener('click', () => {
         prev.style.backgroundImage = currentProfile.avatar ? `url('${currentProfile.avatar}')` : '';
     }
 
+    if (typeof syncProfileFieldEditLimitsUI === 'function') {
+        syncProfileFieldEditLimitsUI(currentProfile);
+    }
+
     document.getElementById('profile-edit-panel')?.classList.add('active');
     if (typeof window !== 'undefined' && window.lucide) {
         window.lucide.createIcons();
@@ -38236,6 +38240,36 @@ document.getElementById('save-profile-btn')?.addEventListener('click', async () 
     }
 
     const username = `@${usernameKey}`;
+    const resolvedLimitUid = currentUser.uid;
+    const effectiveProfileForLimits = {
+        ...(currentProfile || {}),
+        uid: resolvedLimitUid,
+        profileFieldEdits: currentProfile?.profileFieldEdits || loadProfileFieldEditsLocal(resolvedLimitUid)
+    };
+    const monthlyLimitCheck = evaluateProfileMonthlyEditLimits({
+        currentValues: {
+            name: currentProfile?.name || '',
+            surname: currentProfile?.surname || '',
+            username: currentProfile?.username || '',
+            phone: currentProfile?.phone || ''
+        },
+        nextValues: {
+            name,
+            surname,
+            username,
+            phone
+        },
+        profile: effectiveProfileForLimits,
+        uid: resolvedLimitUid
+    });
+    if (!monthlyLimitCheck.allowed) {
+        if (typeof syncProfileFieldEditLimitsUI === 'function') {
+            syncProfileFieldEditLimitsUI(effectiveProfileForLimits);
+        }
+        showToast('Limite Mensal de Edição 🔒', monthlyLimitCheck.errorMessage, 'red');
+        return;
+    }
+
     const oldUsernameKey = normalizeUsername(currentProfile.username || '');
     const newUsernameRef = doc(db, 'usernames', usernameKey);
     const oldUsernameRef = oldUsernameKey ? doc(db, 'usernames', oldUsernameKey) : null;
@@ -38279,6 +38313,7 @@ document.getElementById('save-profile-btn')?.addEventListener('click', async () 
                 status: bio,
                 phone,
                 pixKey,
+                profileFieldEdits: monthlyLimitCheck.nextProfileFieldEdits,
                 accountType,
                 isPrivateAccount,
                 isStoreEnabled,
@@ -38326,6 +38361,11 @@ document.getElementById('save-profile-btn')?.addEventListener('click', async () 
     currentProfile.name = name;
     currentProfile.surname = surname;
     currentProfile.username = username;
+    currentProfile.profileFieldEdits = monthlyLimitCheck.nextProfileFieldEdits;
+    saveProfileFieldEditsLocal(resolvedLimitUid, monthlyLimitCheck.nextProfileFieldEdits);
+    if (typeof syncProfileFieldEditLimitsUI === 'function') {
+        syncProfileFieldEditLimitsUI(currentProfile);
+    }
     if (typeof localStorage !== 'undefined') {
         localStorage.setItem(`vortex_username_verified_${currentUser.uid}`, usernameKey);
     }
@@ -42601,6 +42641,14 @@ window.handleCallSwitchedToVideo = handleCallSwitchedToVideo;
     window.analyzeLikeClickBurstByAI = analyzeLikeClickBurstByAI;
     window.handleLikeAttemptByAI = handleLikeAttemptByAI;
     window.syncLikeButtonsLockUI = syncLikeButtonsLockUI;
+    window.PROFILE_FIELD_EDIT_LIMIT_MAX = PROFILE_FIELD_EDIT_LIMIT_MAX;
+    window.PROFILE_FIELD_EDIT_WINDOW_MS = PROFILE_FIELD_EDIT_WINDOW_MS;
+    window.PROFILE_MONTHLY_LIMITED_FIELDS = PROFILE_MONTHLY_LIMITED_FIELDS;
+    window.normalizeProfileFieldValueForLimit = normalizeProfileFieldValueForLimit;
+    window.getProfileFieldEditStatus = getProfileFieldEditStatus;
+    window.getAllProfileFieldEditStatuses = getAllProfileFieldEditStatuses;
+    window.evaluateProfileMonthlyEditLimits = evaluateProfileMonthlyEditLimits;
+    window.syncProfileFieldEditLimitsUI = syncProfileFieldEditLimitsUI;
     try {
         Object.defineProperty(window, 'maintenanceConfig', {
             get: () => maintenanceConfig,
@@ -49624,6 +49672,211 @@ export function syncLikeButtonsLockUI() {
             }
         }
     });
+}
+
+/* ==========================================================================
+   VORTEX VIP ⚡ - LIMITE MENSAL DE EDIÇÃO DE PERFIL POR CAMPO (v1.0.285)
+   ========================================================================== */
+
+export const PROFILE_FIELD_EDIT_LIMIT_MAX = 3;
+export const PROFILE_FIELD_EDIT_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
+
+const PROFILE_FIELD_NORMALIZERS = {
+    name: (val) => String(val ?? '').trim().slice(0, 15),
+    surname: (val) => String(val ?? '').trim().slice(0, 15),
+    username: (val) => {
+        const raw = String(val ?? '').trim();
+        return typeof normalizeUsername === 'function'
+            ? normalizeUsername(raw)
+            : raw.replace(/^@+/, '').toLowerCase();
+    },
+    phone: (val) => String(val ?? '').replace(/\D/g, '')
+};
+
+export const PROFILE_MONTHLY_LIMITED_FIELDS = {
+    name: { key: 'name', label: 'Nome', inputId: 'profile-name-input', hintId: 'profile-name-limit-hint' },
+    surname: { key: 'surname', label: 'Sobrenome', inputId: 'profile-lastname-input', hintId: 'profile-lastname-limit-hint' },
+    username: { key: 'username', label: 'Nome de Usuário', inputId: 'profile-username-input', hintId: 'profile-username-limit-hint' },
+    phone: { key: 'phone', label: 'Telefone', inputId: 'profile-phone-input', hintId: 'profile-phone-limit-hint' }
+};
+
+/**
+ * Normaliza o valor de um campo limitado para comparar apenas alterações reais,
+ * evitando que diferenças cosméticas (ex: "@", máscara de telefone, espaços) consumam cota.
+ */
+export function normalizeProfileFieldValueForLimit(fieldKey, value) {
+    const normalizer = PROFILE_FIELD_NORMALIZERS[fieldKey];
+    return normalizer ? normalizer(value) : String(value ?? '').trim();
+}
+
+function pruneFieldEditTimestamps(rawTimestamps, now = Date.now()) {
+    if (!Array.isArray(rawTimestamps)) return [];
+    return rawTimestamps
+        .filter(ts => typeof ts === 'number' && Number.isFinite(ts) && ts > 0 && (now - ts) < PROFILE_FIELD_EDIT_WINDOW_MS)
+        .sort((a, b) => a - b);
+}
+
+function loadProfileFieldEditsLocal(uid) {
+    if (!uid || typeof localStorage === 'undefined') return null;
+    try {
+        const raw = localStorage.getItem(`vortex_profile_field_edits_${uid}`);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        return (parsed && typeof parsed === 'object') ? parsed : null;
+    } catch (_) {
+        return null;
+    }
+}
+
+function saveProfileFieldEditsLocal(uid, editsMap) {
+    if (!uid || typeof localStorage === 'undefined' || !editsMap || typeof editsMap !== 'object') return;
+    try {
+        localStorage.setItem(`vortex_profile_field_edits_${uid}`, JSON.stringify(editsMap));
+    } catch (_) {}
+}
+
+function resolveFieldEditMap(profile = null, uid = null) {
+    if (profile?.profileFieldEdits && typeof profile.profileFieldEdits === 'object') {
+        return profile.profileFieldEdits;
+    }
+    const targetUid = uid || profile?.uid || null;
+    return loadProfileFieldEditsLocal(targetUid) || {};
+}
+
+/**
+ * Calcula o status mensal (janela deslizante de 30 dias) de um único campo limitado.
+ */
+export function getProfileFieldEditStatus(fieldKey, profile = null, now = Date.now(), uid = null) {
+    const cfg = PROFILE_MONTHLY_LIMITED_FIELDS[fieldKey];
+    const editMap = resolveFieldEditMap(profile, uid);
+    const timestamps = pruneFieldEditTimestamps(editMap[fieldKey], now);
+    const usedCount = timestamps.length;
+    const maxEdits = PROFILE_FIELD_EDIT_LIMIT_MAX;
+    const remainingEdits = Math.max(0, maxEdits - usedCount);
+    const isLocked = remainingEdits <= 0;
+    const nextUnlockAt = (isLocked && timestamps.length > 0)
+        ? timestamps[0] + PROFILE_FIELD_EDIT_WINDOW_MS
+        : null;
+    const daysUntilUnlock = nextUnlockAt
+        ? Math.max(1, Math.ceil((nextUnlockAt - now) / (24 * 60 * 60 * 1000)))
+        : 0;
+
+    return {
+        field: fieldKey,
+        label: cfg?.label || fieldKey,
+        timestamps,
+        usedCount,
+        maxEdits,
+        remainingEdits,
+        isLocked,
+        nextUnlockAt,
+        daysUntilUnlock
+    };
+}
+
+/**
+ * Retorna o status mensal independente de todos os 4 campos limitados.
+ */
+export function getAllProfileFieldEditStatuses(profile = null, now = Date.now(), uid = null) {
+    const statuses = {};
+    for (const fieldKey of Object.keys(PROFILE_MONTHLY_LIMITED_FIELDS)) {
+        statuses[fieldKey] = getProfileFieldEditStatus(fieldKey, profile, now, uid);
+    }
+    return statuses;
+}
+
+/**
+ * Avalia os 4 campos separadamente: só verifica e contabiliza cota se o valor normalizado mudou.
+ */
+export function evaluateProfileMonthlyEditLimits({
+    currentValues = {},
+    nextValues = {},
+    profile = null,
+    now = Date.now(),
+    uid = null
+} = {}) {
+    const statuses = getAllProfileFieldEditStatuses(profile, now, uid);
+    const changedFields = [];
+    const blockedFields = [];
+    const nextProfileFieldEdits = {};
+
+    for (const fieldKey of Object.keys(PROFILE_MONTHLY_LIMITED_FIELDS)) {
+        const status = statuses[fieldKey];
+        nextProfileFieldEdits[fieldKey] = [...status.timestamps];
+
+        const prevNorm = normalizeProfileFieldValueForLimit(fieldKey, currentValues[fieldKey]);
+        const nextNorm = normalizeProfileFieldValueForLimit(fieldKey, nextValues[fieldKey]);
+        if (prevNorm === nextNorm) continue;
+
+        changedFields.push(fieldKey);
+        if (status.isLocked) {
+            blockedFields.push(status);
+        } else {
+            nextProfileFieldEdits[fieldKey].push(now);
+        }
+    }
+
+    let errorMessage = '';
+    if (blockedFields.length === 1) {
+        const b = blockedFields[0];
+        errorMessage = `Você atingiu o limite mensal de ${PROFILE_FIELD_EDIT_LIMIT_MAX} edições para "${b.label}". Libera em ${b.daysUntilUnlock} dia(s). Campos não bloqueados continuam liberados.`;
+    } else if (blockedFields.length > 1) {
+        const names = blockedFields.map(b => `"${b.label}"`).join(', ');
+        errorMessage = `Você atingiu o limite mensal de ${PROFILE_FIELD_EDIT_LIMIT_MAX} edições nos campos: ${names}.`;
+    }
+
+    return {
+        allowed: blockedFields.length === 0,
+        changedFields,
+        blockedFields,
+        nextProfileFieldEdits,
+        errorMessage
+    };
+}
+
+/**
+ * Atualiza os contadores e bloqueia visualmente apenas os inputs que atingiram 3/3 edições no mês.
+ */
+export function syncProfileFieldEditLimitsUI(
+    profile = (typeof currentProfile !== 'undefined' ? currentProfile : null),
+    now = Date.now()
+) {
+    if (typeof document === 'undefined') return null;
+    const uid = (typeof currentUser !== 'undefined' && currentUser) ? currentUser.uid : (profile?.uid || null);
+    const statuses = getAllProfileFieldEditStatuses(profile, now, uid);
+
+    for (const cfg of Object.values(PROFILE_MONTHLY_LIMITED_FIELDS)) {
+        const st = statuses[cfg.key];
+        const hintEl = document.getElementById(cfg.hintId);
+        if (hintEl) {
+            hintEl.classList.remove('warning', 'locked');
+            if (st.isLocked) {
+                hintEl.classList.add('locked');
+                hintEl.textContent = `🔒 Limite de ${st.maxEdits}/${st.maxEdits} edições no mês atingido para ${cfg.label} (libera em ${st.daysUntilUnlock}d)`;
+            } else if (st.remainingEdits === 1) {
+                hintEl.classList.add('warning');
+                hintEl.textContent = `⚠️ 1/${st.maxEdits} edição restante neste mês`;
+            } else {
+                hintEl.textContent = `${st.remainingEdits}/${st.maxEdits} edições restantes neste mês`;
+            }
+        }
+
+        const inputEl = document.getElementById(cfg.inputId);
+        if (inputEl) {
+            inputEl.disabled = st.isLocked;
+            if (st.isLocked) {
+                inputEl.classList.add('profile-input-locked');
+                inputEl.setAttribute('title', `Limite mensal de ${st.maxEdits} edições atingido para ${cfg.label} (libera em ${st.daysUntilUnlock}d)`);
+            } else {
+                inputEl.classList.remove('profile-input-locked');
+                if ((inputEl.getAttribute('title') || '').startsWith('Limite mensal de')) {
+                    inputEl.removeAttribute('title');
+                }
+            }
+        }
+    }
+
+    return statuses;
 }
 
 
