@@ -1844,7 +1844,6 @@ onAuthStateChanged(auth, async (user) => {
 
     if (user) {
         currentUser = user;
-        if (authScreen) authScreen.classList.add('unlocked');
         
         const userDocRef = doc(db, 'users', user.uid);
         const userSnap = await getDoc(userDocRef);
@@ -1854,6 +1853,11 @@ onAuthStateChanged(auth, async (user) => {
             const autoUsername = `@${rawEmailPrefix}_${Math.floor(1000 + Math.random() * 9000)}`;
             const nameParts = (user.displayName || 'Membro').split(' ');
             const isAdmin = !!(user.email && ['dxhub.oficial@gmail.com', 'vortex.dx.oficial@gmail.com', 'dxhubdigitalsuporte@gmail.com'].includes(user.email.toLowerCase()));
+            const createdNow = Date.now();
+            const initialAvatar = user.photoURL || '';
+            const hasInitialAvatar = typeof hasValidProfilePhotoValue === 'function'
+                ? hasValidProfilePhotoValue(initialAvatar)
+                : Boolean(initialAvatar);
 
             currentProfile = {
                 uid: user.uid,
@@ -1872,7 +1876,14 @@ onAuthStateChanged(auth, async (user) => {
                     instagram: '',
                     tiktok: ''
                 },
-                avatar: user.photoURL || '',
+                avatar: initialAvatar,
+                avatarModerationStatus: hasInitialAvatar ? 'approved' : 'missing',
+                accountStatus: 'active',
+                photoGraceStartedAt: hasInitialAvatar ? null : createdNow,
+                photoGraceDeadlineAt: hasInitialAvatar
+                    ? null
+                    : (typeof addBusinessDaysMs === 'function' ? addBusinessDaysMs(createdNow, 30) : (createdNow + 42 * 86400000)),
+                createdAt: createdNow,
                 accentColor: '#fff01f',
                 pin: '1234',
                 pinEnabled: false,
@@ -1883,13 +1894,21 @@ onAuthStateChanged(auth, async (user) => {
                 isVerified: isAdmin,
                 isVip: isAdmin,
                 online: true,
-                lastSeen: Date.now(),
+                lastSeen: createdNow,
                 pinnedChats: []
             };
             await setDoc(userDocRef, currentProfile);
         } else {
             currentProfile = { ...currentProfile, ...userSnap.data(), uid: user.uid };
         }
+
+        if (typeof handleAuthPhotoLifecycleOnLogin === 'function') {
+            const authPhotoGate = await handleAuthPhotoLifecycleOnLogin(user, currentProfile, { authScreen });
+            if (authPhotoGate && authPhotoGate.allowAccess === false) {
+                return;
+            }
+        }
+        if (authScreen) authScreen.classList.add('unlocked');
 
         pinnedChats = Array.isArray(currentProfile.pinnedChats) ? currentProfile.pinnedChats : [];
         applyUserTheme();
@@ -1923,6 +1942,8 @@ onAuthStateChanged(auth, async (user) => {
                 if (typeof applyPinnedSortToChatList === 'function') applyPinnedSortToChatList();
                 if (typeof checkUserPendingWithdrawalFromProfile === 'function') checkUserPendingWithdrawalFromProfile();
                 if (typeof applyMaintenanceMode === 'function') applyMaintenanceMode();
+                if (typeof syncProfilePhotoRequirementLifecycle === 'function') syncProfilePhotoRequirementLifecycle(currentProfile);
+                if (typeof syncProfileAvatarModerationUI === 'function') syncProfileAvatarModerationUI(currentProfile);
             }
         });
 
@@ -1930,6 +1951,8 @@ onAuthStateChanged(auth, async (user) => {
         checkBannedAccountState();
         updateAdminUIVisibility();
         if (typeof applyMaintenanceMode === 'function') applyMaintenanceMode();
+        if (typeof syncProfilePhotoRequirementLifecycle === 'function') syncProfilePhotoRequirementLifecycle(currentProfile);
+        if (typeof syncProfileAvatarModerationUI === 'function') syncProfileAvatarModerationUI(currentProfile);
 
         listenToContacts();
         listenToBlockedContacts();
@@ -1949,6 +1972,8 @@ onAuthStateChanged(auth, async (user) => {
         currentUser = null;
         loadUserFavoriteTracks();
         if (authScreen) authScreen.classList.remove('unlocked');
+        const photoBanner = document.getElementById('profile-photo-ai-warning-banner');
+        if (photoBanner) photoBanner.style.display = 'none';
         detachListeners();
         updateAdminUIVisibility();
         if (typeof hideWithdrawalUnderReviewScreen === 'function') hideWithdrawalUnderReviewScreen();
@@ -23212,7 +23237,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.287';
+export const CURRENT_APP_VERSION = '1.0.288';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -36967,6 +36992,9 @@ document.getElementById('profile-btn')?.addEventListener('click', () => {
     if (typeof syncProfileFieldEditLimitsUI === 'function') {
         syncProfileFieldEditLimitsUI(currentProfile);
     }
+    if (typeof syncProfileAvatarModerationUI === 'function') {
+        syncProfileAvatarModerationUI(currentProfile);
+    }
 
     document.getElementById('profile-edit-panel')?.classList.add('active');
     if (typeof window !== 'undefined' && window.lucide) {
@@ -38511,7 +38539,7 @@ export async function syncUserAvatarToPostsAndStories(uid, avatarDataUrl) {
     }
 }
 
-export async function updateProfileAvatar(avatarDataUrl) {
+export async function updateProfileAvatar(avatarDataUrl, options = {}) {
     if (!avatarDataUrl) return;
     if (currentUser?.uid && typeof trackNewAccountBurstByAI === 'function') {
         const avatarBurst = trackNewAccountBurstByAI(currentUser.uid, 'profile_edit', {
@@ -38523,27 +38551,112 @@ export async function updateProfileAvatar(avatarDataUrl) {
             return;
         }
     }
+
+    const review = typeof reviewProfilePhoto3TierByAI === 'function'
+        ? await reviewProfilePhoto3TierByAI(avatarDataUrl, currentProfile || {}, options)
+        : {
+            decision: 'approved',
+            tier: 'system',
+            reason: 'Foto válida aprovada automaticamente.',
+            readyMessage: '🎉 Parabéns! Sua foto de perfil foi aprovada pelo VORTEX VIP ⚡!'
+        };
+
+    if (review.decision === 'rejected') {
+        const rejectMsg = review.readyMessage || (typeof PHOTO_AI_READY_MESSAGES !== 'undefined' ? PHOTO_AI_READY_MESSAGES.rejected : 'Sinto muito! Sua foto de perfil foi recusada.');
+        currentProfile.avatarModerationStatus = 'rejected';
+        currentProfile.avatarModerationTier = review.tier || 'ia';
+        currentProfile.avatarModerationReason = review.reason || 'Foto inválida ou fora dos padrões.';
+        currentProfile.avatarModerationFeedback = rejectMsg;
+        if (typeof syncProfileAvatarModerationUI === 'function') syncProfileAvatarModerationUI(currentProfile);
+        if (typeof syncProfilePhotoRequirementLifecycle === 'function') syncProfilePhotoRequirementLifecycle(currentProfile);
+        if (currentUser?.uid) {
+            try {
+                await updateDoc(doc(db, 'users', currentUser.uid), {
+                    avatarModerationStatus: 'rejected',
+                    avatarModerationTier: currentProfile.avatarModerationTier,
+                    avatarModerationReason: currentProfile.avatarModerationReason,
+                    avatarModerationFeedback: rejectMsg,
+                    updatedAt: Date.now()
+                });
+                if (typeof dispatchPhotoModerationNotification === 'function') {
+                    await dispatchPhotoModerationNotification(currentUser.uid, 'rejected', rejectMsg, review.reason);
+                }
+            } catch (_) {}
+        }
+        showToast('Sinto muito! Foto Recusada 😔', rejectMsg, 'red');
+        return review;
+    }
+
+    const nowMs = Date.now();
+    const isApproved = review.decision === 'approved';
     currentProfile.avatar = avatarDataUrl;
+    currentProfile.avatarModerationStatus = review.decision;
+    currentProfile.avatarModerationTier = review.tier || (isApproved ? 'system' : 'admin');
+    currentProfile.avatarModerationReason = review.reason || '';
+    currentProfile.avatarModerationFeedback = review.readyMessage || '';
+    if (isApproved) {
+        currentProfile.accountStatus = 'active';
+        currentProfile.deactivatedAt = null;
+        currentProfile.reactivationDeadlineAt = null;
+        currentProfile.reactivationPhotoDeadlineAt = null;
+        currentProfile.photoGraceDeadlineAt = null;
+        currentProfile.photoGraceStartedAt = null;
+    } else if (review.decision === 'pending_admin') {
+        currentProfile.avatarModerationRequestedAt = nowMs;
+    }
 
     const prev = document.getElementById('profile-edit-avatar-preview');
     if (prev) prev.style.backgroundImage = `url('${avatarDataUrl}')`;
     const userAvatar = document.getElementById('user-avatar-display');
     if (userAvatar) userAvatar.style.backgroundImage = `url('${avatarDataUrl}')`;
+    if (typeof syncProfileAvatarModerationUI === 'function') syncProfileAvatarModerationUI(currentProfile);
 
     if (currentUser && currentUser.uid) {
         updateAuthorAvatarsInDOM(currentUser.uid, avatarDataUrl);
         try {
-            await updateDoc(doc(db, 'users', currentUser.uid), {
+            const updatePayload = {
                 avatar: avatarDataUrl,
-                updatedAt: Date.now()
-            });
+                avatarModerationStatus: currentProfile.avatarModerationStatus,
+                avatarModerationTier: currentProfile.avatarModerationTier,
+                avatarModerationReason: currentProfile.avatarModerationReason,
+                avatarModerationFeedback: currentProfile.avatarModerationFeedback,
+                updatedAt: nowMs
+            };
+            if (isApproved) {
+                updatePayload.accountStatus = 'active';
+                updatePayload.deactivatedAt = null;
+                updatePayload.reactivationDeadlineAt = null;
+                updatePayload.reactivationPhotoDeadlineAt = null;
+                updatePayload.photoGraceDeadlineAt = null;
+                updatePayload.photoGraceStartedAt = null;
+                updatePayload.avatarReviewedAt = nowMs;
+            } else if (review.decision === 'pending_admin') {
+                updatePayload.avatarModerationRequestedAt = nowMs;
+            }
+            await updateDoc(doc(db, 'users', currentUser.uid), updatePayload);
             syncUserAvatarToPostsAndStories(currentUser.uid, avatarDataUrl);
-            showToast('Foto atualizada', 'Sua foto de perfil foi salva!', 'green');
+            if (isApproved) {
+                if (typeof dispatchPhotoModerationNotification === 'function') {
+                    await dispatchPhotoModerationNotification(currentUser.uid, 'approved', review.readyMessage, review.reason);
+                }
+                showToast('Parabéns! Foto Aprovada ⚡', review.readyMessage || 'Sua foto de perfil foi aprovada!', 'green');
+            } else if (review.decision === 'pending_admin') {
+                if (typeof enqueuePhotoForAdminReview === 'function') {
+                    await enqueuePhotoForAdminReview(currentUser.uid, currentProfile, avatarDataUrl, review);
+                }
+                showToast('Foto em Revisão ADM 🕵️', review.readyMessage || 'Foto enviada para revisão de um administrador VORTEX VIP ⚡.', 'blue');
+            } else {
+                showToast('Foto atualizada', 'Sua foto de perfil foi salva!', 'green');
+            }
         } catch (err) {
             console.error('Erro ao salvar foto de perfil no Firestore:', err);
             showToast('Aviso', 'Foto aplicada localmente. Salve o perfil para confirmar.', 'blue');
         }
     }
+    if (typeof syncProfilePhotoRequirementLifecycle === 'function') {
+        syncProfilePhotoRequirementLifecycle(currentProfile, { skipWrite: true });
+    }
+    return review;
 }
 
 window.updateProfileAvatar = updateProfileAvatar;
@@ -39585,6 +39698,7 @@ document.getElementById('signout-btn')?.addEventListener('click', async () => {
 });
 
 document.getElementById('google-login-main-btn')?.addEventListener('click', async () => {
+    if (typeof resetAuthReactivationBoxes === 'function') resetAuthReactivationBoxes({ keepWipedNotice: false });
     const authLoader = document.getElementById('auth-loading-msg');
     if (authLoader) authLoader.style.display = 'block';
     try {
@@ -39595,6 +39709,45 @@ document.getElementById('google-login-main-btn')?.addEventListener('click', asyn
         showToast("Erro", "Falha ao autenticar com o Google.", "red");
         if (authLoader) authLoader.style.display = 'none';
     }
+});
+
+document.getElementById('auth-reactivate-entry-btn')?.addEventListener('click', async () => {
+    if (typeof window !== 'undefined') window._vortexPendingReactivationFlow = true;
+    if (typeof resetAuthReactivationBoxes === 'function') resetAuthReactivationBoxes({ keepWipedNotice: false });
+    const authLoader = document.getElementById('auth-loading-msg');
+    if (authLoader) {
+        authLoader.innerText = 'Escolha a conta Google cadastrada para verificar e ativar sua conta...';
+        authLoader.style.display = 'block';
+    }
+    try {
+        const provider = new GoogleAuthProvider();
+        await signInWithPopup(auth, provider);
+    } catch (e) {
+        console.error(e);
+        if (typeof window !== 'undefined') window._vortexPendingReactivationFlow = false;
+        showToast("Erro", "Não foi possível abrir a autenticação Google.", "red");
+        if (authLoader) authLoader.style.display = 'none';
+    }
+});
+
+document.getElementById('confirm-reactivate-account-btn')?.addEventListener('click', async () => {
+    if (typeof reactivateDeactivatedAccountByAI === 'function') {
+        await reactivateDeactivatedAccountByAI(currentUser?.uid);
+    }
+});
+
+document.getElementById('cancel-reactivation-btn')?.addEventListener('click', async () => {
+    if (typeof window !== 'undefined') window._vortexPendingReactivationFlow = false;
+    if (typeof resetAuthReactivationBoxes === 'function') resetAuthReactivationBoxes();
+    try { await signOut(auth); } catch (_) {}
+});
+
+document.getElementById('profile-photo-ai-upload-cta-btn')?.addEventListener('click', () => {
+    playSound(clickSound);
+    document.getElementById('profile-btn')?.click();
+    setTimeout(() => {
+        document.getElementById('profile-file-input')?.click();
+    }, 120);
 });
 
 function closeChat() {
@@ -47949,6 +48102,22 @@ export function evaluateAccountTrustByAI(account = {}, activityMeta = {}) {
         signals.push('Rajada comportamental detectada');
     }
 
+    const hasPhoto = typeof hasValidProfilePhotoValue === 'function'
+        ? hasValidProfilePhotoValue(account.avatar)
+        : Boolean(account.avatar);
+    if (!hasPhoto) {
+        const photoReq = typeof evaluateProfilePhotoRequirementByAI === 'function'
+            ? evaluateProfilePhotoRequirementByAI(account, { now: activityMeta.now || Date.now() })
+            : null;
+        if (account.accountStatus === 'deactivated_no_photo' || photoReq?.shouldDeactivate || photoReq?.shouldWipe) {
+            riskScore += 38;
+            signals.push('Sem foto de perfil após prazo (risco de conta falsa/Spam)');
+        } else if (activityMeta.checkMissingPhoto) {
+            riskScore += 10;
+            signals.push('Conta sem foto de perfil obrigatória');
+        }
+    }
+
     if (isVerified && riskScore < 50) {
         riskScore = Math.max(0, riskScore - 20);
     }
@@ -48583,6 +48752,9 @@ export async function adminHandleAIIncidentAction(incidentId, action) {
 export function renderAdminAISecurityDashboard() {
     updateAdminAIBadgeUI();
     syncAISecurityControlsUI();
+    if (typeof renderAdminPhotoModerationQueue === 'function') {
+        renderAdminPhotoModerationQueue();
+    }
 
     const openIncidents = aiSecurityIncidents.filter(i => i.status === 'open');
     const threatsCount = openIncidents.filter(i => i.category === 'scam_link_spam' || i.category === 'strange_chat' || i.category === 'comment_moderation' || i.category === 'like_spam_guard').length;
@@ -48642,7 +48814,8 @@ export function renderAdminAISecurityDashboard() {
                 strange_chat: 'Conversa Estranha',
                 scam_link_spam: 'Golpe / Spam / Link',
                 comment_moderation: 'Comentários IA',
-                like_spam_guard: 'Curtidas IA (24h)'
+                like_spam_guard: 'Curtidas IA (24h)',
+                photo_moderation: 'Fotos de Perfil IA'
             };
             listEl.innerHTML = filtered.map(inc => `
                 <div class="admin-ai-incident-card risk-${inc.riskLevel}" data-incident-id="${inc.id}">
@@ -48779,6 +48952,16 @@ export function initAdminAISecurityUI() {
         const action = btn.dataset.aiAction;
         if (incId && action) {
             adminHandleAIIncidentAction(incId, action);
+        }
+    });
+
+    document.getElementById('admin-ai-photo-reviews-list')?.addEventListener('click', (e) => {
+        const btn = e.target?.closest?.('[data-photo-review-action]');
+        if (!btn) return;
+        const targetUid = btn.dataset.uid;
+        const decision = btn.dataset.photoReviewAction;
+        if (targetUid && decision && typeof adminReviewProfilePhotoByAI === 'function') {
+            adminReviewProfilePhotoByAI(targetUid, decision);
         }
     });
 
@@ -49898,6 +50081,1098 @@ if (typeof window !== 'undefined') {
     window.getAllProfileFieldEditStatuses = getAllProfileFieldEditStatuses;
     window.evaluateProfileMonthlyEditLimits = evaluateProfileMonthlyEditLimits;
     window.syncProfileFieldEditLimitsUI = syncProfileFieldEditLimitsUI;
+}
+
+/* ==========================================================================
+   VORTEX AI PHOTO GUARD - FOTO OBRIGATÓRIA (30 DIAS ÚTEIS), REATIVAÇÃO (1 SEMANA)
+   EXCLUSÃO NÃO PERMANENTE E APROVAÇÃO EM 3 NÍVEIS (SISTEMA -> IA -> ADMINISTRADOR)
+   ========================================================================== */
+
+export const PROFILE_PHOTO_GRACE_BUSINESS_DAYS = 30;
+export const PROFILE_PHOTO_ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+export const PHOTO_AI_READY_MESSAGES = Object.freeze({
+    approved: '🎉 Parabéns! Sua foto de perfil foi aprovada pelo VORTEX VIP ⚡! Agora seu perfil está validado e liberado na comunidade.',
+    rejected: '😔 Sinto muito! Sua foto de perfil foi recusada pela moderação do VORTEX VIP ⚡. Por favor, envie uma foto nítida, real e de boa qualidade para evitar desativação da conta.',
+    pending_admin: '🕵️ Sua foto de perfil foi encaminhada pela IA para revisão de um Administrador do VORTEX VIP ⚡. Assim que for analisada, você receberá uma mensagem com o resultado.'
+});
+
+export const aiPhotoReviewQueue = new Map();
+const photoModerationFeedbackNotifiedSet = new Set();
+
+/**
+ * Verifica se um timestamp em ms cai em dia útil (Segunda a Sexta-feira).
+ */
+export function isBusinessDayMs(ms) {
+    const day = new Date(Number(ms) || 0).getDay();
+    return day >= 1 && day <= 5;
+}
+
+/**
+ * Soma N dias úteis (Segunda a Sexta-feira) a partir de um timestamp em ms.
+ */
+export function addBusinessDaysMs(startMs = Date.now(), businessDays = PROFILE_PHOTO_GRACE_BUSINESS_DAYS) {
+    const base = Number(startMs) || Date.now();
+    const target = Math.max(0, Math.floor(Number(businessDays) || 0));
+    if (target === 0) return base;
+    const cursor = new Date(base);
+    let added = 0;
+    while (added < target) {
+        cursor.setDate(cursor.getDate() + 1);
+        if (cursor.getDay() !== 0 && cursor.getDay() !== 6) {
+            added += 1;
+        }
+    }
+    return cursor.getTime();
+}
+
+/**
+ * Conta quantos dias úteis restam entre `nowMs` e `deadlineMs`.
+ */
+export function countRemainingBusinessDaysMs(deadlineMs, nowMs = Date.now()) {
+    const now = Number(nowMs) || Date.now();
+    const deadline = Number(deadlineMs) || 0;
+    if (!deadline || now >= deadline) return 0;
+    const startDate = new Date(now);
+    const endDate = new Date(deadline);
+    startDate.setHours(12, 0, 0, 0);
+    endDate.setHours(12, 0, 0, 0);
+    let count = 0;
+    const cursor = new Date(startDate.getTime());
+    while (cursor.getTime() < endDate.getTime() && count < 365) {
+        cursor.setDate(cursor.getDate() + 1);
+        if (cursor.getDay() !== 0 && cursor.getDay() !== 6) {
+            count += 1;
+        }
+    }
+    return Math.max(1, count);
+}
+
+/**
+ * Formata uma duração restante em dias/horas legíveis para PT-BR.
+ */
+function formatRemainingWindowPT(remainingMs) {
+    const safe = Math.max(0, Number(remainingMs) || 0);
+    const days = Math.floor(safe / (24 * 60 * 60 * 1000));
+    if (days >= 1) {
+        return days === 1 ? '1 dia' : `${days} dias`;
+    }
+    const hours = Math.max(1, Math.ceil(safe / (60 * 60 * 1000)));
+    return hours === 1 ? '1 hora' : `${hours} horas`;
+}
+
+/**
+ * Verifica se o campo `avatar` contém uma URL/DataURI válida de imagem de perfil.
+ */
+export function hasValidProfilePhotoValue(avatar) {
+    if (typeof avatar !== 'string') return false;
+    const trimmed = avatar.trim();
+    if (!trimmed) return false;
+    if (/^(data:image\/(jpeg|jpg|png|webp|gif)|https?:\/\/)/i.test(trimmed)) {
+        if (/placeholder|default-avatar|conta_excluida|blank-avatar/i.test(trimmed)) return false;
+        return true;
+    }
+    return false;
+}
+
+/**
+ * Avalia o ciclo de obrigatoriedade da foto de perfil:
+ * - Usuários que já possuem foto válida não precisam trocar/colocar (exempt/compliant).
+ * - Contas sem foto recebem aviso de 30 dias úteis; após expirar, a IA desativa.
+ * - Contas desativadas têm 1 semana para reativar no login e 1 semana após reativação para subir foto válida; expirando, apaga tudo sem banimento permanente.
+ */
+export function evaluateProfilePhotoRequirementByAI(profile = {}, options = {}) {
+    const now = Number(options.now || Date.now());
+    if (!profile || typeof profile !== 'object') {
+        return { status: 'compliant', requiresUpload: false, shouldDeactivate: false, shouldWipe: false };
+    }
+
+    const isAdmin = typeof checkIsAdminUser === 'function'
+        ? checkIsAdminUser({ uid: profile.uid, email: profile.email }, profile)
+        : false;
+    if (isAdmin) {
+        return {
+            status: 'compliant',
+            requiresUpload: false,
+            shouldDeactivate: false,
+            shouldWipe: false,
+            isGrandfathered: true,
+            warningMessage: ''
+        };
+    }
+
+    if (profile.accountStatus === 'deactivated_no_photo') {
+        const deactivatedAt = Number(profile.deactivatedAt) || now;
+        const reactivationDeadlineAt = Number(profile.reactivationDeadlineAt) || (deactivatedAt + PROFILE_PHOTO_ONE_WEEK_MS);
+        const remainingMs = Math.max(0, reactivationDeadlineAt - now);
+        if (now >= reactivationDeadlineAt) {
+            return {
+                status: 'wipe_required',
+                reason: 'reactivation_window_expired',
+                requiresUpload: false,
+                shouldDeactivate: false,
+                shouldWipe: true,
+                reactivationDeadlineAt,
+                remainingMs: 0,
+                warningMessage: '⏳ O prazo de 1 semana para reativar sua conta expirou. Todos os dados foram apagados sem banimento permanente — você pode criar uma nova conta com esta mesma conta Google.'
+            };
+        }
+        return {
+            status: 'deactivated_no_photo',
+            requiresUpload: false,
+            shouldDeactivate: false,
+            shouldWipe: false,
+            canReactivate: true,
+            reactivationDeadlineAt,
+            remainingMs,
+            warningMessage: `⚠️ Conta desativada pela IA por falta de foto de perfil em 30 dias úteis. Você ainda tem ${formatRemainingWindowPT(remainingMs)} para ativar a conta.`
+        };
+    }
+
+    const hasPhoto = hasValidProfilePhotoValue(profile.avatar);
+    const modStatus = String(profile.avatarModerationStatus || '').toLowerCase();
+    const isRejected = modStatus === 'rejected';
+    const isPendingAdmin = modStatus === 'pending_admin';
+
+    if (hasPhoto && !isRejected) {
+        return {
+            status: isPendingAdmin ? 'pending_admin' : 'compliant',
+            requiresUpload: false,
+            shouldDeactivate: false,
+            shouldWipe: false,
+            isGrandfathered: !modStatus || modStatus === 'approved',
+            warningMessage: ''
+        };
+    }
+
+    if (profile.reactivationPhotoDeadlineAt) {
+        const reactPhotoDeadline = Number(profile.reactivationPhotoDeadlineAt);
+        const remainingMs = Math.max(0, reactPhotoDeadline - now);
+        if (now >= reactPhotoDeadline) {
+            return {
+                status: 'wipe_required',
+                reason: 'post_reactivation_no_photo_expired',
+                requiresUpload: true,
+                shouldDeactivate: false,
+                shouldWipe: true,
+                deadlineAt: reactPhotoDeadline,
+                remainingMs: 0,
+                warningMessage: '⏳ O prazo de 1 semana após ativar a conta expirou sem foto de perfil válida. A conta e todos os dados serão apagados (você poderá criar outra com a mesma conta Google).'
+            };
+        }
+        return {
+            status: 'reactivated_awaiting_photo',
+            isReactivatedGrace: true,
+            requiresUpload: true,
+            shouldDeactivate: false,
+            shouldWipe: false,
+            deadlineAt: reactPhotoDeadline,
+            remainingMs,
+            warningMessage: `⚠️ Conta reativada! Adicione uma foto de perfil válida em até ${formatRemainingWindowPT(remainingMs)} (prazo de 1 semana), senão a conta e tudo nela serão apagados (sem banimento permanente).`
+        };
+    }
+
+    const graceStartedAt = Number(profile.photoGraceStartedAt || profile.createdAt || now);
+    const graceDeadlineAt = Number(profile.photoGraceDeadlineAt) || addBusinessDaysMs(graceStartedAt, PROFILE_PHOTO_GRACE_BUSINESS_DAYS);
+
+    if (now >= graceDeadlineAt) {
+        return {
+            status: 'should_deactivate',
+            requiresUpload: true,
+            shouldDeactivate: true,
+            shouldWipe: false,
+            graceStartedAt,
+            graceDeadlineAt,
+            remainingBusinessDays: 0,
+            reactivationDeadlineAt: now + PROFILE_PHOTO_ONE_WEEK_MS,
+            warningMessage: '🚫 O prazo de 30 dias úteis sem foto de perfil expirou. A IA desativou sua conta por suspeita de perfil falso/Spam. Você tem 1 semana para reativar.'
+        };
+    }
+
+    const remainingBusinessDays = countRemainingBusinessDaysMs(graceDeadlineAt, now);
+    return {
+        status: 'warning_required',
+        requiresUpload: true,
+        shouldDeactivate: false,
+        shouldWipe: false,
+        graceStartedAt,
+        graceDeadlineAt,
+        remainingBusinessDays,
+        warningMessage: `⚠️ Aviso da IA VORTEX VIP ⚡: Coloque uma foto de perfil antes de expirar ${remainingBusinessDays} dia(s) útil(eis) (prazo total: 30 dias úteis), senão a IA poderá considerar sua conta falsa ou Spam e desativar a conta.`
+    };
+}
+
+/**
+ * Limpa/reseta os painéis de reativação e exclusão na tela de login `#auth-screen`.
+ */
+export function resetAuthReactivationBoxes(options = {}) {
+    const reactBox = document.getElementById('auth-reactivation-box');
+    const wipedBox = document.getElementById('auth-wiped-recreate-box');
+    if (reactBox) reactBox.style.display = 'none';
+    if (wipedBox && !options.keepWipedNotice) wipedBox.style.display = 'none';
+}
+
+/**
+ * Renderiza o cartão de "Ativar Conta" na tela de autenticação para contas desativadas dentro da janela de 1 semana.
+ */
+function renderDeactivatedAccountLoginUI(profile = {}, evaluation = {}) {
+    const authScreen = document.getElementById('auth-screen');
+    if (authScreen) authScreen.classList.remove('unlocked');
+    const authLoader = document.getElementById('auth-loading-msg');
+    if (authLoader) authLoader.style.display = 'none';
+
+    const reactBox = document.getElementById('auth-reactivation-box');
+    const wipedBox = document.getElementById('auth-wiped-recreate-box');
+    if (wipedBox) wipedBox.style.display = 'none';
+    if (reactBox) {
+        reactBox.style.display = 'flex';
+        const countdownEl = document.getElementById('auth-reactivation-countdown');
+        if (countdownEl) countdownEl.textContent = formatRemainingWindowPT(evaluation.remainingMs ?? PROFILE_PHOTO_ONE_WEEK_MS);
+        const emailEl = document.getElementById('auth-reactivation-email');
+        if (emailEl) emailEl.textContent = profile.email ? `Conta Google: ${profile.email}` : '';
+        const descEl = document.getElementById('auth-reactivation-desc');
+        if (descEl) {
+            descEl.innerHTML = `Sua conta foi desativada pela IA após 30 dias úteis sem foto de perfil válida. Você tem <strong><span id="auth-reactivation-countdown">${formatRemainingWindowPT(evaluation.remainingMs ?? PROFILE_PHOTO_ONE_WEEK_MS)}</span></strong> para clicar abaixo, ativar a conta e enviar uma foto válida (senão tudo será apagado em 1 semana, sem banimento permanente).`;
+        }
+    }
+    if (typeof window !== 'undefined' && window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+    }
+}
+
+/**
+ * Desativa automaticamente a conta pela IA após vencer os 30 dias úteis sem foto de perfil.
+ */
+export async function deactivateAccountForNoPhotoByAI(targetUid, profile = {}, options = {}) {
+    if (!targetUid) return null;
+    const now = Number(options.now || Date.now());
+    const reactivationDeadlineAt = now + PROFILE_PHOTO_ONE_WEEK_MS;
+    const reason = 'Conta desativada pela IA após 30 dias úteis sem foto de perfil (suspeita de conta falsa/Spam).';
+    const patch = {
+        accountStatus: 'deactivated_no_photo',
+        deactivatedAt: now,
+        deactivatedBy: 'VORTEX_AI_SHIELD',
+        deactivationReason: reason,
+        reactivationDeadlineAt,
+        updatedAt: now
+    };
+    if (profile && typeof profile === 'object') Object.assign(profile, patch);
+
+    if (typeof db !== 'undefined' && typeof doc === 'function') {
+        try {
+            if (typeof updateDoc === 'function') {
+                await updateDoc(doc(db, 'users', targetUid), patch);
+            } else if (typeof setDoc === 'function') {
+                await setDoc(doc(db, 'users', targetUid), patch, { merge: true });
+            }
+        } catch (err) {
+            if (typeof setDoc === 'function') {
+                await setDoc(doc(db, 'users', targetUid), patch, { merge: true }).catch(() => {});
+            }
+        }
+    }
+
+    if (typeof recordAIIncident === 'function') {
+        recordAIIncident({
+            dedupKey: `photo_deactivated_${targetUid}`,
+            uid: targetUid,
+            targetName: `${profile?.name || 'Membro'} (${profile?.username || targetUid})`,
+            category: 'fake_account',
+            subReason: 'photo_30_business_days_expired',
+            riskScore: 76,
+            signals: ['30 dias úteis sem foto de perfil', 'Conta desativada pela IA (1 semana para reativar)'],
+            summary: reason
+        });
+    }
+
+    if (currentUser?.uid === targetUid && options.renderUI !== false) {
+        renderDeactivatedAccountLoginUI(profile, { remainingMs: PROFILE_PHOTO_ONE_WEEK_MS, reactivationDeadlineAt });
+    }
+
+    return { deactivated: true, uid: targetUid, deactivatedAt: now, reactivationDeadlineAt, reason };
+}
+
+/**
+ * Reativa uma conta desativada por falta de foto (dentro do prazo de 1 semana) e concede 1 semana para enviar foto válida.
+ */
+export async function reactivateDeactivatedAccountByAI(targetUid, options = {}) {
+    if (!targetUid) return { reactivated: false, reason: 'missing_uid' };
+    const now = Number(options.now || Date.now());
+
+    let profileData = options.profile || (currentProfile?.uid === targetUid ? currentProfile : null);
+    if (!profileData && typeof db !== 'undefined' && typeof getDoc === 'function' && typeof doc === 'function') {
+        try {
+            const snap = await getDoc(doc(db, 'users', targetUid));
+            if (snap && snap.exists()) profileData = snap.data();
+        } catch (_) {}
+    }
+
+    const evalResult = evaluateProfilePhotoRequirementByAI(profileData || {}, { now });
+    if (evalResult.shouldWipe) {
+        const wiped = await wipeExpiredNoPhotoAccountDataByAI(targetUid, profileData, { now });
+        return { reactivated: false, wiped: true, reason: 'reactivation_window_expired', details: wiped };
+    }
+
+    const reactivationPhotoDeadlineAt = now + PROFILE_PHOTO_ONE_WEEK_MS;
+    const patch = {
+        accountStatus: 'active',
+        deactivatedAt: null,
+        deactivatedBy: null,
+        deactivationReason: null,
+        reactivationDeadlineAt: null,
+        reactivatedFromNoPhotoAt: now,
+        reactivationPhotoDeadlineAt,
+        photoGraceDeadlineAt: reactivationPhotoDeadlineAt,
+        updatedAt: now
+    };
+    if (profileData && typeof profileData === 'object') Object.assign(profileData, patch);
+    if (currentProfile && currentUser?.uid === targetUid) Object.assign(currentProfile, patch);
+
+    if (typeof db !== 'undefined' && typeof doc === 'function') {
+        try {
+            if (typeof updateDoc === 'function') {
+                await updateDoc(doc(db, 'users', targetUid), patch);
+            } else if (typeof setDoc === 'function') {
+                await setDoc(doc(db, 'users', targetUid), patch, { merge: true });
+            }
+        } catch (_) {
+            if (typeof setDoc === 'function') {
+                await setDoc(doc(db, 'users', targetUid), patch, { merge: true }).catch(() => {});
+            }
+        }
+    }
+
+    if (typeof window !== 'undefined') window._vortexPendingReactivationFlow = false;
+    resetAuthReactivationBoxes();
+    const authScreen = document.getElementById('auth-screen');
+    if (authScreen) authScreen.classList.add('unlocked');
+    syncProfilePhotoRequirementLifecycle(currentProfile || profileData, { now, skipWrite: true });
+    if (typeof showToast === 'function') {
+        showToast('Conta Ativada! ⚡', 'Você tem 1 semana (7 dias) para colocar uma foto de perfil válida. Caso não envie no prazo, a conta e tudo nela serão apagados (sem banimento permanente).', 'blue');
+    }
+    const profileBtn = document.getElementById('profile-btn');
+    if (profileBtn && typeof profileBtn.click === 'function' && options.openProfilePanel !== false) {
+        try { profileBtn.click(); } catch (_) {}
+    }
+
+    return { reactivated: true, uid: targetUid, reactivationPhotoDeadlineAt };
+}
+
+/**
+ * Apaga todos os dados de uma conta expirada (sem foto após prazo de reativação) SEM banimento permanente,
+ * permitindo que o usuário crie outra conta usando a mesma conta Google.
+ */
+export async function wipeExpiredNoPhotoAccountDataByAI(targetUid, profile = {}, options = {}) {
+    if (!targetUid) return { wiped: false };
+    const now = Number(options.now || Date.now());
+    let deletedPostsCount = 0;
+    let deletedStoriesCount = 0;
+    let deletedGroupsCount = 0;
+
+    if (typeof deletedUsersSet !== 'undefined' && deletedUsersSet) {
+        deletedUsersSet.delete(targetUid);
+    }
+
+    if (typeof db !== 'undefined' && typeof collection === 'function' && typeof getDocs === 'function' && typeof deleteDoc === 'function') {
+        const queryCollections = [
+            ['posts', 'authorUid', () => { deletedPostsCount += 1; }],
+            ['stories', 'authorUid', () => { deletedStoriesCount += 1; }],
+            ['groups', 'creatorUid', () => { deletedGroupsCount += 1; }],
+            ['usernames', 'uid', null],
+            ['requests', 'fromUid', null],
+            ['requests', 'toUid', null],
+            ['notifications', 'toUid', null],
+            ['notifications', 'fromUid', null]
+        ];
+
+        for (const [colName, fieldName, onEach] of queryCollections) {
+            try {
+                const snap = await getDocs(query(collection(db, colName), where(fieldName, '==', targetUid)));
+                if (snap && snap.docs) {
+                    for (const d of snap.docs) {
+                        if (typeof onEach === 'function') onEach();
+                        await deleteDoc(d.ref).catch(() => {});
+                    }
+                }
+            } catch (_) {}
+        }
+
+        const subCollections = ['contacts', 'blocked', 'muted', 'groups', 'catalog', 'catalogCategories', 'favorites', 'notifications'];
+        for (const subName of subCollections) {
+            try {
+                const subSnap = await getDocs(collection(db, 'users', targetUid, subName));
+                if (subSnap && subSnap.docs) {
+                    await Promise.all(subSnap.docs.map(d => deleteDoc(d.ref).catch(() => {})));
+                }
+            } catch (_) {}
+        }
+
+        try { await deleteDoc(doc(db, 'deleted_users', targetUid)); } catch (_) {}
+        try { await deleteDoc(doc(db, 'users', targetUid)); } catch (_) {}
+    }
+
+    aiPhotoReviewQueue.delete(targetUid);
+    if (typeof adminPosts !== 'undefined' && Array.isArray(adminPosts)) {
+        adminPosts = adminPosts.filter(p => p.authorUid !== targetUid);
+    }
+    if (typeof adminGroups !== 'undefined' && Array.isArray(adminGroups)) {
+        adminGroups = adminGroups.filter(g => g.creatorUid !== targetUid);
+    }
+    if (typeof adminUsers !== 'undefined' && Array.isArray(adminUsers)) {
+        adminUsers = adminUsers.filter(u => (u.id || u.uid) !== targetUid);
+    }
+
+    if (typeof recordAIIncident === 'function') {
+        recordAIIncident({
+            dedupKey: `photo_wiped_${targetUid}`,
+            uid: targetUid,
+            targetName: `${profile?.name || 'Membro'} (${profile?.username || targetUid})`,
+            category: 'photo_moderation',
+            subReason: 'account_wiped_recreatable',
+            riskScore: 62,
+            status: 'resolved',
+            signals: ['Prazo de 1 semana expirado sem foto válida', 'Dados apagados sem banimento permanente (pode recriar conta)'],
+            summary: 'Conta antiga e todos os dados apagados após vencer o prazo de 1 semana sem foto de perfil válida. Recriação liberada para a mesma conta Google.'
+        });
+    }
+
+    if (currentUser?.uid === targetUid && options.skipAuthReset !== true) {
+        const authScreen = document.getElementById('auth-screen');
+        if (authScreen) authScreen.classList.remove('unlocked');
+        resetAuthReactivationBoxes({ keepWipedNotice: true });
+        const wipedBox = document.getElementById('auth-wiped-recreate-box');
+        if (wipedBox) wipedBox.style.display = 'flex';
+        const authLoader = document.getElementById('auth-loading-msg');
+        if (authLoader) authLoader.style.display = 'none';
+        if (typeof showToast === 'function') {
+            showToast('Conta Apagada (Sem Banimento) ⏳', 'O prazo de 1 semana expirou e os dados antigos foram apagados. Você pode criar uma nova conta com a mesma conta Google.', 'orange');
+        }
+        try {
+            if (typeof signOut === 'function' && typeof auth !== 'undefined') await signOut(auth);
+        } catch (_) {}
+    }
+
+    return {
+        wiped: true,
+        targetUid,
+        wipedAt: now,
+        permanentlyBanned: false,
+        canRecreateWithSameGoogle: true,
+        deletedPostsCount,
+        deletedStoriesCount,
+        deletedGroupsCount
+    };
+}
+
+/**
+ * Portão de entrada no login: verifica se a conta está desativada, expirada (apagamento não permanente)
+ * ou em alerta de 30 dias úteis sem foto de perfil.
+ */
+export async function handleAuthPhotoLifecycleOnLogin(user, profile, options = {}) {
+    if (!user || !profile) return { allowAccess: true };
+    const now = Number(options.now || Date.now());
+    const authScreen = options.authScreen || document.getElementById('auth-screen');
+    const evaluation = evaluateProfilePhotoRequirementByAI(profile, { now });
+
+    if (evaluation.status === 'wipe_required' && evaluation.shouldWipe) {
+        await wipeExpiredNoPhotoAccountDataByAI(user.uid, profile, { now, skipAuthReset: options.skipAuthReset });
+        return { allowAccess: false, action: 'wiped_recreatable', evaluation };
+    }
+
+    if (evaluation.status === 'deactivated_no_photo') {
+        renderDeactivatedAccountLoginUI(profile, evaluation);
+        return { allowAccess: false, action: 'reactivation_required', evaluation };
+    }
+
+    if (evaluation.status === 'should_deactivate' && evaluation.shouldDeactivate) {
+        await deactivateAccountForNoPhotoByAI(user.uid, profile, { now });
+        return { allowAccess: false, action: 'deactivated_now', evaluation };
+    }
+
+    resetAuthReactivationBoxes();
+    if (typeof window !== 'undefined') window._vortexPendingReactivationFlow = false;
+    if (authScreen) authScreen.classList.add('unlocked');
+    return { allowAccess: true, action: 'allowed', evaluation };
+}
+
+/**
+ * Extrai dimensões e variância visual de pixels de uma imagem (quando Canvas está disponível no navegador).
+ */
+export async function extractImageMetricsForPhotoReview(photoInput, options = {}) {
+    if (options.imageMetrics && typeof options.imageMetrics === 'object') {
+        return { ...options.imageMetrics };
+    }
+    const str = typeof photoInput === 'string' ? photoInput.trim() : '';
+    const byteLength = options.byteLength || str.length;
+    const isDataUri = /^data:image\/([a-z0-9+.-]+);base64,/i.test(str);
+    const mimeMatch = str.match(/^data:(image\/[a-z0-9+.-]+)/i);
+    const mimeType = options.mimeType || (mimeMatch ? mimeMatch[1].toLowerCase() : '');
+
+    if (!str || str.length < 180 || typeof Image === 'undefined' || typeof document === 'undefined' || typeof document.createElement !== 'function') {
+        return {
+            hasPixelStats: false,
+            width: Number(options.width) || 0,
+            height: Number(options.height) || 0,
+            byteLength,
+            mimeType,
+            isDataUri
+        };
+    }
+
+    return new Promise((resolve) => {
+        let settled = false;
+        const finish = (metrics) => {
+            if (settled) return;
+            settled = true;
+            resolve(metrics);
+        };
+        const timer = setTimeout(() => {
+            finish({ hasPixelStats: false, width: 0, height: 0, byteLength, mimeType, isDataUri });
+        }, 450);
+
+        try {
+            const img = new Image();
+            img.onload = () => {
+                clearTimeout(timer);
+                const w = Number(img.naturalWidth || img.width) || 0;
+                const h = Number(img.naturalHeight || img.height) || 0;
+                let hasPixelStats = false;
+                let colorVariance = 0;
+                try {
+                    const canvas = document.createElement('canvas');
+                    const sampleW = 48;
+                    const sampleH = 48;
+                    canvas.width = sampleW;
+                    canvas.height = sampleH;
+                    const ctx = canvas.getContext && canvas.getContext('2d');
+                    if (ctx && typeof ctx.drawImage === 'function' && typeof ctx.getImageData === 'function') {
+                        ctx.drawImage(img, 0, 0, sampleW, sampleH);
+                        const data = ctx.getImageData(0, 0, sampleW, sampleH)?.data;
+                        if (data && data.length >= 16) {
+                            const lums = [];
+                            for (let i = 0; i < data.length; i += 4) {
+                                lums.push(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+                            }
+                            const mean = lums.reduce((s, v) => s + v, 0) / lums.length;
+                            const variance = lums.reduce((s, v) => s + (v - mean) * (v - mean), 0) / lums.length;
+                            colorVariance = Math.round(Math.sqrt(variance) * 10) / 10;
+                            hasPixelStats = true;
+                        }
+                    }
+                } catch (_) {}
+                finish({ hasPixelStats, width: w, height: h, colorVariance, byteLength, mimeType, isDataUri });
+            };
+            img.onerror = () => {
+                clearTimeout(timer);
+                finish({ hasPixelStats: false, width: 0, height: 0, byteLength, mimeType, isDataUri, loadError: true });
+            };
+            img.src = str;
+        } catch (_) {
+            clearTimeout(timer);
+            finish({ hasPixelStats: false, width: 0, height: 0, byteLength, mimeType, isDataUri });
+        }
+    });
+}
+
+/**
+ * Nível 1 (Sistema Automático): valida formato, resolução mínima, proporção e integridade básica.
+ * Se não conseguir medir com certeza ou houver dúvida, encaminha para a IA (Nível 2).
+ */
+export function evaluatePhotoTier1System(photoStr = '', metrics = {}, options = {}) {
+    if (!photoStr || typeof photoStr !== 'string') {
+        return { decision: 'rejected', tier: 'system', certainty: 'high', reason: 'Nenhuma imagem válida foi enviada.' };
+    }
+    const trimmed = photoStr.trim();
+    const isImageData = /^data:image\/(jpeg|jpg|png|webp|gif|svg\+xml)/i.test(trimmed);
+    const isHttpsUrl = /^https?:\/\/.+/i.test(trimmed);
+    if (!isImageData && !isHttpsUrl) {
+        return { decision: 'rejected', tier: 'system', certainty: 'high', reason: 'Formato de arquivo inválido para foto de perfil.' };
+    }
+    if (/^data:image\/svg\+xml/i.test(trimmed)) {
+        return { decision: 'escalate_ai', tier: 'system', certainty: 'uncertain', reason: 'Imagem vetorial (SVG) encaminhada para análise da IA.' };
+    }
+    if (metrics.loadError) {
+        return { decision: 'rejected', tier: 'system', certainty: 'high', reason: 'Não foi possível decodificar a imagem enviada.' };
+    }
+
+    const w = Number(metrics.width || options.width || 0);
+    const h = Number(metrics.height || options.height || 0);
+    if (w > 0 && h > 0) {
+        if (w < 48 || h < 48) {
+            return { decision: 'rejected', tier: 'system', certainty: 'high', reason: `Resolução muito baixa (${w}x${h}px).` };
+        }
+        const ratio = Math.max(w / h, h / w);
+        if (ratio > 4.5) {
+            return { decision: 'rejected', tier: 'system', certainty: 'high', reason: 'Proporção de imagem extremamente distorcida.' };
+        }
+    }
+
+    if (options.forceUncertainSystem || options.styleHint || options.qualityHint) {
+        return { decision: 'escalate_ai', tier: 'system', certainty: 'uncertain', reason: 'Sistema automático encaminhou para validação da IA.' };
+    }
+
+    if (!metrics.hasPixelStats || !w || !h) {
+        return { decision: 'escalate_ai', tier: 'system', certainty: 'uncertain', reason: 'Sistema automático sem leitura completa de pixels; passando para a IA.' };
+    }
+
+    const variance = Number(metrics.colorVariance ?? 0);
+    const ratio = Math.max(w / h, h / w);
+    if (w >= 240 && h >= 240 && ratio <= 1.8 && variance >= 22 && variance <= 95) {
+        return { decision: 'approved', tier: 'system', certainty: 'high', reason: 'Foto aprovada automaticamente pelo Sistema VORTEX VIP ⚡.' };
+    }
+
+    return { decision: 'escalate_ai', tier: 'system', certainty: 'uncertain', reason: 'Características visuais borderline; encaminhando para revisão da IA.' };
+}
+
+/**
+ * Nível 2 (IA VORTEX Shield): avalia qualidade baixa, estilo estranho e risco da conta.
+ * Para não cometer erros, sempre que houver incerteza, qualidade baixa ou estilo estranho, passa para um Administrador revisar (Nível 3).
+ */
+export function evaluatePhotoTier2AI(photoStr = '', metrics = {}, account = {}, tier1 = {}, options = {}) {
+    const trimmed = String(photoStr || '').trim();
+    if (/blank|1x1|spacer|spam-bot|blocked/i.test(trimmed)) {
+        return { decision: 'rejected', tier: 'ia', certainty: 'high', reason: 'Foto bloqueada pela IA por padrão inválido/Spam.' };
+    }
+
+    const w = Number(metrics.width || options.width || 0);
+    const h = Number(metrics.height || options.height || 0);
+    const variance = Number(metrics.colorVariance ?? 0);
+
+    if (metrics.hasPixelStats && variance <= 1.5) {
+        return { decision: 'rejected', tier: 'ia', certainty: 'high', reason: 'Imagem totalmente lisa/em branco detectada pela IA.' };
+    }
+
+    const lowQuality = options.qualityHint === 'low' ||
+        (w > 0 && h > 0 && (w < 180 || h < 180)) ||
+        (metrics.hasPixelStats && variance < 16);
+
+    const strangeStyle = options.styleHint === 'strange' ||
+        /^data:image\/svg\+xml/i.test(trimmed) ||
+        (metrics.hasPixelStats && variance > 98) ||
+        (w > 0 && h > 0 && Math.max(w / h, h / w) > 2.4);
+
+    const trust = typeof evaluateAccountTrustByAI === 'function'
+        ? evaluateAccountTrustByAI(account || {})
+        : { riskScore: 0 };
+
+    const uncertain = Boolean(options.forceUncertainAI || !metrics.hasPixelStats || trust.riskScore >= 25);
+
+    if (lowQuality || strangeStyle || uncertain) {
+        const flags = [];
+        if (lowQuality) flags.push('qualidade baixa');
+        if (strangeStyle) flags.push('estilo estranho');
+        if (uncertain && !lowQuality && !strangeStyle) flags.push('IA sem certeza completa');
+        return {
+            decision: 'pending_admin',
+            tier: 'admin',
+            certainty: 'uncertain',
+            flags,
+            reason: `IA encaminhou para Administrador revisar (${flags.join(', ')}) para evitar erros.`
+        };
+    }
+
+    return {
+        decision: 'approved',
+        tier: 'ia',
+        certainty: 'high',
+        reason: 'Foto válida aprovada pela Inteligência Artificial VORTEX VIP ⚡.'
+    };
+}
+
+/**
+ * Pipeline completo de revisão em 3 níveis da foto de perfil: Sistema -> IA -> Administrador.
+ * Retorna decisão + mensagem pronta da IA (parabéns / sinto muito / aguardando administrador).
+ */
+export async function reviewProfilePhoto3TierByAI(photoInput, account = {}, options = {}) {
+    const metrics = await extractImageMetricsForPhotoReview(photoInput, options);
+    const tier1 = evaluatePhotoTier1System(photoInput, metrics, options);
+
+    if (tier1.decision === 'approved') {
+        return {
+            decision: 'approved',
+            tier: 'system',
+            reason: tier1.reason,
+            metrics,
+            readyMessage: PHOTO_AI_READY_MESSAGES.approved
+        };
+    }
+
+    if (tier1.decision === 'rejected') {
+        return {
+            decision: 'rejected',
+            tier: 'system',
+            reason: tier1.reason,
+            metrics,
+            readyMessage: PHOTO_AI_READY_MESSAGES.rejected
+        };
+    }
+
+    const tier2 = evaluatePhotoTier2AI(photoInput, metrics, account, tier1, options);
+    const messageByDecision = {
+        approved: PHOTO_AI_READY_MESSAGES.approved,
+        rejected: PHOTO_AI_READY_MESSAGES.rejected,
+        pending_admin: PHOTO_AI_READY_MESSAGES.pending_admin
+    };
+
+    return {
+        decision: tier2.decision,
+        tier: tier2.tier,
+        reason: tier2.reason,
+        flags: tier2.flags || [],
+        metrics,
+        readyMessage: messageByDecision[tier2.decision] || PHOTO_AI_READY_MESSAGES.pending_admin
+    };
+}
+
+/**
+ * Registra notificação pronta da IA no Firestore quando uma foto é aprovada ou recusada.
+ */
+export async function dispatchPhotoModerationNotification(targetUid, status, message, reason = '') {
+    if (!targetUid || typeof db === 'undefined' || typeof collection !== 'function') return false;
+    const isApproved = status === 'approved';
+    const payload = {
+        toUid: targetUid,
+        fromUid: 'vortex_ai_shield',
+        fromName: 'VORTEX AI Shield ⚡',
+        type: isApproved ? 'ai_photo_approved' : 'ai_photo_rejected',
+        title: isApproved ? 'Parabéns! Foto de Perfil Aprovada ⚡' : 'Sinto muito! Foto de Perfil Recusada 😔',
+        message: message || (isApproved ? PHOTO_AI_READY_MESSAGES.approved : PHOTO_AI_READY_MESSAGES.rejected),
+        reason: reason || '',
+        read: false,
+        createdAt: Date.now()
+    };
+    try {
+        if (typeof addDoc === 'function') {
+            await addDoc(collection(db, 'notifications'), payload);
+        }
+        return true;
+    } catch (_) {
+        return false;
+    }
+}
+
+/**
+ * Enfileira foto de perfil incerta/baixa qualidade/estilo estranho para revisão manual do Administrador.
+ */
+export async function enqueuePhotoForAdminReview(uid, profile = {}, avatarDataUrl = '', review = {}) {
+    if (!uid) return null;
+    const now = Date.now();
+    const item = {
+        uid,
+        name: `${profile?.name || 'Membro'} ${profile?.surname || ''}`.trim(),
+        username: profile?.username || `@${uid.slice(0, 6)}`,
+        email: profile?.email || '',
+        avatar: avatarDataUrl || profile?.avatar || '',
+        reason: review?.reason || 'Aguardando revisão do Administrador.',
+        flags: Array.isArray(review?.flags) ? review.flags : [],
+        status: 'pending_admin',
+        requestedAt: now
+    };
+    aiPhotoReviewQueue.set(uid, item);
+
+    if (typeof recordAIIncident === 'function') {
+        recordAIIncident({
+            dedupKey: `photo_review_admin_${uid}`,
+            uid,
+            targetName: `${item.name} (${item.username})`,
+            category: 'photo_moderation',
+            subReason: 'pending_admin_photo',
+            riskScore: 55,
+            signals: item.flags.length ? item.flags : ['Encaminhada pela IA para Administrador'],
+            summary: item.reason
+        });
+    }
+
+    if (typeof renderAdminPhotoModerationQueue === 'function') {
+        renderAdminPhotoModerationQueue();
+    }
+    return item;
+}
+
+/**
+ * Nível 3 (Administrador): aprova ou recusa uma foto pendente e envia automaticamente a mensagem pronta da IA (parabéns ou sinto muito).
+ */
+export async function adminReviewProfilePhotoByAI(targetUid, decision, adminNote = '') {
+    if (!targetUid || (decision !== 'approved' && decision !== 'rejected')) return null;
+    const now = Date.now();
+    const isApproved = decision === 'approved';
+    const readyMessage = isApproved ? PHOTO_AI_READY_MESSAGES.approved : PHOTO_AI_READY_MESSAGES.rejected;
+    const reviewerEmail = currentUser?.email || 'Administrador VORTEX VIP';
+
+    const cachedUser = (typeof adminUsers !== 'undefined' && Array.isArray(adminUsers))
+        ? adminUsers.find(u => (u.id || u.uid) === targetUid)
+        : null;
+    const queuedItem = aiPhotoReviewQueue.get(targetUid) || null;
+    const targetObj = (currentProfile?.uid === targetUid ? currentProfile : null) || cachedUser || {};
+
+    const updatePatch = isApproved
+        ? {
+            avatarModerationStatus: 'approved',
+            avatarModerationTier: 'admin',
+            avatarModerationReason: adminNote || 'Foto aprovada pelo Administrador VORTEX VIP ⚡.',
+            avatarModerationFeedback: readyMessage,
+            avatarReviewedAt: now,
+            avatarReviewedBy: reviewerEmail,
+            accountStatus: 'active',
+            deactivatedAt: null,
+            reactivationDeadlineAt: null,
+            reactivationPhotoDeadlineAt: null,
+            photoGraceDeadlineAt: null,
+            photoGraceStartedAt: null,
+            updatedAt: now
+        }
+        : {
+            avatar: '',
+            avatarModerationStatus: 'rejected',
+            avatarModerationTier: 'admin',
+            avatarModerationReason: adminNote || 'Foto recusada pela moderação administrativa.',
+            avatarModerationFeedback: readyMessage,
+            avatarReviewedAt: now,
+            avatarReviewedBy: reviewerEmail,
+            photoGraceStartedAt: targetObj.photoGraceStartedAt || now,
+            photoGraceDeadlineAt: targetObj.reactivationPhotoDeadlineAt || targetObj.photoGraceDeadlineAt || addBusinessDaysMs(now, PROFILE_PHOTO_GRACE_BUSINESS_DAYS),
+            updatedAt: now
+        };
+
+    Object.assign(targetObj, updatePatch);
+    if (cachedUser) Object.assign(cachedUser, updatePatch);
+    if (currentProfile && currentProfile.uid === targetUid) {
+        Object.assign(currentProfile, updatePatch);
+        syncProfileAvatarModerationUI(currentProfile);
+        syncProfilePhotoRequirementLifecycle(currentProfile, { now, skipWrite: true });
+        if (!isApproved && typeof updateProfileDOM === 'function') updateProfileDOM();
+    }
+
+    if (typeof db !== 'undefined' && typeof doc === 'function') {
+        try {
+            if (typeof updateDoc === 'function') {
+                await updateDoc(doc(db, 'users', targetUid), updatePatch);
+            } else if (typeof setDoc === 'function') {
+                await setDoc(doc(db, 'users', targetUid), updatePatch, { merge: true });
+            }
+        } catch (_) {
+            if (typeof setDoc === 'function') {
+                await setDoc(doc(db, 'users', targetUid), updatePatch, { merge: true }).catch(() => {});
+            }
+        }
+    }
+
+    await dispatchPhotoModerationNotification(targetUid, decision, readyMessage, updatePatch.avatarModerationReason);
+
+    if (queuedItem) aiPhotoReviewQueue.delete(targetUid);
+    if (typeof aiSecurityIncidents !== 'undefined' && Array.isArray(aiSecurityIncidents)) {
+        const inc = aiSecurityIncidents.find(i => i.dedupKey === `photo_review_admin_${targetUid}`);
+        if (inc) inc.status = isApproved ? 'approved' : 'rejected';
+    }
+    if (typeof renderAdminAISecurityDashboard === 'function') {
+        renderAdminAISecurityDashboard();
+    } else if (typeof renderAdminPhotoModerationQueue === 'function') {
+        renderAdminPhotoModerationQueue();
+    }
+
+    if (typeof showToast === 'function') {
+        showToast(
+            isApproved ? 'Foto Aprovada ✅' : 'Foto Recusada ❌',
+            `${isApproved ? 'IA enviou parabéns' : 'IA enviou sinto muito'} para ${queuedItem?.name || targetObj?.name || targetUid}.`,
+            isApproved ? 'green' : 'orange'
+        );
+    }
+
+    return {
+        targetUid,
+        decision,
+        tier: 'admin',
+        readyMessage,
+        reviewedAt: now,
+        reviewedBy: reviewerEmail
+    };
+}
+
+/**
+ * Renderiza a fila de revisão de fotos do Administrador (Nível 3) no Painel ADM IA.
+ */
+export function renderAdminPhotoModerationQueue() {
+    const listEl = document.getElementById('admin-ai-photo-reviews-list');
+    const countEl = document.getElementById('admin-ai-photo-reviews-count');
+    if (!listEl && !countEl) return [];
+
+    const merged = new Map(aiPhotoReviewQueue);
+    if (typeof adminUsers !== 'undefined' && Array.isArray(adminUsers)) {
+        adminUsers.forEach(u => {
+            const uid = u.id || u.uid;
+            if (uid && u.avatarModerationStatus === 'pending_admin' && !merged.has(uid)) {
+                merged.set(uid, {
+                    uid,
+                    name: `${u.name || 'Membro'} ${u.surname || ''}`.trim(),
+                    username: u.username || `@${uid.slice(0, 6)}`,
+                    email: u.email || '',
+                    avatar: u.avatar || '',
+                    reason: u.avatarModerationReason || 'Qualidade/estilo pendente de revisão ADM.',
+                    requestedAt: u.avatarModerationRequestedAt || u.updatedAt || Date.now()
+                });
+            }
+        });
+    }
+
+    const pendingItems = Array.from(merged.values());
+    if (countEl) countEl.textContent = `${pendingItems.length} pendente(s)`;
+
+    if (listEl) {
+        if (pendingItems.length === 0) {
+            listEl.innerHTML = `<div style="font-size:0.8rem; color:rgba(255,255,255,0.62); padding:6px 0;">Nenhuma foto de perfil pendente de revisão manual no momento.</div>`;
+        } else {
+            const esc = typeof escapeHTML === 'function' ? escapeHTML : (s => String(s || ''));
+            listEl.innerHTML = pendingItems.map(item => `
+                <div class="admin-ai-photo-review-card" data-photo-uid="${esc(item.uid)}">
+                    <img src="${esc(item.avatar || 'icons/vortex-vip-192.png')}" alt="Foto de ${esc(item.name)}" class="admin-ai-photo-review-thumb">
+                    <div class="admin-ai-photo-review-meta">
+                        <strong style="color:#fff; font-size:0.86rem;">${esc(item.name)} <span style="color:rgba(255,255,255,0.62); font-weight:500;">${esc(item.username)}</span></strong>
+                        <small style="color:#ffe082;">${esc(item.reason)}</small>
+                    </div>
+                    <div class="admin-ai-photo-review-actions">
+                        <button type="button" class="admin-ai-action-btn safe" data-photo-review-action="approved" data-uid="${esc(item.uid)}">✅ Aprovar Foto</button>
+                        <button type="button" class="admin-ai-action-btn ban" data-photo-review-action="rejected" data-uid="${esc(item.uid)}">❌ Recusar Foto</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+    }
+
+    return pendingItems;
+}
+
+/**
+ * Atualiza o status visual de moderação da foto no painel Editar Perfil e dispara toast quando houver novo veredito do ADM.
+ */
+export function syncProfileAvatarModerationUI(profile = currentProfile) {
+    const statusEl = document.getElementById('profile-avatar-moderation-status');
+    if (!profile) {
+        if (statusEl) statusEl.style.display = 'none';
+        return;
+    }
+
+    const modStatus = String(profile.avatarModerationStatus || '').toLowerCase();
+    const reviewedKey = `${profile.uid || ''}_${modStatus}_${profile.avatarReviewedAt || ''}`;
+    if ((modStatus === 'approved' || modStatus === 'rejected') && profile.avatarReviewedAt && !photoModerationFeedbackNotifiedSet.has(reviewedKey)) {
+        photoModerationFeedbackNotifiedSet.add(reviewedKey);
+        if (typeof showToast === 'function') {
+            showToast(
+                modStatus === 'approved' ? 'Parabéns! Foto Aprovada ⚡' : 'Sinto muito! Foto Recusada 😔',
+                profile.avatarModerationFeedback || PHOTO_AI_READY_MESSAGES[modStatus],
+                modStatus === 'approved' ? 'green' : 'red'
+            );
+        }
+    }
+
+    if (!statusEl) return;
+    statusEl.classList.remove('approved', 'pending_admin', 'rejected', 'missing');
+
+    if (modStatus === 'approved') {
+        statusEl.classList.add('approved');
+        statusEl.textContent = `✅ ${profile.avatarModerationFeedback || PHOTO_AI_READY_MESSAGES.approved}`;
+        statusEl.style.display = 'block';
+    } else if (modStatus === 'pending_admin') {
+        statusEl.classList.add('pending_admin');
+        statusEl.textContent = `🕵️ ${profile.avatarModerationFeedback || PHOTO_AI_READY_MESSAGES.pending_admin}`;
+        statusEl.style.display = 'block';
+    } else if (modStatus === 'rejected') {
+        statusEl.classList.add('rejected');
+        statusEl.textContent = `❌ ${profile.avatarModerationFeedback || PHOTO_AI_READY_MESSAGES.rejected}`;
+        statusEl.style.display = 'block';
+    } else if (!hasValidProfilePhotoValue(profile.avatar)) {
+        const req = evaluateProfilePhotoRequirementByAI(profile);
+        statusEl.classList.add('missing');
+        statusEl.textContent = req.warningMessage || '⚠️ Foto de perfil obrigatória!';
+        statusEl.style.display = 'block';
+    } else {
+        statusEl.style.display = 'none';
+    }
+}
+
+/**
+ * Sincroniza o banner de aviso da IA (30 dias úteis ou 1 semana pós-reativação) para usuários sem foto de perfil
+ * e executa desativação/apagamento quando o prazo vencer.
+ */
+export async function syncProfilePhotoRequirementLifecycle(profile = currentProfile, options = {}) {
+    const banner = document.getElementById('profile-photo-ai-warning-banner');
+    const headlineEl = document.getElementById('profile-photo-ai-warning-headline');
+    const descEl = document.getElementById('profile-photo-ai-warning-desc');
+
+    if (!profile || !currentUser) {
+        if (banner) banner.style.display = 'none';
+        return null;
+    }
+
+    const now = Number(options.now || Date.now());
+    const evaluation = evaluateProfilePhotoRequirementByAI(profile, { now });
+
+    if (evaluation.status === 'wipe_required' && evaluation.shouldWipe) {
+        if (banner) banner.style.display = 'none';
+        if (!options.skipEnforcement) {
+            await wipeExpiredNoPhotoAccountDataByAI(currentUser.uid, profile, { now });
+        }
+        return evaluation;
+    }
+
+    if (evaluation.status === 'should_deactivate' && evaluation.shouldDeactivate) {
+        if (banner) banner.style.display = 'none';
+        if (!options.skipEnforcement) {
+            await deactivateAccountForNoPhotoByAI(currentUser.uid, profile, { now });
+        }
+        return evaluation;
+    }
+
+    if (evaluation.requiresUpload && (evaluation.status === 'warning_required' || evaluation.status === 'reactivated_awaiting_photo')) {
+        if (!profile.photoGraceStartedAt && evaluation.graceStartedAt) {
+            profile.photoGraceStartedAt = evaluation.graceStartedAt;
+            profile.photoGraceDeadlineAt = evaluation.graceDeadlineAt;
+            if (!options.skipWrite && typeof db !== 'undefined' && typeof updateDoc === 'function' && typeof doc === 'function') {
+                updateDoc(doc(db, 'users', currentUser.uid), {
+                    photoGraceStartedAt: evaluation.graceStartedAt,
+                    photoGraceDeadlineAt: evaluation.graceDeadlineAt
+                }).catch(() => {});
+            }
+        }
+        if (banner) banner.style.display = 'flex';
+        if (headlineEl) {
+            headlineEl.textContent = evaluation.isReactivatedGrace
+                ? `URGENTE: ${formatRemainingWindowPT(evaluation.remainingMs)} para colocar foto de perfil!`
+                : `Aviso IA: ${evaluation.remainingBusinessDays} dia(s) útil(eis) para colocar foto de perfil`;
+        }
+        if (descEl) {
+            descEl.textContent = evaluation.warningMessage;
+        }
+    } else {
+        if (banner) banner.style.display = 'none';
+    }
+
+    return evaluation;
+}
+
+if (typeof window !== 'undefined') {
+    window.PROFILE_PHOTO_GRACE_BUSINESS_DAYS = PROFILE_PHOTO_GRACE_BUSINESS_DAYS;
+    window.PROFILE_PHOTO_ONE_WEEK_MS = PROFILE_PHOTO_ONE_WEEK_MS;
+    window.PHOTO_AI_READY_MESSAGES = PHOTO_AI_READY_MESSAGES;
+    window.aiPhotoReviewQueue = aiPhotoReviewQueue;
+    window.isBusinessDayMs = isBusinessDayMs;
+    window.addBusinessDaysMs = addBusinessDaysMs;
+    window.countRemainingBusinessDaysMs = countRemainingBusinessDaysMs;
+    window.hasValidProfilePhotoValue = hasValidProfilePhotoValue;
+    window.evaluateProfilePhotoRequirementByAI = evaluateProfilePhotoRequirementByAI;
+    window.resetAuthReactivationBoxes = resetAuthReactivationBoxes;
+    window.deactivateAccountForNoPhotoByAI = deactivateAccountForNoPhotoByAI;
+    window.reactivateDeactivatedAccountByAI = reactivateDeactivatedAccountByAI;
+    window.wipeExpiredNoPhotoAccountDataByAI = wipeExpiredNoPhotoAccountDataByAI;
+    window.handleAuthPhotoLifecycleOnLogin = handleAuthPhotoLifecycleOnLogin;
+    window.extractImageMetricsForPhotoReview = extractImageMetricsForPhotoReview;
+    window.evaluatePhotoTier1System = evaluatePhotoTier1System;
+    window.evaluatePhotoTier2AI = evaluatePhotoTier2AI;
+    window.reviewProfilePhoto3TierByAI = reviewProfilePhoto3TierByAI;
+    window.dispatchPhotoModerationNotification = dispatchPhotoModerationNotification;
+    window.enqueuePhotoForAdminReview = enqueuePhotoForAdminReview;
+    window.adminReviewProfilePhotoByAI = adminReviewProfilePhotoByAI;
+    window.renderAdminPhotoModerationQueue = renderAdminPhotoModerationQueue;
+    window.syncProfileAvatarModerationUI = syncProfileAvatarModerationUI;
+    window.syncProfilePhotoRequirementLifecycle = syncProfilePhotoRequirementLifecycle;
 }
 
 

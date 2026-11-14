@@ -35,13 +35,13 @@
     <meta itemprop="image" content="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
     <link rel="image_src" type="image/png" href="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
 
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.287">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.287">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.287">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.287">
-    <link rel="stylesheet" href="style.css?v=1.0.287">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.288">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.288">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.288">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.288">
+    <link rel="stylesheet" href="style.css?v=1.0.288">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.287" id="app-manifest-link">
+    <link rel="manifest" href="manifest.json?v=1.0.288" id="app-manifest-link">
     <meta name="theme-color" content="#39ff14" id="app-theme-color-meta">
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#39ff14" id="app-theme-color-meta-dark">
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#39ff14" id="app-theme-color-meta-light">
@@ -50,8 +50,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.287">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.287">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.288">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.288">
     <!-- Sincronização Dinâmica da Barra de Status e Barra de Navegação do Celular -->
     <script>
         (function() {
@@ -124,6 +124,30 @@
                     <svg width="20" height="20" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2045c0-.6382-.0573-1.2518-.1636-1.8409H9.18v3.4818h4.7918c-.2045 1.125-.8227 2.0782-1.7955 2.7218v2.2582h2.9091c1.7018-1.5664 2.6845-3.8736 2.6845-6.6218z"></path><path fill="#34A853" d="M9.18 18c2.43 0 4.4673-.8045 5.9564-2.1818l-2.9091-2.2582c-.8045.5455-1.8364.8727-2.9927.8727-2.3 0-4.2545-1.5664-4.95-3.6682H1.27v2.3318C2.7255 15.6 5.67 18 9.18 18z"></path><path fill="#FBBC05" d="M4.23 10.7318c-.1636-.4882-.2591-1.0018-.2591-1.5318s.0955-1.0436.2591-1.5318V5.3364H1.27C.4636 6.9318 0 8.4909 0 10.2c0 1.7091.4636 3.2682 1.27 4.8636l2.96-2.3318z"></path><path fill="#EA4335" d="M9.18 3.9818c1.3227 0 2.5091.4545 3.4409 1.3455l2.5818-2.5818C13.6473 1.1 11.61.0001 9.18.0001 5.67.0001 2.7255 2.4 1.27 5.3364L4.23 7.6682c.6955-2.1018 2.65-3.6864 4.95-3.6864z"></path></svg>
                     <span>Entrar com o Google</span>
                 </button>
+                <button type="button" id="auth-reactivate-entry-btn" class="auth-reactivate-entry-btn" title="Ativar conta desativada por falta de foto de perfil" aria-label="Ativar Conta Desativada">
+                    <i data-lucide="user-check"></i>
+                    <span>Ativar Conta Desativada</span>
+                </button>
+                <div id="auth-reactivation-box" class="auth-reactivation-box" style="display: none;">
+                    <div class="auth-reactivation-header">
+                        <i data-lucide="shield-alert"></i>
+                        <strong>Conta Desativada pela IA</strong>
+                    </div>
+                    <p id="auth-reactivation-desc" class="auth-reactivation-desc">Sua conta foi desativada porque passaram 30 dias úteis sem foto de perfil válida. Você tem <strong><span id="auth-reactivation-countdown">7 dias</span></strong> para ativar a conta e adicionar uma foto válida.</p>
+                    <div id="auth-reactivation-email" class="auth-reactivation-email"></div>
+                    <button type="button" id="confirm-reactivate-account-btn" class="danger-btn auth-confirm-reactivate-btn">
+                        <i data-lucide="sparkles"></i>
+                        <span>Ativar Conta Agora</span>
+                    </button>
+                    <button type="button" id="cancel-reactivation-btn" class="close-btn auth-cancel-reactivate-btn">Trocar Conta Google</button>
+                </div>
+                <div id="auth-wiped-recreate-box" class="auth-wiped-recreate-box" style="display: none;">
+                    <div class="auth-reactivation-header">
+                        <i data-lucide="alert-triangle"></i>
+                        <strong>Conta Antiga Apagada (Sem Banimento)</strong>
+                    </div>
+                    <p id="auth-wiped-recreate-desc" class="auth-reactivation-desc">O prazo de 1 semana para adicionar uma foto de perfil expirou e todos os dados antigos da conta foram apagados. Ela não foi apagada permanentemente: clique em <strong>Entrar com o Google</strong> para criar uma nova conta com esta mesma conta Google.</p>
+                </div>
                 <div id="auth-loading-msg" class="auth-loading-msg">Conectando ao VORTEX Core...</div>
                 <div class="auth-legal-footer" id="auth-legal-footer">
                     <span>Ao continuar, você concorda com a nossa</span>
@@ -266,6 +290,16 @@
                     </button>
                 </div>
                 <button type="button" id="vip-grace-renew-btn" class="danger-btn vip-grace-renew-btn">Renovar (R$ 30,00)</button>
+            </div>
+
+            <!-- Aviso da IA: Foto de Perfil Obrigatória (30 Dias Úteis / Reativação 7 Dias) -->
+            <div id="profile-photo-ai-warning-banner" class="profile-photo-ai-warning-banner" style="display: none;">
+                <div class="profile-photo-ai-warning-icon"><i data-lucide="camera"></i></div>
+                <div class="profile-photo-ai-warning-info">
+                    <div id="profile-photo-ai-warning-headline" class="profile-photo-ai-warning-headline">Aviso da IA VORTEX VIP ⚡: Adicione sua foto de perfil</div>
+                    <div id="profile-photo-ai-warning-desc" class="profile-photo-ai-warning-desc">Adicione uma foto de perfil válida antes de expirar o prazo de 30 dias úteis, senão a IA poderá considerar sua conta falsa/Spam e desativá-la.</div>
+                </div>
+                <button type="button" id="profile-photo-ai-upload-cta-btn" class="danger-btn profile-photo-ai-cta-btn">Colocar Foto</button>
             </div>
 
             <!-- Stories Estilo Instagram VIP -->
@@ -1695,6 +1729,7 @@
                     </div>
                     <input type="file" id="profile-file-input" accept="image/*" class="hidden-file-input" title="Foto de Perfil Arquivo" aria-label="Foto de Perfil Arquivo">
                     <label for="profile-file-input" class="danger-btn change-avatar-btn" id="change-avatar-btn-label"><i data-lucide="camera" style="width:16px;height:16px;margin-right:6px;"></i> Alterar Foto</label>
+                    <div id="profile-avatar-moderation-status" class="profile-avatar-moderation-status" style="display: none;"></div>
                 </div>
 
                 <div class="setting-item">
@@ -2923,10 +2958,10 @@
                 <div class="app-version-card" id="app-version-info-footer">
                     <div class="app-version-header-row">
                         <div class="app-version-brand-wrap">
-                            <img src="icons/vortex-vip-192.png?v=1.0.287" alt="VORTEX VIP" class="app-version-icon-img" width="22" height="22">
+                            <img src="icons/vortex-vip-192.png?v=1.0.288" alt="VORTEX VIP" class="app-version-icon-img" width="22" height="22">
                             <span class="app-version-brand-name">VORTEX VIP Oficial</span>
                         </div>
-                        <span class="app-version-pill-badge" id="app-version-display-badge">v1.0.287 ⚡</span>
+                        <span class="app-version-pill-badge" id="app-version-display-badge">v1.0.288 ⚡</span>
                     </div>
                     <div class="app-version-status-row">
                         <span class="app-version-status-dot"></span>
@@ -3329,7 +3364,7 @@
                     </div>
                 </div>
 
-                <!-- 11. Aba de IA Segurança, Moderação & Recomendação Inteligente (v1.0.287) -->
+                <!-- 11. Aba de IA Segurança, Moderação & Recomendação Inteligente (v1.0.288) -->
                 <div id="admin-view-ai-security" class="admin-view">
                     <div class="admin-ai-hero-card">
                         <div class="admin-ai-hero-top">
@@ -3431,6 +3466,20 @@
                             <button type="button" class="admin-ai-cat-pill" data-ai-cat="scam_link_spam">Golpe, Spam &amp; Link</button>
                             <button type="button" class="admin-ai-cat-pill" data-ai-cat="comment_moderation">Comentários IA</button>
                             <button type="button" class="admin-ai-cat-pill" data-ai-cat="like_spam_guard">Curtidas IA (24h)</button>
+                            <button type="button" class="admin-ai-cat-pill" data-ai-cat="photo_moderation">Fotos de Perfil IA</button>
+                        </div>
+                    </div>
+
+                    <div id="admin-ai-photo-reviews-section" class="admin-ai-photo-reviews-section">
+                        <div class="admin-ai-photo-reviews-header">
+                            <div>
+                                <h4><i data-lucide="camera"></i> Revisão de Fotos de Perfil (Sistema → IA → Administrador)</h4>
+                                <small>Fotos com baixa qualidade, estilo estranho ou incerteza da IA aguardando decisão ADM</small>
+                            </div>
+                            <span id="admin-ai-photo-reviews-count" class="admin-ai-rec-score-pill">0 pendente(s)</span>
+                        </div>
+                        <div id="admin-ai-photo-reviews-list" class="admin-ai-photo-reviews-list">
+                            <div style="font-size:0.8rem; color:rgba(255,255,255,0.62); padding:6px 0;">Nenhuma foto de perfil pendente de revisão manual no momento.</div>
                         </div>
                     </div>
 
@@ -6762,7 +6811,7 @@
         <div id="business-blocked-modal" class="custom-modal-overlay business-blocked-overlay" style="display:none;" aria-hidden="true">
             <div class="custom-modal-card business-blocked-card">
                 <div class="business-blocked-icon-wrap">
-                    <img src="icons/blocked-hand.png?v=1.0.287" alt="Acesso Bloqueado" class="business-blocked-hand-icon" width="64" height="64">
+                    <img src="icons/blocked-hand.png?v=1.0.288" alt="Acesso Bloqueado" class="business-blocked-hand-icon" width="64" height="64">
                 </div>
                 <h3 class="business-blocked-title">Acesso Bloqueado</h3>
                 <p class="business-blocked-msg" id="business-blocked-msg-text">
@@ -6874,6 +6923,6 @@
         </main>
     </div>
 
-    <script type="module" src="script.js?v=1.0.287" defer></script>
+    <script type="module" src="script.js?v=1.0.288" defer></script>
 </body>
 </html>

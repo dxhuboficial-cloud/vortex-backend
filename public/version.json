@@ -1,6 +1,6 @@
 {
-  "version": "1.0.287",
-  "build": 287,
+  "version": "1.0.288",
+  "build": 288,
   "releaseDate": "2026-11-14",
   "notes": "Correção de ícone Lucide inexistente (folder-audio -> file-music) e URLs absolutas no manifest dinâmico PWA (start_url, scope e icons.src) v1.0.287"
 }
