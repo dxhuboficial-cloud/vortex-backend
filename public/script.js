@@ -23194,7 +23194,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.285';
+export const CURRENT_APP_VERSION = '1.0.286';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -42641,14 +42641,6 @@ window.handleCallSwitchedToVideo = handleCallSwitchedToVideo;
     window.analyzeLikeClickBurstByAI = analyzeLikeClickBurstByAI;
     window.handleLikeAttemptByAI = handleLikeAttemptByAI;
     window.syncLikeButtonsLockUI = syncLikeButtonsLockUI;
-    window.PROFILE_FIELD_EDIT_LIMIT_MAX = PROFILE_FIELD_EDIT_LIMIT_MAX;
-    window.PROFILE_FIELD_EDIT_WINDOW_MS = PROFILE_FIELD_EDIT_WINDOW_MS;
-    window.PROFILE_MONTHLY_LIMITED_FIELDS = PROFILE_MONTHLY_LIMITED_FIELDS;
-    window.normalizeProfileFieldValueForLimit = normalizeProfileFieldValueForLimit;
-    window.getProfileFieldEditStatus = getProfileFieldEditStatus;
-    window.getAllProfileFieldEditStatuses = getAllProfileFieldEditStatuses;
-    window.evaluateProfileMonthlyEditLimits = evaluateProfileMonthlyEditLimits;
-    window.syncProfileFieldEditLimitsUI = syncProfileFieldEditLimitsUI;
     try {
         Object.defineProperty(window, 'maintenanceConfig', {
             get: () => maintenanceConfig,
@@ -49877,6 +49869,17 @@ export function syncProfileFieldEditLimitsUI(
     }
 
     return statuses;
+}
+
+if (typeof window !== 'undefined') {
+    window.PROFILE_FIELD_EDIT_LIMIT_MAX = PROFILE_FIELD_EDIT_LIMIT_MAX;
+    window.PROFILE_FIELD_EDIT_WINDOW_MS = PROFILE_FIELD_EDIT_WINDOW_MS;
+    window.PROFILE_MONTHLY_LIMITED_FIELDS = PROFILE_MONTHLY_LIMITED_FIELDS;
+    window.normalizeProfileFieldValueForLimit = normalizeProfileFieldValueForLimit;
+    window.getProfileFieldEditStatus = getProfileFieldEditStatus;
+    window.getAllProfileFieldEditStatuses = getAllProfileFieldEditStatuses;
+    window.evaluateProfileMonthlyEditLimits = evaluateProfileMonthlyEditLimits;
+    window.syncProfileFieldEditLimitsUI = syncProfileFieldEditLimitsUI;
 }
 
 
