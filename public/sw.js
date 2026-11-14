@@ -2,14 +2,14 @@
    VORTEX VIP ⚡ - Service Worker Oficial PWA
    ========================================================================== */
 
-const CACHE_NAME = 'vortex-vip-v1.0.290';
+const CACHE_NAME = 'vortex-vip-v1.0.291';
 
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
   '/privacy.html',
-  '/style.css?v=1.0.290',
-  '/script.js?v=1.0.290',
+  '/style.css?v=1.0.291',
+  '/script.js?v=1.0.291',
   '/manifest.json',
   '/icons/vortex-vip-192.png',
   '/icons/vortex-vip-512.png',
@@ -30,14 +30,19 @@ const PRECACHE_ASSETS = [
   '/sounds/unlock.mp3'
 ];
 
-// Instalação: Pré-carrega o App Shell no Cache e ativa imediatamente
+// Instalação: Pré-carrega o App Shell no Cache sem atualizar automaticamente quando já há versão ativa.
+// O novo Service Worker permanece em espera (waiting) e só ativa quando o usuário clicar no botão Atualizar.
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(PRECACHE_ASSETS).catch((err) => {
         console.warn('[SW] Aviso no precache:', err);
       });
-    }).then(() => self.skipWaiting())
+    }).then(() => {
+      if (!self.registration || !self.registration.active) {
+        return self.skipWaiting();
+      }
+    })
   );
 });
 
@@ -77,44 +82,49 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Navegação de páginas (HTML): Network-first com fallback para index em cache
+  // Navegação de páginas (HTML): Cache-first na versão ativa para não atualizar sozinho ao recarregar/reabrir;
+  // só busca da rede quando o cache foi limpo (clique em Atualizar) ou ainda não existe em cache.
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request)
-        .then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            const responseClone = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
+      caches.open(CACHE_NAME).then((cache) => {
+        return cache.match(request).then((cachedResponse) => {
+          if (cachedResponse) {
+            return cachedResponse;
           }
-          return networkResponse;
-        })
-        .catch(() => {
-          return caches.match('/index.html').then((cached) => cached || caches.match('/'));
-        })
+          const fallbackKey = url.pathname === '/privacy.html' ? '/privacy.html' : '/index.html';
+          return cache.match(fallbackKey).then((fallbackCached) => {
+            if (fallbackCached) {
+              return fallbackCached;
+            }
+            return fetch(request).then((networkResponse) => {
+              if (networkResponse && networkResponse.status === 200) {
+                cache.put(request, networkResponse.clone());
+              }
+              return networkResponse;
+            });
+          });
+        });
+      }).catch(() => {
+        return caches.match('/index.html').then((cached) => cached || caches.match('/'));
+      })
     );
     return;
   }
 
-  // Recursos estáticos locais (CSS, JS, Imagens, Fontes): Cache-first com revalidação
+  // Recursos estáticos locais (CSS, JS, Imagens, Fontes): Cache-first estrito na versão ativa (sem sobrescrever em segundo plano)
   if (url.origin === self.location.origin) {
     event.respondWith(
-      caches.match(request).then((cachedResponse) => {
-        if (cachedResponse) {
-          // Atualiza em segundo plano (stale-while-revalidate)
-          fetch(request).then((networkResponse) => {
-            if (networkResponse && networkResponse.status === 200) {
-              caches.open(CACHE_NAME).then((cache) => cache.put(request, networkResponse));
-            }
-          }).catch(() => {});
-          return cachedResponse;
-        }
-
-        return fetch(request).then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            const responseClone = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
+      caches.open(CACHE_NAME).then((cache) => {
+        return cache.match(request).then((cachedResponse) => {
+          if (cachedResponse) {
+            return cachedResponse;
           }
-          return networkResponse;
+          return fetch(request).then((networkResponse) => {
+            if (networkResponse && networkResponse.status === 200) {
+              cache.put(request, networkResponse.clone());
+            }
+            return networkResponse;
+          });
         });
       })
     );
