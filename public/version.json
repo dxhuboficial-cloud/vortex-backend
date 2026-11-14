@@ -1,6 +1,6 @@
 {
-  "version": "1.0.289",
-  "build": 289,
+  "version": "1.0.290",
+  "build": 290,
   "releaseDate": "2026-11-14",
-  "notes": "Botão de ativação exibido exclusivamente para contas desativadas e mantidas desativadas pelo Sistema da IA VORTEX VIP ⚡"
+  "notes": "Análise inteligente da IA expandida para anúncios de Story (bloqueio na publicação, filtro em tempo real nos stories, scanner ADM e ranking antifraude) v1.0.290"
 }

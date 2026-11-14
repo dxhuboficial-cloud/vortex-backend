@@ -5765,13 +5765,22 @@ export function canUserViewStory(story, viewerUid, authorContactsSet = null) {
     // O próprio autor sempre pode ver seus stories
     if (story.authorUid === viewerUid) return true;
 
+    // Bloqueio automático pela IA (ex: anúncio de story oculto ou golpe/falso)
+    if (story.hiddenByAi) {
+        return false;
+    }
+
     // Se o autor estiver bloqueado pelo visualizador, não exibe
     if (typeof blockedContactsSet !== 'undefined' && blockedContactsSet.has(story.authorUid)) {
         return false;
     }
 
-    // Story de Anúncio da Conta Empresa: Visível para TODOS os usuários com conta na plataforma
+    // Story de Anúncio da Conta Empresa: Visível para TODOS os usuários, exceto quando reprovado pela IA
     if (story.isAd || story.contentType === 'ad') {
+        if (typeof analyzeStoryAdByAI === 'function') {
+            const adCheck = analyzeStoryAdByAI(story, null);
+            if (adCheck?.shouldBlock) return false;
+        }
         return true;
     }
 
@@ -11453,6 +11462,9 @@ if (typeof window !== 'undefined') {
     window.canUserViewStory = canUserViewStory;
 }
 
+export let cachedStories = [];
+export let adminStories = [];
+
 function listenToStories() {
     const storiesRef = collection(db, 'stories');
     const validTime = Date.now() - 24 * 60 * 60 * 1000;
@@ -11464,6 +11476,7 @@ function listenToStories() {
         dynamicContainer.innerHTML = '';
 
         const userStoriesMap = {};
+        const nextCachedStories = [];
         const now = Date.now();
         snapshot.forEach(d => {
             const data = { id: d.id, ...d.data() };
@@ -11473,12 +11486,40 @@ function listenToStories() {
                 if (currentUser && data.authorUid === currentUser.uid) {
                     if (!userStoriesMap[data.authorUid]) userStoriesMap[data.authorUid] = [];
                     userStoriesMap[data.authorUid].push(data);
+                    nextCachedStories.push(data);
                 }
                 return;
+            }
+            nextCachedStories.push(data);
+            if ((data.isAd || data.contentType === 'ad') && (!currentUser || data.authorUid !== currentUser.uid)) {
+                if (typeof analyzeStoryAdByAI === 'function') {
+                    const adCheck = analyzeStoryAdByAI(data, null);
+                    if (adCheck.isFakeAd || adCheck.shouldBlock) {
+                        if (typeof recordAIIncident === 'function') {
+                            recordAIIncident({
+                                uid: data.authorUid,
+                                targetName: data.authorName || data.authorUid || 'Anunciante',
+                                category: 'fake_ad',
+                                riskLevel: adCheck.riskLevel || 'high',
+                                riskScore: adCheck.riskScore || 75,
+                                signals: [...(adCheck.signals || []), 'Anúncio de Story'],
+                                summary: adCheck.reason || 'Anúncio de Story suspeito/falso bloqueado pela IA.',
+                                snippet: (data.caption || data.linkUrl || data.storyLink?.url || '').slice(0, 140),
+                                entityType: 'story',
+                                entityId: data.id,
+                                dedupKey: `fake_story_ad_${data.id}`
+                            });
+                        }
+                        if (adCheck.shouldBlock) {
+                            return;
+                        }
+                    }
+                }
             }
             if (!userStoriesMap[data.authorUid]) userStoriesMap[data.authorUid] = [];
             userStoriesMap[data.authorUid].push(data);
         });
+        cachedStories = nextCachedStories;
 
         checkAndReleaseScheduledItems();
 
@@ -14679,7 +14720,7 @@ document.getElementById('publish-status-btn')?.addEventListener('click', async (
             };
 
             // 🛡️ Validação de Segurança Global do Story (Anti-Golpe e Fraude v1.0.232)
-            const storyContentToCheck = `${finalCaption} ${storyLinkPayload ? storyLinkPayload.url : ''}`.trim();
+            const storyContentToCheck = `${finalCaption} ${storyLinkPayload ? `${storyLinkPayload.text || ''} ${storyLinkPayload.url}` : ''}`.trim();
             if (storyContentToCheck) {
                 const storySecCheck = checkGlobalContentSecurity(storyContentToCheck, { context: 'story', uid: currentUser.uid });
                 if (!storySecCheck.isSafe) {
@@ -14692,6 +14733,46 @@ document.getElementById('publish-status-btn')?.addEventListener('click', async (
                     });
                     return;
                 }
+            }
+
+            // ✨ Análise pela IA VORTEX AI Shield para Anúncios de Story e Conteúdo (v1.0.290)
+            if (isAdStory && typeof analyzeStoryAdByAI === 'function') {
+                const storyAdCheck = analyzeStoryAdByAI(storyData, currentProfile);
+                if (storyAdCheck.isFakeAd || !storyAdCheck.isSafe) {
+                    recordAIIncident?.({
+                        uid: currentUser.uid,
+                        targetName: currentProfile?.name || currentUser.uid,
+                        category: 'fake_ad',
+                        riskLevel: storyAdCheck.riskLevel || 'high',
+                        riskScore: storyAdCheck.riskScore || 85,
+                        signals: [...(storyAdCheck.signals || []), 'Anúncio de Story'],
+                        summary: storyAdCheck.reason || 'Anúncio de Story suspeito/falso bloqueado pela IA.',
+                        snippet: storyContentToCheck.slice(0, 140),
+                        entityType: 'story',
+                        entityId: currentUser.uid,
+                        dedupKey: `fake_story_ad_pub_${currentUser.uid}_${Date.now()}`
+                    });
+                    if (storyAdCheck.shouldBlock) {
+                        showToast('Anúncio de Story Bloqueado pela IA 🛡️', storyAdCheck.reason || 'Este anúncio de story foi classificado como falso/suspeito.', 'red');
+                        return;
+                    }
+                }
+            } else if (storyContentToCheck && typeof analyzeConversationByAI === 'function') {
+                const storyConvCheck = analyzeConversationByAI({
+                    uid: currentUser.uid,
+                    text: storyContentToCheck,
+                    account: currentProfile
+                });
+                if (storyConvCheck?.shouldBlock) {
+                    showToast('Story Bloqueado pela IA 🛡️', storyConvCheck.alertMessage || 'Conteúdo suspeito de golpe, spam ou link perigoso no story.', 'red');
+                    return;
+                }
+            }
+
+            if (isAdStory && typeof scoreAdRecommendationByAI === 'function') {
+                const adRecScore = scoreAdRecommendationByAI(storyData, currentProfile);
+                storyData.aiSafetyScore = adRecScore.safetyScore;
+                storyData.aiRecommendationScore = adRecScore.aiScore;
             }
 
             const storyDocRef = await saveMediaWithChunks('stories', storyData, 'src', mediaSrc);
@@ -23238,7 +23319,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.289';
+export const CURRENT_APP_VERSION = '1.0.290';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -48269,14 +48350,15 @@ export function analyzeProductByAI(product = {}, seller = null) {
 }
 
 /**
- * Analisa anúncios para bloquear anúncios falsos, pirâmides, falsos sorteios e links maliciosos.
+ * Analisa anúncios (Feed e Story) para bloquear anúncios falsos, pirâmides, falsos sorteios e links maliciosos.
  */
 export function analyzeAdByAI(adItem = {}, author = null) {
     if (!adItem || typeof adItem !== 'object') {
         return { isSafe: true, isFakeAd: false, shouldBlock: false, riskScore: 0, riskLevel: 'low', signals: [] };
     }
-    const ctaUrl = adItem.actionButton?.url || adItem.ctaUrl || adItem.url || '';
-    const textBlob = normalizeTextForAI(`${adItem.title || ''} ${adItem.caption || ''} ${adItem.description || ''} ${ctaUrl}`);
+    const ctaUrl = adItem.actionButton?.url || adItem.storyLink?.url || adItem.linkUrl || adItem.ctaUrl || adItem.url || '';
+    const ctaText = adItem.actionButton?.text || adItem.storyLink?.text || adItem.linkText || adItem.ctaText || '';
+    const textBlob = normalizeTextForAI(`${adItem.title || ''} ${adItem.caption || ''} ${adItem.description || ''} ${ctaText} ${ctaUrl}`);
     const evalRes = evaluatePatternGroupsByAI(textBlob, [...AI_FAKE_AD_RULES, ...AI_SCAM_LINK_SPAM_RULES]);
 
     let riskScore = evalRes.score;
@@ -48303,16 +48385,59 @@ export function analyzeAdByAI(adItem = {}, author = null) {
 
     riskScore = Math.min(100, riskScore);
     const isFakeAd = riskScore >= 45;
-    const shouldBlock = Boolean(AI_SECURITY_CONFIG.antiFakeEntities && riskScore >= getStrictnessBlockThreshold(60));
+    const shouldBlock = Boolean(adItem.hiddenByAi || (AI_SECURITY_CONFIG.antiFakeEntities && riskScore >= getStrictnessBlockThreshold(60)));
 
     return {
-        isSafe: riskScore < 45,
+        isSafe: riskScore < 45 && !adItem.hiddenByAi,
         isFakeAd,
         shouldBlock,
         riskScore,
         riskLevel: riskLevelFromScore(riskScore),
         signals: [...new Set(signals)],
         reason: isFakeAd ? `Anúncio falso/suspeito bloqueado pela IA: ${signals[0] || 'conteúdo enganoso'}.` : ''
+    };
+}
+
+/**
+ * Analisa especificamente anúncios publicados no Story (texto, legenda, link de CTA e confiança do anunciante).
+ */
+export function analyzeStoryAdByAI(storyItem = {}, author = null) {
+    if (!storyItem || typeof storyItem !== 'object') {
+        return { isAd: false, isSafe: true, isFakeAd: false, shouldBlock: false, riskScore: 0, riskLevel: 'low', signals: [], reason: '', itemKind: 'story' };
+    }
+    const isAd = Boolean(storyItem.isAd || storyItem.contentType === 'ad');
+    if (!isAd) {
+        return { isAd: false, isSafe: true, isFakeAd: false, shouldBlock: false, riskScore: 0, riskLevel: 'low', signals: [], reason: '', itemKind: 'story' };
+    }
+
+    const adSafety = analyzeAdByAI(storyItem, author);
+    const storyUrl = storyItem.storyLink?.url || storyItem.linkUrl || storyItem.actionButton?.url || storyItem.ctaUrl || storyItem.url || '';
+    const storyText = `${storyItem.caption || ''} ${storyItem.storyLink?.text || storyItem.linkText || ''} ${storyUrl}`.trim();
+    const convSafety = (storyText && typeof analyzeConversationByAI === 'function')
+        ? analyzeConversationByAI({ uid: storyItem.authorUid, text: storyText, account: author })
+        : { isSafe: true, shouldBlock: false, riskScore: 0, signals: [], alertMessage: '' };
+
+    const riskScore = Math.min(100, Math.max(adSafety.riskScore || 0, convSafety.riskScore || 0));
+    const signals = [...new Set([...(adSafety.signals || []), ...(convSafety.signals || [])])];
+    const isFakeAd = Boolean(adSafety.isFakeAd || riskScore >= 45);
+    const shouldBlock = Boolean(
+        storyItem.hiddenByAi ||
+        adSafety.shouldBlock ||
+        convSafety.shouldBlock ||
+        (AI_SECURITY_CONFIG.antiFakeEntities && riskScore >= getStrictnessBlockThreshold(60))
+    );
+
+    return {
+        isAd: true,
+        itemKind: 'story',
+        ctaUrl: storyUrl,
+        isSafe: !isFakeAd && !shouldBlock,
+        isFakeAd,
+        shouldBlock,
+        riskScore,
+        riskLevel: riskLevelFromScore(riskScore),
+        signals,
+        reason: adSafety.reason || (shouldBlock ? `Anúncio de Story bloqueado pela IA: ${signals[0] || 'conteúdo ou link suspeito'}.` : '')
     };
 }
 
@@ -48463,33 +48588,40 @@ export function scoreProductRecommendationByAI(product = {}, seller = null, view
  * Pontua recomendação inteligente para Anúncios (filtrando anúncios falsos).
  */
 export function scoreAdRecommendationByAI(adItem = {}, author = null, viewerContext = {}) {
-    const check = analyzeAdByAI(adItem, author);
+    const isStoryAd = Boolean(
+        adItem &&
+        (adItem.storyLink !== undefined || adItem.linkUrl !== undefined || adItem.allowedUids !== undefined || adItem.src !== undefined) &&
+        adItem.actionButton === undefined
+    );
+    const check = isStoryAd ? analyzeStoryAdByAI(adItem, author) : analyzeAdByAI(adItem, author);
     if (check.isFakeAd || check.shouldBlock) {
         return {
             aiScore: 0,
             safetyScore: Math.max(0, 100 - check.riskScore),
             blockedByAI: true,
             tier: 'blocked',
+            isStoryAd,
             reasons: check.signals.length ? check.signals : ['Anúncio bloqueado por antifraude']
         };
     }
 
     let score = 45;
-    const reasons = ['Anúncio aprovado sem fraude'];
+    const reasons = [isStoryAd ? 'Anúncio de Story aprovado sem fraude' : 'Anúncio aprovado sem fraude'];
     if (author && (author.businessVerified || (typeof checkIsCompanyUser === 'function' && checkIsCompanyUser(author)))) {
         score += 20;
         reasons.push('Empresa verificada');
     }
-    if (adItem.mediaData || adItem.hasChunks) {
+    if (adItem.mediaData || adItem.src || adItem.hasChunks) {
         score += 12;
         reasons.push(adItem.type === 'video' ? 'Criativo em vídeo' : 'Criativo em imagem');
     }
-    if (adItem.actionButton?.url) {
+    if (adItem.actionButton?.url || adItem.storyLink?.url || adItem.linkUrl) {
         score += 10;
         reasons.push('CTA e link seguros');
     }
     const likes = Array.isArray(adItem.likes) ? adItem.likes.length : Number(adItem.likesCount || 0);
-    const views = Number(adItem.viewsCount || 0);
+    const storyViews = adItem.views && typeof adItem.views === 'object' ? Object.keys(adItem.views).length : 0;
+    const views = Number(adItem.viewsCount || storyViews || 0);
     score += Math.min(13, likes * 2 + Math.floor(views / 12));
 
     const finalScore = Math.max(0, Math.min(100, score));
@@ -48498,6 +48630,7 @@ export function scoreAdRecommendationByAI(adItem = {}, author = null, viewerCont
         safetyScore: Math.max(0, 100 - check.riskScore),
         blockedByAI: false,
         tier: finalScore >= 75 ? 'featured' : 'recommended',
+        isStoryAd,
         reasons
     };
 }
@@ -48563,9 +48696,49 @@ function updateAdminAIBadgeUI() {
 }
 
 /**
- * Executa varredura inteligente completa sobre usuários, postagens, anúncios, produtos e links.
+ * Agrega stories recentes únicos a partir dos caches locais/administrativos e argumentos extras.
  */
-export function runAdminAIPlatformScan() {
+function collectUniqueStoriesForAI(extraStories = []) {
+    const rawPool = [
+        ...(Array.isArray(extraStories) ? extraStories : []),
+        ...((typeof cachedStories !== 'undefined' && Array.isArray(cachedStories)) ? cachedStories : []),
+        ...((typeof adminStories !== 'undefined' && Array.isArray(adminStories)) ? adminStories : [])
+    ];
+    const seen = new Set();
+    const out = [];
+    for (const s of rawPool) {
+        if (!s || typeof s !== 'object') continue;
+        const sid = s.id || `${s.authorUid || 'anon'}_${s.createdAt || 0}`;
+        if (seen.has(sid)) continue;
+        seen.add(sid);
+        out.push(s);
+    }
+    return out;
+}
+
+/**
+ * Carrega os stories recentes do Firestore para análise administrativa da IA.
+ */
+export async function loadAdminStoriesForAI() {
+    if (typeof db === 'undefined' || typeof collection !== 'function' || typeof getDocs !== 'function') {
+        return collectUniqueStoriesForAI();
+    }
+    try {
+        const snap = await getDocs(collection(db, 'stories'));
+        if (snap && snap.docs) {
+            adminStories = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            adminStories.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        }
+    } catch (err) {
+        console.warn('Erro ao carregar stories para auditoria IA:', err);
+    }
+    return collectUniqueStoriesForAI();
+}
+
+/**
+ * Executa varredura inteligente completa sobre usuários, postagens, stories, anúncios, produtos e links.
+ */
+export function runAdminAIPlatformScan(options = {}) {
     const usersList = (typeof adminUsers !== 'undefined' && Array.isArray(adminUsers)) ? adminUsers : [];
     const userMap = {};
     usersList.forEach(u => {
@@ -48636,6 +48809,50 @@ export function runAdminAIPlatformScan() {
         }
         if (AI_SECURITY_CONFIG.commentModeration && Array.isArray(p.comments) && p.comments.length > 0) {
             moderatePostCommentsByAI(p, { persist: true });
+        }
+    });
+
+    const storiesPool = collectUniqueStoriesForAI(options?.stories);
+    storiesPool.forEach(s => {
+        const sid = s.id || `${s.authorUid || 'anon'}_${s.createdAt || 0}`;
+        const author = userMap[s.authorUid] || null;
+        if (s.isAd || s.contentType === 'ad') {
+            const adRes = analyzeStoryAdByAI(s, author);
+            if (adRes.isFakeAd || adRes.shouldBlock) {
+                recordAIIncident({
+                    uid: s.authorUid,
+                    targetName: s.authorName || s.authorUid || 'Anunciante Story',
+                    category: 'fake_ad',
+                    riskLevel: adRes.riskLevel,
+                    riskScore: adRes.riskScore,
+                    signals: [...(adRes.signals || []), 'Anúncio de Story'],
+                    summary: adRes.reason || 'Anúncio de Story suspeito/falso detectado em varredura.',
+                    snippet: s.caption || s.storyLink?.url || s.linkUrl || '',
+                    entityType: 'story',
+                    entityId: s.id || sid,
+                    dedupKey: `fake_story_ad_${s.id || sid}`
+                });
+            }
+        } else {
+            const storyText = `${s.caption || ''} ${s.storyLink?.url || s.linkUrl || ''}`.trim();
+            if (storyText) {
+                const convRes = analyzeConversationByAI({ uid: s.authorUid, text: storyText, account: author });
+                if (!convRes.isSafe) {
+                    recordAIIncident({
+                        uid: s.authorUid,
+                        targetName: s.authorName || s.authorUid || 'Autor Story',
+                        category: 'scam_link_spam',
+                        riskLevel: convRes.riskLevel,
+                        riskScore: convRes.riskScore,
+                        signals: [...(convRes.signals || []), 'Story'],
+                        summary: 'Story sinalizado por golpe, spam ou link suspeito.',
+                        snippet: storyText.slice(0, 140),
+                        entityType: 'story',
+                        entityId: s.id || sid,
+                        dedupKey: `scam_story_${s.id || sid}`
+                    });
+                }
+            }
         }
     });
 
@@ -48737,10 +48954,26 @@ export async function adminHandleAIIncidentAction(incidentId, action) {
             await adminDeletePost(inc.entityId).catch(() => {});
         } else if (inc.entityType === 'product' && inc.uid && typeof updateDoc === 'function' && typeof doc === 'function' && typeof db !== 'undefined') {
             await updateDoc(doc(db, 'users', inc.uid, 'catalog', inc.entityId), { active: false, hiddenByAi: true }).catch(() => {});
+        } else if (inc.entityType === 'story') {
+            if (typeof deleteDoc === 'function' && typeof doc === 'function' && typeof db !== 'undefined') {
+                await deleteDoc(doc(db, 'stories', inc.entityId)).catch(() => {});
+            }
+            if (typeof cachedStories !== 'undefined' && Array.isArray(cachedStories)) {
+                cachedStories = cachedStories.filter(s => s && s.id !== inc.entityId);
+            }
+            if (typeof adminStories !== 'undefined' && Array.isArray(adminStories)) {
+                adminStories = adminStories.filter(s => s && s.id !== inc.entityId);
+            }
         }
         inc.status = 'removed';
         renderAdminAISecurityDashboard();
-        if (typeof showToast === 'function') showToast('Conteúdo Removido 🛡️', 'Item ocultado/removido da vitrine e do feed.', 'orange');
+        if (typeof showToast === 'function') {
+            showToast(
+                'Conteúdo Removido 🛡️',
+                inc.entityType === 'story' ? 'Story/Anúncio de Story removido da plataforma.' : 'Item ocultado/removido da vitrine e do feed.',
+                'orange'
+            );
+        }
         return true;
     }
 
@@ -48769,11 +49002,12 @@ export function renderAdminAISecurityDashboard() {
     const postsPool = (typeof cachedFeedPosts !== 'undefined' && Array.isArray(cachedFeedPosts) && cachedFeedPosts.length)
         ? cachedFeedPosts
         : ((typeof adminPosts !== 'undefined' && Array.isArray(adminPosts)) ? adminPosts : []);
+    const storiesPool = collectUniqueStoriesForAI();
     const productsPool = (typeof catalogSellerProductsCache !== 'undefined' && Array.isArray(catalogSellerProductsCache)) ? catalogSellerProductsCache : [];
 
     const postsRec = getRecommendedFeedPostsByAI(postsPool, { authorMap: usersMap });
     const prodsRec = getRecommendedProductsByAI(productsPool, usersMap);
-    const adsRec = getRecommendedAdsByAI(postsPool, usersMap);
+    const adsRec = getRecommendedAdsByAI([...postsPool, ...storiesPool], usersMap);
     const totalRecommended = postsRec.recommended.length + prodsRec.recommended.length + adsRec.recommended.length;
 
     const critCount = openIncidents.filter(i => i.riskLevel === 'critical').length;
@@ -48838,7 +49072,7 @@ export function renderAdminAISecurityDashboard() {
                         ${inc.uid ? `<button type="button" class="admin-ai-action-btn ban" data-ai-action="ban" data-incident-id="${inc.id}">Banir Conta</button>` : ''}
                         ${(inc.category === 'comment_moderation' && inc.uid) ? `<button type="button" class="admin-ai-action-btn safe" data-ai-action="unblock_comments" data-incident-id="${inc.id}">Liberar Comentários</button>` : ''}
                         ${(inc.category === 'like_spam_guard' && inc.uid) ? `<button type="button" class="admin-ai-action-btn safe" data-ai-action="unblock_likes" data-incident-id="${inc.id}">Liberar Curtidas</button>` : ''}
-                        ${(inc.entityType === 'post' || inc.entityType === 'product') ? `<button type="button" class="admin-ai-action-btn ban" data-ai-action="remove_content" data-incident-id="${inc.id}">Remover Item</button>` : ''}
+                        ${(inc.entityType === 'post' || inc.entityType === 'product' || inc.entityType === 'story') ? `<button type="button" class="admin-ai-action-btn ban" data-ai-action="remove_content" data-incident-id="${inc.id}">Remover Item</button>` : ''}
                         <button type="button" class="admin-ai-action-btn safe" data-ai-action="mark_safe" data-incident-id="${inc.id}">Marcar Seguro</button>
                     </div>
                 </div>
@@ -48856,11 +49090,15 @@ export function renderAdminAISecurityDashboard() {
                 rec: p.aiRecommendation
             }));
         } else if (currentAdminAIRecTab === 'ads') {
-            items = [...adsRec.recommended, ...adsRec.blocked].slice(0, 8).map(a => ({
-                title: a.title || a.caption || 'Anúncio',
-                subtitle: `${a.authorName || 'Empresa'} • ${a.type === 'video' ? 'Vídeo' : 'Foto'}`,
-                rec: a.aiRecommendation
-            }));
+            items = [...adsRec.recommended, ...adsRec.blocked].slice(0, 8).map(a => {
+                const isStory = Boolean(a.aiRecommendation?.isStoryAd || a.storyLink !== undefined || a.linkUrl !== undefined || a.allowedUids !== undefined);
+                const prefix = isStory ? 'Anúncio Story' : 'Anúncio';
+                return {
+                    title: a.title || a.caption || prefix,
+                    subtitle: `${a.authorName || 'Empresa'} • ${prefix} • ${a.type === 'video' ? 'Vídeo' : 'Foto'}`,
+                    rec: a.aiRecommendation
+                };
+            });
         } else {
             items = [...postsRec.recommended, ...postsRec.blocked].slice(0, 8).map(p => ({
                 title: p.title || p.caption || (p.type === 'video' ? 'Publicação em Vídeo' : 'Publicação em Foto'),
@@ -48898,10 +49136,13 @@ export function renderAdminAISecurityDashboard() {
  * Inicializa os eventos e controles da aba IA Segurança ✨ no Painel ADM.
  */
 export function initAdminAISecurityUI() {
-    document.getElementById('admin-ai-scan-btn')?.addEventListener('click', () => {
+    document.getElementById('admin-ai-scan-btn')?.addEventListener('click', async () => {
+        if (typeof loadAdminStoriesForAI === 'function') {
+            await loadAdminStoriesForAI().catch(() => {});
+        }
         runAdminAIPlatformScan();
         if (typeof showToast === 'function') {
-            showToast('Auditoria IA Concluída ✨', 'Sistema analisou contas, chats, comentários, produtos, anúncios e recomendações.', 'blue');
+            showToast('Auditoria IA Concluída ✨', 'Sistema analisou contas, chats, comentários, produtos, anúncios (Feed e Story) e recomendações.', 'blue');
         }
     });
 
@@ -51309,6 +51550,12 @@ if (typeof window !== 'undefined') {
     window.renderAdminPhotoModerationQueue = renderAdminPhotoModerationQueue;
     window.syncProfileAvatarModerationUI = syncProfileAvatarModerationUI;
     window.syncProfilePhotoRequirementLifecycle = syncProfilePhotoRequirementLifecycle;
+    window.analyzeStoryAdByAI = analyzeStoryAdByAI;
+    window.loadAdminStoriesForAI = loadAdminStoriesForAI;
+    window.setCachedStories = (list) => { cachedStories = Array.isArray(list) ? list : []; };
+    window.getCachedStories = () => cachedStories;
+    window.setAdminStories = (list) => { adminStories = Array.isArray(list) ? list : []; };
+    window.getAdminStories = () => adminStories;
     if (typeof document !== 'undefined') {
         syncAuthReactivateEntryButtonUI(null);
     }
