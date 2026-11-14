@@ -35,13 +35,13 @@
     <meta itemprop="image" content="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
     <link rel="image_src" type="image/png" href="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
 
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.288">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.288">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.288">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.288">
-    <link rel="stylesheet" href="style.css?v=1.0.288">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.289">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.289">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.289">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.289">
+    <link rel="stylesheet" href="style.css?v=1.0.289">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.288" id="app-manifest-link">
+    <link rel="manifest" href="manifest.json?v=1.0.289" id="app-manifest-link">
     <meta name="theme-color" content="#39ff14" id="app-theme-color-meta">
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#39ff14" id="app-theme-color-meta-dark">
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#39ff14" id="app-theme-color-meta-light">
@@ -50,8 +50,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.288">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.288">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.289">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.289">
     <!-- Sincronização Dinâmica da Barra de Status e Barra de Navegação do Celular -->
     <script>
         (function() {
@@ -124,7 +124,7 @@
                     <svg width="20" height="20" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2045c0-.6382-.0573-1.2518-.1636-1.8409H9.18v3.4818h4.7918c-.2045 1.125-.8227 2.0782-1.7955 2.7218v2.2582h2.9091c1.7018-1.5664 2.6845-3.8736 2.6845-6.6218z"></path><path fill="#34A853" d="M9.18 18c2.43 0 4.4673-.8045 5.9564-2.1818l-2.9091-2.2582c-.8045.5455-1.8364.8727-2.9927.8727-2.3 0-4.2545-1.5664-4.95-3.6682H1.27v2.3318C2.7255 15.6 5.67 18 9.18 18z"></path><path fill="#FBBC05" d="M4.23 10.7318c-.1636-.4882-.2591-1.0018-.2591-1.5318s.0955-1.0436.2591-1.5318V5.3364H1.27C.4636 6.9318 0 8.4909 0 10.2c0 1.7091.4636 3.2682 1.27 4.8636l2.96-2.3318z"></path><path fill="#EA4335" d="M9.18 3.9818c1.3227 0 2.5091.4545 3.4409 1.3455l2.5818-2.5818C13.6473 1.1 11.61.0001 9.18.0001 5.67.0001 2.7255 2.4 1.27 5.3364L4.23 7.6682c.6955-2.1018 2.65-3.6864 4.95-3.6864z"></path></svg>
                     <span>Entrar com o Google</span>
                 </button>
-                <button type="button" id="auth-reactivate-entry-btn" class="auth-reactivate-entry-btn" title="Ativar conta desativada por falta de foto de perfil" aria-label="Ativar Conta Desativada">
+                <button type="button" id="auth-reactivate-entry-btn" class="auth-reactivate-entry-btn" style="display: none;" title="Ativar conta desativada por falta de foto de perfil" aria-label="Ativar Conta Desativada">
                     <i data-lucide="user-check"></i>
                     <span>Ativar Conta Desativada</span>
                 </button>
@@ -135,7 +135,7 @@
                     </div>
                     <p id="auth-reactivation-desc" class="auth-reactivation-desc">Sua conta foi desativada porque passaram 30 dias úteis sem foto de perfil válida. Você tem <strong><span id="auth-reactivation-countdown">7 dias</span></strong> para ativar a conta e adicionar uma foto válida.</p>
                     <div id="auth-reactivation-email" class="auth-reactivation-email"></div>
-                    <button type="button" id="confirm-reactivate-account-btn" class="danger-btn auth-confirm-reactivate-btn">
+                    <button type="button" id="confirm-reactivate-account-btn" class="danger-btn auth-confirm-reactivate-btn" style="display: none;">
                         <i data-lucide="sparkles"></i>
                         <span>Ativar Conta Agora</span>
                     </button>
@@ -2958,10 +2958,10 @@
                 <div class="app-version-card" id="app-version-info-footer">
                     <div class="app-version-header-row">
                         <div class="app-version-brand-wrap">
-                            <img src="icons/vortex-vip-192.png?v=1.0.288" alt="VORTEX VIP" class="app-version-icon-img" width="22" height="22">
+                            <img src="icons/vortex-vip-192.png?v=1.0.289" alt="VORTEX VIP" class="app-version-icon-img" width="22" height="22">
                             <span class="app-version-brand-name">VORTEX VIP Oficial</span>
                         </div>
-                        <span class="app-version-pill-badge" id="app-version-display-badge">v1.0.288 ⚡</span>
+                        <span class="app-version-pill-badge" id="app-version-display-badge">v1.0.289 ⚡</span>
                     </div>
                     <div class="app-version-status-row">
                         <span class="app-version-status-dot"></span>
@@ -3364,7 +3364,7 @@
                     </div>
                 </div>
 
-                <!-- 11. Aba de IA Segurança, Moderação & Recomendação Inteligente (v1.0.288) -->
+                <!-- 11. Aba de IA Segurança, Moderação & Recomendação Inteligente (v1.0.289) -->
                 <div id="admin-view-ai-security" class="admin-view">
                     <div class="admin-ai-hero-card">
                         <div class="admin-ai-hero-top">
@@ -6811,7 +6811,7 @@
         <div id="business-blocked-modal" class="custom-modal-overlay business-blocked-overlay" style="display:none;" aria-hidden="true">
             <div class="custom-modal-card business-blocked-card">
                 <div class="business-blocked-icon-wrap">
-                    <img src="icons/blocked-hand.png?v=1.0.288" alt="Acesso Bloqueado" class="business-blocked-hand-icon" width="64" height="64">
+                    <img src="icons/blocked-hand.png?v=1.0.289" alt="Acesso Bloqueado" class="business-blocked-hand-icon" width="64" height="64">
                 </div>
                 <h3 class="business-blocked-title">Acesso Bloqueado</h3>
                 <p class="business-blocked-msg" id="business-blocked-msg-text">
@@ -6923,6 +6923,6 @@
         </main>
     </div>
 
-    <script type="module" src="script.js?v=1.0.288" defer></script>
+    <script type="module" src="script.js?v=1.0.289" defer></script>
 </body>
 </html>

@@ -18611,14 +18611,14 @@ test('195. Salvamento Automático do Tipo de Chave Pix (CPF, Telefone, E-mail, C
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
   // 1. Integridade de Versionamento v1.0.276+ (Build 276+)
-  assert.ok(['1.0.276', '1.0.277', '1.0.278', '1.0.279', '1.0.280', '1.0.281', '1.0.282', '1.0.283', '1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288'].includes(versionJson.version), 'version.json deve ser 1.0.276 ou superior');
-  assert.ok([276, 277, 278, 279, 280, 281, 282, 283, 284, 285, 286, 287, 288].includes(versionJson.build), 'build em version.json deve ser 276 ou superior');
-  assert.ok(['1.0.276', '1.0.277', '1.0.278', '1.0.279', '1.0.280', '1.0.281', '1.0.282', '1.0.283', '1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288'].includes(manifest.version), 'manifest.json deve ser 1.0.276 ou superior');
-  assert.ok(['1.0.276', '1.0.277', '1.0.278', '1.0.279', '1.0.280', '1.0.281', '1.0.282', '1.0.283', '1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.276 ou superior');
-  assert.ok(swContent.includes('vortex-vip-v1.0.276') || swContent.includes('vortex-vip-v1.0.277') || swContent.includes('vortex-vip-v1.0.278') || swContent.includes('vortex-vip-v1.0.279') || swContent.includes('vortex-vip-v1.0.280') || swContent.includes('vortex-vip-v1.0.281') || swContent.includes('vortex-vip-v1.0.282') || swContent.includes('vortex-vip-v1.0.283') || swContent.includes('vortex-vip-v1.0.284') || swContent.includes('vortex-vip-v1.0.285') || swContent.includes('vortex-vip-v1.0.286') || swContent.includes('vortex-vip-v1.0.287') || swContent.includes('vortex-vip-v1.0.288'), 'sw.js deve conter cache v1.0.276+');
-  assert.ok(html.includes('script.js?v=1.0.276') || html.includes('script.js?v=1.0.277') || html.includes('script.js?v=1.0.278') || html.includes('script.js?v=1.0.279') || html.includes('script.js?v=1.0.280') || html.includes('script.js?v=1.0.281') || html.includes('script.js?v=1.0.282') || html.includes('script.js?v=1.0.283') || html.includes('script.js?v=1.0.284') || html.includes('script.js?v=1.0.285') || html.includes('script.js?v=1.0.286') || html.includes('script.js?v=1.0.287') || html.includes('script.js?v=1.0.288'), 'index.html deve referenciar script.js?v=1.0.276+');
-  assert.ok(html.includes('style.css?v=1.0.276') || html.includes('style.css?v=1.0.277') || html.includes('style.css?v=1.0.278') || html.includes('style.css?v=1.0.279') || html.includes('style.css?v=1.0.280') || html.includes('style.css?v=1.0.281') || html.includes('style.css?v=1.0.282') || html.includes('style.css?v=1.0.283') || html.includes('style.css?v=1.0.284') || html.includes('style.css?v=1.0.285') || html.includes('style.css?v=1.0.286') || html.includes('style.css?v=1.0.287') || html.includes('style.css?v=1.0.288'), 'index.html deve referenciar style.css?v=1.0.276+');
-  assert.ok(privacyHtml.includes('v1.0.276') || privacyHtml.includes('v1.0.277') || privacyHtml.includes('v1.0.278') || privacyHtml.includes('v1.0.279') || privacyHtml.includes('v1.0.280') || privacyHtml.includes('v1.0.281') || privacyHtml.includes('v1.0.282') || privacyHtml.includes('v1.0.283') || privacyHtml.includes('v1.0.284') || privacyHtml.includes('v1.0.285') || privacyHtml.includes('v1.0.286') || privacyHtml.includes('v1.0.287') || privacyHtml.includes('v1.0.288'), 'privacy.html deve referenciar v1.0.276+');
+  assert.ok(['1.0.276', '1.0.277', '1.0.278', '1.0.279', '1.0.280', '1.0.281', '1.0.282', '1.0.283', '1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288', '1.0.289'].includes(versionJson.version), 'version.json deve ser 1.0.276 ou superior');
+  assert.ok([276, 277, 278, 279, 280, 281, 282, 283, 284, 285, 286, 287, 288, 289].includes(versionJson.build), 'build em version.json deve ser 276 ou superior');
+  assert.ok(['1.0.276', '1.0.277', '1.0.278', '1.0.279', '1.0.280', '1.0.281', '1.0.282', '1.0.283', '1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288', '1.0.289'].includes(manifest.version), 'manifest.json deve ser 1.0.276 ou superior');
+  assert.ok(['1.0.276', '1.0.277', '1.0.278', '1.0.279', '1.0.280', '1.0.281', '1.0.282', '1.0.283', '1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288', '1.0.289'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.276 ou superior');
+  assert.ok(swContent.includes('vortex-vip-v1.0.276') || swContent.includes('vortex-vip-v1.0.277') || swContent.includes('vortex-vip-v1.0.278') || swContent.includes('vortex-vip-v1.0.279') || swContent.includes('vortex-vip-v1.0.280') || swContent.includes('vortex-vip-v1.0.281') || swContent.includes('vortex-vip-v1.0.282') || swContent.includes('vortex-vip-v1.0.283') || swContent.includes('vortex-vip-v1.0.284') || swContent.includes('vortex-vip-v1.0.285') || swContent.includes('vortex-vip-v1.0.286') || swContent.includes('vortex-vip-v1.0.287') || swContent.includes('vortex-vip-v1.0.288') || swContent.includes('vortex-vip-v1.0.289'), 'sw.js deve conter cache v1.0.276+');
+  assert.ok(html.includes('script.js?v=1.0.276') || html.includes('script.js?v=1.0.277') || html.includes('script.js?v=1.0.278') || html.includes('script.js?v=1.0.279') || html.includes('script.js?v=1.0.280') || html.includes('script.js?v=1.0.281') || html.includes('script.js?v=1.0.282') || html.includes('script.js?v=1.0.283') || html.includes('script.js?v=1.0.284') || html.includes('script.js?v=1.0.285') || html.includes('script.js?v=1.0.286') || html.includes('script.js?v=1.0.287') || html.includes('script.js?v=1.0.288') || html.includes('script.js?v=1.0.289'), 'index.html deve referenciar script.js?v=1.0.276+');
+  assert.ok(html.includes('style.css?v=1.0.276') || html.includes('style.css?v=1.0.277') || html.includes('style.css?v=1.0.278') || html.includes('style.css?v=1.0.279') || html.includes('style.css?v=1.0.280') || html.includes('style.css?v=1.0.281') || html.includes('style.css?v=1.0.282') || html.includes('style.css?v=1.0.283') || html.includes('style.css?v=1.0.284') || html.includes('style.css?v=1.0.285') || html.includes('style.css?v=1.0.286') || html.includes('style.css?v=1.0.287') || html.includes('style.css?v=1.0.288') || html.includes('style.css?v=1.0.289'), 'index.html deve referenciar style.css?v=1.0.276+');
+  assert.ok(privacyHtml.includes('v1.0.276') || privacyHtml.includes('v1.0.277') || privacyHtml.includes('v1.0.278') || privacyHtml.includes('v1.0.279') || privacyHtml.includes('v1.0.280') || privacyHtml.includes('v1.0.281') || privacyHtml.includes('v1.0.282') || privacyHtml.includes('v1.0.283') || privacyHtml.includes('v1.0.284') || privacyHtml.includes('v1.0.285') || privacyHtml.includes('v1.0.286') || privacyHtml.includes('v1.0.287') || privacyHtml.includes('v1.0.288') || privacyHtml.includes('v1.0.289'), 'privacy.html deve referenciar v1.0.276+');
 
   // 2. Elementos no HTML: Select com opções de Chave Pix e Botões Organizados
   assert.ok(html.includes('id="chest-pix-key-type"'), 'index.html deve conter select de tipo de chave Pix');
@@ -18741,14 +18741,14 @@ test('196. Barra de Rolagem Horizontal para os 3 Botões de Jogos (Tigrinho VIP,
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
   // 1. Integridade de Versionamento v1.0.278+ (Build 278+)
-  assert.ok(['1.0.278', '1.0.279', '1.0.280', '1.0.281', '1.0.282', '1.0.283', '1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288'].includes(versionJson.version), 'version.json deve ser 1.0.278+');
-  assert.ok([278, 279, 280, 281, 282, 283, 284, 285, 286, 287, 288].includes(versionJson.build), 'build em version.json deve ser 278+');
-  assert.ok(['1.0.278', '1.0.279', '1.0.280', '1.0.281', '1.0.282', '1.0.283', '1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288'].includes(manifest.version), 'manifest.json deve ser 1.0.278+');
-  assert.ok(['1.0.278', '1.0.279', '1.0.280', '1.0.281', '1.0.282', '1.0.283', '1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.278+');
-  assert.ok(swContent.includes('vortex-vip-v1.0.278') || swContent.includes('vortex-vip-v1.0.279') || swContent.includes('vortex-vip-v1.0.280') || swContent.includes('vortex-vip-v1.0.281') || swContent.includes('vortex-vip-v1.0.282') || swContent.includes('vortex-vip-v1.0.283') || swContent.includes('vortex-vip-v1.0.284') || swContent.includes('vortex-vip-v1.0.285') || swContent.includes('vortex-vip-v1.0.286') || swContent.includes('vortex-vip-v1.0.287') || swContent.includes('vortex-vip-v1.0.288'), 'sw.js deve conter cache v1.0.278+');
-  assert.ok(html.includes('script.js?v=1.0.278') || html.includes('script.js?v=1.0.279') || html.includes('script.js?v=1.0.280') || html.includes('script.js?v=1.0.281') || html.includes('script.js?v=1.0.282') || html.includes('script.js?v=1.0.283') || html.includes('script.js?v=1.0.284') || html.includes('script.js?v=1.0.285') || html.includes('script.js?v=1.0.286') || html.includes('script.js?v=1.0.287') || html.includes('script.js?v=1.0.288'), 'index.html deve referenciar script.js?v=1.0.278+');
-  assert.ok(html.includes('style.css?v=1.0.278') || html.includes('style.css?v=1.0.279') || html.includes('style.css?v=1.0.280') || html.includes('style.css?v=1.0.281') || html.includes('style.css?v=1.0.282') || html.includes('style.css?v=1.0.283') || html.includes('style.css?v=1.0.284') || html.includes('style.css?v=1.0.285') || html.includes('style.css?v=1.0.286') || html.includes('style.css?v=1.0.287') || html.includes('style.css?v=1.0.288'), 'index.html deve referenciar style.css?v=1.0.278+');
-  assert.ok(privacyHtml.includes('v1.0.278') || privacyHtml.includes('v1.0.279') || privacyHtml.includes('v1.0.280') || privacyHtml.includes('v1.0.281') || privacyHtml.includes('v1.0.282') || privacyHtml.includes('v1.0.283') || privacyHtml.includes('v1.0.284') || privacyHtml.includes('v1.0.285') || privacyHtml.includes('v1.0.286') || privacyHtml.includes('v1.0.287') || privacyHtml.includes('v1.0.288'), 'privacy.html deve referenciar v1.0.278+');
+  assert.ok(['1.0.278', '1.0.279', '1.0.280', '1.0.281', '1.0.282', '1.0.283', '1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288', '1.0.289'].includes(versionJson.version), 'version.json deve ser 1.0.278+');
+  assert.ok([278, 279, 280, 281, 282, 283, 284, 285, 286, 287, 288, 289].includes(versionJson.build), 'build em version.json deve ser 278+');
+  assert.ok(['1.0.278', '1.0.279', '1.0.280', '1.0.281', '1.0.282', '1.0.283', '1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288', '1.0.289'].includes(manifest.version), 'manifest.json deve ser 1.0.278+');
+  assert.ok(['1.0.278', '1.0.279', '1.0.280', '1.0.281', '1.0.282', '1.0.283', '1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288', '1.0.289'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.278+');
+  assert.ok(swContent.includes('vortex-vip-v1.0.278') || swContent.includes('vortex-vip-v1.0.279') || swContent.includes('vortex-vip-v1.0.280') || swContent.includes('vortex-vip-v1.0.281') || swContent.includes('vortex-vip-v1.0.282') || swContent.includes('vortex-vip-v1.0.283') || swContent.includes('vortex-vip-v1.0.284') || swContent.includes('vortex-vip-v1.0.285') || swContent.includes('vortex-vip-v1.0.286') || swContent.includes('vortex-vip-v1.0.287') || swContent.includes('vortex-vip-v1.0.288') || swContent.includes('vortex-vip-v1.0.289'), 'sw.js deve conter cache v1.0.278+');
+  assert.ok(html.includes('script.js?v=1.0.278') || html.includes('script.js?v=1.0.279') || html.includes('script.js?v=1.0.280') || html.includes('script.js?v=1.0.281') || html.includes('script.js?v=1.0.282') || html.includes('script.js?v=1.0.283') || html.includes('script.js?v=1.0.284') || html.includes('script.js?v=1.0.285') || html.includes('script.js?v=1.0.286') || html.includes('script.js?v=1.0.287') || html.includes('script.js?v=1.0.288') || html.includes('script.js?v=1.0.289'), 'index.html deve referenciar script.js?v=1.0.278+');
+  assert.ok(html.includes('style.css?v=1.0.278') || html.includes('style.css?v=1.0.279') || html.includes('style.css?v=1.0.280') || html.includes('style.css?v=1.0.281') || html.includes('style.css?v=1.0.282') || html.includes('style.css?v=1.0.283') || html.includes('style.css?v=1.0.284') || html.includes('style.css?v=1.0.285') || html.includes('style.css?v=1.0.286') || html.includes('style.css?v=1.0.287') || html.includes('style.css?v=1.0.288') || html.includes('style.css?v=1.0.289'), 'index.html deve referenciar style.css?v=1.0.278+');
+  assert.ok(privacyHtml.includes('v1.0.278') || privacyHtml.includes('v1.0.279') || privacyHtml.includes('v1.0.280') || privacyHtml.includes('v1.0.281') || privacyHtml.includes('v1.0.282') || privacyHtml.includes('v1.0.283') || privacyHtml.includes('v1.0.284') || privacyHtml.includes('v1.0.285') || privacyHtml.includes('v1.0.286') || privacyHtml.includes('v1.0.287') || privacyHtml.includes('v1.0.288') || privacyHtml.includes('v1.0.289'), 'privacy.html deve referenciar v1.0.278+');
 
   // 2. Presença dos 3 Botões de Jogos no HTML
   assert.ok(html.includes('id="games-subtabs-nav"'), 'index.html deve conter #games-subtabs-nav');
@@ -18801,14 +18801,14 @@ test('197. Botão Publicar Status (#publish-status-btn) com Tamanho Aumentado e 
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
   // 1. Integridade de Versionamento v1.0.279+ (Build 279+)
-  assert.ok(['1.0.279', '1.0.280', '1.0.281', '1.0.282', '1.0.283', '1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288'].includes(versionJson.version), 'version.json deve ser 1.0.279+');
-  assert.ok([279, 280, 281, 282, 283, 284, 285, 286, 287, 288].includes(versionJson.build), 'build em version.json deve ser 279+');
-  assert.ok(['1.0.279', '1.0.280', '1.0.281', '1.0.282', '1.0.283', '1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288'].includes(manifest.version), 'manifest.json deve ser 1.0.279+');
-  assert.ok(['1.0.279', '1.0.280', '1.0.281', '1.0.282', '1.0.283', '1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.279+');
-  assert.ok(swContent.includes('vortex-vip-v1.0.279') || swContent.includes('vortex-vip-v1.0.280') || swContent.includes('vortex-vip-v1.0.281') || swContent.includes('vortex-vip-v1.0.282') || swContent.includes('vortex-vip-v1.0.283') || swContent.includes('vortex-vip-v1.0.284') || swContent.includes('vortex-vip-v1.0.285') || swContent.includes('vortex-vip-v1.0.286') || swContent.includes('vortex-vip-v1.0.287') || swContent.includes('vortex-vip-v1.0.288'), 'sw.js deve conter cache v1.0.279+');
-  assert.ok(html.includes('script.js?v=1.0.279') || html.includes('script.js?v=1.0.280') || html.includes('script.js?v=1.0.281') || html.includes('script.js?v=1.0.282') || html.includes('script.js?v=1.0.283') || html.includes('script.js?v=1.0.284') || html.includes('script.js?v=1.0.285') || html.includes('script.js?v=1.0.286') || html.includes('script.js?v=1.0.287') || html.includes('script.js?v=1.0.288'), 'index.html deve referenciar script.js?v=1.0.279+');
-  assert.ok(html.includes('style.css?v=1.0.279') || html.includes('style.css?v=1.0.280') || html.includes('style.css?v=1.0.281') || html.includes('style.css?v=1.0.282') || html.includes('style.css?v=1.0.283') || html.includes('style.css?v=1.0.284') || html.includes('style.css?v=1.0.285') || html.includes('style.css?v=1.0.286') || html.includes('style.css?v=1.0.287') || html.includes('style.css?v=1.0.288'), 'index.html deve referenciar style.css?v=1.0.279+');
-  assert.ok(privacyHtml.includes('v1.0.279') || privacyHtml.includes('v1.0.280') || privacyHtml.includes('v1.0.281') || privacyHtml.includes('v1.0.282') || privacyHtml.includes('v1.0.283') || privacyHtml.includes('v1.0.284') || privacyHtml.includes('v1.0.285') || privacyHtml.includes('v1.0.286') || privacyHtml.includes('v1.0.287') || privacyHtml.includes('v1.0.288'), 'privacy.html deve referenciar v1.0.279+');
+  assert.ok(['1.0.279', '1.0.280', '1.0.281', '1.0.282', '1.0.283', '1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288', '1.0.289'].includes(versionJson.version), 'version.json deve ser 1.0.279+');
+  assert.ok([279, 280, 281, 282, 283, 284, 285, 286, 287, 288, 289].includes(versionJson.build), 'build em version.json deve ser 279+');
+  assert.ok(['1.0.279', '1.0.280', '1.0.281', '1.0.282', '1.0.283', '1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288', '1.0.289'].includes(manifest.version), 'manifest.json deve ser 1.0.279+');
+  assert.ok(['1.0.279', '1.0.280', '1.0.281', '1.0.282', '1.0.283', '1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288', '1.0.289'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.279+');
+  assert.ok(swContent.includes('vortex-vip-v1.0.279') || swContent.includes('vortex-vip-v1.0.280') || swContent.includes('vortex-vip-v1.0.281') || swContent.includes('vortex-vip-v1.0.282') || swContent.includes('vortex-vip-v1.0.283') || swContent.includes('vortex-vip-v1.0.284') || swContent.includes('vortex-vip-v1.0.285') || swContent.includes('vortex-vip-v1.0.286') || swContent.includes('vortex-vip-v1.0.287') || swContent.includes('vortex-vip-v1.0.288') || swContent.includes('vortex-vip-v1.0.289'), 'sw.js deve conter cache v1.0.279+');
+  assert.ok(html.includes('script.js?v=1.0.279') || html.includes('script.js?v=1.0.280') || html.includes('script.js?v=1.0.281') || html.includes('script.js?v=1.0.282') || html.includes('script.js?v=1.0.283') || html.includes('script.js?v=1.0.284') || html.includes('script.js?v=1.0.285') || html.includes('script.js?v=1.0.286') || html.includes('script.js?v=1.0.287') || html.includes('script.js?v=1.0.288') || html.includes('script.js?v=1.0.289'), 'index.html deve referenciar script.js?v=1.0.279+');
+  assert.ok(html.includes('style.css?v=1.0.279') || html.includes('style.css?v=1.0.280') || html.includes('style.css?v=1.0.281') || html.includes('style.css?v=1.0.282') || html.includes('style.css?v=1.0.283') || html.includes('style.css?v=1.0.284') || html.includes('style.css?v=1.0.285') || html.includes('style.css?v=1.0.286') || html.includes('style.css?v=1.0.287') || html.includes('style.css?v=1.0.288') || html.includes('style.css?v=1.0.289'), 'index.html deve referenciar style.css?v=1.0.279+');
+  assert.ok(privacyHtml.includes('v1.0.279') || privacyHtml.includes('v1.0.280') || privacyHtml.includes('v1.0.281') || privacyHtml.includes('v1.0.282') || privacyHtml.includes('v1.0.283') || privacyHtml.includes('v1.0.284') || privacyHtml.includes('v1.0.285') || privacyHtml.includes('v1.0.286') || privacyHtml.includes('v1.0.287') || privacyHtml.includes('v1.0.288') || privacyHtml.includes('v1.0.289'), 'privacy.html deve referenciar v1.0.279+');
 
   // 2. Presença do botão #publish-status-btn no HTML
   assert.ok(html.includes('id="publish-status-btn"'), 'index.html deve conter #publish-status-btn');
@@ -18852,14 +18852,14 @@ test('198. Botão Tester Beta nas Configurações, Modal com Descrição, Solici
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
   // 1. Integridade de Versionamento v1.0.280+ (Build 280+)
-  assert.ok(['1.0.280', '1.0.281', '1.0.282', '1.0.283', '1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288'].includes(versionJson.version), 'version.json deve ser 1.0.280+');
-  assert.ok([280, 281, 282, 283, 284, 285, 286, 287, 288].includes(versionJson.build), 'build em version.json deve ser 280+');
-  assert.ok(['1.0.280', '1.0.281', '1.0.282', '1.0.283', '1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288'].includes(manifest.version), 'manifest.json deve ser 1.0.280+');
-  assert.ok(['1.0.280', '1.0.281', '1.0.282', '1.0.283', '1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.280+');
-  assert.ok(swContent.includes('vortex-vip-v1.0.280') || swContent.includes('vortex-vip-v1.0.281') || swContent.includes('vortex-vip-v1.0.282') || swContent.includes('vortex-vip-v1.0.283') || swContent.includes('vortex-vip-v1.0.284') || swContent.includes('vortex-vip-v1.0.285') || swContent.includes('vortex-vip-v1.0.286') || swContent.includes('vortex-vip-v1.0.287') || swContent.includes('vortex-vip-v1.0.288'), 'sw.js deve conter cache v1.0.280+');
-  assert.ok(html.includes('script.js?v=1.0.280') || html.includes('script.js?v=1.0.281') || html.includes('script.js?v=1.0.282') || html.includes('script.js?v=1.0.283') || html.includes('script.js?v=1.0.284') || html.includes('script.js?v=1.0.285') || html.includes('script.js?v=1.0.286') || html.includes('script.js?v=1.0.287') || html.includes('script.js?v=1.0.288'), 'index.html deve referenciar script.js?v=1.0.280+');
-  assert.ok(html.includes('style.css?v=1.0.280') || html.includes('style.css?v=1.0.281') || html.includes('style.css?v=1.0.282') || html.includes('style.css?v=1.0.283') || html.includes('style.css?v=1.0.284') || html.includes('style.css?v=1.0.285') || html.includes('style.css?v=1.0.286') || html.includes('style.css?v=1.0.287') || html.includes('style.css?v=1.0.288'), 'index.html deve referenciar style.css?v=1.0.280+');
-  assert.ok(privacyHtml.includes('v1.0.280') || privacyHtml.includes('v1.0.281') || privacyHtml.includes('v1.0.282') || privacyHtml.includes('v1.0.283') || privacyHtml.includes('v1.0.284') || privacyHtml.includes('v1.0.285') || privacyHtml.includes('v1.0.286') || privacyHtml.includes('v1.0.287') || privacyHtml.includes('v1.0.288'), 'privacy.html deve referenciar v1.0.280+');
+  assert.ok(['1.0.280', '1.0.281', '1.0.282', '1.0.283', '1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288', '1.0.289'].includes(versionJson.version), 'version.json deve ser 1.0.280+');
+  assert.ok([280, 281, 282, 283, 284, 285, 286, 287, 288, 289].includes(versionJson.build), 'build em version.json deve ser 280+');
+  assert.ok(['1.0.280', '1.0.281', '1.0.282', '1.0.283', '1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288', '1.0.289'].includes(manifest.version), 'manifest.json deve ser 1.0.280+');
+  assert.ok(['1.0.280', '1.0.281', '1.0.282', '1.0.283', '1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288', '1.0.289'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.280+');
+  assert.ok(swContent.includes('vortex-vip-v1.0.280') || swContent.includes('vortex-vip-v1.0.281') || swContent.includes('vortex-vip-v1.0.282') || swContent.includes('vortex-vip-v1.0.283') || swContent.includes('vortex-vip-v1.0.284') || swContent.includes('vortex-vip-v1.0.285') || swContent.includes('vortex-vip-v1.0.286') || swContent.includes('vortex-vip-v1.0.287') || swContent.includes('vortex-vip-v1.0.288') || swContent.includes('vortex-vip-v1.0.289'), 'sw.js deve conter cache v1.0.280+');
+  assert.ok(html.includes('script.js?v=1.0.280') || html.includes('script.js?v=1.0.281') || html.includes('script.js?v=1.0.282') || html.includes('script.js?v=1.0.283') || html.includes('script.js?v=1.0.284') || html.includes('script.js?v=1.0.285') || html.includes('script.js?v=1.0.286') || html.includes('script.js?v=1.0.287') || html.includes('script.js?v=1.0.288') || html.includes('script.js?v=1.0.289'), 'index.html deve referenciar script.js?v=1.0.280+');
+  assert.ok(html.includes('style.css?v=1.0.280') || html.includes('style.css?v=1.0.281') || html.includes('style.css?v=1.0.282') || html.includes('style.css?v=1.0.283') || html.includes('style.css?v=1.0.284') || html.includes('style.css?v=1.0.285') || html.includes('style.css?v=1.0.286') || html.includes('style.css?v=1.0.287') || html.includes('style.css?v=1.0.288') || html.includes('style.css?v=1.0.289'), 'index.html deve referenciar style.css?v=1.0.280+');
+  assert.ok(privacyHtml.includes('v1.0.280') || privacyHtml.includes('v1.0.281') || privacyHtml.includes('v1.0.282') || privacyHtml.includes('v1.0.283') || privacyHtml.includes('v1.0.284') || privacyHtml.includes('v1.0.285') || privacyHtml.includes('v1.0.286') || privacyHtml.includes('v1.0.287') || privacyHtml.includes('v1.0.288') || privacyHtml.includes('v1.0.289'), 'privacy.html deve referenciar v1.0.280+');
 
   // 2. Elementos no HTML (Configurações + Modal + Descrição + Botão Solicitar + Barra de 24h)
   assert.ok(html.includes('id="beta-tester-setting-item"'), 'Configurações deve conter #beta-tester-setting-item');
@@ -18942,14 +18942,14 @@ test('199. Ligação em Grupo para Contatos (Convidar até 4 Pessoas) v1.0.281',
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
   // 1. Integridade de Versionamento v1.0.281+ (Build 281+)
-  assert.ok(['1.0.281', '1.0.282', '1.0.283', '1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288'].includes(versionJson.version), 'version.json deve ser 1.0.281+');
-  assert.ok([281, 282, 283, 284, 285, 286, 287, 288].includes(versionJson.build), 'build em version.json deve ser 281+');
-  assert.ok(['1.0.281', '1.0.282', '1.0.283', '1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288'].includes(manifest.version), 'manifest.json deve ser 1.0.281+');
-  assert.ok(['1.0.281', '1.0.282', '1.0.283', '1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.281+');
-  assert.ok(swContent.includes('vortex-vip-v1.0.281') || swContent.includes('vortex-vip-v1.0.282') || swContent.includes('vortex-vip-v1.0.283') || swContent.includes('vortex-vip-v1.0.284') || swContent.includes('vortex-vip-v1.0.285') || swContent.includes('vortex-vip-v1.0.286') || swContent.includes('vortex-vip-v1.0.287') || swContent.includes('vortex-vip-v1.0.288'), 'sw.js deve conter cache v1.0.281+');
-  assert.ok(html.includes('script.js?v=1.0.281') || html.includes('script.js?v=1.0.282') || html.includes('script.js?v=1.0.283') || html.includes('script.js?v=1.0.284') || html.includes('script.js?v=1.0.285') || html.includes('script.js?v=1.0.286') || html.includes('script.js?v=1.0.287') || html.includes('script.js?v=1.0.288'), 'index.html deve referenciar script.js?v=1.0.281+');
-  assert.ok(html.includes('style.css?v=1.0.281') || html.includes('style.css?v=1.0.282') || html.includes('style.css?v=1.0.283') || html.includes('style.css?v=1.0.284') || html.includes('style.css?v=1.0.285') || html.includes('style.css?v=1.0.286') || html.includes('style.css?v=1.0.287') || html.includes('style.css?v=1.0.288'), 'index.html deve referenciar style.css?v=1.0.281+');
-  assert.ok(privacyHtml.includes('v1.0.281') || privacyHtml.includes('v1.0.282') || privacyHtml.includes('v1.0.283') || privacyHtml.includes('v1.0.284') || privacyHtml.includes('v1.0.285') || privacyHtml.includes('v1.0.286') || privacyHtml.includes('v1.0.287') || privacyHtml.includes('v1.0.288'), 'privacy.html deve referenciar v1.0.281+');
+  assert.ok(['1.0.281', '1.0.282', '1.0.283', '1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288', '1.0.289'].includes(versionJson.version), 'version.json deve ser 1.0.281+');
+  assert.ok([281, 282, 283, 284, 285, 286, 287, 288, 289].includes(versionJson.build), 'build em version.json deve ser 281+');
+  assert.ok(['1.0.281', '1.0.282', '1.0.283', '1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288', '1.0.289'].includes(manifest.version), 'manifest.json deve ser 1.0.281+');
+  assert.ok(['1.0.281', '1.0.282', '1.0.283', '1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288', '1.0.289'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.281+');
+  assert.ok(swContent.includes('vortex-vip-v1.0.281') || swContent.includes('vortex-vip-v1.0.282') || swContent.includes('vortex-vip-v1.0.283') || swContent.includes('vortex-vip-v1.0.284') || swContent.includes('vortex-vip-v1.0.285') || swContent.includes('vortex-vip-v1.0.286') || swContent.includes('vortex-vip-v1.0.287') || swContent.includes('vortex-vip-v1.0.288') || swContent.includes('vortex-vip-v1.0.289'), 'sw.js deve conter cache v1.0.281+');
+  assert.ok(html.includes('script.js?v=1.0.281') || html.includes('script.js?v=1.0.282') || html.includes('script.js?v=1.0.283') || html.includes('script.js?v=1.0.284') || html.includes('script.js?v=1.0.285') || html.includes('script.js?v=1.0.286') || html.includes('script.js?v=1.0.287') || html.includes('script.js?v=1.0.288') || html.includes('script.js?v=1.0.289'), 'index.html deve referenciar script.js?v=1.0.281+');
+  assert.ok(html.includes('style.css?v=1.0.281') || html.includes('style.css?v=1.0.282') || html.includes('style.css?v=1.0.283') || html.includes('style.css?v=1.0.284') || html.includes('style.css?v=1.0.285') || html.includes('style.css?v=1.0.286') || html.includes('style.css?v=1.0.287') || html.includes('style.css?v=1.0.288') || html.includes('style.css?v=1.0.289'), 'index.html deve referenciar style.css?v=1.0.281+');
+  assert.ok(privacyHtml.includes('v1.0.281') || privacyHtml.includes('v1.0.282') || privacyHtml.includes('v1.0.283') || privacyHtml.includes('v1.0.284') || privacyHtml.includes('v1.0.285') || privacyHtml.includes('v1.0.286') || privacyHtml.includes('v1.0.287') || privacyHtml.includes('v1.0.288') || privacyHtml.includes('v1.0.289'), 'privacy.html deve referenciar v1.0.281+');
 
   // 2. Elementos no HTML
   assert.ok(html.includes('id="start-group-call-opt-btn"'), 'Modal de tipo de chamada deve conter opção Ligação em Grupo');
@@ -19062,14 +19062,14 @@ test('200. Sistema de IA VORTEX AI Shield & Recommender para Administrador (Segu
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
   // 1. Integridade de Versionamento v1.0.282+ (Build 282+)
-  assert.ok(['1.0.282', '1.0.283', '1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288'].includes(versionJson.version), 'version.json deve ser 1.0.282+');
-  assert.ok([282, 283, 284, 285, 286, 287, 288].includes(versionJson.build), 'build em version.json deve ser 282+');
-  assert.ok(['1.0.282', '1.0.283', '1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288'].includes(manifest.version), 'manifest.json deve ser 1.0.282+');
-  assert.ok(['1.0.282', '1.0.283', '1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.282+');
-  assert.ok(swContent.includes('vortex-vip-v1.0.282') || swContent.includes('vortex-vip-v1.0.283') || swContent.includes('vortex-vip-v1.0.284') || swContent.includes('vortex-vip-v1.0.285') || swContent.includes('vortex-vip-v1.0.286') || swContent.includes('vortex-vip-v1.0.287') || swContent.includes('vortex-vip-v1.0.288'), 'sw.js deve conter cache v1.0.282+');
-  assert.ok(html.includes('script.js?v=1.0.282') || html.includes('script.js?v=1.0.283') || html.includes('script.js?v=1.0.284') || html.includes('script.js?v=1.0.285') || html.includes('script.js?v=1.0.286') || html.includes('script.js?v=1.0.287') || html.includes('script.js?v=1.0.288'), 'index.html deve referenciar script.js?v=1.0.282+');
-  assert.ok(html.includes('style.css?v=1.0.282') || html.includes('style.css?v=1.0.283') || html.includes('style.css?v=1.0.284') || html.includes('style.css?v=1.0.285') || html.includes('style.css?v=1.0.286') || html.includes('style.css?v=1.0.287') || html.includes('style.css?v=1.0.288'), 'index.html deve referenciar style.css?v=1.0.282+');
-  assert.ok(privacyHtml.includes('v1.0.282') || privacyHtml.includes('v1.0.283') || privacyHtml.includes('v1.0.284') || privacyHtml.includes('v1.0.285') || privacyHtml.includes('v1.0.286') || privacyHtml.includes('v1.0.287') || privacyHtml.includes('v1.0.288'), 'privacy.html deve referenciar v1.0.282+');
+  assert.ok(['1.0.282', '1.0.283', '1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288', '1.0.289'].includes(versionJson.version), 'version.json deve ser 1.0.282+');
+  assert.ok([282, 283, 284, 285, 286, 287, 288, 289].includes(versionJson.build), 'build em version.json deve ser 282+');
+  assert.ok(['1.0.282', '1.0.283', '1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288', '1.0.289'].includes(manifest.version), 'manifest.json deve ser 1.0.282+');
+  assert.ok(['1.0.282', '1.0.283', '1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288', '1.0.289'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.282+');
+  assert.ok(swContent.includes('vortex-vip-v1.0.282') || swContent.includes('vortex-vip-v1.0.283') || swContent.includes('vortex-vip-v1.0.284') || swContent.includes('vortex-vip-v1.0.285') || swContent.includes('vortex-vip-v1.0.286') || swContent.includes('vortex-vip-v1.0.287') || swContent.includes('vortex-vip-v1.0.288') || swContent.includes('vortex-vip-v1.0.289'), 'sw.js deve conter cache v1.0.282+');
+  assert.ok(html.includes('script.js?v=1.0.282') || html.includes('script.js?v=1.0.283') || html.includes('script.js?v=1.0.284') || html.includes('script.js?v=1.0.285') || html.includes('script.js?v=1.0.286') || html.includes('script.js?v=1.0.287') || html.includes('script.js?v=1.0.288') || html.includes('script.js?v=1.0.289'), 'index.html deve referenciar script.js?v=1.0.282+');
+  assert.ok(html.includes('style.css?v=1.0.282') || html.includes('style.css?v=1.0.283') || html.includes('style.css?v=1.0.284') || html.includes('style.css?v=1.0.285') || html.includes('style.css?v=1.0.286') || html.includes('style.css?v=1.0.287') || html.includes('style.css?v=1.0.288') || html.includes('style.css?v=1.0.289'), 'index.html deve referenciar style.css?v=1.0.282+');
+  assert.ok(privacyHtml.includes('v1.0.282') || privacyHtml.includes('v1.0.283') || privacyHtml.includes('v1.0.284') || privacyHtml.includes('v1.0.285') || privacyHtml.includes('v1.0.286') || privacyHtml.includes('v1.0.287') || privacyHtml.includes('v1.0.288') || privacyHtml.includes('v1.0.289'), 'privacy.html deve referenciar v1.0.282+');
 
   // 2. Presença da Aba ADM IA Segurança & Elementos no HTML e CSS
   assert.ok(html.includes('id="admin-tab-ai-security-btn"'), 'Painel ADM deve conter aba #admin-tab-ai-security-btn');
@@ -19258,14 +19258,14 @@ test('201. IA Moderação Inteligente de Comentários (Links http/https, Repeti�
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
   // 1. Integridade de Versionamento v1.0.283+ (Build 283+)
-  assert.ok(['1.0.283', '1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288'].includes(versionJson.version), 'version.json deve ser 1.0.283+');
-  assert.ok([283, 284, 285, 286, 287, 288].includes(versionJson.build), 'build em version.json deve ser 283+');
-  assert.ok(['1.0.283', '1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288'].includes(manifest.version), 'manifest.json deve ser 1.0.283+');
-  assert.ok(['1.0.283', '1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.283+');
-  assert.ok(swContent.includes('vortex-vip-v1.0.283') || swContent.includes('vortex-vip-v1.0.284') || swContent.includes('vortex-vip-v1.0.285') || swContent.includes('vortex-vip-v1.0.286') || swContent.includes('vortex-vip-v1.0.287') || swContent.includes('vortex-vip-v1.0.288'), 'sw.js deve conter cache v1.0.283+');
-  assert.ok(html.includes('script.js?v=1.0.283') || html.includes('script.js?v=1.0.284') || html.includes('script.js?v=1.0.285') || html.includes('script.js?v=1.0.286') || html.includes('script.js?v=1.0.287') || html.includes('script.js?v=1.0.288'), 'index.html deve referenciar script.js?v=1.0.283+');
-  assert.ok(html.includes('style.css?v=1.0.283') || html.includes('style.css?v=1.0.284') || html.includes('style.css?v=1.0.285') || html.includes('style.css?v=1.0.286') || html.includes('style.css?v=1.0.287') || html.includes('style.css?v=1.0.288'), 'index.html deve referenciar style.css?v=1.0.283+');
-  assert.ok(privacyHtml.includes('v1.0.283') || privacyHtml.includes('v1.0.284') || privacyHtml.includes('v1.0.285') || privacyHtml.includes('v1.0.286') || privacyHtml.includes('v1.0.287') || privacyHtml.includes('v1.0.288'), 'privacy.html deve referenciar v1.0.283+');
+  assert.ok(['1.0.283', '1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288', '1.0.289'].includes(versionJson.version), 'version.json deve ser 1.0.283+');
+  assert.ok([283, 284, 285, 286, 287, 288, 289].includes(versionJson.build), 'build em version.json deve ser 283+');
+  assert.ok(['1.0.283', '1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288', '1.0.289'].includes(manifest.version), 'manifest.json deve ser 1.0.283+');
+  assert.ok(['1.0.283', '1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288', '1.0.289'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.283+');
+  assert.ok(swContent.includes('vortex-vip-v1.0.283') || swContent.includes('vortex-vip-v1.0.284') || swContent.includes('vortex-vip-v1.0.285') || swContent.includes('vortex-vip-v1.0.286') || swContent.includes('vortex-vip-v1.0.287') || swContent.includes('vortex-vip-v1.0.288') || swContent.includes('vortex-vip-v1.0.289'), 'sw.js deve conter cache v1.0.283+');
+  assert.ok(html.includes('script.js?v=1.0.283') || html.includes('script.js?v=1.0.284') || html.includes('script.js?v=1.0.285') || html.includes('script.js?v=1.0.286') || html.includes('script.js?v=1.0.287') || html.includes('script.js?v=1.0.288') || html.includes('script.js?v=1.0.289'), 'index.html deve referenciar script.js?v=1.0.283+');
+  assert.ok(html.includes('style.css?v=1.0.283') || html.includes('style.css?v=1.0.284') || html.includes('style.css?v=1.0.285') || html.includes('style.css?v=1.0.286') || html.includes('style.css?v=1.0.287') || html.includes('style.css?v=1.0.288') || html.includes('style.css?v=1.0.289'), 'index.html deve referenciar style.css?v=1.0.283+');
+  assert.ok(privacyHtml.includes('v1.0.283') || privacyHtml.includes('v1.0.284') || privacyHtml.includes('v1.0.285') || privacyHtml.includes('v1.0.286') || privacyHtml.includes('v1.0.287') || privacyHtml.includes('v1.0.288') || privacyHtml.includes('v1.0.289'), 'privacy.html deve referenciar v1.0.283+');
 
   // 2. Elementos no HTML ADM para Comentários IA
   assert.ok(html.includes('id="admin-ai-toggle-comment-guard"'), 'Painel ADM deve conter toggle #admin-ai-toggle-comment-guard');
@@ -19455,14 +19455,14 @@ test('202. IA Anti-Spam / Bots / Auto-Click nas Curtidas de Posts com Bloqueio T
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
   // 1. Integridade de Versionamento v1.0.284+ (Build 284+)
-  assert.ok(['1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288'].includes(versionJson.version), 'version.json deve ser 1.0.284+');
-  assert.ok([284, 285, 286, 287, 288].includes(versionJson.build), 'build em version.json deve ser 284+');
-  assert.ok(['1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288'].includes(manifest.version), 'manifest.json deve ser 1.0.284+');
-  assert.ok(['1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.284+');
-  assert.ok(swContent.includes('vortex-vip-v1.0.284') || swContent.includes('vortex-vip-v1.0.285') || swContent.includes('vortex-vip-v1.0.286') || swContent.includes('vortex-vip-v1.0.287') || swContent.includes('vortex-vip-v1.0.288'), 'sw.js deve conter cache v1.0.284+');
-  assert.ok(html.includes('script.js?v=1.0.284') || html.includes('script.js?v=1.0.285') || html.includes('script.js?v=1.0.286') || html.includes('script.js?v=1.0.287') || html.includes('script.js?v=1.0.288'), 'index.html deve referenciar script.js?v=1.0.284+');
-  assert.ok(html.includes('style.css?v=1.0.284') || html.includes('style.css?v=1.0.285') || html.includes('style.css?v=1.0.286') || html.includes('style.css?v=1.0.287') || html.includes('style.css?v=1.0.288'), 'index.html deve referenciar style.css?v=1.0.284+');
-  assert.ok(privacyHtml.includes('v1.0.284') || privacyHtml.includes('v1.0.285') || privacyHtml.includes('v1.0.286') || privacyHtml.includes('v1.0.287') || privacyHtml.includes('v1.0.288'), 'privacy.html deve referenciar v1.0.284+');
+  assert.ok(['1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288', '1.0.289'].includes(versionJson.version), 'version.json deve ser 1.0.284+');
+  assert.ok([284, 285, 286, 287, 288, 289].includes(versionJson.build), 'build em version.json deve ser 284+');
+  assert.ok(['1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288', '1.0.289'].includes(manifest.version), 'manifest.json deve ser 1.0.284+');
+  assert.ok(['1.0.284', '1.0.285', '1.0.286', '1.0.287', '1.0.288', '1.0.289'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.284+');
+  assert.ok(swContent.includes('vortex-vip-v1.0.284') || swContent.includes('vortex-vip-v1.0.285') || swContent.includes('vortex-vip-v1.0.286') || swContent.includes('vortex-vip-v1.0.287') || swContent.includes('vortex-vip-v1.0.288') || swContent.includes('vortex-vip-v1.0.289'), 'sw.js deve conter cache v1.0.284+');
+  assert.ok(html.includes('script.js?v=1.0.284') || html.includes('script.js?v=1.0.285') || html.includes('script.js?v=1.0.286') || html.includes('script.js?v=1.0.287') || html.includes('script.js?v=1.0.288') || html.includes('script.js?v=1.0.289'), 'index.html deve referenciar script.js?v=1.0.284+');
+  assert.ok(html.includes('style.css?v=1.0.284') || html.includes('style.css?v=1.0.285') || html.includes('style.css?v=1.0.286') || html.includes('style.css?v=1.0.287') || html.includes('style.css?v=1.0.288') || html.includes('style.css?v=1.0.289'), 'index.html deve referenciar style.css?v=1.0.284+');
+  assert.ok(privacyHtml.includes('v1.0.284') || privacyHtml.includes('v1.0.285') || privacyHtml.includes('v1.0.286') || privacyHtml.includes('v1.0.287') || privacyHtml.includes('v1.0.288') || privacyHtml.includes('v1.0.289'), 'privacy.html deve referenciar v1.0.284+');
 
   // 2. Controles ADM & Estilo CSS para Bloqueio de Curtidas 24h
   assert.ok(html.includes('id="admin-ai-toggle-like-guard"'), 'Painel ADM deve conter toggle #admin-ai-toggle-like-guard');
@@ -19557,14 +19557,14 @@ test('203. Limite Mensal de Edição de Perfil por Campo Separado (Nome, Sobreno
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
   // 1. Integridade de Versionamento v1.0.286+ (Build 286+)
-  assert.ok(['1.0.286', '1.0.287', '1.0.288'].includes(versionJson.version), 'version.json deve ser 1.0.286+');
-  assert.ok([286, 287, 288].includes(versionJson.build), 'build em version.json deve ser 286+');
-  assert.ok(['1.0.286', '1.0.287', '1.0.288'].includes(manifest.version), 'manifest.json deve ser 1.0.286+');
-  assert.ok(['1.0.286', '1.0.287', '1.0.288'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.286+');
-  assert.ok(swContent.includes('vortex-vip-v1.0.286') || swContent.includes('vortex-vip-v1.0.287') || swContent.includes('vortex-vip-v1.0.288'), 'sw.js deve conter cache v1.0.286+');
-  assert.ok(html.includes('script.js?v=1.0.286') || html.includes('script.js?v=1.0.287') || html.includes('script.js?v=1.0.288'), 'index.html deve referenciar script.js?v=1.0.286+');
-  assert.ok(html.includes('style.css?v=1.0.286') || html.includes('style.css?v=1.0.287') || html.includes('style.css?v=1.0.288'), 'index.html deve referenciar style.css?v=1.0.286+');
-  assert.ok(privacyHtml.includes('v1.0.286') || privacyHtml.includes('v1.0.287') || privacyHtml.includes('v1.0.288'), 'privacy.html deve referenciar v1.0.286+');
+  assert.ok(['1.0.286', '1.0.287', '1.0.288', '1.0.289'].includes(versionJson.version), 'version.json deve ser 1.0.286+');
+  assert.ok([286, 287, 288, 289].includes(versionJson.build), 'build em version.json deve ser 286+');
+  assert.ok(['1.0.286', '1.0.287', '1.0.288', '1.0.289'].includes(manifest.version), 'manifest.json deve ser 1.0.286+');
+  assert.ok(['1.0.286', '1.0.287', '1.0.288', '1.0.289'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.286+');
+  assert.ok(swContent.includes('vortex-vip-v1.0.286') || swContent.includes('vortex-vip-v1.0.287') || swContent.includes('vortex-vip-v1.0.288') || swContent.includes('vortex-vip-v1.0.289'), 'sw.js deve conter cache v1.0.286+');
+  assert.ok(html.includes('script.js?v=1.0.286') || html.includes('script.js?v=1.0.287') || html.includes('script.js?v=1.0.288') || html.includes('script.js?v=1.0.289'), 'index.html deve referenciar script.js?v=1.0.286+');
+  assert.ok(html.includes('style.css?v=1.0.286') || html.includes('style.css?v=1.0.287') || html.includes('style.css?v=1.0.288') || html.includes('style.css?v=1.0.289'), 'index.html deve referenciar style.css?v=1.0.286+');
+  assert.ok(privacyHtml.includes('v1.0.286') || privacyHtml.includes('v1.0.287') || privacyHtml.includes('v1.0.288') || privacyHtml.includes('v1.0.289'), 'privacy.html deve referenciar v1.0.286+');
 
   // 2. Hints HTML & CSS de limite mensal
   for (const hintId of [
@@ -19795,14 +19795,14 @@ test('204. Correção de Ícones Lucide Inexistentes (folder-audio -> file-music
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
   // 1. Integridade de Versionamento v1.0.287+ (Build 287+)
-  assert.ok(['1.0.287', '1.0.288'].includes(versionJson.version), 'version.json deve ser 1.0.287+');
-  assert.ok([287, 288].includes(versionJson.build), 'build em version.json deve ser 287+');
-  assert.ok(['1.0.287', '1.0.288'].includes(manifest.version), 'manifest.json deve ser 1.0.287+');
-  assert.ok(['1.0.287', '1.0.288'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.287+');
-  assert.ok(swContent.includes('vortex-vip-v1.0.287') || swContent.includes('vortex-vip-v1.0.288'), 'sw.js deve conter cache v1.0.287+');
-  assert.ok(html.includes('script.js?v=1.0.287') || html.includes('script.js?v=1.0.288'), 'index.html deve referenciar script.js?v=1.0.287+');
-  assert.ok(html.includes('style.css?v=1.0.287') || html.includes('style.css?v=1.0.288'), 'index.html deve referenciar style.css?v=1.0.287+');
-  assert.ok(privacyHtml.includes('v1.0.287') || privacyHtml.includes('v1.0.288'), 'privacy.html deve referenciar v1.0.287+');
+  assert.ok(['1.0.287', '1.0.288', '1.0.289'].includes(versionJson.version), 'version.json deve ser 1.0.287+');
+  assert.ok([287, 288, 289].includes(versionJson.build), 'build em version.json deve ser 287+');
+  assert.ok(['1.0.287', '1.0.288', '1.0.289'].includes(manifest.version), 'manifest.json deve ser 1.0.287+');
+  assert.ok(['1.0.287', '1.0.288', '1.0.289'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.287+');
+  assert.ok(swContent.includes('vortex-vip-v1.0.287') || swContent.includes('vortex-vip-v1.0.288') || swContent.includes('vortex-vip-v1.0.289'), 'sw.js deve conter cache v1.0.287+');
+  assert.ok(html.includes('script.js?v=1.0.287') || html.includes('script.js?v=1.0.288') || html.includes('script.js?v=1.0.289'), 'index.html deve referenciar script.js?v=1.0.287+');
+  assert.ok(html.includes('style.css?v=1.0.287') || html.includes('style.css?v=1.0.288') || html.includes('style.css?v=1.0.289'), 'index.html deve referenciar style.css?v=1.0.287+');
+  assert.ok(privacyHtml.includes('v1.0.287') || privacyHtml.includes('v1.0.288') || privacyHtml.includes('v1.0.289'), 'privacy.html deve referenciar v1.0.287+');
 
   // 2. Nenhum ícone Lucide inválido (folder-audio / check-shield) deve existir nos arquivos HTML/JS
   assert.strictEqual(html.includes('data-lucide="folder-audio"'), false, 'index.html não deve conter folder-audio inexistente no Lucide');
@@ -19896,15 +19896,15 @@ test('206. Foto de Perfil Obrigatória (30 Dias Úteis), Reativação em 1 Seman
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
   const privacyHtml = fs.readFileSync('public/privacy.html', 'utf8');
 
-  // 1. Versionamento v1.0.288 (Build 288)
-  assert.strictEqual(versionJson.version, '1.0.288', 'version.json deve ser 1.0.288');
-  assert.strictEqual(versionJson.build, 288, 'build em version.json deve ser 288');
-  assert.strictEqual(manifest.version, '1.0.288', 'manifest.json deve ser 1.0.288');
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.288', 'CURRENT_APP_VERSION deve ser 1.0.288');
-  assert.ok(swContent.includes('vortex-vip-v1.0.288'), 'sw.js deve conter cache v1.0.288');
-  assert.ok(html.includes('script.js?v=1.0.288'), 'index.html deve referenciar script.js?v=1.0.288');
-  assert.ok(html.includes('style.css?v=1.0.288'), 'index.html deve referenciar style.css?v=1.0.288');
-  assert.ok(privacyHtml.includes('v1.0.288'), 'privacy.html deve referenciar v1.0.288');
+  // 1. Versionamento v1.0.288+ (Build 288+)
+  assert.ok(['1.0.288', '1.0.289'].includes(versionJson.version), 'version.json deve ser 1.0.288+');
+  assert.ok([288, 289].includes(versionJson.build), 'build em version.json deve ser 288+');
+  assert.ok(['1.0.288', '1.0.289'].includes(manifest.version), 'manifest.json deve ser 1.0.288+');
+  assert.ok(['1.0.288', '1.0.289'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.288+');
+  assert.ok(swContent.includes('vortex-vip-v1.0.288') || swContent.includes('vortex-vip-v1.0.289'), 'sw.js deve conter cache v1.0.288+');
+  assert.ok(html.includes('script.js?v=1.0.288') || html.includes('script.js?v=1.0.289'), 'index.html deve referenciar script.js?v=1.0.288+');
+  assert.ok(html.includes('style.css?v=1.0.288') || html.includes('style.css?v=1.0.289'), 'index.html deve referenciar style.css?v=1.0.288+');
+  assert.ok(privacyHtml.includes('v1.0.288') || privacyHtml.includes('v1.0.289'), 'privacy.html deve referenciar v1.0.288+');
 
   // 2. Elementos de UI presentes no index.html
   [
@@ -20065,4 +20065,122 @@ test('206. Foto de Perfil Obrigatória (30 Dias Úteis), Reativação em 1 Seman
     if (ch === '}') closeBraces206++;
   }
   assert.strictEqual(openBraces206, closeBraces206, 'CSS deve manter chaves perfeitamente balanceadas após v1.0.288');
+});
+
+test('207. Botão Ativar Conta Restrito Exclusivamente a Contas Desativadas e Mantidas Desativadas pelo Sistema da IA (v1.0.289)', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+
+  const html = fs.readFileSync('public/index.html', 'utf8');
+  const css = fs.readFileSync('public/style.css', 'utf8');
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
+  const manifest = JSON.parse(fs.readFileSync('public/manifest.json', 'utf8'));
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+  const privacyHtml = fs.readFileSync('public/privacy.html', 'utf8');
+
+  // 1. Versionamento v1.0.289 (Build 289)
+  assert.strictEqual(versionJson.version, '1.0.289', 'version.json deve ser 1.0.289');
+  assert.strictEqual(versionJson.build, 289, 'build em version.json deve ser 289');
+  assert.strictEqual(manifest.version, '1.0.289', 'manifest.json deve ser 1.0.289');
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.289', 'CURRENT_APP_VERSION deve ser 1.0.289');
+  assert.ok(swContent.includes('vortex-vip-v1.0.289'), 'sw.js deve conter cache v1.0.289');
+  assert.ok(html.includes('script.js?v=1.0.289'), 'index.html deve referenciar script.js?v=1.0.289');
+  assert.ok(html.includes('style.css?v=1.0.289'), 'index.html deve referenciar style.css?v=1.0.289');
+  assert.ok(privacyHtml.includes('v1.0.289'), 'privacy.html deve referenciar v1.0.289');
+
+  // 2. Botões de ativação iniciam ocultos no HTML por padrão (não aparecem na tela de login normal)
+  assert.ok(
+    html.includes('id="auth-reactivate-entry-btn" class="auth-reactivate-entry-btn" style="display: none;"'),
+    '#auth-reactivate-entry-btn deve iniciar com style="display: none;" no index.html'
+  );
+  assert.ok(
+    html.includes('id="confirm-reactivate-account-btn" class="danger-btn auth-confirm-reactivate-btn" style="display: none;"'),
+    '#confirm-reactivate-account-btn deve iniciar com style="display: none;" no index.html'
+  );
+  assert.strictEqual(env.elements['auth-reactivate-entry-btn'].style.display, 'none');
+  assert.strictEqual(env.elements['confirm-reactivate-account-btn'].style.display, 'none');
+
+  const now = Date.UTC(2026, 10, 14, 15, 0, 0);
+
+  // 3. Conta ATIVA -> isAccountDeactivatedByAISystem=false e botões continuam ocultos
+  const activeProfile = {
+    uid: 'u-active-1',
+    email: 'ativo@vortex.vip',
+    accountStatus: 'active',
+    deactivatedBy: null,
+    avatar: 'https://example.com/foto.jpg'
+  };
+  assert.strictEqual(win.isAccountDeactivatedByAISystem(activeProfile), false);
+  assert.strictEqual(win.syncAuthReactivateEntryButtonUI(activeProfile, { now }), false);
+  assert.strictEqual(env.elements['auth-reactivate-entry-btn'].style.display, 'none');
+  assert.strictEqual(env.elements['confirm-reactivate-account-btn'].style.display, 'none');
+
+  // 4. Conta BANIDA/desativada pelo Administrador (não pelo Sistema da IA) -> NUNCA exibe botão ativar
+  const adminDeactivated = {
+    uid: 'u-admin-ban-1',
+    email: 'adminban@vortex.vip',
+    accountStatus: 'deactivated_no_photo',
+    deactivatedBy: 'admin',
+    deactivatedAt: now - 1000,
+    reactivationDeadlineAt: now + win.PROFILE_PHOTO_ONE_WEEK_MS
+  };
+  assert.strictEqual(win.isAccountDeactivatedByAISystem(adminDeactivated), false);
+  const adminEval = win.evaluateProfilePhotoRequirementByAI(adminDeactivated, { now });
+  assert.strictEqual(adminEval.canReactivate, false, 'Conta desativada pelo ADM não pode exibir reativação automática');
+  assert.strictEqual(win.syncAuthReactivateEntryButtonUI(adminDeactivated, { now }), false);
+  assert.strictEqual(env.elements['confirm-reactivate-account-btn'].style.display, 'none');
+  const blockedReact = await win.reactivateDeactivatedAccountByAI('u-admin-ban-1', { profile: adminDeactivated, now });
+  assert.strictEqual(blockedReact.reactivated, false);
+  assert.strictEqual(blockedReact.reason, 'not_deactivated_by_ai');
+
+  const aiBannedAlso = {
+    uid: 'u-banned-2',
+    accountStatus: 'deactivated_no_photo',
+    deactivatedBy: 'VORTEX_AI_SHIELD',
+    banned: true,
+    reactivationDeadlineAt: now + win.PROFILE_PHOTO_ONE_WEEK_MS
+  };
+  assert.strictEqual(win.isAccountDeactivatedByAISystem(aiBannedAlso), false, 'Conta banida nunca deve liberar botão ativar');
+
+  // 5. Conta que FOI desativada e ESTÁ desativada pelo Sistema da IA dentro de 1 semana -> exibe botão ativar!
+  const aiDeactivated = {
+    uid: 'u-ai-deact-1',
+    email: 'desativadopelaia@vortex.vip',
+    accountStatus: 'deactivated_no_photo',
+    deactivatedBy: 'VORTEX_AI_SHIELD',
+    deactivatedAt: now - 86400000,
+    reactivationDeadlineAt: now + 5 * 86400000
+  };
+  assert.strictEqual(win.isAccountDeactivatedByAISystem(aiDeactivated), true);
+  env.sandbox.window.setCurrentUser({ uid: aiDeactivated.uid, email: aiDeactivated.email });
+  env.sandbox.window.setCurrentProfile({ ...aiDeactivated });
+  env.firestoreDocs[`users/${aiDeactivated.uid}`] = { ...aiDeactivated };
+
+  const gate = await win.handleAuthPhotoLifecycleOnLogin(
+    { uid: aiDeactivated.uid, email: aiDeactivated.email },
+    aiDeactivated,
+    { now, authScreen: env.elements['auth-screen'] }
+  );
+  assert.strictEqual(gate.action, 'reactivation_required');
+  assert.strictEqual(env.elements['auth-reactivation-box'].style.display, 'flex');
+  assert.strictEqual(env.elements['confirm-reactivate-account-btn'].style.display, 'inline-flex', 'Botão Ativar Conta deve aparecer para conta desativada pela IA');
+
+  // Ao desconectar nessa condição (dentro do prazo), o atalho na tela de login fica disponível apenas para essa conta IA
+  win.resetAuthReactivationBoxes();
+  assert.strictEqual(env.elements['auth-reactivate-entry-btn'].style.display, 'inline-flex');
+
+  // Ao ativar a conta, ela deixa de estar desativada e os botões somem imediatamente
+  const reactRes = await win.reactivateDeactivatedAccountByAI(aiDeactivated.uid, { now, openProfilePanel: false });
+  assert.strictEqual(reactRes.reactivated, true);
+  assert.strictEqual(win.isAccountDeactivatedByAISystem(env.firestoreDocs[`users/${aiDeactivated.uid}`]), false);
+  assert.strictEqual(env.elements['auth-reactivate-entry-btn'].style.display, 'none');
+  assert.strictEqual(env.elements['confirm-reactivate-account-btn'].style.display, 'none');
+
+  // 6. Balanço de Chaves do CSS
+  let openBraces207 = 0, closeBraces207 = 0;
+  for (const ch of css) {
+    if (ch === '{') openBraces207++;
+    if (ch === '}') closeBraces207++;
+  }
+  assert.strictEqual(openBraces207, closeBraces207, 'CSS deve manter chaves perfeitamente balanceadas após v1.0.289');
 });

@@ -1974,6 +1974,7 @@ onAuthStateChanged(auth, async (user) => {
         if (authScreen) authScreen.classList.remove('unlocked');
         const photoBanner = document.getElementById('profile-photo-ai-warning-banner');
         if (photoBanner) photoBanner.style.display = 'none';
+        if (typeof syncAuthReactivateEntryButtonUI === 'function') syncAuthReactivateEntryButtonUI(null);
         detachListeners();
         updateAdminUIVisibility();
         if (typeof hideWithdrawalUnderReviewScreen === 'function') hideWithdrawalUnderReviewScreen();
@@ -23237,7 +23238,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.288';
+export const CURRENT_APP_VERSION = '1.0.289';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -50201,6 +50202,16 @@ export function evaluateProfilePhotoRequirementByAI(profile = {}, options = {}) 
     }
 
     if (profile.accountStatus === 'deactivated_no_photo') {
+        if (!isAccountDeactivatedByAISystem(profile)) {
+            return {
+                status: 'blocked_non_ai',
+                requiresUpload: false,
+                shouldDeactivate: false,
+                shouldWipe: false,
+                canReactivate: false,
+                warningMessage: ''
+            };
+        }
         const deactivatedAt = Number(profile.deactivatedAt) || now;
         const reactivationDeadlineAt = Number(profile.reactivationDeadlineAt) || (deactivatedAt + PROFILE_PHOTO_ONE_WEEK_MS);
         const remainingMs = Math.max(0, reactivationDeadlineAt - now);
@@ -50211,6 +50222,7 @@ export function evaluateProfilePhotoRequirementByAI(profile = {}, options = {}) 
                 requiresUpload: false,
                 shouldDeactivate: false,
                 shouldWipe: true,
+                canReactivate: false,
                 reactivationDeadlineAt,
                 remainingMs: 0,
                 warningMessage: '⏳ O prazo de 1 semana para reativar sua conta expirou. Todos os dados foram apagados sem banimento permanente — você pode criar uma nova conta com esta mesma conta Google.'
@@ -50301,30 +50313,127 @@ export function evaluateProfilePhotoRequirementByAI(profile = {}, options = {}) 
     };
 }
 
+const AI_DEACTIVATED_ACCOUNT_STORAGE_KEY = 'vortex_ai_deactivated_account';
+
+/**
+ * Retorna true SOMENTE se a conta foi desativada e permanece desativada pelo Sistema da IA (e não por banimento/ADM ou ativa).
+ */
+export function isAccountDeactivatedByAISystem(profile = {}) {
+    if (!profile || typeof profile !== 'object') return false;
+    if (profile.banned || profile.isDeleted || profile.deleted) return false;
+    if (profile.accountStatus !== 'deactivated_no_photo') return false;
+    const by = String(profile.deactivatedBy || '').trim().toUpperCase();
+    return by === 'VORTEX_AI_SHIELD' || by === 'AI' || by === 'SYSTEM_AI';
+}
+
+function saveAIDeactivatedAccountHint(uid, profile = {}, reactivationDeadlineAt = 0) {
+    if (!uid || !isAccountDeactivatedByAISystem(profile)) return;
+    try {
+        if (typeof localStorage !== 'undefined' && localStorage) {
+            localStorage.setItem(AI_DEACTIVATED_ACCOUNT_STORAGE_KEY, JSON.stringify({
+                uid,
+                email: profile.email || '',
+                accountStatus: 'deactivated_no_photo',
+                deactivatedBy: profile.deactivatedBy || 'VORTEX_AI_SHIELD',
+                reactivationDeadlineAt: Number(reactivationDeadlineAt || profile.reactivationDeadlineAt || (Date.now() + PROFILE_PHOTO_ONE_WEEK_MS))
+            }));
+        }
+    } catch (_) {}
+}
+
+function clearAIDeactivatedAccountHint() {
+    try {
+        if (typeof localStorage !== 'undefined' && localStorage) {
+            localStorage.removeItem(AI_DEACTIVATED_ACCOUNT_STORAGE_KEY);
+        }
+    } catch (_) {}
+}
+
+/**
+ * Controla a visibilidade do botão "Ativar Conta" na tela de login para aparecer
+ * EXCLUSIVAMENTE para contas desativadas e que continuam desativadas pelo Sistema da IA.
+ */
+export function syncAuthReactivateEntryButtonUI(profile = null, options = {}) {
+    const entryBtn = document.getElementById('auth-reactivate-entry-btn');
+    const confirmBtn = document.getElementById('confirm-reactivate-account-btn');
+    const now = Number(options.now || Date.now());
+
+    if (profile && typeof profile === 'object') {
+        const evalRes = evaluateProfilePhotoRequirementByAI(profile, { now });
+        const canShow = isAccountDeactivatedByAISystem(profile) && evalRes.status === 'deactivated_no_photo' && !evalRes.shouldWipe;
+        if (canShow) {
+            saveAIDeactivatedAccountHint(profile.uid || profile.id || currentUser?.uid, profile, evalRes.reactivationDeadlineAt);
+        } else {
+            clearAIDeactivatedAccountHint();
+        }
+        if (confirmBtn) confirmBtn.style.display = canShow ? 'inline-flex' : 'none';
+        if (entryBtn) entryBtn.style.display = 'none';
+        return canShow;
+    }
+
+    let storedHint = null;
+    try {
+        if (typeof localStorage !== 'undefined' && localStorage) {
+            const raw = localStorage.getItem(AI_DEACTIVATED_ACCOUNT_STORAGE_KEY);
+            if (raw) storedHint = JSON.parse(raw);
+        }
+    } catch (_) {
+        storedHint = null;
+    }
+
+    const validStored = Boolean(
+        storedHint &&
+        isAccountDeactivatedByAISystem(storedHint) &&
+        Number(storedHint.reactivationDeadlineAt) > now
+    );
+    if (!validStored && storedHint) {
+        clearAIDeactivatedAccountHint();
+    }
+    if (entryBtn) entryBtn.style.display = validStored ? 'inline-flex' : 'none';
+    if (confirmBtn && !validStored) confirmBtn.style.display = 'none';
+    return validStored;
+}
+
 /**
  * Limpa/reseta os painéis de reativação e exclusão na tela de login `#auth-screen`.
  */
 export function resetAuthReactivationBoxes(options = {}) {
     const reactBox = document.getElementById('auth-reactivation-box');
+    const confirmBtn = document.getElementById('confirm-reactivate-account-btn');
     const wipedBox = document.getElementById('auth-wiped-recreate-box');
     if (reactBox) reactBox.style.display = 'none';
+    if (confirmBtn) confirmBtn.style.display = 'none';
     if (wipedBox && !options.keepWipedNotice) wipedBox.style.display = 'none';
+    if (options.clearHint) clearAIDeactivatedAccountHint();
+    syncAuthReactivateEntryButtonUI(null, options);
 }
 
 /**
  * Renderiza o cartão de "Ativar Conta" na tela de autenticação para contas desativadas dentro da janela de 1 semana.
  */
 function renderDeactivatedAccountLoginUI(profile = {}, evaluation = {}) {
+    if (!isAccountDeactivatedByAISystem(profile)) {
+        clearAIDeactivatedAccountHint();
+        resetAuthReactivationBoxes();
+        return false;
+    }
+    saveAIDeactivatedAccountHint(profile.uid || profile.id || currentUser?.uid, profile, evaluation.reactivationDeadlineAt);
+
     const authScreen = document.getElementById('auth-screen');
     if (authScreen) authScreen.classList.remove('unlocked');
     const authLoader = document.getElementById('auth-loading-msg');
     if (authLoader) authLoader.style.display = 'none';
 
+    const entryBtn = document.getElementById('auth-reactivate-entry-btn');
+    if (entryBtn) entryBtn.style.display = 'none';
+
     const reactBox = document.getElementById('auth-reactivation-box');
+    const confirmBtn = document.getElementById('confirm-reactivate-account-btn');
     const wipedBox = document.getElementById('auth-wiped-recreate-box');
     if (wipedBox) wipedBox.style.display = 'none';
     if (reactBox) {
         reactBox.style.display = 'flex';
+        if (confirmBtn) confirmBtn.style.display = 'inline-flex';
         const countdownEl = document.getElementById('auth-reactivation-countdown');
         if (countdownEl) countdownEl.textContent = formatRemainingWindowPT(evaluation.remainingMs ?? PROFILE_PHOTO_ONE_WEEK_MS);
         const emailEl = document.getElementById('auth-reactivation-email');
@@ -50337,6 +50446,7 @@ function renderDeactivatedAccountLoginUI(profile = {}, evaluation = {}) {
     if (typeof window !== 'undefined' && window.lucide && typeof window.lucide.createIcons === 'function') {
         window.lucide.createIcons();
     }
+    return true;
 }
 
 /**
@@ -50356,6 +50466,8 @@ export async function deactivateAccountForNoPhotoByAI(targetUid, profile = {}, o
         updatedAt: now
     };
     if (profile && typeof profile === 'object') Object.assign(profile, patch);
+    if (currentProfile && currentUser?.uid === targetUid) Object.assign(currentProfile, patch);
+    saveAIDeactivatedAccountHint(targetUid, profile && typeof profile === 'object' ? profile : { uid: targetUid, ...patch }, reactivationDeadlineAt);
 
     if (typeof db !== 'undefined' && typeof doc === 'function') {
         try {
@@ -50392,18 +50504,31 @@ export async function deactivateAccountForNoPhotoByAI(targetUid, profile = {}, o
 }
 
 /**
- * Reativa uma conta desativada por falta de foto (dentro do prazo de 1 semana) e concede 1 semana para enviar foto válida.
+ * Reativa uma conta desativada por falta de foto pelo Sistema da IA (dentro do prazo de 1 semana) e concede 1 semana para enviar foto válida.
  */
 export async function reactivateDeactivatedAccountByAI(targetUid, options = {}) {
     if (!targetUid) return { reactivated: false, reason: 'missing_uid' };
     const now = Number(options.now || Date.now());
 
-    let profileData = options.profile || (currentProfile?.uid === targetUid ? currentProfile : null);
-    if (!profileData && typeof db !== 'undefined' && typeof getDoc === 'function' && typeof doc === 'function') {
-        try {
-            const snap = await getDoc(doc(db, 'users', targetUid));
-            if (snap && snap.exists()) profileData = snap.data();
-        } catch (_) {}
+    let profileData = options.profile || null;
+    if (!profileData) {
+        let firestoreData = null;
+        if (typeof db !== 'undefined' && typeof getDoc === 'function' && typeof doc === 'function') {
+            try {
+                const snap = await getDoc(doc(db, 'users', targetUid));
+                if (snap && snap.exists()) firestoreData = snap.data();
+            } catch (_) {}
+        }
+        const localFallback = currentProfile?.uid === targetUid ? currentProfile : null;
+        if (firestoreData || localFallback) {
+            profileData = { ...(localFallback || {}), ...(firestoreData || {}) };
+        }
+    }
+
+    if (!isAccountDeactivatedByAISystem(profileData || {})) {
+        clearAIDeactivatedAccountHint();
+        resetAuthReactivationBoxes({ clearHint: true });
+        return { reactivated: false, reason: 'not_deactivated_by_ai' };
     }
 
     const evalResult = evaluateProfilePhotoRequirementByAI(profileData || {}, { now });
@@ -50442,7 +50567,8 @@ export async function reactivateDeactivatedAccountByAI(targetUid, options = {}) 
     }
 
     if (typeof window !== 'undefined') window._vortexPendingReactivationFlow = false;
-    resetAuthReactivationBoxes();
+    clearAIDeactivatedAccountHint();
+    resetAuthReactivationBoxes({ clearHint: true });
     const authScreen = document.getElementById('auth-screen');
     if (authScreen) authScreen.classList.add('unlocked');
     syncProfilePhotoRequirementLifecycle(currentProfile || profileData, { now, skipWrite: true });
@@ -50536,9 +50662,10 @@ export async function wipeExpiredNoPhotoAccountDataByAI(targetUid, profile = {},
     }
 
     if (currentUser?.uid === targetUid && options.skipAuthReset !== true) {
+        clearAIDeactivatedAccountHint();
         const authScreen = document.getElementById('auth-screen');
         if (authScreen) authScreen.classList.remove('unlocked');
-        resetAuthReactivationBoxes({ keepWipedNotice: true });
+        resetAuthReactivationBoxes({ keepWipedNotice: true, clearHint: true });
         const wipedBox = document.getElementById('auth-wiped-recreate-box');
         if (wipedBox) wipedBox.style.display = 'flex';
         const authLoader = document.getElementById('auth-loading-msg');
@@ -50578,9 +50705,15 @@ export async function handleAuthPhotoLifecycleOnLogin(user, profile, options = {
         return { allowAccess: false, action: 'wiped_recreatable', evaluation };
     }
 
-    if (evaluation.status === 'deactivated_no_photo') {
+    if (evaluation.status === 'deactivated_no_photo' && isAccountDeactivatedByAISystem(profile)) {
         renderDeactivatedAccountLoginUI(profile, evaluation);
         return { allowAccess: false, action: 'reactivation_required', evaluation };
+    }
+
+    if (evaluation.status === 'blocked_non_ai') {
+        clearAIDeactivatedAccountHint();
+        resetAuthReactivationBoxes({ clearHint: true });
+        return { allowAccess: false, action: 'blocked_non_ai', evaluation };
     }
 
     if (evaluation.status === 'should_deactivate' && evaluation.shouldDeactivate) {
@@ -50588,7 +50721,8 @@ export async function handleAuthPhotoLifecycleOnLogin(user, profile, options = {
         return { allowAccess: false, action: 'deactivated_now', evaluation };
     }
 
-    resetAuthReactivationBoxes();
+    clearAIDeactivatedAccountHint();
+    resetAuthReactivationBoxes({ clearHint: true });
     if (typeof window !== 'undefined') window._vortexPendingReactivationFlow = false;
     if (authScreen) authScreen.classList.add('unlocked');
     return { allowAccess: true, action: 'allowed', evaluation };
@@ -51157,6 +51291,8 @@ if (typeof window !== 'undefined') {
     window.addBusinessDaysMs = addBusinessDaysMs;
     window.countRemainingBusinessDaysMs = countRemainingBusinessDaysMs;
     window.hasValidProfilePhotoValue = hasValidProfilePhotoValue;
+    window.isAccountDeactivatedByAISystem = isAccountDeactivatedByAISystem;
+    window.syncAuthReactivateEntryButtonUI = syncAuthReactivateEntryButtonUI;
     window.evaluateProfilePhotoRequirementByAI = evaluateProfilePhotoRequirementByAI;
     window.resetAuthReactivationBoxes = resetAuthReactivationBoxes;
     window.deactivateAccountForNoPhotoByAI = deactivateAccountForNoPhotoByAI;
@@ -51173,6 +51309,9 @@ if (typeof window !== 'undefined') {
     window.renderAdminPhotoModerationQueue = renderAdminPhotoModerationQueue;
     window.syncProfileAvatarModerationUI = syncProfileAvatarModerationUI;
     window.syncProfilePhotoRequirementLifecycle = syncProfilePhotoRequirementLifecycle;
+    if (typeof document !== 'undefined') {
+        syncAuthReactivateEntryButtonUI(null);
+    }
 }
 
 
