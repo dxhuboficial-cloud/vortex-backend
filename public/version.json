@@ -1,6 +1,6 @@
 {
-  "version": "1.0.296",
-  "build": 296,
+  "version": "1.0.297",
+  "build": 297,
   "releaseDate": "2026-11-14",
-  "notes": "Barra de rolagem horizontal nas opções do canal e organização visual do card de origem de seguidores acima de Comunidade v1.0.296"
+  "notes": "Botão de comentários nos posts do canal, visualizador de quem viu o post com resolução de perfis e pilha z-index corrigida v1.0.297"
 }

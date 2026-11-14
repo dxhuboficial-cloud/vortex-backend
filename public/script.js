@@ -23344,7 +23344,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.296';
+export const CURRENT_APP_VERSION = '1.0.297';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -33575,6 +33575,33 @@ export function isCommentAuthor(commentData, user = currentUser, profile = curre
     return false;
 }
 
+export function syncPostCommentsStateInDOM(postId, comments = []) {
+    if (!postId) return;
+    const idStr = String(postId);
+    const nextComments = Array.isArray(comments) ? comments : [];
+    if (activeCommentPost && String(activeCommentPost.id) === idStr) {
+        activeCommentPost.comments = nextComments;
+        renderCommentsModalList();
+    }
+    const cachedPost = Array.isArray(cachedFeedPosts)
+        ? cachedFeedPosts.find(p => p && String(p.id) === idStr)
+        : null;
+    if (cachedPost) {
+        cachedPost.comments = nextComments;
+    }
+    if (String(activeChannelViewerPostId || '') === idStr && typeof syncChannelViewerCommentButton === 'function') {
+        syncChannelViewerCommentButton(cachedPost || { id: idStr, comments: nextComments });
+    }
+    if (typeof document !== 'undefined') {
+        document.querySelectorAll(`.channel-ig-tile[data-post-id="${idStr}"] .channel-ig-tile-comments-count`).forEach(el => {
+            el.innerText = String(nextComments.length);
+        });
+        if (document.getElementById('channel-panel')?.classList?.contains('active') && typeof renderChannelScreen === 'function') {
+            renderChannelScreen();
+        }
+    }
+}
+
 export async function deletePostComment(postId, commentIndexOrId) {
     if (!currentUser) {
         showToast('Login necessário', 'Entre para excluir comentários.', 'red');
@@ -33608,10 +33635,7 @@ export async function deletePostComment(postId, commentIndexOrId) {
 
         comments.splice(targetIndex, 1);
         await updateDoc(postRef, { comments });
-        if (activeCommentPost && activeCommentPost.id === postId) {
-            activeCommentPost.comments = comments;
-            renderCommentsModalList();
-        }
+        syncPostCommentsStateInDOM(postId, comments);
         showToast('Comentário excluído', 'O comentário foi removido.', 'blue');
         return true;
     } catch (err) {
@@ -33682,10 +33706,7 @@ export async function submitInlineComment(postId, text) {
         });
         openPostCommentCards.add(postId);
         await updateDoc(postRef, { comments });
-        if (activeCommentPost && activeCommentPost.id === postId) {
-            activeCommentPost.comments = comments;
-            renderCommentsModalList();
-        }
+        syncPostCommentsStateInDOM(postId, comments);
         // Notificar o dono do post sobre o novo comentário
         if (postData.authorUid && postData.authorUid !== currentUser.uid) {
             sendActivityNotification(postData.authorUid, 'comment_post', {
@@ -33743,10 +33764,7 @@ export async function togglePinPostComment(postId, commentIdOrIdx) {
             targetComment.pinnedAt = Date.now();
             comments[targetIndex] = targetComment;
             await updateDoc(postRef, { comments });
-            if (activeCommentPost && activeCommentPost.id === postId) {
-                activeCommentPost.comments = comments;
-                renderCommentsModalList();
-            }
+            syncPostCommentsStateInDOM(postId, comments);
             showToast('Comentário fixado', 'O comentário foi fixado no topo da publicação! 📌', 'green');
             playSound(clickSound);
             return true;
@@ -33755,10 +33773,7 @@ export async function togglePinPostComment(postId, commentIdOrIdx) {
             delete targetComment.pinnedAt;
             comments[targetIndex] = targetComment;
             await updateDoc(postRef, { comments });
-            if (activeCommentPost && activeCommentPost.id === postId) {
-                activeCommentPost.comments = comments;
-                renderCommentsModalList();
-            }
+            syncPostCommentsStateInDOM(postId, comments);
             showToast('Comentário desafixado', 'O comentário foi desafixado.', 'blue');
             return true;
         }
@@ -33840,10 +33855,7 @@ export async function editPostComment(postId, commentIdOrIdx, newText) {
         comments[targetIndex] = targetComment;
 
         await updateDoc(postRef, { comments });
-        if (activeCommentPost && activeCommentPost.id === postId) {
-            activeCommentPost.comments = comments;
-            renderCommentsModalList();
-        }
+        syncPostCommentsStateInDOM(postId, comments);
         showToast('Comentário editado', 'Seu comentário foi atualizado com sucesso!', 'green');
         playSound(clickSound);
         return true;
@@ -34006,10 +34018,7 @@ export async function toggleLikePostComment(postId, commentIdOrIdx, options = {}
         comments[targetIndex] = targetComment;
 
         await updateDoc(postRef, { comments });
-        if (activeCommentPost && activeCommentPost.id === postId) {
-            activeCommentPost.comments = comments;
-            renderCommentsModalList();
-        }
+        syncPostCommentsStateInDOM(postId, comments);
         return true;
     } catch (err) {
         console.error('Erro ao curtir comentário:', err);
@@ -34202,31 +34211,30 @@ function saveViewedPostsToStorage() {
 
 loadViewedPostsFromStorage();
 
-export function getPostViewsList(post) {
-    if (!post) return [];
-    const uidSet = new Set();
-    if (Array.isArray(post.views)) {
-        post.views.forEach(v => {
+const hydratedPostViewerUids = new Set();
+
+function collectViewIdsFromSource(source, uidSet) {
+    if (Array.isArray(source)) {
+        source.forEach(v => {
             if (typeof v === 'string' && v.trim()) {
                 uidSet.add(v.trim());
             } else if (v && typeof v === 'object' && v.uid) {
                 uidSet.add(String(v.uid));
             }
         });
-    } else if (post.views && typeof post.views === 'object') {
-        Object.keys(post.views).forEach(k => {
+    } else if (source && typeof source === 'object') {
+        Object.keys(source).forEach(k => {
             if (k) uidSet.add(String(k));
         });
     }
-    if (post.viewers && typeof post.viewers === 'object' && !Array.isArray(post.viewers)) {
-        Object.keys(post.viewers).forEach(k => {
-            if (k) uidSet.add(String(k));
-        });
-    } else if (Array.isArray(post.viewers)) {
-        post.viewers.forEach(v => {
-            if (v && v.uid) uidSet.add(String(v.uid));
-        });
-    }
+}
+
+export function getPostViewsList(post) {
+    if (!post) return [];
+    const uidSet = new Set();
+    collectViewIdsFromSource(post.views, uidSet);
+    collectViewIdsFromSource(post.viewers, uidSet);
+    collectViewIdsFromSource(post.viewedBy, uidSet);
     return Array.from(uidSet);
 }
 
@@ -34269,77 +34277,105 @@ export function hasUserViewedPost(postOrId, uid = currentUser?.uid) {
     return false;
 }
 
+function isGenericViewerLabel(val, placeholders = []) {
+    const str = String(val || '').trim();
+    return !str || placeholders.includes(str);
+}
+
+function resolveViewerProfileFields(uid, info = {}) {
+    const cleanUid = String(info?.uid || uid || '').trim();
+    const isSelf = Boolean(currentUser?.uid && cleanUid === String(currentUser.uid));
+    const cachedUser = (typeof contactUserDataMap !== 'undefined' && contactUserDataMap?.get)
+        ? contactUserDataMap.get(cleanUid)
+        : null;
+    const profileSource = isSelf ? (currentProfile || cachedUser) : cachedUser;
+
+    const rawInfoName = String(info?.name || '').trim();
+    const resolvedName = !isGenericViewerLabel(rawInfoName, ['Usuário', 'Usuário VORTEX'])
+        ? rawInfoName
+        : (String(profileSource?.name || '').trim() || rawInfoName || (isSelf ? 'Você' : 'Usuário VORTEX'));
+
+    const rawInfoUsername = String(info?.username || '').trim();
+    const resolvedRawHandle = !isGenericViewerLabel(rawInfoUsername, ['@usuario', '@voce', 'usuario', 'voce'])
+        ? rawInfoUsername
+        : (String(profileSource?.username || '').trim() || rawInfoUsername || (isSelf ? '@voce' : '@usuario'));
+    const normalizedUsername = resolvedRawHandle.startsWith('@') ? resolvedRawHandle : `@${resolvedRawHandle}`;
+
+    const rawAvatar = String(info?.avatar || profileSource?.avatar || '').trim();
+    const resolvedAvatar = typeof getLiveAuthorAvatar === 'function'
+        ? getLiveAuthorAvatar(cleanUid, rawAvatar)
+        : rawAvatar;
+
+    const resolvedVip = Boolean(
+        info?.isVip
+        || (isSelf ? checkIsVipUser(currentProfile) : checkIsVipUser(cachedUser))
+    );
+
+    return {
+        uid: cleanUid,
+        name: resolvedName,
+        username: normalizedUsername,
+        avatar: resolvedAvatar,
+        isVip: resolvedVip,
+        viewedAt: Number(info?.viewedAt) || 0
+    };
+}
+
+function buildPostViewerEntry(viewerUid, customViewer = null) {
+    const rawName = customViewer?.name || currentProfile?.name || currentUser?.displayName || 'Usuário';
+    const rawUsername = customViewer?.username || currentProfile?.username || ('@' + rawName.toLowerCase().replace(/\s+/g, ''));
+    return {
+        uid: String(viewerUid),
+        name: rawName,
+        username: rawUsername.startsWith('@') ? rawUsername : `@${rawUsername}`,
+        avatar: customViewer?.avatar || currentProfile?.avatar || '',
+        isVip: !!(customViewer?.isVip ?? checkIsVipUser(currentProfile)),
+        viewedAt: customViewer?.viewedAt || Date.now()
+    };
+}
+
 export function getPostViewersDetails(post) {
     if (!post) return [];
     const detailsMap = new Map();
+    const mergeViewer = (uid, info = {}) => {
+        const cleanUid = String(info?.uid || uid || '').trim();
+        if (!cleanUid) return;
+        const prev = detailsMap.get(cleanUid);
+        const next = resolveViewerProfileFields(cleanUid, prev ? {
+            ...prev,
+            ...info,
+            name: !isGenericViewerLabel(info?.name, ['Usuário', 'Usuário VORTEX']) ? info.name : prev.name,
+            username: !isGenericViewerLabel(info?.username, ['@usuario', '@voce']) ? info.username : prev.username,
+            avatar: info?.avatar || prev.avatar,
+            isVip: Boolean(info?.isVip || prev.isVip),
+            viewedAt: Math.max(Number(info?.viewedAt) || 0, Number(prev.viewedAt) || 0)
+        } : info);
+        detailsMap.set(cleanUid, next);
+    };
 
-    if (post.viewers && typeof post.viewers === 'object' && !Array.isArray(post.viewers)) {
-        Object.entries(post.viewers).forEach(([uid, info]) => {
-            if (info && typeof info === 'object') {
-                detailsMap.set(String(info.uid || uid), {
-                    uid: String(info.uid || uid),
-                    name: info.name || 'Usuário',
-                    username: info.username || '@usuario',
-                    avatar: getLiveAuthorAvatar(info.uid || uid, info.avatar || ''),
-                    isVip: !!info.isVip,
-                    viewedAt: Number(info.viewedAt) || 0
-                });
-            }
-        });
-    } else if (Array.isArray(post.viewers)) {
-        post.viewers.forEach(info => {
-            if (info && typeof info === 'object' && info.uid) {
-                detailsMap.set(String(info.uid), {
-                    uid: String(info.uid),
-                    name: info.name || 'Usuário',
-                    username: info.username || '@usuario',
-                    avatar: getLiveAuthorAvatar(info.uid, info.avatar || ''),
-                    isVip: !!info.isVip,
-                    viewedAt: Number(info.viewedAt) || 0
-                });
-            }
-        });
-    }
+    const ingestCollection = (collection) => {
+        if (Array.isArray(collection)) {
+            collection.forEach(item => {
+                if (typeof item === 'string' && item.trim()) {
+                    mergeViewer(item.trim(), {});
+                } else if (item && typeof item === 'object' && item.uid) {
+                    mergeViewer(item.uid, item);
+                }
+            });
+        } else if (collection && typeof collection === 'object') {
+            Object.entries(collection).forEach(([uid, info]) => {
+                if (info && typeof info === 'object') {
+                    mergeViewer(info.uid || uid, info);
+                } else if (uid) {
+                    mergeViewer(uid, {});
+                }
+            });
+        }
+    };
 
-    if ( post.views && typeof post.views === 'object' && !Array.isArray(post.views)) {
-        Object.entries(post.views).forEach(([uid, info]) => {
-            if (info && typeof info === 'object' && !detailsMap.has(String(uid))) {
-                detailsMap.set(String(uid), {
-                    uid: String(info.uid || uid),
-                    name: info.name || 'Usuário',
-                    username: info.username || '@usuario',
-                    avatar: getLiveAuthorAvatar(info.uid || uid, info.avatar || ''),
-                    isVip: !!info.isVip,
-                    viewedAt: Number(info.viewedAt) || 0
-                });
-            }
-        });
-    }
-
-    if (Array.isArray(post.views)) {
-        post.views.forEach(v => {
-            if (typeof v === 'string' && v.trim() && !detailsMap.has(v.trim())) {
-                const isSelf = currentUser && v.trim() === currentUser.uid;
-                detailsMap.set(v.trim(), {
-                    uid: v.trim(),
-                    name: isSelf ? (currentProfile?.name || 'Você') : 'Usuário VORTEX',
-                    username: isSelf ? (currentProfile?.username || '@voce') : '@usuario',
-                    avatar: isSelf ? (currentProfile?.avatar || '') : getLiveAuthorAvatar(v.trim(), ''),
-                    isVip: isSelf ? checkIsVipUser(currentProfile) : false,
-                    viewedAt: 0
-                });
-            } else if (v && typeof v === 'object' && v.uid && !detailsMap.has(String(v.uid))) {
-                detailsMap.set(String(v.uid), {
-                    uid: String(v.uid),
-                    name: v.name || 'Usuário',
-                    username: v.username || '@usuario',
-                    avatar: getLiveAuthorAvatar(v.uid, v.avatar || ''),
-                    isVip: !!v.isVip,
-                    viewedAt: Number(v.viewedAt) || 0
-                });
-            }
-        });
-    }
+    ingestCollection(post.viewers);
+    ingestCollection(post.views);
+    ingestCollection(post.viewedBy);
 
     return Array.from(detailsMap.values()).sort((a, b) => (b.viewedAt || 0) - (a.viewedAt || 0));
 }
@@ -34363,6 +34399,10 @@ export function updatePostViewsDOM(postId, postObj = null) {
     document.querySelectorAll(`.feed-views-btn[data-post-id="${idStr}"], .post-views-btn[data-post-id="${idStr}"]`).forEach(btn => {
         btn.classList.toggle('viewed', viewed);
     });
+
+    if (String(activeChannelViewerPostId || '') === idStr && typeof syncChannelViewerStats === 'function') {
+        syncChannelViewerStats(post || { id: idStr, viewsCount: count });
+    }
 }
 
 export async function registerPostView(postId, customViewer = null) {
@@ -34377,29 +34417,35 @@ export async function registerPostView(postId, customViewer = null) {
 
     const sessionKey = `${viewerUid}_${idStr}`;
     const existingList = post ? getPostViewsList(post) : [];
-    if (existingList.includes(String(viewerUid)) || ( viewedPostsSessionSet.has(sessionKey) && post && existingList.includes(String(viewerUid)) )) {
+    const viewerUidStr = String(viewerUid);
+    if (existingList.includes(viewerUidStr)) {
         viewedPostsSessionSet.add(sessionKey);
+        const existingViewerInfo = (post?.viewers && typeof post.viewers === 'object' && !Array.isArray(post.viewers))
+            ? post.viewers[viewerUidStr]
+            : null;
+        if (!customViewer && post && (!existingViewerInfo || isGenericViewerLabel(existingViewerInfo.name, ['Usuário', 'Usuário VORTEX']))) {
+            const backfilledEntry = buildPostViewerEntry(viewerUidStr, null);
+            const nextViewers = { ...(post.viewers && typeof post.viewers === 'object' && !Array.isArray(post.viewers) ? post.viewers : {}), [viewerUidStr]: backfilledEntry };
+            post.viewers = nextViewers;
+            if (activePostViewsModalPostId === idStr) {
+                renderPostViewsModalContent(post);
+            }
+            if (typeof updateDoc === 'function' && typeof doc === 'function' && typeof db !== 'undefined') {
+                updateDoc(doc(db, 'posts', idStr), { viewers: nextViewers }).catch(() => {});
+            }
+        }
         return { viewed: false, alreadyViewed: true, count: getPostViewsCount(post) };
     }
 
-    const updatedViews = Array.from(new Set([...existingList, String(viewerUid)]));
-    const rawName = customViewer?.name || currentProfile?.name || currentUser?.displayName || 'Usuário';
-    const rawUsername = customViewer?.username || currentProfile?.username || ('@' + rawName.toLowerCase().replace(/\s+/g, ''));
-    const viewerEntry = {
-        uid: String(viewerUid),
-        name: rawName,
-        username: rawUsername.startsWith('@') ? rawUsername : `@${rawUsername}`,
-        avatar: customViewer?.avatar || currentProfile?.avatar || '',
-        isVip: !!(customViewer?.isVip ?? checkIsVipUser(currentProfile)),
-        viewedAt: customViewer?.viewedAt || Date.now()
-    };
+    const updatedViews = Array.from(new Set([...existingList, viewerUidStr]));
+    const viewerEntry = buildPostViewerEntry(viewerUidStr, customViewer);
 
     const existingViewers = (post?.viewers && typeof post.viewers === 'object' && !Array.isArray(post.viewers))
         ? { ...post.viewers }
         : {};
     const updatedViewers = {
         ...existingViewers,
-        [String(viewerUid)]: viewerEntry
+        [viewerUidStr]: viewerEntry
     };
 
     const prevCount = getPostViewsCount(post);
@@ -34421,11 +34467,40 @@ export async function registerPostView(postId, customViewer = null) {
 
     if (typeof updateDoc === 'function' && typeof doc === 'function' && typeof db !== 'undefined') {
         try {
+            let finalViews = updatedViews;
+            let finalViewers = updatedViewers;
+            let finalCount = newCount;
+            if (typeof getDoc === 'function') {
+                try {
+                    const snap = await getDoc(doc(db, 'posts', idStr));
+                    const exists = snap && (typeof snap.exists === 'function' ? snap.exists() : !!snap.exists);
+                    if (exists) {
+                        const remoteData = snap.data() || {};
+                        const remoteList = getPostViewsList(remoteData);
+                        finalViews = Array.from(new Set([...remoteList, ...updatedViews]));
+                        const remoteViewers = (remoteData.viewers && typeof remoteData.viewers === 'object' && !Array.isArray(remoteData.viewers))
+                            ? remoteData.viewers
+                            : {};
+                        finalViewers = { ...remoteViewers, ...updatedViewers };
+                        finalCount = Math.max(finalViews.length, Object.keys(finalViewers).length, getPostViewsCount(remoteData), newCount);
+                        if (post) {
+                            post.views = finalViews;
+                            post.viewers = finalViewers;
+                            post.viewsCount = finalCount;
+                            updatePostViewsDOM(idStr, post);
+                            if (activePostViewsModalPostId === idStr) {
+                                renderPostViewsModalContent(post);
+                            }
+                        }
+                    }
+                } catch (_) {}
+            }
             await updateDoc(doc(db, 'posts', idStr), {
-                views: updatedViews,
-                viewsCount: newCount,
-                viewers: updatedViewers
+                views: finalViews,
+                viewsCount: finalCount,
+                viewers: finalViewers
             });
+            return { viewed: true, alreadyViewed: false, count: finalCount };
         } catch (err) {
             console.warn('Erro ao salvar visualização do post:', err);
         }
@@ -34471,7 +34546,7 @@ export function renderPostViewsModalContent(post) {
                 <div class="post-views-empty">
                     <i data-lucide="eye-off" style="width: 36px; height: 36px; opacity: 0.6;"></i>
                     <strong style="color: #ffffff; font-size: 0.95rem;">Nenhuma visualização ainda</strong>
-                    <span style="font-size: 0.8rem;">Quando os usuários visualizarem este post no Feed Reels, eles aparecerão aqui.</span>
+                    <span style="font-size: 0.8rem;">Quando os usuários visualizarem este post no Feed ou Canal, eles aparecerão aqui.</span>
                 </div>
             `;
         }
@@ -34481,12 +34556,13 @@ export function renderPostViewsModalContent(post) {
         return;
     }
 
+    const extraAnonymousCount = Math.max(0, totalCount - viewers.length);
     listEl.innerHTML = viewers.map(v => {
         const avatarStyle = v.avatar ? `style="background-image: url('${escapeHTML(v.avatar)}');"` : '';
         const timeStr = v.viewedAt ? formatLastSeen(v.viewedAt) : 'Visualizou';
         const isViewerVip = isAuthorVipUser(v.uid, v);
         return `
-            <div class="post-viewer-item" data-viewer-uid="${escapeHTML(v.uid)}">
+            <div class="post-viewer-item" data-viewer-uid="${escapeHTML(v.uid)}" role="button" tabindex="0" title="Abrir canal de ${escapeHTML(v.name || 'Usuário')}">
                 <div class="post-viewer-user">
                     <div class="post-viewer-avatar" ${avatarStyle}></div>
                     <div class="post-viewer-meta">
@@ -34500,10 +34576,89 @@ export function renderPostViewsModalContent(post) {
                 <span class="post-viewer-time">${escapeHTML(timeStr)}</span>
             </div>
         `;
-    }).join('');
+    }).join('') + (extraAnonymousCount > 0 ? `<div class="post-views-legacy-note">+${extraAnonymousCount} visualizaç${extraAnonymousCount === 1 ? 'ão anterior sem registro nominal' : 'ões anteriores sem registro nominal'}</div>` : '');
+
+    if (typeof listEl.querySelectorAll === 'function') {
+        listEl.querySelectorAll('.post-viewer-item[data-viewer-uid]').forEach(item => {
+            item.addEventListener('click', () => {
+                const viewerUid = item.dataset?.viewerUid;
+                if (!viewerUid || typeof openUserChannelScreen !== 'function') return;
+                const viewerInfo = viewers.find(v => v.uid === viewerUid) || null;
+                closePostViewsModal();
+                closeChannelSubModal('channel-media-viewer-modal');
+                openUserChannelScreen(viewerUid, viewerInfo);
+            });
+        });
+    }
 
     if (window.lucide && typeof window.lucide.createIcons === 'function') {
         window.lucide.createIcons();
+    }
+}
+
+async function hydratePostViewersProfiles(post) {
+    if (!post?.id || typeof getDoc !== 'function' || typeof doc !== 'function' || typeof db === 'undefined') return;
+    const idStr = String(post.id);
+    let updatedAny = false;
+
+    try {
+        const postSnap = await getDoc(doc(db, 'posts', idStr));
+        const postExists = postSnap && (typeof postSnap.exists === 'function' ? postSnap.exists() : !!postSnap.exists);
+        if (postExists) {
+            const remote = postSnap.data() || {};
+            const mergedList = Array.from(new Set([...getPostViewsList(post), ...getPostViewsList(remote)]));
+            const mergedViewers = {
+                ...(remote.viewers && typeof remote.viewers === 'object' && !Array.isArray(remote.viewers) ? remote.viewers : {}),
+                ...(post.viewers && typeof post.viewers === 'object' && !Array.isArray(post.viewers) ? post.viewers : {})
+            };
+            const mergedCount = Math.max(mergedList.length, Object.keys(mergedViewers).length, getPostViewsCount(post), getPostViewsCount(remote));
+            if (mergedList.length !== getPostViewsList(post).length || mergedCount !== getPostViewsCount(post)) {
+                post.views = mergedList;
+                post.viewers = mergedViewers;
+                post.viewsCount = mergedCount;
+                updatedAny = true;
+            }
+        }
+    } catch (_) {}
+
+    const viewers = getPostViewersDetails(post);
+    const missingUids = viewers
+        .filter(v => v.uid && !hydratedPostViewerUids.has(v.uid) && (isGenericViewerLabel(v.name, ['Usuário', 'Usuário VORTEX']) || !v.avatar || v.username === '@usuario'))
+        .map(v => v.uid)
+        .slice(0, 25);
+
+    if (missingUids.length > 0) {
+        await Promise.all(missingUids.map(async (uid) => {
+            hydratedPostViewerUids.add(uid);
+            try {
+                const uSnap = await getDoc(doc(db, 'users', uid));
+                const uExists = uSnap && (typeof uSnap.exists === 'function' ? uSnap.exists() : !!uSnap.exists);
+                if (uExists) {
+                    const uData = uSnap.data() || {};
+                    if (typeof contactUserDataMap !== 'undefined' && contactUserDataMap?.set) {
+                        const prevCached = contactUserDataMap.get(uid) || {};
+                        contactUserDataMap.set(uid, { ...prevCached, ...uData, uid });
+                    }
+                    if (!post.viewers || typeof post.viewers !== 'object' || Array.isArray(post.viewers)) {
+                        post.viewers = {};
+                    }
+                    const prevViewer = post.viewers[uid] && typeof post.viewers[uid] === 'object' ? post.viewers[uid] : {};
+                    post.viewers[uid] = resolveViewerProfileFields(uid, {
+                        ...prevViewer,
+                        name: uData.name || prevViewer.name,
+                        username: uData.username || prevViewer.username,
+                        avatar: uData.avatar || prevViewer.avatar,
+                        isVip: Boolean(prevViewer.isVip || checkIsVipUser(uData))
+                    });
+                    updatedAny = true;
+                }
+            } catch (_) {}
+        }));
+    }
+
+    if (updatedAny && activePostViewsModalPostId === idStr) {
+        renderPostViewsModalContent(post);
+        updatePostViewsDOM(idStr, post);
     }
 }
 
@@ -34526,6 +34681,8 @@ export function openPostViewsModal(postOrId) {
     if (window.lucide && typeof window.lucide.createIcons === 'function') {
         window.lucide.createIcons();
     }
+
+    hydratePostViewersProfiles(post).catch(() => {});
 }
 
 export function closePostViewsModal() {
@@ -36372,6 +36529,21 @@ function renderPostsFeed(posts = []) {
     setupFeedPostViewsObserver(feedList);
     if (previewFeed) setupFeedPostViewsObserver(previewFeed);
 
+    if (activeChannelViewerPostId && Array.isArray(posts)) {
+        const activeViewerPost = posts.find(p => p && String(p.id) === String(activeChannelViewerPostId));
+        if (activeViewerPost) {
+            if (typeof syncChannelViewerStats === 'function') syncChannelViewerStats(activeViewerPost);
+            if (typeof syncChannelViewerLikeButton === 'function') syncChannelViewerLikeButton(activeViewerPost);
+            if (typeof syncChannelViewerCommentButton === 'function') syncChannelViewerCommentButton(activeViewerPost);
+        }
+    }
+    if (activePostViewsModalPostId && Array.isArray(posts)) {
+        const activeViewsPost = posts.find(p => p && String(p.id) === String(activePostViewsModalPostId));
+        if (activeViewsPost && typeof renderPostViewsModalContent === 'function') {
+            renderPostViewsModalContent(activeViewsPost);
+        }
+    }
+
     if (typeof checkUrlForSharedPost === 'function') {
         checkUrlForSharedPost(posts);
     }
@@ -36662,13 +36834,18 @@ export async function submitPostComment() {
         }
     }
 
+    const isMyVip = checkIsVipUser(currentProfile);
     const newComment = {
         id: 'comm_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
         author: currentProfile?.name || currentUser.displayName || 'Usuário',
         authorUid: currentUser.uid,
+        authorUsername: currentProfile?.username || '',
+        authorEmail: currentProfile?.email || currentUser?.email || '',
         text,
         createdAt: Date.now(),
         isPinned: false,
+        isVip: isMyVip,
+        isVerified: isMyVip,
         likes: []
     };
 
@@ -36686,7 +36863,7 @@ export async function submitPostComment() {
             });
         }
         if (input) input.value = '';
-        renderCommentsModalList();
+        syncPostCommentsStateInDOM(activeCommentPost.id, updated);
         showToast('Comentário publicado', 'Seu comentário foi adicionado!', 'green');
     } catch (err) {
         console.error('Erro ao salvar comentário:', err);
@@ -42106,6 +42283,38 @@ export function closeTopmostActiveLayer() {
         return true;
     }
 
+    const postViewsModal = document.getElementById('post-views-modal');
+    if (postViewsModal && (postViewsModal.style.display === 'flex' || (postViewsModal.classList && postViewsModal.classList.contains('active')))) {
+        if (typeof closePostViewsModal === 'function') {
+            closePostViewsModal();
+        } else {
+            postViewsModal.style.display = 'none';
+            if (postViewsModal.classList) postViewsModal.classList.remove('active');
+        }
+        return true;
+    }
+
+    const channelSubModals = [
+        'channel-analytics-modal',
+        'channel-media-viewer-modal',
+        'channel-manage-modal',
+        'channel-community-modal',
+        'channel-about-modal',
+        'channel-customize-modal'
+    ];
+    for (const subId of channelSubModals) {
+        const subEl = document.getElementById(subId);
+        if (subEl && (subEl.style.display === 'flex' || (subEl.classList && subEl.classList.contains('active')))) {
+            if (typeof closeChannelSubModal === 'function') {
+                closeChannelSubModal(subId);
+            } else {
+                subEl.style.display = 'none';
+                subEl.classList?.remove('active');
+            }
+            return true;
+        }
+    }
+
     const vipPaymentModal = document.getElementById('vip-payment-modal');
     if (vipPaymentModal && vipPaymentModal.classList && vipPaymentModal.classList.contains('active')) {
         if (typeof closeVipPaymentModal === 'function') {
@@ -42154,6 +42363,16 @@ export function closeTopmostActiveLayer() {
             closePostComposerOverlay();
         } else {
             composerOverlay.classList.remove('active');
+        }
+        return true;
+    }
+
+    const channelPanel = document.getElementById('channel-panel');
+    if (channelPanel && channelPanel.classList && channelPanel.classList.contains('active')) {
+        if (typeof closeUserChannelScreen === 'function') {
+            closeUserChannelScreen();
+        } else {
+            channelPanel.classList.remove('active');
         }
         return true;
     }
@@ -52620,6 +52839,7 @@ export function renderChannelMediaGrid(items = [], tab = 'inicio', isOwner = fal
             : (fmt === 'podcasts' ? 'mic' : (fmt === 'videos' ? 'film' : 'clapperboard'));
         const viewsCount = typeof getPostViewsCount === 'function' ? getPostViewsCount(post) : (Array.isArray(post.views) ? post.views.length : (post.viewsCount || 0));
         const viewsLabel = typeof formatPostViewsCount === 'function' ? formatPostViewsCount(viewsCount) : String(viewsCount);
+        const commentsCount = Array.isArray(post.comments) ? post.comments.length : Number(post.commentsCount || 0);
         const durationLabel = post.videoDuration ? formatChannelDuration(post.videoDuration) : '';
         const mediaTag = post.type === 'video'
             ? `<video src="${src}" ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="video"` : ''} muted playsinline preload="metadata" class="channel-ig-tile-media"></video>`
@@ -52632,7 +52852,10 @@ export function renderChannelMediaGrid(items = [], tab = 'inicio', isOwner = fal
                 ${isPlayableTile ? '<span class="channel-ig-tile-play-overlay" aria-hidden="true"><i data-lucide="play" class="channel-ig-tile-play-icon"></i></span>' : ''}
                 <span class="channel-ig-tile-top-badge" aria-hidden="true"><i data-lucide="${topIcon}"></i></span>
                 <span class="channel-ig-tile-bottom-overlay">
-                    <span class="channel-ig-tile-views"><i data-lucide="${isImageTile ? 'eye' : 'play'}"></i> ${escapeHTML(String(viewsLabel))}</span>
+                    <span class="channel-ig-tile-meta-left">
+                        <span class="channel-ig-tile-views"><i data-lucide="${isImageTile ? 'eye' : 'play'}"></i> ${escapeHTML(String(viewsLabel))}</span>
+                        <span class="channel-ig-tile-comments"><i data-lucide="message-circle"></i> <span class="channel-ig-tile-comments-count">${escapeHTML(String(commentsCount))}</span></span>
+                    </span>
                     ${durationLabel ? `<span class="channel-ig-tile-duration">${durationLabel}</span>` : ''}
                 </span>
             </button>
@@ -53253,7 +53476,7 @@ export function syncChannelViewerLikeButton(post = null) {
     const likeBtn = document.getElementById('channel-viewer-like-btn');
     const likeCountEl = document.getElementById('channel-viewer-like-count');
     const targetPost = post || (activeChannelViewerPostId && Array.isArray(cachedFeedPosts)
-        ? cachedFeedPosts.find(p => p && p.id === activeChannelViewerPostId)
+        ? cachedFeedPosts.find(p => p && String(p.id) === String(activeChannelViewerPostId))
         : null);
     const likesArr = Array.isArray(targetPost?.likes) ? targetPost.likes.filter(Boolean) : [];
     const isLiked = Boolean(currentUser?.uid && likesArr.includes(currentUser.uid));
@@ -53267,13 +53490,53 @@ export function syncChannelViewerLikeButton(post = null) {
     return isLiked;
 }
 
+export function syncChannelViewerCommentButton(post = null) {
+    const commentBtn = document.getElementById('channel-viewer-comment-btn');
+    const commentCountEl = document.getElementById('channel-viewer-comment-count');
+    const targetPost = post || (activeChannelViewerPostId && Array.isArray(cachedFeedPosts)
+        ? cachedFeedPosts.find(p => p && String(p.id) === String(activeChannelViewerPostId))
+        : null);
+    const commentsCount = Array.isArray(targetPost?.comments)
+        ? targetPost.comments.length
+        : Math.max(0, Number(targetPost?.commentsCount || 0));
+
+    if (commentCountEl) commentCountEl.innerText = String(commentsCount);
+    if (commentBtn) {
+        commentBtn.classList?.toggle('has-comments', commentsCount > 0);
+        commentBtn.title = commentsCount > 0 ? `Comentários (${commentsCount})` : 'Comentar neste post';
+    }
+    return commentsCount;
+}
+
+export function syncChannelViewerStats(post = null) {
+    const statsEl = document.getElementById('channel-viewer-stats');
+    const statsTextEl = document.getElementById('channel-viewer-stats-text');
+    const targetPost = post || (activeChannelViewerPostId && Array.isArray(cachedFeedPosts)
+        ? cachedFeedPosts.find(p => p && String(p.id) === String(activeChannelViewerPostId))
+        : null);
+    const viewsCount = typeof getPostViewsCount === 'function' ? getPostViewsCount(targetPost) : (targetPost?.viewsCount || 0);
+    const formatted = typeof formatPostViewsCount === 'function' ? formatPostViewsCount(viewsCount) : String(viewsCount);
+    const viewsLabel = `${formatted} visualizaç${viewsCount === 1 ? 'ão' : 'ões'}`;
+
+    if (statsEl && targetPost?.id) {
+        statsEl.dataset.postId = String(targetPost.id);
+    }
+    if (statsTextEl) {
+        statsTextEl.innerText = viewsLabel;
+        if (targetPost?.id) statsTextEl.setAttribute('data-post-views-badge', String(targetPost.id));
+    } else if (statsEl) {
+        statsEl.innerText = viewsLabel;
+    }
+    return viewsCount;
+}
+
 export function openChannelGridMediaViewer(postId) {
-    const post = (Array.isArray(cachedFeedPosts) ? cachedFeedPosts : []).find(p => p && p.id === postId);
+    const post = (Array.isArray(cachedFeedPosts) ? cachedFeedPosts : []).find(p => p && String(p.id) === String(postId));
     const modal = document.getElementById('channel-media-viewer-modal');
     const mediaBox = document.getElementById('channel-viewer-media-box');
     if (!post || !modal || !mediaBox) return;
 
-    activeChannelViewerPostId = postId;
+    activeChannelViewerPostId = post.id;
     const rawMedia = post.mediaData || (post.hasChunks && post.id && mediaChunkCache.get(`posts_${post.id}`)) || '';
     const src = (post.type === 'video' && rawMedia)
         ? createBlobUrlFromData(String(rawMedia).replace(/#t=[0-9,.]+$/, ''))
@@ -53289,12 +53552,11 @@ export function openChannelGridMediaViewer(postId) {
 
     const titleEl = document.getElementById('channel-viewer-title');
     const capEl = document.getElementById('channel-viewer-caption');
-    const statsEl = document.getElementById('channel-viewer-stats');
     if (titleEl) titleEl.innerText = post.title || post.authorName || 'Vídeo do Canal';
     if (capEl) capEl.innerText = post.caption || '';
-    const viewsCount = typeof getPostViewsCount === 'function' ? getPostViewsCount(post) : (post.viewsCount || 0);
-    if (statsEl) statsEl.innerText = `${viewsCount} visualizações`;
+    syncChannelViewerStats(post);
     syncChannelViewerLikeButton(post);
+    syncChannelViewerCommentButton(post);
 
     const viewerFollowBtn = document.getElementById('channel-viewer-follow-btn');
     if (viewerFollowBtn) {
@@ -53309,6 +53571,14 @@ export function openChannelGridMediaViewer(postId) {
     modal.style.display = 'flex';
     modal.setAttribute('aria-hidden', 'false');
     if (window.lucide) lucide.createIcons();
+
+    if (currentUser?.uid && typeof registerPostView === 'function') {
+        Promise.resolve(registerPostView(post.id)).then(() => {
+            if (String(activeChannelViewerPostId || '') === String(post.id)) {
+                syncChannelViewerStats(post);
+            }
+        }).catch(() => {});
+    }
 }
 
 function closeChannelSubModal(modalId) {
@@ -53317,6 +53587,7 @@ function closeChannelSubModal(modalId) {
     modal.style.display = 'none';
     modal.setAttribute('aria-hidden', 'true');
     if (modalId === 'channel-media-viewer-modal') {
+        activeChannelViewerPostId = null;
         const mediaBox = document.getElementById('channel-viewer-media-box');
         if (mediaBox) {
             mediaBox.querySelectorAll('video').forEach(v => { try { v.pause(); } catch (_) {} });
@@ -53430,8 +53701,24 @@ function bindChannelScreenListeners() {
     document.getElementById('channel-viewer-like-btn')?.addEventListener('click', async () => {
         if (!activeChannelViewerPostId) return;
         await togglePostLike(activeChannelViewerPostId);
-        const post = cachedFeedPosts.find(p => p.id === activeChannelViewerPostId) || null;
+        const post = cachedFeedPosts.find(p => String(p.id) === String(activeChannelViewerPostId)) || null;
         syncChannelViewerLikeButton(post);
+    });
+    document.getElementById('channel-viewer-comment-btn')?.addEventListener('click', () => {
+        if (!activeChannelViewerPostId) return;
+        const post = (Array.isArray(cachedFeedPosts) ? cachedFeedPosts : []).find(p => p && String(p.id) === String(activeChannelViewerPostId)) || null;
+        if (post && typeof openPostCommentModal === 'function') {
+            playSound(clickSound);
+            openPostCommentModal(post);
+        }
+    });
+    document.getElementById('channel-viewer-stats')?.addEventListener('click', () => {
+        const statsBtn = document.getElementById('channel-viewer-stats');
+        const targetPostId = activeChannelViewerPostId || statsBtn?.dataset?.postId || '';
+        if (!targetPostId || typeof openPostViewsModal !== 'function') return;
+        const post = (Array.isArray(cachedFeedPosts) ? cachedFeedPosts : []).find(p => p && String(p.id) === String(targetPostId)) || null;
+        playSound(clickSound);
+        openPostViewsModal(post || targetPostId);
     });
     document.getElementById('channel-viewer-follow-btn')?.addEventListener('click', async () => {
         const btn = document.getElementById('channel-viewer-follow-btn');
@@ -53500,6 +53787,9 @@ if (typeof window !== 'undefined') {
     window.openChannelManageModal = openChannelManageModal;
     window.openChannelGridMediaViewer = openChannelGridMediaViewer;
     window.syncChannelViewerLikeButton = syncChannelViewerLikeButton;
+    window.syncChannelViewerCommentButton = syncChannelViewerCommentButton;
+    window.syncChannelViewerStats = syncChannelViewerStats;
+    window.syncPostCommentsStateInDOM = syncPostCommentsStateInDOM;
     window.syncPostLikeButtonsInDOM = syncPostLikeButtonsInDOM;
     window.formatChannelStatsLine = formatChannelStatsLine;
     window.syncChannelProfileAvatarAndMeta = syncChannelProfileAvatarAndMeta;

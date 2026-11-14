@@ -4105,14 +4105,14 @@ body.theme-cyberpunk .feed-search-icon {
 .post-delete-btn i, .post-delete-btn svg { width: 12px; height: 12px; }
 
 .post-comment-modal {
-    position: absolute;
+    position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.72);
     display: none;
     align-items: center;
     justify-content: center;
     padding: 18px;
-    z-index: 1200;
+    z-index: 20030;
 }
 .post-comment-modal.active { display: flex; }
 .post-comment-card {
@@ -33308,6 +33308,8 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
 }
 .channel-viewer-actions {
     display: flex;
+    flex-wrap: wrap;
+    align-items: center;
     gap: 8px;
 }
 .post-channel-format-wrap {
@@ -33757,4 +33759,95 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
     cursor: pointer;
     flex-shrink: 0;
 }
+
+/* ==========================================================================
+   v1.0.297: Comentários nos Posts do Canal & Visualizar Quem Viu os Posts
+   ========================================================================== */
+#post-views-modal.post-views-modal-overlay {
+    z-index: 20025 !important;
+}
+#report-contact-modal.custom-modal-overlay {
+    z-index: 20040 !important;
+}
+.feed-media .vortex-video-player ~ .feed-media-views-badge,
+.post-media .vortex-video-player ~ .feed-media-views-badge {
+    top: 10px;
+    bottom: auto;
+    z-index: 8;
+}
+#channel-viewer-stats.channel-viewer-views-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    color: #e4e4e7;
+    font-size: 0.76rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.12s ease;
+}
+#channel-viewer-stats.channel-viewer-views-btn:hover {
+    background: rgba(255, 240, 31, 0.12);
+    border-color: rgba(255, 240, 31, 0.45);
+    color: var(--accent-color, #fff01f);
+}
+#channel-viewer-stats.channel-viewer-views-btn:active {
+    transform: scale(0.98);
+}
+#channel-viewer-stats.channel-viewer-views-btn i,
+#channel-viewer-stats.channel-viewer-views-btn svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+}
+.channel-viewer-views-chip {
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 999px;
+    background: rgba(255, 240, 31, 0.14);
+    color: var(--accent-color, #fff01f);
+    white-space: nowrap;
+}
+#channel-viewer-comment-btn {
+    border: 1px solid transparent;
+    transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease, transform 0.12s ease;
+}
+#channel-viewer-comment-btn:hover {
+    background: rgba(56, 189, 248, 0.18);
+    border-color: rgba(56, 189, 248, 0.5);
+    color: #38bdf8;
+}
+#channel-viewer-comment-btn.has-comments {
+    border-color: rgba(255, 255, 255, 0.16);
+}
+.channel-ig-tile-meta-left {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+.channel-ig-tile-comments {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+.channel-ig-tile-comments i,
+.channel-ig-tile-comments svg {
+    width: 12px;
+    height: 12px;
+}
+.post-viewer-item[data-viewer-uid] {
+    cursor: pointer;
+}
+.post-views-legacy-note {
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--text-dim, #9ca3af);
+    padding: 6px 10px 2px;
+}
+
 
