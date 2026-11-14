@@ -18611,14 +18611,14 @@ test('195. Salvamento Automático do Tipo de Chave Pix (CPF, Telefone, E-mail, C
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
   // 1. Integridade de Versionamento v1.0.276+ (Build 276+)
-  assert.ok(['1.0.276', '1.0.277', '1.0.278', '1.0.279', '1.0.280', '1.0.281', '1.0.282', '1.0.283'].includes(versionJson.version), 'version.json deve ser 1.0.276 ou superior');
-  assert.ok([276, 277, 278, 279, 280, 281, 282, 283].includes(versionJson.build), 'build em version.json deve ser 276 ou superior');
-  assert.ok(['1.0.276', '1.0.277', '1.0.278', '1.0.279', '1.0.280', '1.0.281', '1.0.282', '1.0.283'].includes(manifest.version), 'manifest.json deve ser 1.0.276 ou superior');
-  assert.ok(['1.0.276', '1.0.277', '1.0.278', '1.0.279', '1.0.280', '1.0.281', '1.0.282', '1.0.283'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.276 ou superior');
-  assert.ok(swContent.includes('vortex-vip-v1.0.276') || swContent.includes('vortex-vip-v1.0.277') || swContent.includes('vortex-vip-v1.0.278') || swContent.includes('vortex-vip-v1.0.279') || swContent.includes('vortex-vip-v1.0.280') || swContent.includes('vortex-vip-v1.0.281') || swContent.includes('vortex-vip-v1.0.282') || swContent.includes('vortex-vip-v1.0.283'), 'sw.js deve conter cache v1.0.276+');
-  assert.ok(html.includes('script.js?v=1.0.276') || html.includes('script.js?v=1.0.277') || html.includes('script.js?v=1.0.278') || html.includes('script.js?v=1.0.279') || html.includes('script.js?v=1.0.280') || html.includes('script.js?v=1.0.281') || html.includes('script.js?v=1.0.282') || html.includes('script.js?v=1.0.283'), 'index.html deve referenciar script.js?v=1.0.276+');
-  assert.ok(html.includes('style.css?v=1.0.276') || html.includes('style.css?v=1.0.277') || html.includes('style.css?v=1.0.278') || html.includes('style.css?v=1.0.279') || html.includes('style.css?v=1.0.280') || html.includes('style.css?v=1.0.281') || html.includes('style.css?v=1.0.282') || html.includes('style.css?v=1.0.283'), 'index.html deve referenciar style.css?v=1.0.276+');
-  assert.ok(privacyHtml.includes('v1.0.276') || privacyHtml.includes('v1.0.277') || privacyHtml.includes('v1.0.278') || privacyHtml.includes('v1.0.279') || privacyHtml.includes('v1.0.280') || privacyHtml.includes('v1.0.281') || privacyHtml.includes('v1.0.282') || privacyHtml.includes('v1.0.283'), 'privacy.html deve referenciar v1.0.276+');
+  assert.ok(['1.0.276', '1.0.277', '1.0.278', '1.0.279', '1.0.280', '1.0.281', '1.0.282', '1.0.283', '1.0.284'].includes(versionJson.version), 'version.json deve ser 1.0.276 ou superior');
+  assert.ok([276, 277, 278, 279, 280, 281, 282, 283, 284].includes(versionJson.build), 'build em version.json deve ser 276 ou superior');
+  assert.ok(['1.0.276', '1.0.277', '1.0.278', '1.0.279', '1.0.280', '1.0.281', '1.0.282', '1.0.283', '1.0.284'].includes(manifest.version), 'manifest.json deve ser 1.0.276 ou superior');
+  assert.ok(['1.0.276', '1.0.277', '1.0.278', '1.0.279', '1.0.280', '1.0.281', '1.0.282', '1.0.283', '1.0.284'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.276 ou superior');
+  assert.ok(swContent.includes('vortex-vip-v1.0.276') || swContent.includes('vortex-vip-v1.0.277') || swContent.includes('vortex-vip-v1.0.278') || swContent.includes('vortex-vip-v1.0.279') || swContent.includes('vortex-vip-v1.0.280') || swContent.includes('vortex-vip-v1.0.281') || swContent.includes('vortex-vip-v1.0.282') || swContent.includes('vortex-vip-v1.0.283') || swContent.includes('vortex-vip-v1.0.284'), 'sw.js deve conter cache v1.0.276+');
+  assert.ok(html.includes('script.js?v=1.0.276') || html.includes('script.js?v=1.0.277') || html.includes('script.js?v=1.0.278') || html.includes('script.js?v=1.0.279') || html.includes('script.js?v=1.0.280') || html.includes('script.js?v=1.0.281') || html.includes('script.js?v=1.0.282') || html.includes('script.js?v=1.0.283') || html.includes('script.js?v=1.0.284'), 'index.html deve referenciar script.js?v=1.0.276+');
+  assert.ok(html.includes('style.css?v=1.0.276') || html.includes('style.css?v=1.0.277') || html.includes('style.css?v=1.0.278') || html.includes('style.css?v=1.0.279') || html.includes('style.css?v=1.0.280') || html.includes('style.css?v=1.0.281') || html.includes('style.css?v=1.0.282') || html.includes('style.css?v=1.0.283') || html.includes('style.css?v=1.0.284'), 'index.html deve referenciar style.css?v=1.0.276+');
+  assert.ok(privacyHtml.includes('v1.0.276') || privacyHtml.includes('v1.0.277') || privacyHtml.includes('v1.0.278') || privacyHtml.includes('v1.0.279') || privacyHtml.includes('v1.0.280') || privacyHtml.includes('v1.0.281') || privacyHtml.includes('v1.0.282') || privacyHtml.includes('v1.0.283') || privacyHtml.includes('v1.0.284'), 'privacy.html deve referenciar v1.0.276+');
 
   // 2. Elementos no HTML: Select com opções de Chave Pix e Botões Organizados
   assert.ok(html.includes('id="chest-pix-key-type"'), 'index.html deve conter select de tipo de chave Pix');
@@ -18741,14 +18741,14 @@ test('196. Barra de Rolagem Horizontal para os 3 Botões de Jogos (Tigrinho VIP,
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
   // 1. Integridade de Versionamento v1.0.278+ (Build 278+)
-  assert.ok(['1.0.278', '1.0.279', '1.0.280', '1.0.281', '1.0.282', '1.0.283'].includes(versionJson.version), 'version.json deve ser 1.0.278+');
-  assert.ok([278, 279, 280, 281, 282, 283].includes(versionJson.build), 'build em version.json deve ser 278+');
-  assert.ok(['1.0.278', '1.0.279', '1.0.280', '1.0.281', '1.0.282', '1.0.283'].includes(manifest.version), 'manifest.json deve ser 1.0.278+');
-  assert.ok(['1.0.278', '1.0.279', '1.0.280', '1.0.281', '1.0.282', '1.0.283'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.278+');
-  assert.ok(swContent.includes('vortex-vip-v1.0.278') || swContent.includes('vortex-vip-v1.0.279') || swContent.includes('vortex-vip-v1.0.280') || swContent.includes('vortex-vip-v1.0.281') || swContent.includes('vortex-vip-v1.0.282') || swContent.includes('vortex-vip-v1.0.283'), 'sw.js deve conter cache v1.0.278+');
-  assert.ok(html.includes('script.js?v=1.0.278') || html.includes('script.js?v=1.0.279') || html.includes('script.js?v=1.0.280') || html.includes('script.js?v=1.0.281') || html.includes('script.js?v=1.0.282') || html.includes('script.js?v=1.0.283'), 'index.html deve referenciar script.js?v=1.0.278+');
-  assert.ok(html.includes('style.css?v=1.0.278') || html.includes('style.css?v=1.0.279') || html.includes('style.css?v=1.0.280') || html.includes('style.css?v=1.0.281') || html.includes('style.css?v=1.0.282') || html.includes('style.css?v=1.0.283'), 'index.html deve referenciar style.css?v=1.0.278+');
-  assert.ok(privacyHtml.includes('v1.0.278') || privacyHtml.includes('v1.0.279') || privacyHtml.includes('v1.0.280') || privacyHtml.includes('v1.0.281') || privacyHtml.includes('v1.0.282') || privacyHtml.includes('v1.0.283'), 'privacy.html deve referenciar v1.0.278+');
+  assert.ok(['1.0.278', '1.0.279', '1.0.280', '1.0.281', '1.0.282', '1.0.283', '1.0.284'].includes(versionJson.version), 'version.json deve ser 1.0.278+');
+  assert.ok([278, 279, 280, 281, 282, 283, 284].includes(versionJson.build), 'build em version.json deve ser 278+');
+  assert.ok(['1.0.278', '1.0.279', '1.0.280', '1.0.281', '1.0.282', '1.0.283', '1.0.284'].includes(manifest.version), 'manifest.json deve ser 1.0.278+');
+  assert.ok(['1.0.278', '1.0.279', '1.0.280', '1.0.281', '1.0.282', '1.0.283', '1.0.284'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.278+');
+  assert.ok(swContent.includes('vortex-vip-v1.0.278') || swContent.includes('vortex-vip-v1.0.279') || swContent.includes('vortex-vip-v1.0.280') || swContent.includes('vortex-vip-v1.0.281') || swContent.includes('vortex-vip-v1.0.282') || swContent.includes('vortex-vip-v1.0.283') || swContent.includes('vortex-vip-v1.0.284'), 'sw.js deve conter cache v1.0.278+');
+  assert.ok(html.includes('script.js?v=1.0.278') || html.includes('script.js?v=1.0.279') || html.includes('script.js?v=1.0.280') || html.includes('script.js?v=1.0.281') || html.includes('script.js?v=1.0.282') || html.includes('script.js?v=1.0.283') || html.includes('script.js?v=1.0.284'), 'index.html deve referenciar script.js?v=1.0.278+');
+  assert.ok(html.includes('style.css?v=1.0.278') || html.includes('style.css?v=1.0.279') || html.includes('style.css?v=1.0.280') || html.includes('style.css?v=1.0.281') || html.includes('style.css?v=1.0.282') || html.includes('style.css?v=1.0.283') || html.includes('style.css?v=1.0.284'), 'index.html deve referenciar style.css?v=1.0.278+');
+  assert.ok(privacyHtml.includes('v1.0.278') || privacyHtml.includes('v1.0.279') || privacyHtml.includes('v1.0.280') || privacyHtml.includes('v1.0.281') || privacyHtml.includes('v1.0.282') || privacyHtml.includes('v1.0.283') || privacyHtml.includes('v1.0.284'), 'privacy.html deve referenciar v1.0.278+');
 
   // 2. Presença dos 3 Botões de Jogos no HTML
   assert.ok(html.includes('id="games-subtabs-nav"'), 'index.html deve conter #games-subtabs-nav');
@@ -18801,14 +18801,14 @@ test('197. Botão Publicar Status (#publish-status-btn) com Tamanho Aumentado e 
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
   // 1. Integridade de Versionamento v1.0.279+ (Build 279+)
-  assert.ok(['1.0.279', '1.0.280', '1.0.281', '1.0.282', '1.0.283'].includes(versionJson.version), 'version.json deve ser 1.0.279+');
-  assert.ok([279, 280, 281, 282, 283].includes(versionJson.build), 'build em version.json deve ser 279+');
-  assert.ok(['1.0.279', '1.0.280', '1.0.281', '1.0.282', '1.0.283'].includes(manifest.version), 'manifest.json deve ser 1.0.279+');
-  assert.ok(['1.0.279', '1.0.280', '1.0.281', '1.0.282', '1.0.283'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.279+');
-  assert.ok(swContent.includes('vortex-vip-v1.0.279') || swContent.includes('vortex-vip-v1.0.280') || swContent.includes('vortex-vip-v1.0.281') || swContent.includes('vortex-vip-v1.0.282') || swContent.includes('vortex-vip-v1.0.283'), 'sw.js deve conter cache v1.0.279+');
-  assert.ok(html.includes('script.js?v=1.0.279') || html.includes('script.js?v=1.0.280') || html.includes('script.js?v=1.0.281') || html.includes('script.js?v=1.0.282') || html.includes('script.js?v=1.0.283'), 'index.html deve referenciar script.js?v=1.0.279+');
-  assert.ok(html.includes('style.css?v=1.0.279') || html.includes('style.css?v=1.0.280') || html.includes('style.css?v=1.0.281') || html.includes('style.css?v=1.0.282') || html.includes('style.css?v=1.0.283'), 'index.html deve referenciar style.css?v=1.0.279+');
-  assert.ok(privacyHtml.includes('v1.0.279') || privacyHtml.includes('v1.0.280') || privacyHtml.includes('v1.0.281') || privacyHtml.includes('v1.0.282') || privacyHtml.includes('v1.0.283'), 'privacy.html deve referenciar v1.0.279+');
+  assert.ok(['1.0.279', '1.0.280', '1.0.281', '1.0.282', '1.0.283', '1.0.284'].includes(versionJson.version), 'version.json deve ser 1.0.279+');
+  assert.ok([279, 280, 281, 282, 283, 284].includes(versionJson.build), 'build em version.json deve ser 279+');
+  assert.ok(['1.0.279', '1.0.280', '1.0.281', '1.0.282', '1.0.283', '1.0.284'].includes(manifest.version), 'manifest.json deve ser 1.0.279+');
+  assert.ok(['1.0.279', '1.0.280', '1.0.281', '1.0.282', '1.0.283', '1.0.284'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.279+');
+  assert.ok(swContent.includes('vortex-vip-v1.0.279') || swContent.includes('vortex-vip-v1.0.280') || swContent.includes('vortex-vip-v1.0.281') || swContent.includes('vortex-vip-v1.0.282') || swContent.includes('vortex-vip-v1.0.283') || swContent.includes('vortex-vip-v1.0.284'), 'sw.js deve conter cache v1.0.279+');
+  assert.ok(html.includes('script.js?v=1.0.279') || html.includes('script.js?v=1.0.280') || html.includes('script.js?v=1.0.281') || html.includes('script.js?v=1.0.282') || html.includes('script.js?v=1.0.283') || html.includes('script.js?v=1.0.284'), 'index.html deve referenciar script.js?v=1.0.279+');
+  assert.ok(html.includes('style.css?v=1.0.279') || html.includes('style.css?v=1.0.280') || html.includes('style.css?v=1.0.281') || html.includes('style.css?v=1.0.282') || html.includes('style.css?v=1.0.283') || html.includes('style.css?v=1.0.284'), 'index.html deve referenciar style.css?v=1.0.279+');
+  assert.ok(privacyHtml.includes('v1.0.279') || privacyHtml.includes('v1.0.280') || privacyHtml.includes('v1.0.281') || privacyHtml.includes('v1.0.282') || privacyHtml.includes('v1.0.283') || privacyHtml.includes('v1.0.284'), 'privacy.html deve referenciar v1.0.279+');
 
   // 2. Presença do botão #publish-status-btn no HTML
   assert.ok(html.includes('id="publish-status-btn"'), 'index.html deve conter #publish-status-btn');
@@ -18852,14 +18852,14 @@ test('198. Botão Tester Beta nas Configurações, Modal com Descrição, Solici
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
   // 1. Integridade de Versionamento v1.0.280+ (Build 280+)
-  assert.ok(['1.0.280', '1.0.281', '1.0.282', '1.0.283'].includes(versionJson.version), 'version.json deve ser 1.0.280+');
-  assert.ok([280, 281, 282, 283].includes(versionJson.build), 'build em version.json deve ser 280+');
-  assert.ok(['1.0.280', '1.0.281', '1.0.282', '1.0.283'].includes(manifest.version), 'manifest.json deve ser 1.0.280+');
-  assert.ok(['1.0.280', '1.0.281', '1.0.282', '1.0.283'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.280+');
-  assert.ok(swContent.includes('vortex-vip-v1.0.280') || swContent.includes('vortex-vip-v1.0.281') || swContent.includes('vortex-vip-v1.0.282') || swContent.includes('vortex-vip-v1.0.283'), 'sw.js deve conter cache v1.0.280+');
-  assert.ok(html.includes('script.js?v=1.0.280') || html.includes('script.js?v=1.0.281') || html.includes('script.js?v=1.0.282') || html.includes('script.js?v=1.0.283'), 'index.html deve referenciar script.js?v=1.0.280+');
-  assert.ok(html.includes('style.css?v=1.0.280') || html.includes('style.css?v=1.0.281') || html.includes('style.css?v=1.0.282') || html.includes('style.css?v=1.0.283'), 'index.html deve referenciar style.css?v=1.0.280+');
-  assert.ok(privacyHtml.includes('v1.0.280') || privacyHtml.includes('v1.0.281') || privacyHtml.includes('v1.0.282') || privacyHtml.includes('v1.0.283'), 'privacy.html deve referenciar v1.0.280+');
+  assert.ok(['1.0.280', '1.0.281', '1.0.282', '1.0.283', '1.0.284'].includes(versionJson.version), 'version.json deve ser 1.0.280+');
+  assert.ok([280, 281, 282, 283, 284].includes(versionJson.build), 'build em version.json deve ser 280+');
+  assert.ok(['1.0.280', '1.0.281', '1.0.282', '1.0.283', '1.0.284'].includes(manifest.version), 'manifest.json deve ser 1.0.280+');
+  assert.ok(['1.0.280', '1.0.281', '1.0.282', '1.0.283', '1.0.284'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.280+');
+  assert.ok(swContent.includes('vortex-vip-v1.0.280') || swContent.includes('vortex-vip-v1.0.281') || swContent.includes('vortex-vip-v1.0.282') || swContent.includes('vortex-vip-v1.0.283') || swContent.includes('vortex-vip-v1.0.284'), 'sw.js deve conter cache v1.0.280+');
+  assert.ok(html.includes('script.js?v=1.0.280') || html.includes('script.js?v=1.0.281') || html.includes('script.js?v=1.0.282') || html.includes('script.js?v=1.0.283') || html.includes('script.js?v=1.0.284'), 'index.html deve referenciar script.js?v=1.0.280+');
+  assert.ok(html.includes('style.css?v=1.0.280') || html.includes('style.css?v=1.0.281') || html.includes('style.css?v=1.0.282') || html.includes('style.css?v=1.0.283') || html.includes('style.css?v=1.0.284'), 'index.html deve referenciar style.css?v=1.0.280+');
+  assert.ok(privacyHtml.includes('v1.0.280') || privacyHtml.includes('v1.0.281') || privacyHtml.includes('v1.0.282') || privacyHtml.includes('v1.0.283') || privacyHtml.includes('v1.0.284'), 'privacy.html deve referenciar v1.0.280+');
 
   // 2. Elementos no HTML (Configurações + Modal + Descrição + Botão Solicitar + Barra de 24h)
   assert.ok(html.includes('id="beta-tester-setting-item"'), 'Configurações deve conter #beta-tester-setting-item');
@@ -18942,14 +18942,14 @@ test('199. Ligação em Grupo para Contatos (Convidar até 4 Pessoas) v1.0.281',
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
   // 1. Integridade de Versionamento v1.0.281+ (Build 281+)
-  assert.ok(['1.0.281', '1.0.282', '1.0.283'].includes(versionJson.version), 'version.json deve ser 1.0.281+');
-  assert.ok([281, 282, 283].includes(versionJson.build), 'build em version.json deve ser 281+');
-  assert.ok(['1.0.281', '1.0.282', '1.0.283'].includes(manifest.version), 'manifest.json deve ser 1.0.281+');
-  assert.ok(['1.0.281', '1.0.282', '1.0.283'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.281+');
-  assert.ok(swContent.includes('vortex-vip-v1.0.281') || swContent.includes('vortex-vip-v1.0.282') || swContent.includes('vortex-vip-v1.0.283'), 'sw.js deve conter cache v1.0.281+');
-  assert.ok(html.includes('script.js?v=1.0.281') || html.includes('script.js?v=1.0.282') || html.includes('script.js?v=1.0.283'), 'index.html deve referenciar script.js?v=1.0.281+');
-  assert.ok(html.includes('style.css?v=1.0.281') || html.includes('style.css?v=1.0.282') || html.includes('style.css?v=1.0.283'), 'index.html deve referenciar style.css?v=1.0.281+');
-  assert.ok(privacyHtml.includes('v1.0.281') || privacyHtml.includes('v1.0.282') || privacyHtml.includes('v1.0.283'), 'privacy.html deve referenciar v1.0.281+');
+  assert.ok(['1.0.281', '1.0.282', '1.0.283', '1.0.284'].includes(versionJson.version), 'version.json deve ser 1.0.281+');
+  assert.ok([281, 282, 283, 284].includes(versionJson.build), 'build em version.json deve ser 281+');
+  assert.ok(['1.0.281', '1.0.282', '1.0.283', '1.0.284'].includes(manifest.version), 'manifest.json deve ser 1.0.281+');
+  assert.ok(['1.0.281', '1.0.282', '1.0.283', '1.0.284'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.281+');
+  assert.ok(swContent.includes('vortex-vip-v1.0.281') || swContent.includes('vortex-vip-v1.0.282') || swContent.includes('vortex-vip-v1.0.283') || swContent.includes('vortex-vip-v1.0.284'), 'sw.js deve conter cache v1.0.281+');
+  assert.ok(html.includes('script.js?v=1.0.281') || html.includes('script.js?v=1.0.282') || html.includes('script.js?v=1.0.283') || html.includes('script.js?v=1.0.284'), 'index.html deve referenciar script.js?v=1.0.281+');
+  assert.ok(html.includes('style.css?v=1.0.281') || html.includes('style.css?v=1.0.282') || html.includes('style.css?v=1.0.283') || html.includes('style.css?v=1.0.284'), 'index.html deve referenciar style.css?v=1.0.281+');
+  assert.ok(privacyHtml.includes('v1.0.281') || privacyHtml.includes('v1.0.282') || privacyHtml.includes('v1.0.283') || privacyHtml.includes('v1.0.284'), 'privacy.html deve referenciar v1.0.281+');
 
   // 2. Elementos no HTML
   assert.ok(html.includes('id="start-group-call-opt-btn"'), 'Modal de tipo de chamada deve conter opção Ligação em Grupo');
@@ -19062,14 +19062,14 @@ test('200. Sistema de IA VORTEX AI Shield & Recommender para Administrador (Segu
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
   // 1. Integridade de Versionamento v1.0.282+ (Build 282+)
-  assert.ok(['1.0.282', '1.0.283'].includes(versionJson.version), 'version.json deve ser 1.0.282+');
-  assert.ok([282, 283].includes(versionJson.build), 'build em version.json deve ser 282+');
-  assert.ok(['1.0.282', '1.0.283'].includes(manifest.version), 'manifest.json deve ser 1.0.282+');
-  assert.ok(['1.0.282', '1.0.283'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.282+');
-  assert.ok(swContent.includes('vortex-vip-v1.0.282') || swContent.includes('vortex-vip-v1.0.283'), 'sw.js deve conter cache v1.0.282+');
-  assert.ok(html.includes('script.js?v=1.0.282') || html.includes('script.js?v=1.0.283'), 'index.html deve referenciar script.js?v=1.0.282+');
-  assert.ok(html.includes('style.css?v=1.0.282') || html.includes('style.css?v=1.0.283'), 'index.html deve referenciar style.css?v=1.0.282+');
-  assert.ok(privacyHtml.includes('v1.0.282') || privacyHtml.includes('v1.0.283'), 'privacy.html deve referenciar v1.0.282+');
+  assert.ok(['1.0.282', '1.0.283', '1.0.284'].includes(versionJson.version), 'version.json deve ser 1.0.282+');
+  assert.ok([282, 283, 284].includes(versionJson.build), 'build em version.json deve ser 282+');
+  assert.ok(['1.0.282', '1.0.283', '1.0.284'].includes(manifest.version), 'manifest.json deve ser 1.0.282+');
+  assert.ok(['1.0.282', '1.0.283', '1.0.284'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.282+');
+  assert.ok(swContent.includes('vortex-vip-v1.0.282') || swContent.includes('vortex-vip-v1.0.283') || swContent.includes('vortex-vip-v1.0.284'), 'sw.js deve conter cache v1.0.282+');
+  assert.ok(html.includes('script.js?v=1.0.282') || html.includes('script.js?v=1.0.283') || html.includes('script.js?v=1.0.284'), 'index.html deve referenciar script.js?v=1.0.282+');
+  assert.ok(html.includes('style.css?v=1.0.282') || html.includes('style.css?v=1.0.283') || html.includes('style.css?v=1.0.284'), 'index.html deve referenciar style.css?v=1.0.282+');
+  assert.ok(privacyHtml.includes('v1.0.282') || privacyHtml.includes('v1.0.283') || privacyHtml.includes('v1.0.284'), 'privacy.html deve referenciar v1.0.282+');
 
   // 2. Presença da Aba ADM IA Segurança & Elementos no HTML e CSS
   assert.ok(html.includes('id="admin-tab-ai-security-btn"'), 'Painel ADM deve conter aba #admin-tab-ai-security-btn');
@@ -19257,15 +19257,15 @@ test('201. IA Moderação Inteligente de Comentários (Links http/https, Repeti�
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
-  // 1. Integridade de Versionamento v1.0.283 (Build 283)
-  assert.strictEqual(versionJson.version, '1.0.283', 'version.json deve ser 1.0.283');
-  assert.strictEqual(versionJson.build, 283, 'build em version.json deve ser 283');
-  assert.strictEqual(manifest.version, '1.0.283', 'manifest.json deve ser 1.0.283');
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.283', 'CURRENT_APP_VERSION deve ser 1.0.283');
-  assert.ok(swContent.includes('vortex-vip-v1.0.283'), 'sw.js deve conter cache v1.0.283');
-  assert.ok(html.includes('script.js?v=1.0.283'), 'index.html deve referenciar script.js?v=1.0.283');
-  assert.ok(html.includes('style.css?v=1.0.283'), 'index.html deve referenciar style.css?v=1.0.283');
-  assert.ok(privacyHtml.includes('v1.0.283'), 'privacy.html deve referenciar v1.0.283');
+  // 1. Integridade de Versionamento v1.0.283+ (Build 283+)
+  assert.ok(['1.0.283', '1.0.284'].includes(versionJson.version), 'version.json deve ser 1.0.283+');
+  assert.ok([283, 284].includes(versionJson.build), 'build em version.json deve ser 283+');
+  assert.ok(['1.0.283', '1.0.284'].includes(manifest.version), 'manifest.json deve ser 1.0.283+');
+  assert.ok(['1.0.283', '1.0.284'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.283+');
+  assert.ok(swContent.includes('vortex-vip-v1.0.283') || swContent.includes('vortex-vip-v1.0.284'), 'sw.js deve conter cache v1.0.283+');
+  assert.ok(html.includes('script.js?v=1.0.283') || html.includes('script.js?v=1.0.284'), 'index.html deve referenciar script.js?v=1.0.283+');
+  assert.ok(html.includes('style.css?v=1.0.283') || html.includes('style.css?v=1.0.284'), 'index.html deve referenciar style.css?v=1.0.283+');
+  assert.ok(privacyHtml.includes('v1.0.283') || privacyHtml.includes('v1.0.284'), 'privacy.html deve referenciar v1.0.283+');
 
   // 2. Elementos no HTML ADM para Comentários IA
   assert.ok(html.includes('id="admin-ai-toggle-comment-guard"'), 'Painel ADM deve conter toggle #admin-ai-toggle-comment-guard');
@@ -19442,4 +19442,106 @@ test('201. IA Moderação Inteligente de Comentários (Links http/https, Repeti�
     if (ch === '}') closeBraces201++;
   }
   assert.strictEqual(openBraces201, closeBraces201, 'CSS deve manter chaves perfeitamente balanceadas na v1.0.283');
+});
+
+test('202. IA Anti-Spam / Bots / Auto-Click nas Curtidas de Posts com Bloqueio Temporário de 24 Horas v1.0.284', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+  const html = fs.readFileSync('public/index.html', 'utf8');
+  const css = fs.readFileSync('public/style.css', 'utf8');
+  const privacyHtml = fs.readFileSync('public/privacy.html', 'utf8');
+  const manifest = JSON.parse(fs.readFileSync('public/manifest.json', 'utf8'));
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+
+  // 1. Integridade de Versionamento v1.0.284 (Build 284)
+  assert.strictEqual(versionJson.version, '1.0.284', 'version.json deve ser 1.0.284');
+  assert.strictEqual(versionJson.build, 284, 'build em version.json deve ser 284');
+  assert.strictEqual(manifest.version, '1.0.284', 'manifest.json deve ser 1.0.284');
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.284', 'CURRENT_APP_VERSION deve ser 1.0.284');
+  assert.ok(swContent.includes('vortex-vip-v1.0.284'), 'sw.js deve conter cache v1.0.284');
+  assert.ok(html.includes('script.js?v=1.0.284'), 'index.html deve referenciar script.js?v=1.0.284');
+  assert.ok(html.includes('style.css?v=1.0.284'), 'index.html deve referenciar style.css?v=1.0.284');
+  assert.ok(privacyHtml.includes('v1.0.284'), 'privacy.html deve referenciar v1.0.284');
+
+  // 2. Controles ADM & Estilo CSS para Bloqueio de Curtidas 24h
+  assert.ok(html.includes('id="admin-ai-toggle-like-guard"'), 'Painel ADM deve conter toggle #admin-ai-toggle-like-guard');
+  assert.ok(html.includes('data-ai-cat="like_spam_guard"'), 'Painel ADM deve conter filtro data-ai-cat="like_spam_guard"');
+  assert.ok(css.includes('.feed-action-btn.like-blocked-ai'), 'style.css deve conter estilo visual .like-blocked-ai');
+
+  win.initAdminAISecurityUI();
+  const baseNow = Date.now();
+
+  // 3. Uso humano normal (curtidas espaçadas em posts diferentes) deve ser liberado
+  const normalUid = 'u_like_normal';
+  const norm1 = await win.handleLikeAttemptByAI({ uid: normalUid, postId: 'p_1', account: { uid: normalUid, name: 'Normal' }, now: baseNow });
+  const norm2 = await win.handleLikeAttemptByAI({ uid: normalUid, postId: 'p_2', account: { uid: normalUid, name: 'Normal' }, now: baseNow + 4000 });
+  const norm3 = await win.handleLikeAttemptByAI({ uid: normalUid, postId: 'p_3', account: { uid: normalUid, name: 'Normal' }, now: baseNow + 8000 });
+  assert.strictEqual(norm1.allowed, true);
+  assert.strictEqual(norm2.allowed, true);
+  assert.strictEqual(norm3.allowed, true, 'Curtidas em ritmo normal não devem ser bloqueadas');
+
+  // 4. Cliques repetidos muito rápidos no mesmo post -> bloqueio temporário de 24 horas
+  const samePostUid = 'u_like_samepost_spam';
+  env.firestoreDocs[`users/${samePostUid}`] = { uid: samePostUid, name: 'Spammer Mesmo Post' };
+  const s1 = await win.handleLikeAttemptByAI({ uid: samePostUid, postId: 'p_target', account: env.firestoreDocs[`users/${samePostUid}`], now: baseNow });
+  const s2 = await win.handleLikeAttemptByAI({ uid: samePostUid, postId: 'p_target', account: env.firestoreDocs[`users/${samePostUid}`], now: baseNow + 600 });
+  const s3 = await win.handleLikeAttemptByAI({ uid: samePostUid, postId: 'p_target', account: env.firestoreDocs[`users/${samePostUid}`], now: baseNow + 1200 });
+  const s4 = await win.handleLikeAttemptByAI({ uid: samePostUid, postId: 'p_target', account: env.firestoreDocs[`users/${samePostUid}`], now: baseNow + 1800 });
+  assert.strictEqual(s1.allowed, true);
+  assert.strictEqual(s2.allowed, true);
+  assert.strictEqual(s3.allowed, true);
+  assert.strictEqual(s4.allowed, false, '4 cliques rápidos seguidos no mesmo post devem bloquear por 24h');
+  assert.strictEqual(s4.punishment, 'block_24h');
+  assert.strictEqual(s4.analysis.isSamePostSpam, true);
+  assert.ok(Math.abs(env.firestoreDocs[`users/${samePostUid}`].likeBlockedUntil - ((baseNow + 1800) + win.LIKE_BLOCK_24H_MS)) < 500, 'Bloqueio nas curtidas deve durar 24 horas');
+
+  // 5. Detecção de Bot / Auto-Click (<350ms entre cliques em vários posts)
+  const autoClickUid = 'u_bot_autoclick';
+  env.firestoreDocs[`users/${autoClickUid}`] = { uid: autoClickUid, name: 'Bot AutoClick' };
+  env.firestoreDocs['posts/post_bot_1'] = { id: 'post_bot_1', authorUid: 'owner_bot', likes: [] };
+  env.firestoreDocs['posts/post_bot_2'] = { id: 'post_bot_2', authorUid: 'owner_bot', likes: [] };
+  env.firestoreDocs['posts/post_bot_3'] = { id: 'post_bot_3', authorUid: 'owner_bot', likes: [] };
+  env.firestoreDocs['posts/post_bot_4'] = { id: 'post_bot_4', authorUid: 'owner_bot', likes: [] };
+
+  win.setCurrentUser({ uid: autoClickUid, displayName: 'Bot AutoClick' });
+  win.setCurrentProfile(env.firestoreDocs[`users/${autoClickUid}`]);
+
+  const b1 = await win.togglePostLike('post_bot_1', { now: baseNow });
+  const b2 = await win.togglePostLike('post_bot_2', { now: baseNow + 120 });
+  const b3 = await win.togglePostLike('post_bot_3', { now: baseNow + 240 });
+  const b4 = await win.togglePostLike('post_bot_4', { now: baseNow + 360 });
+  assert.strictEqual(b1, true);
+  assert.strictEqual(b2, true);
+  assert.strictEqual(b3, true);
+  assert.strictEqual(b4, false, 'Auto-click (<350ms entre cliques) deve bloquear a 4ª curtida e ativar bloqueio 24h');
+  assert.strictEqual(env.firestoreDocs['posts/post_bot_4'].likes.length, 0, 'A curtida bloqueada pelo bot NÃO deve ser gravada no Firestore');
+
+  const check12hLater = win.canUserLikeByAI(autoClickUid, env.firestoreDocs[`users/${autoClickUid}`], baseNow + (12 * 3600 * 1000));
+  assert.strictEqual(check12hLater.allowed, false, 'Usuário deve permanecer bloqueado nas curtidas durante as 24 horas');
+  assert.strictEqual(check12hLater.type, 'temporary_24h');
+
+  const retryBlocked = await win.togglePostLike('post_bot_4', { now: baseNow + (23 * 3600 * 1000) });
+  assert.strictEqual(retryBlocked, false, 'Tentativa de curtir antes de completar 24h deve ser barrada');
+
+  const checkAfter24h = win.canUserLikeByAI(autoClickUid, env.firestoreDocs[`users/${autoClickUid}`], baseNow + win.LIKE_BLOCK_24H_MS + 5000);
+  assert.strictEqual(checkAfter24h.allowed, true, 'Após 24 horas completas o bloqueio temporário deve liberar automaticamente');
+
+  // 6. Painel ADM e Ação de Desbloqueio Manual (unblock_likes)
+  win.switchAdminTab('ai-security');
+  const likeInc = win.aiSecurityIncidents.find(i => i.category === 'like_spam_guard' && i.uid === autoClickUid);
+  assert.ok(likeInc, 'Painel ADM deve registrar incidente de like_spam_guard');
+  assert.ok(env.elements['admin-ai-incidents-list'].innerHTML.includes('unblock_likes'), 'Card do incidente deve exibir botão Liberar Curtidas para o ADM');
+
+  const unblockedOk = await win.adminHandleAIIncidentAction(likeInc.id, 'unblock_likes');
+  assert.strictEqual(unblockedOk, true, 'ADM deve conseguir liberar curtidas manualmente via unblock_likes');
+  assert.strictEqual(env.firestoreDocs[`users/${autoClickUid}`].likeBlockedUntil, 0, 'Firestore deve zerar likeBlockedUntil após liberação ADM');
+
+  // 7. Balanço de Chaves do CSS
+  let openBraces202 = 0, closeBraces202 = 0;
+  for (const ch of css) {
+    if (ch === '{') openBraces202++;
+    if (ch === '}') closeBraces202++;
+  }
+  assert.strictEqual(openBraces202, closeBraces202, 'CSS deve manter chaves perfeitamente balanceadas após v1.0.284');
 });

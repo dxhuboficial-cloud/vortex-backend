@@ -1,6 +1,6 @@
 {
-  "version": "1.0.283",
-  "build": 283,
+  "version": "1.0.284",
+  "build": 284,
   "releaseDate": "2026-11-13",
-  "notes": "Sistema VORTEX AI Shield ✨ Moderação Inteligente de Comentários: exclusão automática de links (http/https), repetições no mesmo post, spam aleatório e comentários com múltiplas denúncias; bloqueio de 48h para envio rápido e banimento permanente de comentários para palavrões/xingamentos v1.0.283"
+  "notes": "Sistema VORTEX AI Like Shield ✨ (v1.0.284): bloqueio temporário automático de 24 horas nas curtidas de posts para quem clica muito rápido, evitando spam, bots e auto-click"
 }

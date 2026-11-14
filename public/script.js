@@ -23194,7 +23194,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.283';
+export const CURRENT_APP_VERSION = '1.0.284';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -33615,7 +33615,68 @@ export async function editPostComment(postId, commentIdOrIdx, newText) {
     }
 }
 
-export async function toggleLikePostComment(postId, commentIdOrIdx) {
+export async function togglePostLike(postId, options = {}) {
+    if (!currentUser) {
+        showToast('Login necessário', 'Entre para curtir.', 'red');
+        return false;
+    }
+    if (isUserRestricted(currentProfile)) {
+        showRestrictionActionNotice();
+        return false;
+    }
+    if (!postId) return false;
+
+    if (typeof handleLikeAttemptByAI === 'function') {
+        const aiLikeCheck = await handleLikeAttemptByAI({
+            uid: currentUser.uid,
+            postId,
+            account: currentProfile,
+            now: options.now || Date.now(),
+            targetType: 'post'
+        });
+        if (!aiLikeCheck.allowed) {
+            return false;
+        }
+    }
+
+    try {
+        const postsList = (typeof cachedFeedPosts !== 'undefined' && Array.isArray(cachedFeedPosts)) ? cachedFeedPosts : [];
+        let post = postsList.find(item => item && item.id === postId) || null;
+        if (!post && typeof getDoc === 'function' && typeof doc === 'function' && typeof db !== 'undefined') {
+            const snap = await getDoc(doc(db, 'posts', postId));
+            const exists = snap && (typeof snap.exists === 'function' ? snap.exists() : !!snap.exists);
+            if (exists) {
+                const data = typeof snap.data === 'function' ? snap.data() : snap.data;
+                post = { id: postId, ...data };
+            }
+        }
+        if (!post) return false;
+
+        const currentLikes = Array.isArray(post.likes) ? [...post.likes] : [];
+        const liked = currentLikes.includes(currentUser.uid);
+        const updatedLikes = liked
+            ? currentLikes.filter(uid => uid !== currentUser.uid)
+            : [...currentLikes, currentUser.uid];
+        post.likes = updatedLikes;
+        await updateDoc(doc(db, 'posts', postId), { likes: updatedLikes });
+
+        // Notificar o dono do post quando recebe uma curtida (apenas na primeira curtida)
+        if (!liked && post.authorUid && post.authorUid !== currentUser.uid) {
+            sendActivityNotification(post.authorUid, 'like_post', {
+                postId,
+                senderName: currentProfile?.name || currentUser.displayName || 'Alguém',
+                senderAvatar: currentProfile?.avatar || ''
+            });
+        }
+        return true;
+    } catch (err) {
+        console.error('Erro ao curtir postagem:', err);
+        showToast('Erro', 'Não foi possível registrar a curtida.', 'red');
+        return false;
+    }
+}
+
+export async function toggleLikePostComment(postId, commentIdOrIdx, options = {}) {
     if (!currentUser) {
         showToast('Login necessário', 'Entre para curtir o comentário.', 'red');
         return false;
@@ -33623,6 +33684,19 @@ export async function toggleLikePostComment(postId, commentIdOrIdx) {
     if (isUserRestricted(currentProfile)) {
         showRestrictionActionNotice();
         return false;
+    }
+
+    if (typeof handleLikeAttemptByAI === 'function') {
+        const aiLikeCheck = await handleLikeAttemptByAI({
+            uid: currentUser.uid,
+            postId: `${postId}_${commentIdOrIdx}`,
+            account: currentProfile,
+            now: options.now || Date.now(),
+            targetType: 'comment_like'
+        });
+        if (!aiLikeCheck.allowed) {
+            return false;
+        }
     }
 
     try {
@@ -35274,34 +35348,14 @@ function renderPostsFeed(posts = []) {
 
     if (window.lucide) lucide.createIcons();
     if (typeof syncCommentInputLockUI === 'function') syncCommentInputLockUI();
+    if (typeof syncLikeButtonsLockUI === 'function') syncLikeButtonsLockUI();
 
-    // Curtir postagem
+    // Curtir postagem (com proteção VORTEX AI Anti-Spam / Auto-Click 24h)
     feedList.querySelectorAll('[data-action="like"]').forEach(button => {
         button.addEventListener('click', async () => {
-            if (!currentUser) {
-                showToast('Login necessário', 'Entre para curtir.', 'red');
-                return;
-            }
-            if (isUserRestricted(currentProfile)) {
-                showRestrictionActionNotice();
-                return;
-            }
             const postId = button.dataset.postId;
-            const post = posts.find(item => item.id === postId);
-            if (!post) return;
-            const currentLikes = Array.isArray(post.likes) ? [...post.likes] : [];
-            const liked = currentLikes.includes(currentUser.uid);
-            const updatedLikes = liked
-                ? currentLikes.filter(uid => uid !== currentUser.uid)
-                : [...currentLikes, currentUser.uid];
-            await updateDoc(doc(db, 'posts', postId), { likes: updatedLikes });
-            // Notificar o dono do post quando recebe uma curtida (apenas na primeira curtida)
-            if (!liked && post.authorUid && post.authorUid !== currentUser.uid) {
-                sendActivityNotification(post.authorUid, 'like_post', {
-                    postId,
-                    senderName: currentProfile?.name || currentUser.displayName || 'Alguém',
-                    senderAvatar: currentProfile?.avatar || ''
-                });
+            if (postId) {
+                await togglePostLike(postId);
             }
         });
     });
@@ -41509,10 +41563,13 @@ export const AI_SECURITY_CONFIG = {
     commentModeration: true,
     commentBlock48hMs: 48 * 60 * 60 * 1000, // 48 horas
     commentReportDeleteThreshold: 3,
+    likeModeration: true,
+    likeBlock24hMs: 24 * 60 * 60 * 1000, // 24 horas
     smartRecommendations: true
 };
 
 export const COMMENT_BLOCK_48H_MS = 48 * 60 * 60 * 1000;
+export const LIKE_BLOCK_24H_MS = 24 * 60 * 60 * 1000;
 
 export const aiSecurityIncidents = [];
 
@@ -41525,6 +41582,8 @@ export const aiBehaviorTracker = {
     commentTimestamps: new Map(),   // uid -> { ts, postId, commentId, text }[]
     commentRestrictions: new Map(), // uid -> { permanent: boolean, blockedUntil: number, reason: string, updatedAt: number }
     commentReports: new Map(),      // commentKey -> Set<reporterUid>
+    likeTimestamps: new Map(),      // uid -> { ts, postId }[]
+    likeRestrictions: new Map(),    // uid -> { blockedUntil: number, blockedAt: number, reason: string, triggerType: string }
     cooldowns: new Map(),       // uid -> number (timestamp)
     resolvedSafeKeys: new Set() // keys marcadas como seguras pelo ADM
 };
@@ -41795,6 +41854,7 @@ if (typeof window !== 'undefined') {
     window.getActiveSharePost = () => activeSharePost;
     window.togglePinPostComment = togglePinPostComment;
     window.editPostComment = editPostComment;
+    window.togglePostLike = togglePostLike;
     window.toggleLikePostComment = toggleLikePostComment;
     window.getSortedPostComments = getSortedPostComments;
     window.isPostOwner = isPostOwner;
@@ -42526,6 +42586,7 @@ window.handleCallSwitchedToVideo = handleCallSwitchedToVideo;
     window.renderAdminAISecurityDashboard = renderAdminAISecurityDashboard;
     window.initAdminAISecurityUI = initAdminAISecurityUI;
     window.COMMENT_BLOCK_48H_MS = COMMENT_BLOCK_48H_MS;
+    window.LIKE_BLOCK_24H_MS = LIKE_BLOCK_24H_MS;
     window.canUserCommentByAI = canUserCommentByAI;
     window.applyCommentPunishmentByAI = applyCommentPunishmentByAI;
     window.unblockUserCommentsByAI = unblockUserCommentsByAI;
@@ -42534,6 +42595,12 @@ window.handleCallSwitchedToVideo = handleCallSwitchedToVideo;
     window.handleCommentSubmissionByAI = handleCommentSubmissionByAI;
     window.reportCommentByAI = reportCommentByAI;
     window.syncCommentInputLockUI = syncCommentInputLockUI;
+    window.canUserLikeByAI = canUserLikeByAI;
+    window.applyLikeBlock24hByAI = applyLikeBlock24hByAI;
+    window.unblockUserLikesByAI = unblockUserLikesByAI;
+    window.analyzeLikeClickBurstByAI = analyzeLikeClickBurstByAI;
+    window.handleLikeAttemptByAI = handleLikeAttemptByAI;
+    window.syncLikeButtonsLockUI = syncLikeButtonsLockUI;
     try {
         Object.defineProperty(window, 'maintenanceConfig', {
             get: () => maintenanceConfig,
@@ -47489,6 +47556,17 @@ export function loadAISecurityConfig() {
             }
         }
     } catch (_) {}
+    try {
+        const rawLikeRestr = localStorage.getItem('vortex_ai_like_restrictions');
+        if (rawLikeRestr) {
+            const parsedLikeRestr = JSON.parse(rawLikeRestr);
+            if (parsedLikeRestr && typeof parsedLikeRestr === 'object') {
+                Object.entries(parsedLikeRestr).forEach(([uKey, val]) => {
+                    if (val && typeof val === 'object') aiBehaviorTracker.likeRestrictions.set(uKey, val);
+                });
+            }
+        }
+    } catch (_) {}
     syncAISecurityControlsUI();
     return { ...AI_SECURITY_CONFIG };
 }
@@ -47524,6 +47602,7 @@ function syncAISecurityControlsUI() {
         ['admin-ai-toggle-fake-entities', 'antiFakeEntities'],
         ['admin-ai-toggle-strange-chats', 'strangeChatMonitor'],
         ['admin-ai-toggle-comment-guard', 'commentModeration'],
+        ['admin-ai-toggle-like-guard', 'likeModeration'],
         ['admin-ai-toggle-recommendations', 'smartRecommendations']
     ];
     for (const [id, key] of map) {
@@ -48399,6 +48478,14 @@ export async function adminHandleAIIncidentAction(incidentId, action) {
         return true;
     }
 
+    if (action === 'unblock_likes' && inc.uid) {
+        await unblockUserLikesByAI(inc.uid);
+        inc.status = 'likes_unblocked';
+        renderAdminAISecurityDashboard();
+        if (typeof showToast === 'function') showToast('Curtidas Liberadas ✅', `O usuário ${inc.targetName} foi desbloqueado para curtir posts.`, 'green');
+        return true;
+    }
+
     if (action === 'restrict' && inc.uid) {
         if (typeof adminRestrictUser === 'function') {
             await adminRestrictUser(inc.uid, `Restrição IA VORTEX Shield: ${inc.summary}`).catch(() => {});
@@ -48440,7 +48527,7 @@ export function renderAdminAISecurityDashboard() {
     syncAISecurityControlsUI();
 
     const openIncidents = aiSecurityIncidents.filter(i => i.status === 'open');
-    const threatsCount = openIncidents.filter(i => i.category === 'scam_link_spam' || i.category === 'strange_chat' || i.category === 'comment_moderation').length;
+    const threatsCount = openIncidents.filter(i => i.category === 'scam_link_spam' || i.category === 'strange_chat' || i.category === 'comment_moderation' || i.category === 'like_spam_guard').length;
     const accountsCount = openIncidents.filter(i => i.category === 'new_account_burst' || i.category === 'fake_account').length;
     const fakesCount = openIncidents.filter(i => i.category === 'fake_product' || i.category === 'fake_ad').length;
 
@@ -48496,7 +48583,8 @@ export function renderAdminAISecurityDashboard() {
                 fake_ad: 'Anúncio Falso',
                 strange_chat: 'Conversa Estranha',
                 scam_link_spam: 'Golpe / Spam / Link',
-                comment_moderation: 'Comentários IA'
+                comment_moderation: 'Comentários IA',
+                like_spam_guard: 'Curtidas IA (24h)'
             };
             listEl.innerHTML = filtered.map(inc => `
                 <div class="admin-ai-incident-card risk-${inc.riskLevel}" data-incident-id="${inc.id}">
@@ -48517,6 +48605,7 @@ export function renderAdminAISecurityDashboard() {
                         ${inc.uid ? `<button type="button" class="admin-ai-action-btn restrict" data-ai-action="restrict" data-incident-id="${inc.id}">Restringir 24h</button>` : ''}
                         ${inc.uid ? `<button type="button" class="admin-ai-action-btn ban" data-ai-action="ban" data-incident-id="${inc.id}">Banir Conta</button>` : ''}
                         ${(inc.category === 'comment_moderation' && inc.uid) ? `<button type="button" class="admin-ai-action-btn safe" data-ai-action="unblock_comments" data-incident-id="${inc.id}">Liberar Comentários</button>` : ''}
+                        ${(inc.category === 'like_spam_guard' && inc.uid) ? `<button type="button" class="admin-ai-action-btn safe" data-ai-action="unblock_likes" data-incident-id="${inc.id}">Liberar Curtidas</button>` : ''}
                         ${(inc.entityType === 'post' || inc.entityType === 'product') ? `<button type="button" class="admin-ai-action-btn ban" data-ai-action="remove_content" data-incident-id="${inc.id}">Remover Item</button>` : ''}
                         <button type="button" class="admin-ai-action-btn safe" data-ai-action="mark_safe" data-incident-id="${inc.id}">Marcar Seguro</button>
                     </div>
@@ -48595,6 +48684,7 @@ export function initAdminAISecurityUI() {
         ['admin-ai-toggle-fake-entities', 'antiFakeEntities'],
         ['admin-ai-toggle-strange-chats', 'strangeChatMonitor'],
         ['admin-ai-toggle-comment-guard', 'commentModeration'],
+        ['admin-ai-toggle-like-guard', 'likeModeration'],
         ['admin-ai-toggle-recommendations', 'smartRecommendations']
     ];
     for (const [id, key] of toggleBind) {
@@ -49266,5 +49356,275 @@ export function syncCommentInputLockUI() {
         }
     });
 }
+
+/* ==========================================================================
+   VORTEX AI LIKE SHIELD - ANTI-SPAM, BOTS E AUTO-CLICK NAS CURTIDAS (24 HORAS)
+   ========================================================================== */
+
+function persistLikeRestrictionsLocal() {
+    try {
+        const obj = {};
+        aiBehaviorTracker.likeRestrictions.forEach((v, k) => {
+            obj[k] = v;
+        });
+        localStorage.setItem('vortex_ai_like_restrictions', JSON.stringify(obj));
+    } catch (_) {}
+}
+
+/**
+ * Verifica se o usuário possui bloqueio temporário de 24 horas nas curtidas aplicado pela IA.
+ */
+export function canUserLikeByAI(uid, account = null, now = Date.now()) {
+    if (!uid) return { allowed: false, type: 'unauthenticated', reason: 'Faça login para curtir publicações.' };
+    const isStaff = typeof isUserAdmin === 'function' && isUserAdmin({ uid, email: account?.email }, account);
+    if (isStaff) return { allowed: true, type: 'admin' };
+
+    const tracked = aiBehaviorTracker.likeRestrictions.get(uid) || null;
+    const blockedUntil = Math.max(Number(account?.likeBlockedUntil) || 0, Number(tracked?.blockedUntil) || 0);
+    if (blockedUntil > now) {
+        const remainingMs = blockedUntil - now;
+        const hoursLeft = Math.max(1, Math.ceil(remainingMs / 3600000));
+        return {
+            allowed: false,
+            type: 'temporary_24h',
+            blockedUntil,
+            remainingMs,
+            hoursLeft,
+            reason: account?.likeBlockReason || tracked?.reason || `Suas curtidas foram bloqueadas temporariamente por 24 horas pela IA VORTEX Shield ✨ por cliques muito rápidos (anti-spam/bots/auto-click). Restam ~${hoursLeft}h.`
+        };
+    }
+
+    if (tracked && tracked.blockedUntil && tracked.blockedUntil <= now) {
+        aiBehaviorTracker.likeRestrictions.delete(uid);
+        persistLikeRestrictionsLocal();
+    }
+
+    return { allowed: true, type: 'ok' };
+}
+
+/**
+ * Aplica bloqueio temporário automático de 24 horas nas curtidas por detecção de spam, bot ou auto-click.
+ */
+export async function applyLikeBlock24hByAI(uid, meta = {}) {
+    if (!uid) return null;
+    const now = meta.now || Date.now();
+    const durationMs = AI_SECURITY_CONFIG.likeBlock24hMs || LIKE_BLOCK_24H_MS;
+    const blockedUntil = now + durationMs;
+    const triggerLabel = meta.isAutoClicker
+        ? 'auto-click / bot detectado'
+        : (meta.isSamePostSpam ? 'cliques repetidos muito rápidos no mesmo post' : 'rajada rápida de curtidas (spam)');
+    const reason = meta.reason || `Bloqueio temporário de 24 horas nas curtidas aplicado pela IA VORTEX Shield ✨ (${triggerLabel}).`;
+
+    const record = {
+        blockedUntil,
+        blockedAt: now,
+        reason,
+        triggerType: meta.isAutoClicker ? 'autoclick_bot' : (meta.isSamePostSpam ? 'same_post_spam' : 'rapid_burst'),
+        clickCount: Number(meta.recentCount || 0)
+    };
+
+    aiBehaviorTracker.likeRestrictions.set(uid, record);
+    persistLikeRestrictionsLocal();
+
+    if (typeof currentUser !== 'undefined' && currentUser && currentUser.uid === uid && typeof currentProfile !== 'undefined' && currentProfile) {
+        currentProfile.likeBlockedUntil = blockedUntil;
+        currentProfile.likeBlockedAt = now;
+        currentProfile.likeBlockReason = reason;
+    }
+
+    try {
+        if (typeof db !== 'undefined' && db && typeof updateDoc === 'function' && typeof doc === 'function') {
+            await updateDoc(doc(db, 'users', uid), {
+                likeBlockedUntil: blockedUntil,
+                likeBlockedAt: now,
+                likeBlockReason: reason,
+                likeBlockTrigger: record.triggerType
+            }).catch(() => {});
+        }
+    } catch (_) {}
+
+    recordAIIncident({
+        uid,
+        targetName: meta.userName || uid,
+        category: 'like_spam_guard',
+        subReason: meta.isAutoClicker ? 'like_autoclick_bot_24h' : 'like_rapid_spam_24h',
+        riskLevel: meta.isAutoClicker ? 'critical' : 'high',
+        riskScore: Math.max(82, Number(meta.riskScore) || 86),
+        signals: Array.isArray(meta.signals) && meta.signals.length ? meta.signals : ['Cliques muito rápidos nas curtidas — bloqueio 24h'],
+        summary: reason,
+        snippet: meta.postId ? `Post ID: ${meta.postId}` : '',
+        entityType: 'user',
+        entityId: uid,
+        dedupKey: `like_block_24h_${uid}`
+    });
+
+    try {
+        if (typeof notifyAdmins === 'function') {
+            notifyAdmins('🤖 IA Anti-Spam Curtidas ✨', `${reason} (Usuário: ${meta.userName || uid})`, 'warning');
+        }
+    } catch (_) {}
+
+    syncLikeButtonsLockUI();
+    return record;
+}
+
+/**
+ * Permite que o Administrador remova manualmente o bloqueio temporário de 24 horas nas curtidas.
+ */
+export async function unblockUserLikesByAI(uid) {
+    if (!uid) return false;
+    aiBehaviorTracker.likeRestrictions.delete(uid);
+    aiBehaviorTracker.likeTimestamps.delete(uid);
+    persistLikeRestrictionsLocal();
+
+    if (typeof currentUser !== 'undefined' && currentUser && currentUser.uid === uid && typeof currentProfile !== 'undefined' && currentProfile) {
+        currentProfile.likeBlockedUntil = 0;
+        currentProfile.likeBlockReason = null;
+        currentProfile.likeBlockedAt = 0;
+    }
+
+    try {
+        if (typeof db !== 'undefined' && db && typeof updateDoc === 'function' && typeof doc === 'function') {
+            await updateDoc(doc(db, 'users', uid), {
+                likeBlockedUntil: 0,
+                likeBlockReason: null,
+                likeBlockedAt: 0,
+                likeBlockTrigger: null
+            }).catch(() => {});
+        }
+    } catch (_) {}
+
+    syncLikeButtonsLockUI();
+    return true;
+}
+
+/**
+ * Analisa frequência e cadência de cliques em curtidas para detectar spam, bots e auto-click.
+ */
+export function analyzeLikeClickBurstByAI({ uid = null, postId = null, now = Date.now(), trackRate = true } = {}) {
+    if (!AI_SECURITY_CONFIG.likeModeration || !uid) {
+        return { allowed: true, shouldBlock24h: false, isAutoClicker: false, isSamePostSpam: false, isGlobalBurst: false, riskScore: 0, riskLevel: 'low', signals: [] };
+    }
+
+    const hist = (aiBehaviorTracker.likeTimestamps.get(uid) || []).filter(item => (now - item.ts) <= 30000 && (now - item.ts) >= -1000);
+    if (trackRate) {
+        hist.push({ ts: now, postId: postId || '' });
+        hist.sort((a, b) => a.ts - b.ts);
+        aiBehaviorTracker.likeTimestamps.set(uid, hist);
+    }
+
+    const isStrict = AI_SECURITY_CONFIG.strictness === 'strict';
+    const samePost10s = postId ? hist.filter(item => item.postId === postId && (now - item.ts) <= 10000) : [];
+    const samePost25s = postId ? hist.filter(item => item.postId === postId && (now - item.ts) <= 25000) : [];
+    const recent8s = hist.filter(item => (now - item.ts) <= 8000);
+    const recent20s = hist.filter(item => (now - item.ts) <= 20000);
+
+    let isAutoClicker = false;
+    if (hist.length >= 4) {
+        const last4 = hist.slice(-4);
+        const span4 = last4[3].ts - last4[0].ts;
+        const gap1 = last4[1].ts - last4[0].ts;
+        const gap2 = last4[2].ts - last4[1].ts;
+        const gap3 = last4[3].ts - last4[2].ts;
+        if (span4 <= 1200 || (gap1 <= 350 && gap2 <= 350 && gap3 <= 350)) {
+            isAutoClicker = true;
+        }
+    }
+
+    const isSamePostSpam = Boolean(postId && (samePost10s.length >= (isStrict ? 3 : 4) || samePost25s.length >= (isStrict ? 4 : 5)));
+    const isGlobalBurst = recent8s.length >= (isStrict ? 5 : 6) || recent20s.length >= (isStrict ? 8 : 10);
+
+    const signals = [];
+    if (isAutoClicker) signals.push('Alto click / comportamento de bot detectado (<350ms entre cliques)');
+    if (isSamePostSpam) signals.push(`Cliques repetidos muito rápidos no mesmo post (${Math.max(samePost10s.length, samePost25s.length)}x)`);
+    if (isGlobalBurst) signals.push(`Rajada excessiva de curtidas (${recent8s.length} cliques em 8s / ${recent20s.length} em 20s)`);
+
+    const shouldBlock24h = Boolean(isAutoClicker || isSamePostSpam || isGlobalBurst);
+    const riskScore = shouldBlock24h
+        ? Math.min(100, (isAutoClicker ? 96 : 0) + (isSamePostSpam ? 88 : 0) + (isGlobalBurst ? 84 : 0))
+        : 0;
+
+    return {
+        allowed: !shouldBlock24h,
+        shouldBlock24h,
+        isAutoClicker,
+        isSamePostSpam,
+        isGlobalBurst,
+        recentCount: recent8s.length,
+        samePostCount: samePost10s.length,
+        riskScore,
+        riskLevel: riskLevelFromScore(riskScore),
+        signals: [...new Set(signals)]
+    };
+}
+
+/**
+ * Intercepta tentativa de curtir um post (ou comentário), aplicando bloqueio temporário de 24h se clicar muito rápido.
+ */
+export async function handleLikeAttemptByAI({ uid, postId = null, account = null, now = Date.now(), targetType = 'post' } = {}) {
+    const perm = canUserLikeByAI(uid, account, now);
+    if (!perm.allowed) {
+        if (typeof showToast === 'function') {
+            showToast('Curtidas Bloqueadas (24h) 🛡️', perm.reason, 'red');
+        }
+        syncLikeButtonsLockUI();
+        return {
+            allowed: false,
+            blockedType: perm.type,
+            blockedUntil: perm.blockedUntil,
+            reason: perm.reason
+        };
+    }
+
+    const burstCheck = analyzeLikeClickBurstByAI({ uid, postId, now, trackRate: true });
+    if (!burstCheck.shouldBlock24h) {
+        return { allowed: true, analysis: burstCheck };
+    }
+
+    const record = await applyLikeBlock24hByAI(uid, {
+        ...burstCheck,
+        postId,
+        targetType,
+        userName: account?.name || account?.displayName || uid,
+        now
+    });
+
+    if (typeof showToast === 'function') {
+        showToast('Curtidas Bloqueadas por 24h 🤖🛡️', 'Você clicou muito rápido! Bloqueio temporário de 24 horas aplicado nas curtidas para evitar spam, bots ou alto click.', 'red');
+    }
+
+    return {
+        allowed: false,
+        newlyBlocked: true,
+        punishment: 'block_24h',
+        blockedUntil: record?.blockedUntil || (now + LIKE_BLOCK_24H_MS),
+        analysis: burstCheck,
+        reason: record?.reason
+    };
+}
+
+/**
+ * Atualiza visualmente os botões de curtida dos posts caso o usuário esteja sob bloqueio temporário de 24h.
+ */
+export function syncLikeButtonsLockUI() {
+    if (typeof document === 'undefined') return;
+    const uid = (typeof currentUser !== 'undefined' && currentUser) ? currentUser.uid : null;
+    if (!uid) return;
+    const perm = canUserLikeByAI(uid, (typeof currentProfile !== 'undefined' ? currentProfile : null));
+    document.querySelectorAll('[data-action="like"], [data-action="like-comment"]').forEach(btn => {
+        if (!perm.allowed) {
+            btn.classList.add('like-blocked-ai');
+            btn.setAttribute('aria-disabled', 'true');
+            btn.setAttribute('title', `🚫 Curtidas bloqueadas por 24h pela IA (restam ~${perm.hoursLeft || 24}h)`);
+        } else {
+            btn.classList.remove('like-blocked-ai');
+            btn.removeAttribute('aria-disabled');
+            if ((btn.getAttribute('title') || '').includes('bloqueadas por 24h')) {
+                btn.setAttribute('title', 'Curtir');
+            }
+        }
+    });
+}
+
 
 
