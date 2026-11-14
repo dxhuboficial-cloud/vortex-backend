@@ -1,6 +1,6 @@
 {
-  "version": "1.0.297",
-  "build": 297,
+  "version": "1.0.298",
+  "build": 298,
   "releaseDate": "2026-11-14",
-  "notes": "Botão de comentários nos posts do canal, visualizador de quem viu o post com resolução de perfis e pilha z-index corrigida v1.0.297"
+  "notes": "Ajuste no tamanho uniforme dos botões de curtida e comentário no visualizador do canal e do ícone de visualizações na grade v1.0.298"
 }

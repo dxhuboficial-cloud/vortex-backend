@@ -32853,9 +32853,11 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
 .channel-pill-btn:active {
     transform: scale(0.98);
 }
-.channel-pill-btn i {
-    width: 16px;
-    height: 16px;
+.channel-pill-btn i,
+.channel-pill-btn svg {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
 }
 .channel-subscribe-btn {
     background: #ffffff;
@@ -33015,9 +33017,11 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
     justify-content: center;
     z-index: 2;
 }
-.channel-ig-tile-top-badge i {
+.channel-ig-tile-top-badge i,
+.channel-ig-tile-top-badge svg {
     width: 14px;
     height: 14px;
+    flex-shrink: 0;
 }
 .channel-ig-tile-bottom-overlay {
     position: absolute;
@@ -33039,10 +33043,14 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
     display: inline-flex;
     align-items: center;
     gap: 3px;
+    line-height: 1;
 }
-.channel-ig-tile-views i {
+.channel-ig-tile-views i,
+.channel-ig-tile-views svg {
     width: 12px;
     height: 12px;
+    flex-shrink: 0;
+    display: block;
 }
 .channel-ig-tile-duration {
     font-size: 0.66rem;
@@ -33834,11 +33842,14 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
     display: inline-flex;
     align-items: center;
     gap: 3px;
+    line-height: 1;
 }
 .channel-ig-tile-comments i,
 .channel-ig-tile-comments svg {
     width: 12px;
     height: 12px;
+    flex-shrink: 0;
+    display: block;
 }
 .post-viewer-item[data-viewer-uid] {
     cursor: pointer;
@@ -33849,5 +33860,41 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
     color: var(--text-dim, #9ca3af);
     padding: 6px 10px 2px;
 }
+
+/* ==========================================================================
+   v1.0.298: Tamanho Uniforme dos Botões de Curtida/Comentário e Ícones
+   ========================================================================== */
+.channel-viewer-actions .channel-pill-btn {
+    flex: 0 0 auto;
+    height: 36px;
+    min-height: 36px;
+    padding: 0 14px;
+    border: 1px solid transparent;
+    box-sizing: border-box;
+    font-size: 0.84rem;
+    line-height: 1;
+    gap: 6px;
+}
+.channel-viewer-actions .channel-pill-btn i,
+.channel-viewer-actions .channel-pill-btn svg {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+    display: block;
+}
+.channel-viewer-actions #channel-viewer-like-btn,
+.channel-viewer-actions #channel-viewer-comment-btn {
+    min-width: 58px;
+    padding: 0 13px;
+}
+.channel-viewer-actions #channel-viewer-follow-btn {
+    height: 36px;
+    min-height: 36px;
+    padding: 0 12px;
+    box-sizing: border-box;
+    font-size: 0.78rem;
+    line-height: 1;
+}
+
 
 
