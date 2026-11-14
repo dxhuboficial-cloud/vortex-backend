@@ -1895,7 +1895,9 @@ onAuthStateChanged(auth, async (user) => {
                 isVip: isAdmin,
                 online: true,
                 lastSeen: createdNow,
-                pinnedChats: []
+                pinnedChats: [],
+                following: [],
+                followers: []
             };
             await setDoc(userDocRef, currentProfile);
         } else {
@@ -1943,6 +1945,7 @@ onAuthStateChanged(auth, async (user) => {
                 if (typeof checkUserPendingWithdrawalFromProfile === 'function') checkUserPendingWithdrawalFromProfile();
                 if (typeof applyMaintenanceMode === 'function') applyMaintenanceMode();
                 if (typeof syncProfilePhotoRequirementLifecycle === 'function') syncProfilePhotoRequirementLifecycle(currentProfile);
+                if (typeof syncFollowButtonsInDOM === 'function') syncFollowButtonsInDOM();
                 if (typeof syncProfileAvatarModerationUI === 'function') syncProfileAvatarModerationUI(currentProfile);
             }
         });
@@ -23333,7 +23336,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.292';
+export const CURRENT_APP_VERSION = '1.0.293';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -33981,7 +33984,11 @@ window.isPostOwner = isPostOwner;
 window.isCommentAuthor = isCommentAuthor;
 window.setCurrentUser = (u) => { currentUser = u; };
 window.getCurrentUser = () => currentUser;
-window.setCurrentProfile = (p) => { currentProfile = p; if (typeof updateProfileDOM === 'function') updateProfileDOM(); };
+window.setCurrentProfile = (p) => {
+    currentProfile = p;
+    if (typeof updateProfileDOM === 'function') updateProfileDOM();
+    if (typeof syncFollowButtonsInDOM === 'function') syncFollowButtonsInDOM();
+};
 window.getCurrentProfile = () => currentProfile;
 window.renderPostsFeed = renderPostsFeed;
 
@@ -35067,6 +35074,188 @@ function resolvePostChunkedMedia(container, postsList) {
     });
 }
 
+const pendingFollowToggleUids = new Set();
+
+export function isFollowingUser(targetUid) {
+    if (!targetUid || !currentProfile) return false;
+    const followingList = Array.isArray(currentProfile.following) ? currentProfile.following : [];
+    return followingList.includes(targetUid);
+}
+
+export function getUserFollowersCount(userData = {}) {
+    return Array.isArray(userData?.followers) ? userData.followers.length : 0;
+}
+
+export function getUserFollowingCount(userData = {}) {
+    return Array.isArray(userData?.following) ? userData.following.length : 0;
+}
+
+async function persistUserArrayMembership(uid, fieldName, memberUid, shouldAdd, extraFields = {}) {
+    if (!uid || !memberUid || typeof doc !== 'function' || typeof db === 'undefined') return;
+    const userRef = doc(db, 'users', uid);
+    const op = shouldAdd ? arrayUnion(memberUid) : arrayRemove(memberUid);
+    try {
+        await updateDoc(userRef, { [fieldName]: op, ...extraFields });
+    } catch (_) {
+        try {
+            const snap = typeof getDoc === 'function' ? await getDoc(userRef) : null;
+            const prevArr = Array.isArray(snap?.data?.()?.[fieldName]) ? snap.data()[fieldName] : [];
+            const nextArr = shouldAdd
+                ? [...new Set([...prevArr, memberUid])]
+                : prevArr.filter(id => id !== memberUid);
+            await setDoc(userRef, { [fieldName]: nextArr, ...extraFields }, { merge: true });
+        } catch (__) {}
+    }
+}
+
+export function syncFollowButtonsInDOM(targetUid = null) {
+    if (typeof document === 'undefined') return;
+    const currentUid = currentUser?.uid || '';
+    const buttons = new Set();
+    if (typeof document.querySelectorAll === 'function') {
+        document.querySelectorAll('[data-action="follow-author"]').forEach(btn => buttons.add(btn));
+        document.querySelectorAll('.post-follow-btn').forEach(btn => buttons.add(btn));
+    }
+    const viewerFollowBtn = document.getElementById('channel-viewer-follow-btn');
+    if (viewerFollowBtn) buttons.add(viewerFollowBtn);
+
+    let updatedAny = false;
+    buttons.forEach(btn => {
+        const uid = btn.dataset?.authorUid || '';
+        if (targetUid && uid && uid !== targetUid) return;
+        const authorName = btn.dataset?.authorName || 'Usuário';
+        if (!uid || (currentUid && uid === currentUid)) {
+            btn.style.display = 'none';
+            btn.classList?.remove('following');
+            btn.setAttribute?.('aria-pressed', 'false');
+            return;
+        }
+        const following = isFollowingUser(uid);
+        btn.style.display = 'inline-flex';
+        btn.classList?.toggle('following', following);
+        btn.setAttribute?.('aria-pressed', following ? 'true' : 'false');
+        btn.title = `${following ? 'Deixar de seguir' : 'Seguir'} ${authorName}`;
+        btn.innerHTML = `<i data-lucide="${following ? 'user-check' : 'user-plus'}"></i> <span>${following ? 'Seguindo' : 'Seguir'}</span>`;
+        updatedAny = true;
+    });
+
+    if (updatedAny && window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+    }
+}
+
+function renderPostFollowButtonHTML(post) {
+    const authorUid = post?.authorUid || '';
+    const currentUid = currentUser?.uid || '';
+    if (!authorUid || (currentUid && authorUid === currentUid)) return '';
+    const authorName = post?.authorName || 'Usuário';
+    const following = isFollowingUser(authorUid);
+    return `
+        <button class="post-follow-btn ${following ? 'following' : ''}" type="button" data-action="follow-author" data-author-uid="${escapeHTML(authorUid)}" data-author-name="${escapeHTML(authorName)}" data-post-id="${escapeHTML(post.id || '')}" aria-pressed="${following ? 'true' : 'false'}" title="${following ? 'Deixar de seguir' : 'Seguir'} ${escapeHTML(authorName)}">
+            <i data-lucide="${following ? 'user-check' : 'user-plus'}"></i>
+            <span>${following ? 'Seguindo' : 'Seguir'}</span>
+        </button>
+    `;
+}
+
+function renderPostHeaderRightActionsHTML(post, canDeletePost, { compact = false } = {}) {
+    const followBtnHtml = renderPostFollowButtonHTML(post);
+    const secondaryBtnHtml = canDeletePost
+        ? `
+            <button class="post-delete-btn" type="button" data-action="delete-post" data-post-id="${post.id}" title="${compact ? 'Excluir publicação' : 'Excluir post'}">
+                <i data-lucide="trash-2"></i> <span>${compact ? 'Excluir' : 'Excluir post'}</span>
+            </button>
+        `
+        : `
+            <button class="post-report-btn" type="button" data-action="report-post" data-post-id="${post.id}" title="${compact ? 'Denunciar publicação' : 'Denunciar post'}">
+                <i data-lucide="flag"></i> <span>Denunciar</span>
+            </button>
+        `;
+    return `<div class="feed-header-actions">${followBtnHtml}${secondaryBtnHtml}</div>`;
+}
+
+export async function toggleFollowUser(targetUid, meta = {}) {
+    if (!currentUser?.uid) {
+        if (typeof showToast === 'function') {
+            showToast('Login necessário', 'Entre na sua conta para seguir outros usuários.', 'yellow');
+        }
+        return { success: false, reason: 'unauthenticated' };
+    }
+    if (!targetUid || targetUid === currentUser.uid) {
+        if (typeof showToast === 'function') {
+            showToast('Ação inválida', 'Você não pode seguir a si mesmo.', 'yellow');
+        }
+        return { success: false, reason: 'self_follow' };
+    }
+    if (pendingFollowToggleUids.has(targetUid)) {
+        return { success: false, reason: 'in_flight' };
+    }
+
+    pendingFollowToggleUids.add(targetUid);
+    try {
+        if (!currentProfile) currentProfile = {};
+        const prevFollowing = Array.isArray(currentProfile.following) ? [...currentProfile.following] : [];
+        const wasFollowing = prevFollowing.includes(targetUid);
+        const nowFollowing = !wasFollowing;
+
+        currentProfile.following = nowFollowing
+            ? [...new Set([...prevFollowing, targetUid])]
+            : prevFollowing.filter(id => id !== targetUid);
+
+        const updateLocalFollowersCache = (obj) => {
+            if (!obj || typeof obj !== 'object') return;
+            const prevFollowers = Array.isArray(obj.followers) ? obj.followers : [];
+            obj.followers = nowFollowing
+                ? [...new Set([...prevFollowers, currentUser.uid])]
+                : prevFollowers.filter(id => id !== currentUser.uid);
+        };
+
+        if (typeof contactUserDataMap !== 'undefined' && contactUserDataMap?.has(targetUid)) {
+            const cachedTarget = { ...contactUserDataMap.get(targetUid) };
+            updateLocalFollowersCache(cachedTarget);
+            contactUserDataMap.set(targetUid, cachedTarget);
+        }
+        if (activeChannelUid === targetUid && activeChannelUserData) {
+            updateLocalFollowersCache(activeChannelUserData);
+        }
+
+        syncFollowButtonsInDOM(targetUid);
+
+        await Promise.all([
+            persistUserArrayMembership(currentUser.uid, 'following', targetUid, nowFollowing, { updatedAt: Date.now() }),
+            persistUserArrayMembership(targetUid, 'followers', currentUser.uid, nowFollowing)
+        ]);
+
+        if (nowFollowing && typeof addDoc === 'function' && typeof collection === 'function' && typeof db !== 'undefined') {
+            const followerName = [currentProfile.name, currentProfile.surname].filter(Boolean).join(' ').trim() || 'Usuário';
+            addDoc(collection(db, 'notifications'), {
+                toUid: targetUid,
+                fromUid: currentUser.uid,
+                fromName: followerName,
+                type: 'new_follower',
+                title: 'Novo seguidor!',
+                message: `${followerName} começou a seguir você.`,
+                postId: meta.postId || '',
+                read: false,
+                createdAt: Date.now()
+            }).catch(() => {});
+        }
+
+        const displayTarget = meta.authorName || contactUserDataMap?.get(targetUid)?.name || 'este usuário';
+        if (typeof showToast === 'function') {
+            showToast(
+                nowFollowing ? 'Seguindo! ✓' : 'Deixou de seguir',
+                nowFollowing ? `Agora você está seguindo ${displayTarget}.` : `Você deixou de seguir ${displayTarget}.`,
+                nowFollowing ? 'green' : 'blue'
+            );
+        }
+
+        return { success: true, following: nowFollowing, targetUid };
+    } finally {
+        pendingFollowToggleUids.delete(targetUid);
+    }
+}
+
 function renderPostsFeed(posts = []) {
     cachedFeedPosts = posts;
     const feedList = document.getElementById('feed-list');
@@ -35167,15 +35356,7 @@ function renderPostsFeed(posts = []) {
                                     </div>
                                 </div>
                             </div>
-                            ${canDeletePost ? `
-                                <button class="post-delete-btn" type="button" data-action="delete-post" data-post-id="${post.id}" title="Excluir publicação">
-                                    <i data-lucide="trash-2"></i> <span>Excluir</span>
-                                </button>
-                            ` : `
-                                <button class="post-report-btn" type="button" data-action="report-post" data-post-id="${post.id}" title="Denunciar publicação">
-                                    <i data-lucide="flag"></i> <span>Denunciar</span>
-                                </button>
-                            `}
+                            ${renderPostHeaderRightActionsHTML(post, canDeletePost, { compact: true })}
                         </div>
                         ${scheduledBannerHTML}
                         <div class="post-media">
@@ -35399,15 +35580,7 @@ function renderPostsFeed(posts = []) {
                             </div>
                         </div>
                     </div>
-                    ${canDeletePost ? `
-                        <button class="post-delete-btn" type="button" data-action="delete-post" data-post-id="${post.id}" title="Excluir post">
-                            <i data-lucide="trash-2"></i> <span>Excluir post</span>
-                        </button>
-                    ` : `
-                        <button class="post-report-btn" type="button" data-action="report-post" data-post-id="${post.id}" title="Denunciar post">
-                            <i data-lucide="flag"></i> <span>Denunciar</span>
-                        </button>
-                    `}
+                    ${renderPostHeaderRightActionsHTML(post, canDeletePost, { compact: false })}
                 </div>
                 ${scheduledBannerHTML}
                 <div class="feed-media">
@@ -35908,6 +36081,20 @@ function renderPostsFeed(posts = []) {
             if (post) {
                 openPostViewsModal(post);
             }
+        });
+    });
+
+    // Seguir / Deixar de seguir autor diretamente nos posts (Feed e Publicações Recentes)
+    document.querySelectorAll('.feed-card [data-action="follow-author"], .post-card [data-action="follow-author"]').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const authorUid = btn.dataset.authorUid;
+            if (!authorUid) return;
+            await toggleFollowUser(authorUid, {
+                authorName: btn.dataset.authorName || '',
+                postId: btn.dataset.postId || ''
+            });
         });
     });
 
@@ -52494,6 +52681,14 @@ export function openChannelGridMediaViewer(postId) {
     if (statsEl) statsEl.innerText = `${viewsCount} visualizações`;
     if (likeCountEl) likeCountEl.innerText = String(Array.isArray(post.likes) ? post.likes.length : 0);
 
+    const viewerFollowBtn = document.getElementById('channel-viewer-follow-btn');
+    if (viewerFollowBtn) {
+        viewerFollowBtn.dataset.authorUid = post.authorUid || '';
+        viewerFollowBtn.dataset.authorName = post.authorName || 'Usuário';
+        viewerFollowBtn.dataset.postId = post.id || '';
+        syncFollowButtonsInDOM(post.authorUid || '');
+    }
+
     modal.style.display = 'flex';
     modal.setAttribute('aria-hidden', 'false');
     if (window.lucide) lucide.createIcons();
@@ -52614,6 +52809,15 @@ function bindChannelScreenListeners() {
         const likeCountEl = document.getElementById('channel-viewer-like-count');
         if (likeCountEl && post) likeCountEl.innerText = String(Array.isArray(post.likes) ? post.likes.length : 0);
     });
+    document.getElementById('channel-viewer-follow-btn')?.addEventListener('click', async () => {
+        const btn = document.getElementById('channel-viewer-follow-btn');
+        const authorUid = btn?.dataset?.authorUid;
+        if (!authorUid) return;
+        await toggleFollowUser(authorUid, {
+            authorName: btn.dataset.authorName || '',
+            postId: btn.dataset.postId || ''
+        });
+    });
     document.getElementById('channel-viewer-open-feed-btn')?.addEventListener('click', () => {
         const postId = activeChannelViewerPostId;
         closeChannelSubModal('channel-media-viewer-modal');
@@ -52662,6 +52866,11 @@ if (typeof window !== 'undefined') {
     window.openChannelManageModal = openChannelManageModal;
     window.openChannelGridMediaViewer = openChannelGridMediaViewer;
     window.syncChannelProfileAvatarAndMeta = syncChannelProfileAvatarAndMeta;
+    window.isFollowingUser = isFollowingUser;
+    window.getUserFollowersCount = getUserFollowersCount;
+    window.getUserFollowingCount = getUserFollowingCount;
+    window.syncFollowButtonsInDOM = syncFollowButtonsInDOM;
+    window.toggleFollowUser = toggleFollowUser;
 }
 
 

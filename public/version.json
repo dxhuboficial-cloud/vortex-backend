@@ -1,6 +1,6 @@
 {
-  "version": "1.0.292",
-  "build": 292,
+  "version": "1.0.293",
+  "build": 293,
   "releaseDate": "2026-11-14",
-  "notes": "Nova Tela de Canal estilo YouTube com opção de adicionar banner, foto carregada automaticamente do perfil, abas e grade estilo Instagram para vídeos e Reels v1.0.292"
+  "notes": "Novo botão de Seguir / Seguindo nos posts para usuários seguirem outros criadores com sincronização em tempo real v1.0.293"
 }
