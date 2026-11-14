@@ -5598,6 +5598,9 @@ function updateProfileDOM() {
         }
     }
     checkVipSubscriptionLifecycle();
+    if (typeof syncOpenChannelProfileIfMatches === 'function') {
+        syncOpenChannelProfileIfMatches(currentUser?.uid);
+    }
 }
 
 function detachListeners() {
@@ -11275,6 +11278,17 @@ export function initCatalog() {
                 sellerUid: sellerUid,
                 sellerData: sellerData
             });
+        }
+    });
+
+    // Botão Ver Canal no Perfil de Contatos
+    document.getElementById('contact-profile-channel-btn')?.addEventListener('click', () => {
+        playSound(clickSound);
+        if (activeContactProfileUid || activeContactProfileData) {
+            const targetUid = activeContactProfileUid || activeContactProfileData?.uid || activeContactProfileData?.id;
+            const targetData = activeContactProfileData ? { ...activeContactProfileData } : null;
+            closeContactProfile();
+            openUserChannelScreen(targetUid, targetData);
         }
     });
 
@@ -23319,7 +23333,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.291';
+export const CURRENT_APP_VERSION = '1.0.292';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -33444,6 +33458,8 @@ function resetPostComposer() {
     if (bizCatHint) bizCatHint.style.display = 'none';
     const postTypeSelect = document.getElementById('post-content-type-select');
     if (postTypeSelect) postTypeSelect.value = 'normal';
+    const postChannelFormatSelect = document.getElementById('post-channel-format-select');
+    if (postChannelFormatSelect) postChannelFormatSelect.value = 'auto';
     const postTypeHint = document.getElementById('post-content-type-hint');
     if (postTypeHint) postTypeHint.style.display = 'none';
     if (typeof updateCompanyLinkSectionVisibility === 'function') {
@@ -34964,7 +34980,7 @@ export function updateAuthorAvatarsInDOM(authorUid, avatarUrl) {
         });
     }
     if (typeof document !== 'undefined') {
-        const avatars = document.querySelectorAll(`.feed-avatar[data-author-uid="${authorUid}"], .post-author-avatar[data-author-uid="${authorUid}"], .story-item .avatar[data-author-uid="${authorUid}"]`);
+        const avatars = document.querySelectorAll(`.feed-avatar[data-author-uid="${authorUid}"], .post-author-avatar[data-author-uid="${authorUid}"], .story-item .avatar[data-author-uid="${authorUid}"], .channel-avatar[data-author-uid="${authorUid}"], .channel-customize-avatar-preview[data-author-uid="${authorUid}"]`);
         avatars.forEach(el => {
             el.style.backgroundImage = `url('${avatarUrl}')`;
         });
@@ -35370,7 +35386,7 @@ function renderPostsFeed(posts = []) {
         return `
             <article class="feed-card" id="post-card-${post.id}" data-post-id="${post.id}">
                 <div class="feed-header">
-                    <div class="feed-author">
+                    <div class="feed-author" data-author-uid="${post.authorUid || ''}" role="button" tabindex="0" title="Ver canal de ${escapeHTML(authorName)}" style="cursor:pointer;">
                         <div class="feed-avatar" data-author-uid="${post.authorUid || ''}" ${avatar}></div>
                         <div>
                             <div class="feed-username">
@@ -35561,6 +35577,23 @@ function renderPostsFeed(posts = []) {
     if (window.lucide) lucide.createIcons();
     if (typeof syncCommentInputLockUI === 'function') syncCommentInputLockUI();
     if (typeof syncLikeButtonsLockUI === 'function') syncLikeButtonsLockUI();
+
+    // Abrir canal do autor ao clicar no autor do post no Feed
+    feedList.querySelectorAll('.feed-author[data-author-uid]').forEach(authorEl => {
+        authorEl.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const authorUid = authorEl.dataset.authorUid;
+            if (!authorUid) return;
+            const authorPost = (Array.isArray(posts) ? posts : []).find(p => p && p.authorUid === authorUid) || null;
+            openUserChannelScreen(authorUid, authorPost ? {
+                uid: authorUid,
+                name: authorPost.authorName,
+                avatar: authorPost.authorAvatar,
+                username: authorPost.authorUsername,
+                email: authorPost.authorEmail
+            } : null);
+        });
+    });
 
     // Curtir postagem (com proteção VORTEX AI Anti-Spam / Auto-Click 24h)
     feedList.querySelectorAll('[data-action="like"]').forEach(button => {
@@ -36485,6 +36518,9 @@ function listenToPosts() {
     postsFeedUnsubscribe = onSnapshot(collection(db, 'posts'), (snapshot) => {
         const posts = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
         renderPostsFeed(posts);
+        if (typeof syncChannelProfileAvatarAndMeta === 'function') {
+            syncChannelProfileAvatarAndMeta();
+        }
     }, (error) => {
         console.error('Erro ao ouvir posts:', error);
     });
@@ -36797,6 +36833,10 @@ document.getElementById('publish-post-btn')?.addEventListener('click', async () 
                 title: document.getElementById('post-title-input')?.value?.trim() || '',
                 caption: (postCaptionInput?.value || '').slice(0, MAX_POST_CAPTION_LENGTH).trim(),
                 hashtags: hashtagValidation.hashtags.slice(0, MAX_POST_HASHTAGS),
+                channelFormat: (() => {
+                    const fmt = document.getElementById('post-channel-format-select')?.value || 'auto';
+                    return (fmt === 'auto') ? (isVideo ? ((pendingPostMediaInfo?.duration || (file && file.duration) || 0) > 60 ? 'video' : 'short') : null) : fmt;
+                })(),
                 isAd: isPostAd,
                 contentType: isPostAd ? 'ad' : 'normal',
                 businessCategory: isTemporaryCategory ? selectedCategory : null,
@@ -36935,9 +36975,10 @@ document.getElementById('publish-post-btn')?.addEventListener('click', async () 
 const feedNavItem = document.getElementById('feed-btn');
 const galleryNavItem = document.getElementById('gallery-btn');
 const newPostNavItem = document.getElementById('new-post-nav-btn');
+const channelNavItem = document.getElementById('channel-nav-btn');
 
 function setBottomNavActive(itemId) {
-    [feedNavItem, galleryNavItem, newPostNavItem].forEach((item) => item?.classList.toggle('active', item && item.id === itemId));
+    [feedNavItem, galleryNavItem, newPostNavItem, channelNavItem].forEach((item) => item?.classList.toggle('active', item && item.id === itemId));
 }
 
 export function openBusinessCatalogModal(options = {}) {
@@ -38782,6 +38823,9 @@ export async function updateProfileAvatar(avatarDataUrl, options = {}) {
 
     if (currentUser && currentUser.uid) {
         updateAuthorAvatarsInDOM(currentUser.uid, avatarDataUrl);
+        if (typeof syncOpenChannelProfileIfMatches === 'function') {
+            syncOpenChannelProfileIfMatches(currentUser.uid);
+        }
         try {
             const updatePayload = {
                 avatar: avatarDataUrl,
@@ -51645,6 +51689,981 @@ if (typeof window !== 'undefined') {
         syncAuthReactivateEntryButtonUI(null);
     }
 }
+
+/* ==========================================================================
+   TELA DE CANAL (HEADER ESTILO YOUTUBE + GRID INSTAGRAM) v1.0.292
+   ========================================================================== */
+
+let activeChannelUid = null;
+let activeChannelUserData = null;
+let activeChannelTab = 'inicio';
+let activeChannelPlaylistFilter = 'all';
+let activeChannelUnsubscribe = null;
+let activeChannelViewerPostId = null;
+
+function normalizeChannelExternalUrl(rawUrl) {
+    const trimmed = String(rawUrl || '').trim();
+    if (!trimmed) return null;
+    if (/^(javascript|data|vbscript|file):/i.test(trimmed)) return null;
+    const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+    if (typeof URL === 'function') {
+        try {
+            const parsed = new URL(withProtocol);
+            if (!['http:', 'https:'].includes(parsed.protocol) || !parsed.host) return null;
+            return {
+                href: parsed.href,
+                display: parsed.host.replace(/^www\./i, '') + (parsed.pathname && parsed.pathname !== '/' ? parsed.pathname.replace(/\/$/, '') : '')
+            };
+        } catch (_) {
+            return null;
+        }
+    }
+    const match = withProtocol.match(/^(https?:)\/\/([^\s/?#]+)([^\s?#]*)([?#].*)?$/i);
+    if (!match) return null;
+    const host = match[2];
+    const pathname = match[3] || '';
+    if (!host || !host.includes('.')) return null;
+    return {
+        href: withProtocol,
+        display: host.replace(/^www\./i, '') + (pathname && pathname !== '/' ? pathname.replace(/\/$/, '') : '')
+    };
+}
+
+function formatChannelDuration(seconds) {
+    const total = Math.max(0, Math.floor(Number(seconds) || 0));
+    if (!total) return '';
+    const m = Math.floor(total / 60);
+    const s = total % 60;
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
+}
+
+export function resolveChannelAutoAvatar(uid, userData = null) {
+    if (uid && currentUser?.uid && uid === currentUser.uid && currentProfile?.avatar) {
+        return currentProfile.avatar;
+    }
+    const live = typeof getLiveAuthorAvatar === 'function' ? getLiveAuthorAvatar(uid, userData?.avatar || '') : '';
+    return live || userData?.avatar || '';
+}
+
+export function classifyChannelPostFormat(post = {}) {
+    const fmt = String(post.channelFormat || '').toLowerCase();
+    if (fmt === 'podcast') return 'podcasts';
+    if (fmt === 'short') return 'shorts';
+    if (fmt === 'video') return 'videos';
+    const textBlob = `${post.title || ''} ${post.caption || ''} ${post.personalCategory || ''}`.toLowerCase();
+    if (/\bpodcast\b/.test(textBlob)) return 'podcasts';
+    if (post.type === 'video') {
+        return Number(post.videoDuration) > 60 ? 'videos' : 'shorts';
+    }
+    return 'other';
+}
+
+export function collectChannelLinks(userData = {}) {
+    const rawCandidates = [
+        { label: 'Site do Canal', raw: userData.channelLink || '' },
+        { label: userData.website1Title || 'Site', raw: userData.website1 || userData.socialLinks?.website1 || '' },
+        { label: userData.website2Title || 'Site 2', raw: userData.website2 || userData.socialLinks?.website2 || '' },
+        { label: userData.website3Title || 'Site 3', raw: userData.website3 || userData.socialLinks?.website3 || '' },
+        { label: 'YouTube', raw: userData.youtube || userData.socialLinks?.youtube || '', prefix: 'https://youtube.com/' },
+        { label: 'Instagram', raw: userData.instagram || userData.socialLinks?.instagram || '', prefix: 'https://instagram.com/' },
+        { label: 'TikTok', raw: userData.tiktok || userData.socialLinks?.tiktok || '', prefix: 'https://tiktok.com/' },
+        { label: 'Facebook', raw: userData.facebook || userData.socialLinks?.facebook || '', prefix: 'https://facebook.com/' }
+    ];
+    const seenHrefs = new Set();
+    const out = [];
+    rawCandidates.forEach(item => {
+        let candidate = String(item.raw || '').trim();
+        if (!candidate) return;
+        if (item.prefix && !/^https?:\/\//i.test(candidate) && !candidate.includes('.')) {
+            candidate = item.prefix + candidate.replace(/^@/, '');
+        }
+        const parsed = normalizeChannelExternalUrl(candidate);
+        if (!parsed || seenHrefs.has(parsed.href)) return;
+        seenHrefs.add(parsed.href);
+        out.push({ label: item.label, href: parsed.href, display: parsed.display });
+    });
+    return out;
+}
+
+export function getChannelMediaPostsForUser(uid, tab = 'inicio', playlistFilter = 'all', postsSource = cachedFeedPosts) {
+    const now = Date.now();
+    const source = Array.isArray(postsSource) ? postsSource : [];
+    const userPosts = source
+        .filter(p => {
+            if (!p || p.authorUid !== uid) return false;
+            if (p.isDeleted || p.deleted) return false;
+            if (p.published === false) return false;
+            if ((p.scheduled || p.isScheduled) && p.scheduledFor && p.scheduledFor > now) return false;
+            if (p.isTemporary && p.expiresAt && p.expiresAt <= now) return false;
+            return true;
+        })
+        .sort((a, b) => (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0));
+
+    const channelItems = userPosts.filter(p => p.type === 'video' || ['short', 'video', 'podcast'].includes(String(p.channelFormat || '').toLowerCase()) || classifyChannelPostFormat(p) === 'podcasts');
+
+    if (tab === 'videos') return channelItems.filter(p => classifyChannelPostFormat(p) === 'videos');
+    if (tab === 'shorts') return channelItems.filter(p => classifyChannelPostFormat(p) === 'shorts');
+    if (tab === 'podcasts') return channelItems.filter(p => classifyChannelPostFormat(p) === 'podcasts');
+    if (tab === 'playlists') {
+        const playlistItems = channelItems.filter(p => (p.channelPlaylist || '').trim().length > 0 || (p.personalCategory || '').trim().length > 0);
+        if (playlistFilter && playlistFilter !== 'all') {
+            return playlistItems.filter(p => ((p.channelPlaylist || p.personalCategory || '').trim()) === playlistFilter);
+        }
+        return playlistItems;
+    }
+    return channelItems;
+}
+
+function getEffectiveChannelUserData(uid, fallbackData = null) {
+    if (uid && currentUser?.uid && uid === currentUser.uid) {
+        return { ...(fallbackData || {}), ...(currentProfile || {}), uid };
+    }
+    const cachedContact = (typeof contactUserDataMap !== 'undefined' && contactUserDataMap?.get(uid)) || null;
+    const activeCached = (activeChannelUid === uid && activeChannelUserData) ? activeChannelUserData : null;
+    return { ...(fallbackData || {}), ...(activeCached || {}), ...(cachedContact || {}), uid };
+}
+
+export function syncChannelProfileAvatarAndMeta() {
+    const panel = document.getElementById('channel-panel');
+    if (!panel || !panel.classList.contains('active')) return;
+    renderChannelScreen();
+}
+
+export function syncOpenChannelProfileIfMatches(uid) {
+    if (!uid || activeChannelUid !== uid) return;
+    syncChannelProfileAvatarAndMeta();
+}
+
+export function renderChannelScreen() {
+    const panel = document.getElementById('channel-panel');
+    if (!panel) return;
+
+    const uid = activeChannelUid || currentUser?.uid || '';
+    const isOwner = Boolean(uid && currentUser?.uid && uid === currentUser.uid);
+    const userData = getEffectiveChannelUserData(uid, activeChannelUserData);
+    activeChannelUserData = userData;
+
+    const fullName = [userData.name, userData.surname].filter(Boolean).join(' ').trim();
+    const displayTitle = (userData.channelName && userData.channelName.trim()) ? userData.channelName.trim() : (fullName || 'Meu Canal');
+    const rawHandle = (userData.username || userData.name || 'usuario').trim();
+    const normalizedHandle = rawHandle.startsWith('@') ? rawHandle : `@${rawHandle.replace(/\s+/g, '').toLowerCase()}`;
+
+    const topTitle = document.getElementById('channel-topbar-title');
+    if (topTitle) topTitle.innerText = isOwner ? 'Meu Canal' : displayTitle;
+
+    const createBtn = document.getElementById('channel-topbar-create-btn');
+    if (createBtn) createBtn.style.display = isOwner ? 'inline-flex' : 'none';
+
+    // Banner (com opção de adicionar/alterar)
+    const bannerImg = document.getElementById('channel-banner-img');
+    const bannerEmpty = document.getElementById('channel-banner-empty');
+    const bannerEditBtn = document.getElementById('channel-banner-edit-btn');
+    const bannerEditLabel = document.getElementById('channel-banner-edit-label');
+    const hasBanner = Boolean(userData.channelBanner);
+
+    if (bannerImg) {
+        if (hasBanner) {
+            bannerImg.src = userData.channelBanner;
+            bannerImg.style.display = 'block';
+        } else {
+            bannerImg.removeAttribute('src');
+            bannerImg.style.display = 'none';
+        }
+    }
+    if (bannerEmpty) bannerEmpty.style.display = hasBanner ? 'none' : 'flex';
+    if (bannerEditBtn) bannerEditBtn.style.display = isOwner ? 'inline-flex' : 'none';
+    if (bannerEditLabel) bannerEditLabel.innerText = hasBanner ? 'Alterar banner' : 'Adicionar banner';
+
+    // Avatar carregado automaticamente da foto de perfil
+    const avatarEl = document.getElementById('channel-avatar');
+    const autoAvatar = resolveChannelAutoAvatar(uid, userData);
+    if (avatarEl) {
+        avatarEl.dataset.authorUid = uid;
+        setAvatarContent(avatarEl, autoAvatar, displayTitle, 'channel-avatar-initial');
+    }
+
+    const titleEl = document.getElementById('channel-title');
+    if (titleEl) titleEl.innerText = displayTitle;
+
+    const badgeEl = document.getElementById('channel-verified-badge');
+    if (badgeEl) updateVerifiedBadgeElement(badgeEl, userData);
+
+    const handleEl = document.getElementById('channel-handle');
+    if (handleEl) handleEl.innerText = normalizedHandle;
+
+    const subscribersArr = Array.isArray(userData.channelSubscribers) ? userData.channelSubscribers : [];
+    const subscribersCount = subscribersArr.length;
+    const allChannelVideos = getChannelMediaPostsForUser(uid, 'inicio');
+    const videosCount = allChannelVideos.length;
+
+    const statsEl = document.getElementById('channel-stats');
+    if (statsEl) {
+        statsEl.innerText = `${subscribersCount} ${subscribersCount === 1 ? 'inscrito' : 'inscritos'} • ${videosCount} ${videosCount === 1 ? 'vídeo' : 'vídeos'}`;
+    }
+
+    // Bio + ...mais
+    const bioTextEl = document.getElementById('channel-bio-text');
+    const bioMoreBtn = document.getElementById('channel-bio-more-btn');
+    const bioStr = (userData.channelBio && userData.channelBio.trim()) || (userData.status && userData.status.trim()) || `Bem-vindo ao canal ${displayTitle}!`;
+    if (bioTextEl) bioTextEl.innerText = bioStr;
+    if (bioMoreBtn) bioMoreBtn.style.display = 'inline';
+
+    // Links + e mais X links
+    const links = collectChannelLinks(userData);
+    const primaryLinkEl = document.getElementById('channel-primary-link');
+    const moreLinksBtn = document.getElementById('channel-more-links-btn');
+    if (links.length > 0) {
+        if (primaryLinkEl) {
+            primaryLinkEl.href = links[0].href;
+            primaryLinkEl.innerText = links[0].display;
+            primaryLinkEl.style.display = 'inline';
+        }
+        if (moreLinksBtn) {
+            const extraCount = links.length - 1;
+            moreLinksBtn.innerText = extraCount > 0 ? `e mais ${extraCount} ${extraCount === 1 ? 'link' : 'links'}` : 'Ver sobre';
+            moreLinksBtn.style.display = 'inline';
+        }
+    } else {
+        if (primaryLinkEl) primaryLinkEl.style.display = 'none';
+        if (moreLinksBtn) {
+            moreLinksBtn.innerText = isOwner ? 'Adicionar links em Personalizar o canal' : 'Sobre o canal';
+            moreLinksBtn.style.display = 'inline';
+        }
+    }
+
+    // Botões Dono vs Visitante
+    const ownerActions = document.getElementById('channel-owner-actions');
+    const visitorActions = document.getElementById('channel-visitor-actions');
+    if (ownerActions) ownerActions.style.display = isOwner ? 'flex' : 'none';
+    if (visitorActions) visitorActions.style.display = isOwner ? 'none' : 'flex';
+
+    if (!isOwner) {
+        const subBtn = document.getElementById('channel-subscribe-btn');
+        const subLabel = document.getElementById('channel-subscribe-label');
+        const isSubscribed = Boolean(currentUser?.uid && subscribersArr.includes(currentUser.uid));
+        if (subBtn) subBtn.classList.toggle('subscribed', isSubscribed);
+        if (subLabel) subLabel.innerText = isSubscribed ? 'Inscrito' : 'Inscrever-se';
+    }
+
+    const communityPosts = Array.isArray(userData.channelCommunityPosts) ? userData.channelCommunityPosts : [];
+    const commBadge = document.getElementById('channel-community-count-badge');
+    if (commBadge) {
+        commBadge.innerText = String(communityPosts.length);
+        commBadge.style.display = communityPosts.length > 0 ? 'inline-flex' : 'none';
+    }
+
+    // Abas
+    document.querySelectorAll('#channel-tabs-bar .channel-tab-btn').forEach(btn => {
+        const isCurrent = btn.dataset.channelTab === activeChannelTab;
+        btn.classList.toggle('active', isCurrent);
+        btn.setAttribute('aria-selected', isCurrent ? 'true' : 'false');
+    });
+
+    // Barra de Playlists
+    const playlistsBar = document.getElementById('channel-playlists-toolbar');
+    if (playlistsBar) {
+        if (activeChannelTab === 'playlists') {
+            const names = Array.from(new Set(
+                allChannelVideos.map(p => (p.channelPlaylist || p.personalCategory || '').trim()).filter(Boolean)
+            ));
+            playlistsBar.style.display = 'flex';
+            playlistsBar.innerHTML = [
+                `<button type="button" class="channel-playlist-chip ${activeChannelPlaylistFilter === 'all' ? 'active' : ''}" data-playlist="all">Todas (${getChannelMediaPostsForUser(uid, 'playlists', 'all').length})</button>`,
+                ...names.map(name => `<button type="button" class="channel-playlist-chip ${activeChannelPlaylistFilter === name ? 'active' : ''}" data-playlist="${escapeHTML(name)}">${escapeHTML(name)}</button>`)
+            ].join('');
+            playlistsBar.querySelectorAll('.channel-playlist-chip').forEach(chip => {
+                chip.addEventListener('click', () => {
+                    activeChannelPlaylistFilter = chip.dataset.playlist || 'all';
+                    renderChannelScreen();
+                });
+            });
+        } else {
+            playlistsBar.style.display = 'none';
+            playlistsBar.innerHTML = '';
+        }
+    }
+
+    // Grade estilo Instagram de Vídeos e Reels
+    const tabItems = getChannelMediaPostsForUser(uid, activeChannelTab, activeChannelPlaylistFilter);
+    renderChannelMediaGrid(tabItems, activeChannelTab, isOwner);
+}
+
+export function renderChannelMediaGrid(items = [], tab = 'inicio', isOwner = false) {
+    const gridEl = document.getElementById('channel-media-grid');
+    const emptyEl = document.getElementById('channel-media-empty');
+    const emptyTextEl = document.getElementById('channel-media-empty-text');
+    const emptyPostBtn = document.getElementById('channel-empty-post-btn');
+    if (!gridEl) return;
+
+    if (!Array.isArray(items) || items.length === 0) {
+        gridEl.innerHTML = '';
+        if (emptyEl) emptyEl.style.display = 'flex';
+        if (emptyTextEl) {
+            const labels = {
+                inicio: 'Nenhum vídeo ou Reels publicado ainda.',
+                videos: 'Nenhum vídeo longo publicado nesta aba ainda.',
+                shorts: 'Nenhum Shorts / Reels publicado nesta aba ainda.',
+                podcasts: 'Nenhum episódio de Podcast publicado ainda.',
+                playlists: 'Nenhum vídeo organizado em playlists ainda.'
+            };
+            emptyTextEl.innerText = labels[tab] || labels.inicio;
+        }
+        if (emptyPostBtn) emptyPostBtn.style.display = isOwner ? 'inline-flex' : 'none';
+        if (window.lucide) lucide.createIcons();
+        return;
+    }
+
+    if (emptyEl) emptyEl.style.display = 'none';
+    gridEl.innerHTML = items.map(post => {
+        const rawMedia = post.mediaData || (post.hasChunks && post.id && mediaChunkCache.get(`posts_${post.id}`)) || '';
+        const isChunkPending = post.hasChunks && !rawMedia && post.id;
+        const src = (post.type === 'video' && rawMedia)
+            ? createBlobUrlFromData(String(rawMedia).replace(/#t=[0-9,.]+$/, ''))
+            : (rawMedia || '');
+        const fmt = classifyChannelPostFormat(post);
+        const topIcon = fmt === 'podcasts' ? 'mic' : (fmt === 'videos' ? 'film' : 'clapperboard');
+        const viewsCount = typeof getPostViewsCount === 'function' ? getPostViewsCount(post) : (Array.isArray(post.views) ? post.views.length : (post.viewsCount || 0));
+        const viewsLabel = typeof formatPostViewsCount === 'function' ? formatPostViewsCount(viewsCount) : String(viewsCount);
+        const durationLabel = post.videoDuration ? formatChannelDuration(post.videoDuration) : '';
+        const mediaTag = post.type === 'video'
+            ? `<video src="${src}" ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="video"` : ''} muted playsinline preload="metadata" class="channel-ig-tile-media"></video>`
+            : `<img src="${src}" ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="image"` : ''} alt="${escapeHTML(post.title || post.caption || 'Vídeo do canal')}" class="channel-ig-tile-media">`;
+
+        return `
+            <button type="button" class="channel-ig-tile" data-post-id="${post.id}" title="${escapeHTML(post.title || post.caption || 'Assistir')}">
+                ${mediaTag}
+                <span class="channel-ig-tile-top-badge" aria-hidden="true"><i data-lucide="${topIcon}"></i></span>
+                <span class="channel-ig-tile-bottom-overlay">
+                    <span class="channel-ig-tile-views"><i data-lucide="play"></i> ${escapeHTML(String(viewsLabel))}</span>
+                    ${durationLabel ? `<span class="channel-ig-tile-duration">${durationLabel}</span>` : ''}
+                </span>
+            </button>
+        `;
+    }).join('');
+
+    if (typeof resolvePostChunkedMedia === 'function') {
+        resolvePostChunkedMedia(gridEl, items);
+    }
+
+    gridEl.querySelectorAll('.channel-ig-tile').forEach(tile => {
+        tile.addEventListener('click', () => {
+            const postId = tile.dataset.postId;
+            if (postId) openChannelGridMediaViewer(postId);
+        });
+    });
+
+    if (window.lucide) lucide.createIcons();
+}
+
+export function switchChannelTab(tabName) {
+    const valid = ['inicio', 'videos', 'shorts', 'podcasts', 'playlists'];
+    activeChannelTab = valid.includes(tabName) ? tabName : 'inicio';
+    if (activeChannelTab !== 'playlists') activeChannelPlaylistFilter = 'all';
+    renderChannelScreen();
+}
+
+export async function openUserChannelScreen(targetUid = null, fallbackData = null) {
+    const uid = targetUid || currentUser?.uid;
+    if (!uid) {
+        showToast('Canal Indisponível', 'Faça login para abrir o canal.', 'yellow');
+        return;
+    }
+
+    if (activeChannelUnsubscribe) {
+        activeChannelUnsubscribe();
+        activeChannelUnsubscribe = null;
+    }
+
+    activeChannelUid = uid;
+    activeChannelUserData = fallbackData ? { ...fallbackData, uid } : null;
+    activeChannelTab = 'inicio';
+    activeChannelPlaylistFilter = 'all';
+
+    document.getElementById('attachment-panel')?.classList.remove('active');
+    const panel = document.getElementById('channel-panel');
+    if (panel) {
+        panel.classList.add('active');
+        panel.setAttribute('aria-hidden', 'false');
+    }
+    if (currentUser?.uid && uid === currentUser.uid) {
+        setBottomNavActive('channel-nav-btn');
+    }
+
+    if (typeof listenToPosts === 'function') listenToPosts();
+
+    if (typeof onSnapshot === 'function' && typeof doc === 'function' && typeof db !== 'undefined') {
+        try {
+            activeChannelUnsubscribe = onSnapshot(doc(db, 'users', uid), (snap) => {
+                if (!snap.exists()) return;
+                const liveData = snap.data();
+                activeChannelUserData = { ...liveData, uid };
+                if (typeof contactUserDataMap !== 'undefined' && contactUserDataMap?.set) {
+                    contactUserDataMap.set(uid, liveData);
+                }
+                if (currentUser?.uid && uid === currentUser.uid && currentProfile) {
+                    if (liveData.channelBanner !== undefined) currentProfile.channelBanner = liveData.channelBanner;
+                    if (liveData.channelName !== undefined) currentProfile.channelName = liveData.channelName;
+                    if (liveData.channelBio !== undefined) currentProfile.channelBio = liveData.channelBio;
+                    if (liveData.channelLink !== undefined) currentProfile.channelLink = liveData.channelLink;
+                    if (liveData.channelSubscribers !== undefined) currentProfile.channelSubscribers = liveData.channelSubscribers;
+                    if (liveData.channelCommunityPosts !== undefined) currentProfile.channelCommunityPosts = liveData.channelCommunityPosts;
+                }
+                if (document.getElementById('channel-panel')?.classList.contains('active')) {
+                    renderChannelScreen();
+                }
+            }, () => {});
+        } catch (_) {}
+    }
+
+    renderChannelScreen();
+    if (window.lucide) lucide.createIcons();
+}
+
+export function closeUserChannelScreen() {
+    const panel = document.getElementById('channel-panel');
+    if (panel) {
+        panel.classList.remove('active');
+        panel.setAttribute('aria-hidden', 'true');
+    }
+    if (activeChannelUnsubscribe) {
+        activeChannelUnsubscribe();
+        activeChannelUnsubscribe = null;
+    }
+    if (document.getElementById('feed-overlay')?.classList.contains('active')) {
+        setBottomNavActive('feed-btn');
+    } else if (!document.getElementById('screenshot-gallery-overlay')?.classList.contains('active')) {
+        setBottomNavActive('');
+    }
+}
+
+export async function uploadChannelBannerFile(file) {
+    if (!file || !currentUser?.uid) return null;
+    showToast('Processando banner...', 'Otimizando imagem do banner...', 'blue');
+    let bannerDataUrl = '';
+    try {
+        if (typeof compressImageFileToKB === 'function') {
+            const compressed = await compressImageFileToKB(file, { maxDimension: 1280, targetMaxKB: 260, quality: 0.82 });
+            bannerDataUrl = compressed?.dataUrl || compressed?.data || '';
+        }
+        if (!bannerDataUrl && typeof compressImage === 'function') {
+            bannerDataUrl = await compressImage(file, 1280, 0.8);
+        }
+    } catch (err) {
+        console.error('Erro ao comprimir banner:', err);
+    }
+
+    if (!bannerDataUrl) {
+        showToast('Erro no Banner', 'Não foi possível processar a imagem.', 'red');
+        return null;
+    }
+
+    currentProfile.channelBanner = bannerDataUrl;
+    if (activeChannelUid === currentUser.uid && activeChannelUserData) {
+        activeChannelUserData.channelBanner = bannerDataUrl;
+    }
+
+    try {
+        await setDoc(doc(db, 'users', currentUser.uid), {
+            channelBanner: bannerDataUrl,
+            updatedAt: Date.now()
+        }, { merge: true });
+    } catch (err) {
+        console.error('Erro ao salvar banner do canal:', err);
+    }
+
+    syncCustomizeBannerPreviewUI(bannerDataUrl);
+    renderChannelScreen();
+    showToast('Banner Atualizado! ✨', 'O banner do seu canal foi salvo.', 'green');
+    return bannerDataUrl;
+}
+
+export async function removeChannelBanner() {
+    if (!currentUser?.uid) return;
+    currentProfile.channelBanner = '';
+    if (activeChannelUid === currentUser.uid && activeChannelUserData) {
+        activeChannelUserData.channelBanner = '';
+    }
+    try {
+        await setDoc(doc(db, 'users', currentUser.uid), {
+            channelBanner: '',
+            updatedAt: Date.now()
+        }, { merge: true });
+    } catch (_) {}
+    syncCustomizeBannerPreviewUI('');
+    renderChannelScreen();
+    showToast('Banner Removido', 'O banner do canal foi removido.', 'blue');
+}
+
+function syncCustomizeBannerPreviewUI(bannerUrl) {
+    const preview = document.getElementById('channel-customize-banner-preview');
+    const placeholder = document.getElementById('channel-customize-banner-placeholder');
+    const removeBtn = document.getElementById('channel-customize-banner-remove-btn');
+    if (preview) {
+        preview.style.backgroundImage = bannerUrl ? `url('${bannerUrl}')` : '';
+    }
+    if (placeholder) {
+        placeholder.style.display = bannerUrl ? 'none' : 'inline';
+    }
+    if (removeBtn) {
+        removeBtn.style.display = bannerUrl ? 'inline-flex' : 'none';
+    }
+}
+
+export function openChannelCustomizeModal() {
+    if (!currentUser?.uid) return;
+    const modal = document.getElementById('channel-customize-modal');
+    if (!modal) return;
+    const userData = getEffectiveChannelUserData(currentUser.uid, currentProfile);
+    const fullName = [userData.name, userData.surname].filter(Boolean).join(' ').trim();
+
+    syncCustomizeBannerPreviewUI(userData.channelBanner || '');
+
+    const avatarPreview = document.getElementById('channel-customize-avatar-preview');
+    const autoAvatar = resolveChannelAutoAvatar(currentUser.uid, userData);
+    if (avatarPreview) {
+        avatarPreview.dataset.authorUid = currentUser.uid;
+        setAvatarContent(avatarPreview, autoAvatar, fullName || 'Perfil', 'channel-customize-avatar-initial');
+    }
+
+    const nameInput = document.getElementById('channel-customize-name-input');
+    const bioInput = document.getElementById('channel-customize-bio-input');
+    const linkInput = document.getElementById('channel-customize-link-input');
+    if (nameInput) nameInput.value = userData.channelName || fullName || '';
+    if (bioInput) bioInput.value = userData.channelBio || userData.status || '';
+    if (linkInput) linkInput.value = userData.channelLink || userData.website1 || '';
+
+    modal.style.display = 'flex';
+    modal.setAttribute('aria-hidden', 'false');
+    if (window.lucide) lucide.createIcons();
+}
+
+export async function saveChannelCustomizeModal() {
+    if (!currentUser?.uid) return;
+    const nameInput = document.getElementById('channel-customize-name-input');
+    const bioInput = document.getElementById('channel-customize-bio-input');
+    const linkInput = document.getElementById('channel-customize-link-input');
+
+    const channelName = (nameInput?.value || '').trim().slice(0, 40);
+    const channelBio = (bioInput?.value || '').trim().slice(0, 300);
+    const rawLink = (linkInput?.value || '').trim().slice(0, 160);
+    const parsedLink = rawLink ? normalizeChannelExternalUrl(rawLink) : null;
+    if (rawLink && !parsedLink) {
+        showToast('Link Inválido', 'Digite uma URL válida (ex: https://seusite.com).', 'yellow');
+        return;
+    }
+    const channelLink = parsedLink ? parsedLink.href : '';
+
+    currentProfile.channelName = channelName;
+    currentProfile.channelBio = channelBio;
+    currentProfile.channelLink = channelLink;
+
+    if (activeChannelUid === currentUser.uid && activeChannelUserData) {
+        activeChannelUserData.channelName = channelName;
+        activeChannelUserData.channelBio = channelBio;
+        activeChannelUserData.channelLink = channelLink;
+    }
+
+    try {
+        await setDoc(doc(db, 'users', currentUser.uid), {
+            channelName,
+            channelBio,
+            channelLink,
+            updatedAt: Date.now()
+        }, { merge: true });
+    } catch (err) {
+        console.error('Erro ao salvar personalização do canal:', err);
+    }
+
+    const modal = document.getElementById('channel-customize-modal');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.setAttribute('aria-hidden', 'true');
+    }
+    renderChannelScreen();
+    showToast('Canal Atualizado!', 'As informações do canal foram salvas.', 'green');
+}
+
+export async function toggleChannelSubscription(targetUid = activeChannelUid) {
+    if (!currentUser?.uid || !targetUid || targetUid === currentUser.uid) return;
+    const userData = getEffectiveChannelUserData(targetUid, activeChannelUserData);
+    const currentSubs = Array.isArray(userData.channelSubscribers) ? [...userData.channelSubscribers] : [];
+    const alreadySubscribed = currentSubs.includes(currentUser.uid);
+    const nextSubs = alreadySubscribed
+        ? currentSubs.filter(id => id !== currentUser.uid)
+        : [...currentSubs, currentUser.uid];
+
+    if (activeChannelUserData && activeChannelUid === targetUid) {
+        activeChannelUserData.channelSubscribers = nextSubs;
+    }
+    if (typeof contactUserDataMap !== 'undefined' && contactUserDataMap?.has(targetUid)) {
+        contactUserDataMap.set(targetUid, { ...contactUserDataMap.get(targetUid), channelSubscribers: nextSubs });
+    }
+
+    try {
+        await updateDoc(doc(db, 'users', targetUid), {
+            channelSubscribers: alreadySubscribed ? arrayRemove(currentUser.uid) : arrayUnion(currentUser.uid)
+        });
+    } catch (_) {}
+
+    renderChannelScreen();
+    showToast(alreadySubscribed ? 'Inscrição removida' : 'Inscrito no canal! 🔔', alreadySubscribed ? 'Você deixou de seguir este canal.' : 'Agora você acompanha este canal.', alreadySubscribed ? 'blue' : 'green');
+}
+
+export function openChannelAboutModal() {
+    const modal = document.getElementById('channel-about-modal');
+    const contentEl = document.getElementById('channel-about-content');
+    if (!modal || !contentEl) return;
+
+    const uid = activeChannelUid || currentUser?.uid || '';
+    const userData = getEffectiveChannelUserData(uid, activeChannelUserData);
+    const bioStr = (userData.channelBio && userData.channelBio.trim()) || (userData.status && userData.status.trim()) || 'Sem descrição adicionada.';
+    const links = collectChannelLinks(userData);
+    const subsCount = Array.isArray(userData.channelSubscribers) ? userData.channelSubscribers.length : 0;
+    const totalVideos = getChannelMediaPostsForUser(uid, 'inicio').length;
+
+    contentEl.innerHTML = `
+        <div>
+            <div class="channel-modal-label">Descrição</div>
+            <p style="margin:0; font-size:0.88rem; line-height:1.45; color:#e5e5e5; white-space:pre-wrap;">${escapeHTML(bioStr)}</p>
+        </div>
+        <div>
+            <div class="channel-modal-label">Estatísticas</div>
+            <div style="font-size:0.84rem; color:#bdbdbd;">${subsCount} inscritos • ${totalVideos} vídeos e Reels</div>
+        </div>
+        <div>
+            <div class="channel-modal-label">Links do Canal</div>
+            ${links.length
+                ? `<div style="display:flex; flex-direction:column; gap:8px;">${links.map(l => `<a href="${escapeHTML(l.href)}" target="_blank" rel="noopener noreferrer" class="channel-about-link-item"><span>${escapeHTML(l.label)}: ${escapeHTML(l.display)}</span><i data-lucide="external-link"></i></a>`).join('')}</div>`
+                : '<p style="margin:0; font-size:0.84rem; color:#888;">Nenhum link cadastrado ainda.</p>'
+            }
+        </div>
+    `;
+
+    modal.style.display = 'flex';
+    modal.setAttribute('aria-hidden', 'false');
+    if (window.lucide) lucide.createIcons();
+}
+
+export function openChannelCommunityModal() {
+    const modal = document.getElementById('channel-community-modal');
+    const composer = document.getElementById('channel-community-composer');
+    const listEl = document.getElementById('channel-community-list');
+    if (!modal || !listEl) return;
+
+    const uid = activeChannelUid || currentUser?.uid || '';
+    const isOwner = Boolean(uid && currentUser?.uid && uid === currentUser.uid);
+    const userData = getEffectiveChannelUserData(uid, activeChannelUserData);
+    if (composer) composer.style.display = isOwner ? 'flex' : 'none';
+
+    const posts = Array.isArray(userData.channelCommunityPosts) ? [...userData.channelCommunityPosts].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)) : [];
+    listEl.innerHTML = posts.length
+        ? posts.map(item => `
+            <div class="channel-community-post-card">
+                <div style="font-size:0.74rem; color:#9a9a9a; margin-bottom:4px;">${new Date(item.createdAt || Date.now()).toLocaleString([], { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</div>
+                <div style="font-size:0.88rem; color:#f1f1f1; white-space:pre-wrap;">${escapeHTML(item.text || '')}</div>
+            </div>
+        `).join('')
+        : '<div style="text-align:center; padding:18px; color:#8e8e93; font-size:0.85rem;">Nenhuma publicação na Comunidade deste canal ainda.</div>';
+
+    modal.style.display = 'flex';
+    modal.setAttribute('aria-hidden', 'false');
+}
+
+export async function publishChannelCommunityPost() {
+    if (!currentUser?.uid) return;
+    const input = document.getElementById('channel-community-input');
+    const text = (input?.value || '').trim();
+    if (!text) return;
+
+    if (typeof analyzeConversationByAI === 'function') {
+        const check = analyzeConversationByAI({ uid: currentUser.uid, text, account: currentProfile });
+        if (check?.shouldBlock) {
+            showToast('Bloqueado pela IA 🛡️', check.alertMessage || 'Conteúdo bloqueado por segurança.', 'red');
+            return;
+        }
+    }
+
+    const existing = Array.isArray(currentProfile.channelCommunityPosts) ? [...currentProfile.channelCommunityPosts] : [];
+    const nextList = [{ id: `comm_${Date.now()}`, text, createdAt: Date.now() }, ...existing].slice(0, 40);
+    currentProfile.channelCommunityPosts = nextList;
+    if (activeChannelUid === currentUser.uid && activeChannelUserData) {
+        activeChannelUserData.channelCommunityPosts = nextList;
+    }
+    if (input) input.value = '';
+
+    try {
+        await setDoc(doc(db, 'users', currentUser.uid), { channelCommunityPosts: nextList, updatedAt: Date.now() }, { merge: true });
+    } catch (_) {}
+
+    openChannelCommunityModal();
+    renderChannelScreen();
+    showToast('Publicado na Comunidade! 📣', 'Seu recado já está visível no canal.', 'green');
+}
+
+export function openChannelManageModal() {
+    const modal = document.getElementById('channel-manage-modal');
+    const listEl = document.getElementById('channel-manage-list');
+    if (!modal || !listEl || !currentUser?.uid) return;
+
+    const myVideos = getChannelMediaPostsForUser(currentUser.uid, 'inicio');
+    if (!myVideos.length) {
+        listEl.innerHTML = '<div style="text-align:center; padding:18px; color:#8e8e93; font-size:0.85rem;">Você ainda não publicou vídeos ou Reels no seu canal.</div>';
+    } else {
+        listEl.innerHTML = myVideos.map(post => {
+            const fmt = classifyChannelPostFormat(post);
+            const rawMedia = post.mediaData || (post.hasChunks && post.id && mediaChunkCache.get(`posts_${post.id}`)) || '';
+            const thumbSrc = rawMedia ? (post.type === 'video' ? createBlobUrlFromData(String(rawMedia).replace(/#t=[0-9,.]+$/, '')) : rawMedia) : '';
+            const mediaThumb = post.type === 'video'
+                ? `<video src="${thumbSrc}" muted playsinline preload="metadata" class="channel-manage-thumb"></video>`
+                : `<img src="${thumbSrc}" alt="" class="channel-manage-thumb">`;
+            return `
+                <div class="channel-manage-item" data-post-id="${post.id}">
+                    ${mediaThumb}
+                    <div class="channel-manage-meta">
+                        <div class="channel-manage-title">${escapeHTML(post.title || post.caption || 'Vídeo sem título')}</div>
+                        <div class="channel-manage-controls">
+                            <select class="channel-manage-select" data-action="channel-set-format" data-post-id="${post.id}" aria-label="Formato no canal">
+                                <option value="short" ${fmt === 'shorts' ? 'selected' : ''}>Shorts / Reels</option>
+                                <option value="video" ${fmt === 'videos' ? 'selected' : ''}>Vídeo</option>
+                                <option value="podcast" ${fmt === 'podcasts' ? 'selected' : ''}>Podcast</option>
+                            </select>
+                            <button type="button" class="channel-pill-btn channel-danger-pill" style="flex:none; min-height:28px; padding:4px 10px; font-size:0.72rem;" data-action="channel-delete-video" data-post-id="${post.id}">Excluir</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        listEl.querySelectorAll('[data-action="channel-set-format"]').forEach(sel => {
+            sel.addEventListener('change', async () => {
+                const postId = sel.dataset.postId;
+                const val = sel.value;
+                const p = cachedFeedPosts.find(item => item.id === postId);
+                if (p) p.channelFormat = val;
+                try {
+                    await updateDoc(doc(db, 'posts', postId), { channelFormat: val });
+                } catch (_) {}
+                renderChannelScreen();
+                showToast('Formato Atualizado', 'A aba do vídeo no canal foi atualizada.', 'green');
+            });
+        });
+
+        listEl.querySelectorAll('[data-action="channel-delete-video"]').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const postId = btn.dataset.postId;
+                if (!postId) return;
+                await deletePost(postId);
+                openChannelManageModal();
+                renderChannelScreen();
+            });
+        });
+    }
+
+    modal.style.display = 'flex';
+    modal.setAttribute('aria-hidden', 'false');
+    if (window.lucide) lucide.createIcons();
+}
+
+export function openChannelGridMediaViewer(postId) {
+    const post = (Array.isArray(cachedFeedPosts) ? cachedFeedPosts : []).find(p => p && p.id === postId);
+    const modal = document.getElementById('channel-media-viewer-modal');
+    const mediaBox = document.getElementById('channel-viewer-media-box');
+    if (!post || !modal || !mediaBox) return;
+
+    activeChannelViewerPostId = postId;
+    const rawMedia = post.mediaData || (post.hasChunks && post.id && mediaChunkCache.get(`posts_${post.id}`)) || '';
+    const src = (post.type === 'video' && rawMedia)
+        ? createBlobUrlFromData(String(rawMedia).replace(/#t=[0-9,.]+$/, ''))
+        : (rawMedia || '');
+
+    mediaBox.innerHTML = post.type === 'video'
+        ? `<video src="${src}" controls autoplay playsinline controlsList="nodownload" disablePictureInPicture></video>`
+        : `<img src="${src}" alt="${escapeHTML(post.title || post.caption || 'Mídia')}">`;
+
+    if (typeof resolvePostChunkedMedia === 'function') {
+        resolvePostChunkedMedia(mediaBox, [post]);
+    }
+
+    const titleEl = document.getElementById('channel-viewer-title');
+    const capEl = document.getElementById('channel-viewer-caption');
+    const statsEl = document.getElementById('channel-viewer-stats');
+    const likeCountEl = document.getElementById('channel-viewer-like-count');
+    if (titleEl) titleEl.innerText = post.title || post.authorName || 'Vídeo do Canal';
+    if (capEl) capEl.innerText = post.caption || '';
+    const viewsCount = typeof getPostViewsCount === 'function' ? getPostViewsCount(post) : (post.viewsCount || 0);
+    if (statsEl) statsEl.innerText = `${viewsCount} visualizações`;
+    if (likeCountEl) likeCountEl.innerText = String(Array.isArray(post.likes) ? post.likes.length : 0);
+
+    modal.style.display = 'flex';
+    modal.setAttribute('aria-hidden', 'false');
+    if (window.lucide) lucide.createIcons();
+}
+
+function closeChannelSubModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (!modal) return;
+    modal.style.display = 'none';
+    modal.setAttribute('aria-hidden', 'true');
+    if (modalId === 'channel-media-viewer-modal') {
+        const mediaBox = document.getElementById('channel-viewer-media-box');
+        if (mediaBox) {
+            mediaBox.querySelectorAll('video').forEach(v => { try { v.pause(); } catch (_) {} });
+            mediaBox.innerHTML = '';
+        }
+    }
+}
+
+function bindChannelScreenListeners() {
+    document.getElementById('channel-nav-btn')?.addEventListener('click', () => {
+        playSound(clickSound);
+        openUserChannelScreen(currentUser?.uid);
+    });
+    document.getElementById('profile-open-channel-btn')?.addEventListener('click', () => {
+        playSound(clickSound);
+        document.getElementById('profile-edit-panel')?.classList.remove('active');
+        openUserChannelScreen(currentUser?.uid);
+    });
+    document.getElementById('feed-open-channel-btn')?.addEventListener('click', () => {
+        playSound(clickSound);
+        openUserChannelScreen(currentUser?.uid);
+    });
+    document.getElementById('close-channel-btn')?.addEventListener('click', () => {
+        playSound(clickSound);
+        closeUserChannelScreen();
+    });
+
+    const openComposerFromChannel = () => {
+        closeUserChannelScreen();
+        closeFeedOverlay();
+        closeBusinessCatalogModal();
+        setBottomNavActive('new-post-nav-btn');
+        resetPostComposer();
+        document.getElementById('screenshot-gallery-overlay')?.classList.add('active');
+        updateCompanyLinkSectionVisibility();
+        updateStatusBusinessLinkVisibility();
+    };
+    document.getElementById('channel-topbar-create-btn')?.addEventListener('click', openComposerFromChannel);
+    document.getElementById('channel-empty-post-btn')?.addEventListener('click', openComposerFromChannel);
+    document.getElementById('channel-manage-new-post-btn')?.addEventListener('click', () => {
+        closeChannelSubModal('channel-manage-modal');
+        openComposerFromChannel();
+    });
+
+    const bannerFileInput = document.getElementById('channel-banner-file-input');
+    document.getElementById('channel-banner-edit-btn')?.addEventListener('click', () => {
+        playSound(clickSound);
+        bannerFileInput?.click();
+    });
+    document.getElementById('channel-customize-banner-upload-btn')?.addEventListener('click', () => {
+        playSound(clickSound);
+        bannerFileInput?.click();
+    });
+    bannerFileInput?.addEventListener('change', async (e) => {
+        const file = e.target?.files?.[0];
+        e.target.value = '';
+        if (file) await uploadChannelBannerFile(file);
+    });
+    document.getElementById('channel-customize-banner-remove-btn')?.addEventListener('click', removeChannelBanner);
+
+    document.getElementById('channel-customize-btn')?.addEventListener('click', () => {
+        playSound(clickSound);
+        openChannelCustomizeModal();
+    });
+    document.getElementById('channel-go-profile-photo-btn')?.addEventListener('click', () => {
+        closeChannelSubModal('channel-customize-modal');
+        closeUserChannelScreen();
+        document.getElementById('profile-btn')?.click();
+    });
+    document.getElementById('save-channel-customize-btn')?.addEventListener('click', saveChannelCustomizeModal);
+
+    document.getElementById('channel-manage-videos-btn')?.addEventListener('click', () => {
+        playSound(clickSound);
+        openChannelManageModal();
+    });
+    document.getElementById('channel-subscribe-btn')?.addEventListener('click', () => {
+        playSound(clickSound);
+        toggleChannelSubscription(activeChannelUid);
+    });
+    document.getElementById('channel-message-btn')?.addEventListener('click', () => {
+        if (!activeChannelUid || activeChannelUid === currentUser?.uid) return;
+        const contactObj = getEffectiveChannelUserData(activeChannelUid, activeChannelUserData);
+        closeUserChannelScreen();
+        closeFeedOverlay();
+        openDirectChat(contactObj);
+    });
+    document.getElementById('channel-bio-more-btn')?.addEventListener('click', openChannelAboutModal);
+    document.getElementById('channel-more-links-btn')?.addEventListener('click', openChannelAboutModal);
+    document.getElementById('channel-community-btn')?.addEventListener('click', openChannelCommunityModal);
+    document.getElementById('channel-community-publish-btn')?.addEventListener('click', publishChannelCommunityPost);
+
+    document.querySelectorAll('#channel-tabs-bar .channel-tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            switchChannelTab(btn.dataset.channelTab);
+        });
+    });
+    document.getElementById('channel-tabs-next-btn')?.addEventListener('click', () => {
+        const order = ['inicio', 'videos', 'shorts', 'podcasts', 'playlists'];
+        const idx = order.indexOf(activeChannelTab);
+        switchChannelTab(order[(idx + 1) % order.length]);
+    });
+
+    document.getElementById('channel-viewer-like-btn')?.addEventListener('click', async () => {
+        if (!activeChannelViewerPostId) return;
+        await togglePostLike(activeChannelViewerPostId);
+        const post = cachedFeedPosts.find(p => p.id === activeChannelViewerPostId);
+        const likeCountEl = document.getElementById('channel-viewer-like-count');
+        if (likeCountEl && post) likeCountEl.innerText = String(Array.isArray(post.likes) ? post.likes.length : 0);
+    });
+    document.getElementById('channel-viewer-open-feed-btn')?.addEventListener('click', () => {
+        const postId = activeChannelViewerPostId;
+        closeChannelSubModal('channel-media-viewer-modal');
+        closeUserChannelScreen();
+        document.getElementById('feed-btn')?.click();
+        if (postId) {
+            setTimeout(() => {
+                document.getElementById(`post-card-${postId}`)?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+            }, 120);
+        }
+    });
+
+    [
+        ['close-channel-customize-modal', 'channel-customize-modal'],
+        ['close-channel-about-modal', 'channel-about-modal'],
+        ['close-channel-community-modal', 'channel-community-modal'],
+        ['close-channel-manage-modal', 'channel-manage-modal'],
+        ['close-channel-media-viewer-modal', 'channel-media-viewer-modal']
+    ].forEach(([btnId, modalId]) => {
+        document.getElementById(btnId)?.addEventListener('click', () => closeChannelSubModal(modalId));
+    });
+}
+
+if (typeof document !== 'undefined') {
+    bindChannelScreenListeners();
+}
+
+if (typeof window !== 'undefined') {
+    window.openUserChannelScreen = openUserChannelScreen;
+    window.closeUserChannelScreen = closeUserChannelScreen;
+    window.renderChannelScreen = renderChannelScreen;
+    window.switchChannelTab = switchChannelTab;
+    window.renderChannelMediaGrid = renderChannelMediaGrid;
+    window.resolveChannelAutoAvatar = resolveChannelAutoAvatar;
+    window.classifyChannelPostFormat = classifyChannelPostFormat;
+    window.collectChannelLinks = collectChannelLinks;
+    window.getChannelMediaPostsForUser = getChannelMediaPostsForUser;
+    window.uploadChannelBannerFile = uploadChannelBannerFile;
+    window.removeChannelBanner = removeChannelBanner;
+    window.openChannelCustomizeModal = openChannelCustomizeModal;
+    window.saveChannelCustomizeModal = saveChannelCustomizeModal;
+    window.toggleChannelSubscription = toggleChannelSubscription;
+    window.openChannelAboutModal = openChannelAboutModal;
+    window.openChannelCommunityModal = openChannelCommunityModal;
+    window.publishChannelCommunityPost = publishChannelCommunityPost;
+    window.openChannelManageModal = openChannelManageModal;
+    window.openChannelGridMediaViewer = openChannelGridMediaViewer;
+    window.syncChannelProfileAvatarAndMeta = syncChannelProfileAvatarAndMeta;
+}
+
 
 
 

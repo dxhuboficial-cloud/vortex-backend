@@ -35,13 +35,13 @@
     <meta itemprop="image" content="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
     <link rel="image_src" type="image/png" href="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
 
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.291">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.291">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.291">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.291">
-    <link rel="stylesheet" href="style.css?v=1.0.291">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.292">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.292">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.292">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.292">
+    <link rel="stylesheet" href="style.css?v=1.0.292">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.291" id="app-manifest-link">
+    <link rel="manifest" href="manifest.json?v=1.0.292" id="app-manifest-link">
     <meta name="theme-color" content="#39ff14" id="app-theme-color-meta">
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#39ff14" id="app-theme-color-meta-dark">
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#39ff14" id="app-theme-color-meta-light">
@@ -50,8 +50,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.291">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.291">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.292">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.292">
     <!-- Sincronização Dinâmica da Barra de Status e Barra de Navegação do Celular -->
     <script>
         (function() {
@@ -769,6 +769,10 @@
                 <button type="button" class="bottom-nav-item" id="feed-btn" title="Feed Reels" aria-label="Feed Reels">
                     <i data-lucide="clapperboard"></i>
                     <span>Feed</span>
+                </button>
+                <button type="button" class="bottom-nav-item" id="channel-nav-btn" title="Meu Canal" aria-label="Meu Canal">
+                    <i data-lucide="tv"></i>
+                    <span>Canal</span>
                 </button>
             </nav>
 
@@ -1721,6 +1725,10 @@
                     <i data-lucide="arrow-left"></i>
                 </div>
                 <h2>Editar Perfil VIP</h2>
+                <button type="button" id="profile-open-channel-btn" class="profile-open-channel-btn" title="Abrir Meu Canal">
+                    <i data-lucide="tv"></i>
+                    <span>Meu Canal</span>
+                </button>
             </div>
             <div class="settings-content">
                 <div class="profile-avatar-edit-box">
@@ -2590,6 +2598,10 @@
                     <button id="contact-profile-catalog-btn" class="contact-action-btn" type="button" title="Ver catálogo de produtos" style="display:none;">
                         <i data-lucide="shopping-bag"></i>
                         <span>Ver catálogo</span>
+                    </button>
+                    <button id="contact-profile-channel-btn" class="contact-action-btn" type="button" title="Abrir canal do usuário">
+                        <i data-lucide="tv"></i>
+                        <span>Ver Canal</span>
                     </button>
                     <button id="contact-profile-call-btn" class="contact-action-btn" type="button" title="Iniciar chamada de vídeo">
                         <i data-lucide="video"></i>
@@ -3696,6 +3708,19 @@
                     <input type="text" id="post-title-input" class="post-title-input" maxlength="80" placeholder="Digite o título do post..." autocomplete="off">
                 </div>
 
+                <div class="post-channel-format-wrap" id="post-channel-format-wrap">
+                    <div class="post-field-header-row">
+                        <label for="post-channel-format-select" class="post-caption-label">Aba no Canal</label>
+                        <span class="post-channel-format-badge">Canal & Reels</span>
+                    </div>
+                    <select id="post-channel-format-select" class="post-personal-category-select" title="Escolha em qual aba do canal este conteúdo será destacado">
+                        <option value="auto" selected>Automático (Shorts / Vídeos pela duração)</option>
+                        <option value="short">Shorts / Reels (Instagram Grid)</option>
+                        <option value="video">Vídeo</option>
+                        <option value="podcast">Podcast</option>
+                    </select>
+                </div>
+
                 <div class="post-caption-wrap">
                     <div class="post-field-header-row">
                         <label for="post-caption-input" class="post-caption-label">Legenda</label>
@@ -3896,7 +3921,13 @@
                     <h3 class="post-creator-title">Feed Reels</h3>
                     <span id="posts-count-label" class="posts-count-label"></span>
                 </div>
-                <button id="open-post-from-feed-btn" class="post-publish-btn" type="button">+ Postar</button>
+                <div class="feed-header-right-actions">
+                    <button id="feed-open-channel-btn" class="feed-channel-shortcut-btn" type="button" title="Abrir Meu Canal">
+                        <i data-lucide="tv"></i>
+                        <span>Canal</span>
+                    </button>
+                    <button id="open-post-from-feed-btn" class="post-publish-btn" type="button">+ Postar</button>
+                </div>
             </div>
 
             <!-- Barra de Pesquisa no Feed Reels -->
@@ -6857,6 +6888,235 @@
             </div>
         </div>
 
+        <!-- =========================================================
+             TELA DE CANAL (HEADER ESTILO YOUTUBE + GRID INSTAGRAM) v1.0.292
+             ========================================================= -->
+        <div id="channel-panel" class="channel-overlay" aria-hidden="true">
+            <div class="gallery-header channel-topbar">
+                <button type="button" id="close-channel-btn" class="gallery-back-icon" title="Voltar" aria-label="Voltar">
+                    <i data-lucide="arrow-left"></i>
+                </button>
+                <div class="channel-topbar-center">
+                    <h3 class="post-creator-title" id="channel-topbar-title">Canal</h3>
+                </div>
+                <div class="channel-topbar-right">
+                    <button type="button" id="channel-topbar-create-btn" class="post-publish-btn channel-topbar-create-btn" title="Publicar Vídeo ou Reels">+ Vídeo</button>
+                </div>
+            </div>
+
+            <div class="channel-scroll-body">
+                <div class="channel-container">
+                    <!-- Banner do Canal (com opção de adicionar/alterar banner) -->
+                    <div id="channel-banner-box" class="channel-banner-box">
+                        <img id="channel-banner-img" src="" alt="Banner do canal" class="channel-banner-img" style="display:none;">
+                        <div id="channel-banner-empty" class="channel-banner-empty">
+                            <i data-lucide="image"></i>
+                            <span>Banner do Canal</span>
+                        </div>
+                        <input type="file" id="channel-banner-file-input" accept="image/*" class="hidden-file-input" aria-label="Selecionar banner do canal">
+                        <button type="button" id="channel-banner-edit-btn" class="channel-banner-edit-btn" title="Adicionar ou alterar banner">
+                            <i data-lucide="camera"></i>
+                            <span id="channel-banner-edit-label">Adicionar banner</span>
+                        </button>
+                    </div>
+
+                    <!-- Identidade do Canal (Foto carregada automaticamente do Perfil) -->
+                    <div class="channel-identity-row">
+                        <div id="channel-avatar" class="avatar channel-avatar" title="Foto sincronizada automaticamente com o Perfil"></div>
+                        <div class="channel-identity-meta">
+                            <div class="channel-title-row">
+                                <h1 id="channel-title" class="channel-title">Meu Canal</h1>
+                                <i data-lucide="badge-check" id="channel-verified-badge" class="verified-badge" style="display:none;" title="Verificado"></i>
+                            </div>
+                            <div id="channel-handle" class="channel-handle">@usuario</div>
+                            <div id="channel-stats" class="channel-stats">0 inscritos • 0 vídeos</div>
+                        </div>
+                    </div>
+
+                    <!-- Descrição + ...mais -->
+                    <div id="channel-bio-row" class="channel-bio-row">
+                        <span id="channel-bio-text" class="channel-bio-text">Bem-vindo ao canal VORTEX VIP!</span>
+                        <button type="button" id="channel-bio-more-btn" class="channel-bio-more-btn">...mais</button>
+                    </div>
+
+                    <!-- Links do Canal + e mais X links -->
+                    <div id="channel-links-row" class="channel-links-row">
+                        <i data-lucide="link-2" class="channel-link-icon"></i>
+                        <a id="channel-primary-link" class="channel-primary-link" href="#" target="_blank" rel="noopener noreferrer" style="display:none;"></a>
+                        <button type="button" id="channel-more-links-btn" class="channel-more-links-btn">Adicionar links</button>
+                    </div>
+
+                    <!-- Ações do Dono (Personalizar o canal + Gerenciar vídeos) -->
+                    <div id="channel-owner-actions" class="channel-actions-row">
+                        <button type="button" id="channel-customize-btn" class="channel-pill-btn">Personalizar o canal</button>
+                        <button type="button" id="channel-manage-videos-btn" class="channel-pill-btn">Gerenciar vídeos</button>
+                    </div>
+
+                    <!-- Ações do Visitante (Inscrever-se + Mensagem) -->
+                    <div id="channel-visitor-actions" class="channel-actions-row" style="display:none;">
+                        <button type="button" id="channel-subscribe-btn" class="channel-pill-btn channel-subscribe-btn">
+                            <span id="channel-subscribe-label">Inscrever-se</span>
+                        </button>
+                        <button type="button" id="channel-message-btn" class="channel-pill-btn">
+                            <i data-lucide="message-square"></i>
+                            <span>Mensagem</span>
+                        </button>
+                    </div>
+
+                    <!-- Botão Comunidade (largura total) -->
+                    <button type="button" id="channel-community-btn" class="channel-pill-btn channel-community-btn">
+                        <i data-lucide="users"></i>
+                        <span>Comunidade</span>
+                        <span id="channel-community-count-badge" class="channel-community-count-badge" style="display:none;">0</span>
+                    </button>
+
+                    <!-- Abas do Canal (Início | Vídeos | Shorts | Podcasts | Playlists | >) -->
+                    <div class="channel-tabs-bar-wrap">
+                        <div id="channel-tabs-bar" class="channel-tabs-bar" role="tablist" aria-label="Abas do canal">
+                            <button type="button" class="channel-tab-btn active" data-channel-tab="inicio" role="tab" aria-selected="true">Início</button>
+                            <button type="button" class="channel-tab-btn" data-channel-tab="videos" role="tab" aria-selected="false">Vídeos</button>
+                            <button type="button" class="channel-tab-btn" data-channel-tab="shorts" role="tab" aria-selected="false">Shorts</button>
+                            <button type="button" class="channel-tab-btn" data-channel-tab="podcasts" role="tab" aria-selected="false">Podcasts</button>
+                            <button type="button" class="channel-tab-btn" data-channel-tab="playlists" role="tab" aria-selected="false">Playlists</button>
+                        </div>
+                        <button type="button" id="channel-tabs-next-btn" class="channel-tabs-next-btn" title="Avançar abas" aria-label="Avançar abas">
+                            <i data-lucide="chevron-right"></i>
+                        </button>
+                    </div>
+
+                    <!-- Barra de Playlists (visível apenas na aba Playlists) -->
+                    <div id="channel-playlists-toolbar" class="channel-playlists-toolbar" style="display:none;"></div>
+
+                    <!-- Grade estilo Instagram (3 colunas quadradas de Vídeos e Reels) abaixo das abas -->
+                    <div id="channel-media-grid" class="channel-ig-grid" aria-live="polite"></div>
+
+                    <div id="channel-media-empty" class="channel-media-empty" style="display:none;">
+                        <i data-lucide="clapperboard"></i>
+                        <p id="channel-media-empty-text">Nenhum vídeo ou Reels publicado nesta aba ainda.</p>
+                        <button type="button" id="channel-empty-post-btn" class="channel-pill-btn channel-empty-post-btn">+ Publicar Vídeo / Reels</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal: Personalizar o Canal (Banner + Nome + Descrição + Link; Foto automática do Perfil) -->
+        <div id="channel-customize-modal" class="custom-modal-overlay" style="display:none;" aria-hidden="true">
+            <div class="custom-modal-card channel-modal-card">
+                <div class="panel-top-bar" style="padding:12px 16px;">
+                    <h3 class="modal-title" style="font-size:1rem;"><i data-lucide="sliders-horizontal"></i> Personalizar o canal</h3>
+                    <div class="header-icon-btn" id="close-channel-customize-modal" title="Fechar" aria-label="Fechar"><i data-lucide="x"></i></div>
+                </div>
+                <div class="channel-modal-body">
+                    <div class="channel-customize-section">
+                        <label class="channel-modal-label">Banner do Canal</label>
+                        <div id="channel-customize-banner-preview" class="channel-customize-banner-preview">
+                            <span id="channel-customize-banner-placeholder">Sem banner configurado</span>
+                        </div>
+                        <div class="channel-customize-banner-actions">
+                            <button type="button" id="channel-customize-banner-upload-btn" class="channel-pill-btn">
+                                <i data-lucide="upload"></i>
+                                <span>Adicionar / Alterar banner</span>
+                            </button>
+                            <button type="button" id="channel-customize-banner-remove-btn" class="channel-pill-btn channel-danger-pill" style="display:none;">
+                                <i data-lucide="trash-2"></i>
+                                <span>Remover</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="channel-customize-avatar-sync-card">
+                        <div id="channel-customize-avatar-preview" class="avatar channel-customize-avatar-preview"></div>
+                        <div class="channel-customize-avatar-sync-info">
+                            <strong>Foto do canal automática</strong>
+                            <small>Carregada automaticamente da sua foto de perfil.</small>
+                            <button type="button" id="channel-go-profile-photo-btn" class="channel-inline-link-btn">Alterar foto no Perfil</button>
+                        </div>
+                    </div>
+
+                    <div class="channel-customize-section">
+                        <label for="channel-customize-name-input" class="channel-modal-label">Nome do Canal</label>
+                        <input type="text" id="channel-customize-name-input" class="channel-modal-input" maxlength="40" placeholder="Ex: Meu Canal Oficial">
+                    </div>
+
+                    <div class="channel-customize-section">
+                        <label for="channel-customize-bio-input" class="channel-modal-label">Descrição do Canal</label>
+                        <textarea id="channel-customize-bio-input" class="channel-modal-textarea" rows="3" maxlength="300" placeholder="Conte ao público sobre seus vídeos e Reels..."></textarea>
+                    </div>
+
+                    <div class="channel-customize-section">
+                        <label for="channel-customize-link-input" class="channel-modal-label">Link em destaque no canal</label>
+                        <input type="url" id="channel-customize-link-input" class="channel-modal-input" maxlength="160" placeholder="https://seusite.com">
+                    </div>
+
+                    <button type="button" id="save-channel-customize-btn" class="danger-btn save-profile-action-btn">Salvar Canal</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal: Sobre o Canal (...mais / e mais X links) -->
+        <div id="channel-about-modal" class="custom-modal-overlay" style="display:none;" aria-hidden="true">
+            <div class="custom-modal-card channel-modal-card">
+                <div class="panel-top-bar" style="padding:12px 16px;">
+                    <h3 class="modal-title" style="font-size:1rem;"><i data-lucide="info"></i> Sobre o canal</h3>
+                    <div class="header-icon-btn" id="close-channel-about-modal" title="Fechar" aria-label="Fechar"><i data-lucide="x"></i></div>
+                </div>
+                <div id="channel-about-content" class="channel-modal-body"></div>
+            </div>
+        </div>
+
+        <!-- Modal: Comunidade do Canal -->
+        <div id="channel-community-modal" class="custom-modal-overlay" style="display:none;" aria-hidden="true">
+            <div class="custom-modal-card channel-modal-card">
+                <div class="panel-top-bar" style="padding:12px 16px;">
+                    <h3 class="modal-title" style="font-size:1rem;"><i data-lucide="users"></i> Comunidade</h3>
+                    <div class="header-icon-btn" id="close-channel-community-modal" title="Fechar" aria-label="Fechar"><i data-lucide="x"></i></div>
+                </div>
+                <div class="channel-modal-body">
+                    <div id="channel-community-composer" class="channel-community-composer" style="display:none;">
+                        <textarea id="channel-community-input" class="channel-modal-textarea" rows="2" maxlength="300" placeholder="Publique um aviso ou enquete rápida para sua comunidade..."></textarea>
+                        <button type="button" id="channel-community-publish-btn" class="channel-pill-btn channel-subscribe-btn">Publicar na Comunidade</button>
+                    </div>
+                    <div id="channel-community-list" class="channel-community-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal: Gerenciar Vídeos e Reels do Canal -->
+        <div id="channel-manage-modal" class="custom-modal-overlay" style="display:none;" aria-hidden="true">
+            <div class="custom-modal-card channel-modal-card">
+                <div class="panel-top-bar" style="padding:12px 16px;">
+                    <h3 class="modal-title" style="font-size:1rem;"><i data-lucide="film"></i> Gerenciar vídeos</h3>
+                    <div class="header-icon-btn" id="close-channel-manage-modal" title="Fechar" aria-label="Fechar"><i data-lucide="x"></i></div>
+                </div>
+                <div class="channel-modal-body">
+                    <button type="button" id="channel-manage-new-post-btn" class="danger-btn save-profile-action-btn" style="margin-bottom:8px;">+ Novo Vídeo / Reels</button>
+                    <div id="channel-manage-list" class="channel-manage-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal: Visualizador Instagram Reels / Vídeo do Canal -->
+        <div id="channel-media-viewer-modal" class="custom-modal-overlay channel-viewer-overlay" style="display:none;" aria-hidden="true">
+            <div class="custom-modal-card channel-viewer-card">
+                <div class="panel-top-bar" style="padding:10px 14px;">
+                    <span id="channel-viewer-header-title" style="font-weight:700; font-size:0.92rem;">Reels do Canal</span>
+                    <div class="header-icon-btn" id="close-channel-media-viewer-modal" title="Fechar" aria-label="Fechar"><i data-lucide="x"></i></div>
+                </div>
+                <div id="channel-viewer-media-box" class="channel-viewer-media-box"></div>
+                <div class="channel-viewer-info">
+                    <h4 id="channel-viewer-title" class="channel-viewer-title"></h4>
+                    <p id="channel-viewer-caption" class="channel-viewer-caption"></p>
+                    <div class="channel-viewer-footer">
+                        <span id="channel-viewer-stats" class="channel-viewer-stats"></span>
+                        <div class="channel-viewer-actions">
+                            <button type="button" id="channel-viewer-like-btn" class="channel-pill-btn"><i data-lucide="heart"></i> <span id="channel-viewer-like-count">0</span></button>
+                            <button type="button" id="channel-viewer-open-feed-btn" class="channel-pill-btn">Ver no Feed</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div> <!-- Fim do app-container -->
 
     <!-- =========================================================
@@ -6923,6 +7183,6 @@
         </main>
     </div>
 
-    <script type="module" src="script.js?v=1.0.291" defer></script>
+    <script type="module" src="script.js?v=1.0.292" defer></script>
 </body>
 </html>
