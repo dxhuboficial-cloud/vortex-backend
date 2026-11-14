@@ -19865,3 +19865,22 @@ test('204. Correção de Ícones Lucide Inexistentes (folder-audio -> file-music
   }
   assert.strictEqual(openBraces204, closeBraces204, 'CSS deve manter chaves perfeitamente balanceadas após v1.0.287');
 });
+
+test('205. Regras do Firebase Realtime Database (presence, group_presence e group_typing) sem permission_denied', () => {
+  const firebaseCfg = JSON.parse(fs.readFileSync('firebase.json', 'utf8'));
+  const rtdbRules = JSON.parse(fs.readFileSync('database.rules.json', 'utf8'));
+
+  assert.strictEqual(firebaseCfg.database?.rules, 'database.rules.json', 'firebase.json deve apontar database.rules para database.rules.json');
+  assert.ok(rtdbRules.rules, 'database.rules.json deve conter objeto raiz rules');
+
+  // Presença individual
+  assert.strictEqual(rtdbRules.rules.presence?.$uid?.['.read'], 'auth != null');
+  assert.strictEqual(rtdbRules.rules.presence?.$uid?.['.write'], 'auth != null && auth.uid == $uid');
+
+  // Presença e digitação em grupos (leitura autenticada no grupo, escrita restrita ao próprio $uid)
+  assert.strictEqual(rtdbRules.rules.group_presence?.$groupId?.['.read'], 'auth != null');
+  assert.strictEqual(rtdbRules.rules.group_presence?.$groupId?.$uid?.['.write'], 'auth != null && auth.uid == $uid');
+
+  assert.strictEqual(rtdbRules.rules.group_typing?.$groupId?.['.read'], 'auth != null');
+  assert.strictEqual(rtdbRules.rules.group_typing?.$groupId?.$uid?.['.write'], 'auth != null && auth.uid == $uid');
+});
