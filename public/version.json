@@ -1,6 +1,6 @@
 {
-  "version": "1.0.282",
-  "build": 282,
+  "version": "1.0.283",
+  "build": 283,
   "releaseDate": "2026-11-13",
-  "notes": "Sistema VORTEX AI Shield & Recommender ✨ para Administrador: proteção avançada contra golpes, spam, links, contas/produtos/anúncios falsos, rajadas de conta nova e recomendação inteligente de fotos, vídeos, anúncios e produtos v1.0.282"
+  "notes": "Sistema VORTEX AI Shield ✨ Moderação Inteligente de Comentários: exclusão automática de links (http/https), repetições no mesmo post, spam aleatório e comentários com múltiplas denúncias; bloqueio de 48h para envio rápido e banimento permanente de comentários para palavrões/xingamentos v1.0.283"
 }

@@ -20568,23 +20568,71 @@ export async function runSecurityReportAnalysis(reportId, reportData, target, op
         }
     } else if (targetType === 'comment') {
         // 3. TIPO: COMENTÁRIOS
+        const commentPostId = reportData.postId || target?.postId || '';
+        const commentId = reportData.commentId || target?.commentId || '';
         const commentText = `${reportData.contentSnippet || ''} ${details}`;
+        let reportAiRes = { deleted: false, reportsCount: Number(reportData.reportsCount) || 1 };
+        if (commentPostId && commentId && typeof reportCommentByAI === 'function') {
+            try {
+                reportAiRes = await reportCommentByAI(commentPostId, commentId, reportData.reporterUid || 'reporter');
+            } catch (_) {}
+        }
+        const aiCommentCheck = typeof analyzeCommentByAI === 'function'
+            ? analyzeCommentByAI({
+                uid: targetUid,
+                postId: commentPostId,
+                commentId,
+                text: commentText,
+                reportsCount: reportAiRes.reportsCount,
+                trackRate: false
+            })
+            : null;
         const check = matchSecurityKeywords(commentText);
-        if (check.hasMatch) {
+
+        if (aiCommentCheck?.hasProfanity) {
+            if (targetUid && typeof applyCommentPunishmentByAI === 'function') {
+                await applyCommentPunishmentByAI(targetUid, 'permanent_ban', {
+                    authorName: targetName,
+                    text: commentText,
+                    signals: aiCommentCheck.signals
+                });
+            }
             analysisResult = {
                 action: 'auto_restricted',
                 confidence: 'high',
-                category: check.category,
-                explanation: `Comentário denunciado contém violação direta de segurança ("${check.matches.slice(0, 3).join(', ')}"). O autor do comentário recebeu restrição preventiva de 24 horas.`,
+                category: 'comment_profanity',
+                explanation: 'Comentário denunciado contém palavrão/xingamento. A IA removeu o comentário e aplicou bloqueio PERMANENTE nos comentários do autor (nunca mais poderá comentar).',
                 previewSnippets: [commentText.substring(0, 140)],
-                matchedKeywords: check.matches,
-                suggestedAction: 'restrict'
+                matchedKeywords: aiCommentCheck.signals || [],
+                suggestedAction: 'permanent_comment_ban'
             };
-            if (targetUid) {
-                updateDoc(doc(db, 'users', targetUid), { restricted: true, restrictionExpiresAt: Date.now() + 24*3600*1000, restrictedCount: 1 }).catch(() => {});
+        } else if (check.hasMatch || aiCommentCheck?.shouldDelete || reportAiRes.deleted) {
+            const matchedSignals = [...(check.matches || []), ...(aiCommentCheck?.signals || [])];
+            analysisResult = {
+                action: 'auto_restricted',
+                confidence: 'high',
+                category: check.category || 'comment_moderation',
+                explanation: `Comentário denunciado violou as diretrizes da IA VORTEX Shield ✨ (${matchedSignals.slice(0, 3).join(', ') || 'múltiplas denúncias'}) e foi removido automaticamente.`,
+                previewSnippets: [commentText.substring(0, 140)],
+                matchedKeywords: matchedSignals,
+                suggestedAction: 'delete_comment'
+            };
+            if (check.hasMatch && targetUid) {
+                updateDoc(doc(db, 'users', targetUid), { restricted: true, restrictionExpiresAt: Date.now() + 24 * 3600 * 1000, restrictedCount: 1 }).catch(() => {});
             }
-            if (postLookupId) {
-                updateDoc(doc(db, 'posts', postLookupId), { hiddenByAi: true, hiddenReason: analysisResult.explanation }).catch(() => {});
+            if (commentPostId && commentId && !reportAiRes.deleted) {
+                try {
+                    const pSnap = await getDoc(doc(db, 'posts', commentPostId));
+                    if (pSnap.exists()) {
+                        const pData = pSnap.data();
+                        if (Array.isArray(pData.comments)) {
+                            const updatedComments = pData.comments.filter(c => c && c.id !== commentId && String(c.createdAt) !== String(commentId));
+                            if (updatedComments.length !== pData.comments.length) {
+                                await updateDoc(doc(db, 'posts', commentPostId), { comments: updatedComments }).catch(() => {});
+                            }
+                        }
+                    }
+                } catch (_) {}
             }
         } else {
             analysisResult = {
@@ -23146,7 +23194,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.282';
+export const CURRENT_APP_VERSION = '1.0.283';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -33343,6 +33391,14 @@ export async function submitInlineComment(postId, text) {
         showRestrictionActionNotice();
         return;
     }
+    if (typeof canUserCommentByAI === 'function') {
+        const perm = canUserCommentByAI(currentUser.uid, currentProfile);
+        if (!perm.allowed) {
+            showToast(perm.type === 'permanent' ? 'Comentários Banidos Permanentemente 🚫' : 'Comentários Bloqueados (48h) 🛡️', perm.reason, 'red');
+            if (typeof syncCommentInputLockUI === 'function') syncCommentInputLockUI();
+            return;
+        }
+    }
     const cleanText = text?.trim();
     if (!cleanText) return;
 
@@ -33352,6 +33408,24 @@ export async function submitInlineComment(postId, text) {
         if (!postSnap.exists()) return;
         const postData = postSnap.data();
         const comments = Array.isArray(postData.comments) ? [...postData.comments] : [];
+        const postObj = { id: postId, ...postData, comments };
+        if (typeof handleCommentSubmissionByAI === 'function') {
+            const aiCheck = await handleCommentSubmissionByAI({
+                uid: currentUser.uid,
+                post: postObj,
+                text: cleanText,
+                account: currentProfile
+            });
+            if (!aiCheck.allowed) {
+                if (activeCommentPost && activeCommentPost.id === postId) {
+                    activeCommentPost.comments = postObj.comments;
+                    renderCommentsModalList();
+                }
+                const cachedPost = Array.isArray(cachedFeedPosts) ? cachedFeedPosts.find(p => p && p.id === postId) : null;
+                if (cachedPost) cachedPost.comments = postObj.comments;
+                return;
+            }
+        }
         const commentId = 'comm_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
         const isMyVip = checkIsVipUser(currentProfile);
         comments.push({
@@ -33493,6 +33567,31 @@ export async function editPostComment(postId, commentIdOrIdx, newText) {
         if (!isAuthor) {
             showToast('Permissão negada', 'Você só pode editar seus próprios comentários.', 'red');
             return false;
+        }
+
+        if (typeof handleCommentSubmissionByAI === 'function') {
+            const postObj = { id: postId, ...postData, comments };
+            const aiEditCheck = await handleCommentSubmissionByAI({
+                uid: currentUser.uid,
+                post: postObj,
+                text: cleanText,
+                commentId: targetComment.id,
+                account: currentProfile,
+                isEdit: true
+            });
+            if (!aiEditCheck.allowed) {
+                if (aiEditCheck.deletedComment) {
+                    comments.splice(targetIndex, 1);
+                    await updateDoc(postRef, { comments });
+                    if (activeCommentPost && activeCommentPost.id === postId) {
+                        activeCommentPost.comments = comments;
+                        renderCommentsModalList();
+                    }
+                    const cachedPost = Array.isArray(cachedFeedPosts) ? cachedFeedPosts.find(p => p && p.id === postId) : null;
+                    if (cachedPost) cachedPost.comments = comments;
+                }
+                return false;
+            }
         }
 
         targetComment.text = cleanText;
@@ -34939,6 +35038,9 @@ function renderPostsFeed(posts = []) {
         const resolvedAvatar = getLiveAuthorAvatar(post.authorUid, post.authorAvatar);
         const avatar = resolvedAvatar ? `style="background-image: url('${resolvedAvatar}')"` : '';
         const likes = Array.isArray(post.likes) ? post.likes.length : 0;
+        if (typeof moderatePostCommentsByAI === 'function' && Array.isArray(post.comments) && post.comments.length) {
+            moderatePostCommentsByAI(post, { persist: true });
+        }
         const rawComments = (Array.isArray(post.comments) ? post.comments : []).filter(c => !isUserAccountDeleted(c.authorUid) && !c.isDeleted && !c.deleted);
         const sortedComments = getSortedPostComments(rawComments);
         const caption = post.caption || '';
@@ -35171,6 +35273,7 @@ function renderPostsFeed(posts = []) {
     });
 
     if (window.lucide) lucide.createIcons();
+    if (typeof syncCommentInputLockUI === 'function') syncCommentInputLockUI();
 
     // Curtir postagem
     feedList.querySelectorAll('[data-action="like"]').forEach(button => {
@@ -35550,9 +35653,10 @@ export function openPostCommentModal(post) {
     modal.classList.add('active');
     modal.setAttribute('aria-hidden', 'false');
     if (window.lucide) lucide.createIcons();
+    if (typeof syncCommentInputLockUI === 'function') syncCommentInputLockUI();
     if (input) {
         input.value = '';
-        setTimeout(() => input.focus(), 80);
+        if (!input.disabled) setTimeout(() => input.focus(), 80);
     }
 }
 
@@ -35569,6 +35673,9 @@ export function renderCommentsModalList() {
     const list = document.getElementById('comment-modal-list');
     if (!list || !activeCommentPost) return;
 
+    if (typeof moderatePostCommentsByAI === 'function' && Array.isArray(activeCommentPost.comments) && activeCommentPost.comments.length) {
+        moderatePostCommentsByAI(activeCommentPost, { persist: true });
+    }
     const rawComments = Array.isArray(activeCommentPost.comments) ? activeCommentPost.comments : [];
     if (!rawComments.length) {
         list.innerHTML = '<div class="comment-empty">Nenhum comentário ainda. Seja o primeiro a comentar!</div>';
@@ -35792,6 +35899,22 @@ export async function submitPostComment() {
     const input = document.getElementById('comment-modal-input');
     const text = input?.value?.trim();
     if (!text) return;
+
+    if (typeof handleCommentSubmissionByAI === 'function') {
+        const aiCheck = await handleCommentSubmissionByAI({
+            uid: currentUser.uid,
+            post: activeCommentPost,
+            text,
+            account: currentProfile
+        });
+        if (!aiCheck.allowed) {
+            if (input) input.value = '';
+            const cachedPost = Array.isArray(cachedFeedPosts) ? cachedFeedPosts.find(p => p && p.id === activeCommentPost.id) : null;
+            if (cachedPost) cachedPost.comments = activeCommentPost.comments;
+            renderCommentsModalList();
+            return;
+        }
+    }
 
     const newComment = {
         id: 'comm_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
@@ -41383,8 +41506,13 @@ export const AI_SECURITY_CONFIG = {
     antiScamSpamLinks: true,
     antiFakeEntities: true,
     strangeChatMonitor: true,
+    commentModeration: true,
+    commentBlock48hMs: 48 * 60 * 60 * 1000, // 48 horas
+    commentReportDeleteThreshold: 3,
     smartRecommendations: true
 };
+
+export const COMMENT_BLOCK_48H_MS = 48 * 60 * 60 * 1000;
 
 export const aiSecurityIncidents = [];
 
@@ -41394,9 +41522,21 @@ export const aiBehaviorTracker = {
     friendRequests: new Map(),  // uid -> { ts, targetId }[]
     posts: new Map(),           // uid -> { ts, targetId }[]
     profileEdits: new Map(),    // uid -> { ts, targetId, fields }[]
+    commentTimestamps: new Map(),   // uid -> { ts, postId, commentId, text }[]
+    commentRestrictions: new Map(), // uid -> { permanent: boolean, blockedUntil: number, reason: string, updatedAt: number }
+    commentReports: new Map(),      // commentKey -> Set<reporterUid>
     cooldowns: new Map(),       // uid -> number (timestamp)
     resolvedSafeKeys: new Set() // keys marcadas como seguras pelo ADM
 };
+
+const AI_COMMENT_PROFANITY_PATTERNS = [
+    /\b(porra|caralho|carai|krl|merda|bosta|puta|putinha|vadia|piranha|vagabunda|vagabundo|arrombado|arrombada|desgracado|desgracada|desgraca|fdp|filh[oa]\s*d[ae]\s*puta|vsf|vai\s*se\s*foder|vai\s*toma[r]?\s*no\s*cu|tnc|tomar\s*no\s*cu|pqp|cuz[ao]o|cuzao|babaca|otari[oa]|idiota|imbecil|lixo\s*humano|corn[oa]|boquete|punheta|buceta|xoxota|pau\s*no\s*cu|viado|bicha|foda[-\s]?se|foder)\b/i
+];
+
+const AI_COMMENT_LINK_PATTERNS = [
+    /https?:\/\/\S+/i,
+    /\bwww\.[^\s]+\.[a-z]{2,}\b/i
+];
 
 let currentAdminAICategoryFilter = 'all';
 let currentAdminAIRecTab = 'posts';
@@ -42385,6 +42525,15 @@ window.handleCallSwitchedToVideo = handleCallSwitchedToVideo;
     window.adminHandleAIIncidentAction = adminHandleAIIncidentAction;
     window.renderAdminAISecurityDashboard = renderAdminAISecurityDashboard;
     window.initAdminAISecurityUI = initAdminAISecurityUI;
+    window.COMMENT_BLOCK_48H_MS = COMMENT_BLOCK_48H_MS;
+    window.canUserCommentByAI = canUserCommentByAI;
+    window.applyCommentPunishmentByAI = applyCommentPunishmentByAI;
+    window.unblockUserCommentsByAI = unblockUserCommentsByAI;
+    window.analyzeCommentByAI = analyzeCommentByAI;
+    window.moderatePostCommentsByAI = moderatePostCommentsByAI;
+    window.handleCommentSubmissionByAI = handleCommentSubmissionByAI;
+    window.reportCommentByAI = reportCommentByAI;
+    window.syncCommentInputLockUI = syncCommentInputLockUI;
     try {
         Object.defineProperty(window, 'maintenanceConfig', {
             get: () => maintenanceConfig,
@@ -47329,6 +47478,17 @@ export function loadAISecurityConfig() {
             }).catch(() => {});
         }
     } catch (_) {}
+    try {
+        const rawRestr = localStorage.getItem('vortex_ai_comment_restrictions');
+        if (rawRestr) {
+            const parsedRestr = JSON.parse(rawRestr);
+            if (parsedRestr && typeof parsedRestr === 'object') {
+                Object.entries(parsedRestr).forEach(([uKey, val]) => {
+                    if (val && typeof val === 'object') aiBehaviorTracker.commentRestrictions.set(uKey, val);
+                });
+            }
+        }
+    } catch (_) {}
     syncAISecurityControlsUI();
     return { ...AI_SECURITY_CONFIG };
 }
@@ -47363,6 +47523,7 @@ function syncAISecurityControlsUI() {
         ['admin-ai-toggle-scam-spam', 'antiScamSpamLinks'],
         ['admin-ai-toggle-fake-entities', 'antiFakeEntities'],
         ['admin-ai-toggle-strange-chats', 'strangeChatMonitor'],
+        ['admin-ai-toggle-comment-guard', 'commentModeration'],
         ['admin-ai-toggle-recommendations', 'smartRecommendations']
     ];
     for (const [id, key] of map) {
@@ -48166,6 +48327,9 @@ export function runAdminAIPlatformScan() {
                 });
             }
         }
+        if (AI_SECURITY_CONFIG.commentModeration && Array.isArray(p.comments) && p.comments.length > 0) {
+            moderatePostCommentsByAI(p, { persist: true });
+        }
     });
 
     const productsPool = (typeof catalogSellerProductsCache !== 'undefined' && Array.isArray(catalogSellerProductsCache)) ? catalogSellerProductsCache : [];
@@ -48212,7 +48376,7 @@ export function runAdminAIPlatformScan() {
 }
 
 /**
- * Executa ação administrativa a partir do card de alerta da IA (restringir, banir, remover conteúdo ou marcar seguro).
+ * Executa ação administrativa a partir do card de alerta da IA (restringir, banir, remover conteúdo, liberar comentários ou marcar seguro).
  */
 export async function adminHandleAIIncidentAction(incidentId, action) {
     const inc = aiSecurityIncidents.find(i => i.id === incidentId);
@@ -48224,6 +48388,14 @@ export async function adminHandleAIIncidentAction(incidentId, action) {
         if (inc.uid) aiBehaviorTracker.cooldowns.delete(inc.uid);
         renderAdminAISecurityDashboard();
         if (typeof showToast === 'function') showToast('Marcado como Seguro ✅', 'Ocorrência liberada pela moderação ADM.', 'green');
+        return true;
+    }
+
+    if (action === 'unblock_comments' && inc.uid) {
+        await unblockUserCommentsByAI(inc.uid);
+        inc.status = 'comments_unblocked';
+        renderAdminAISecurityDashboard();
+        if (typeof showToast === 'function') showToast('Comentários Liberados ✅', `O usuário ${inc.targetName} foi desbloqueado para comentar.`, 'green');
         return true;
     }
 
@@ -48268,7 +48440,7 @@ export function renderAdminAISecurityDashboard() {
     syncAISecurityControlsUI();
 
     const openIncidents = aiSecurityIncidents.filter(i => i.status === 'open');
-    const threatsCount = openIncidents.filter(i => i.category === 'scam_link_spam' || i.category === 'strange_chat').length;
+    const threatsCount = openIncidents.filter(i => i.category === 'scam_link_spam' || i.category === 'strange_chat' || i.category === 'comment_moderation').length;
     const accountsCount = openIncidents.filter(i => i.category === 'new_account_burst' || i.category === 'fake_account').length;
     const fakesCount = openIncidents.filter(i => i.category === 'fake_product' || i.category === 'fake_ad').length;
 
@@ -48313,7 +48485,7 @@ export function renderAdminAISecurityDashboard() {
                 <div class="admin-empty-state">
                     <i data-lucide="shield-check" class="empty-state-icon"></i>
                     <p>Nenhuma anomalia nesta categoria.</p>
-                    <small>O algoritmo VORTEX AI Shield ✨ continua monitorando contas, links, chats, produtos e anúncios em tempo real.</small>
+                    <small>O algoritmo VORTEX AI Shield ✨ continua monitorando contas, links, chats, comentários, produtos e anúncios em tempo real.</small>
                 </div>
             `;
         } else {
@@ -48323,7 +48495,8 @@ export function renderAdminAISecurityDashboard() {
                 fake_product: 'Produto Falso',
                 fake_ad: 'Anúncio Falso',
                 strange_chat: 'Conversa Estranha',
-                scam_link_spam: 'Golpe / Spam / Link'
+                scam_link_spam: 'Golpe / Spam / Link',
+                comment_moderation: 'Comentários IA'
             };
             listEl.innerHTML = filtered.map(inc => `
                 <div class="admin-ai-incident-card risk-${inc.riskLevel}" data-incident-id="${inc.id}">
@@ -48343,6 +48516,7 @@ export function renderAdminAISecurityDashboard() {
                     <div class="admin-ai-incident-actions">
                         ${inc.uid ? `<button type="button" class="admin-ai-action-btn restrict" data-ai-action="restrict" data-incident-id="${inc.id}">Restringir 24h</button>` : ''}
                         ${inc.uid ? `<button type="button" class="admin-ai-action-btn ban" data-ai-action="ban" data-incident-id="${inc.id}">Banir Conta</button>` : ''}
+                        ${(inc.category === 'comment_moderation' && inc.uid) ? `<button type="button" class="admin-ai-action-btn safe" data-ai-action="unblock_comments" data-incident-id="${inc.id}">Liberar Comentários</button>` : ''}
                         ${(inc.entityType === 'post' || inc.entityType === 'product') ? `<button type="button" class="admin-ai-action-btn ban" data-ai-action="remove_content" data-incident-id="${inc.id}">Remover Item</button>` : ''}
                         <button type="button" class="admin-ai-action-btn safe" data-ai-action="mark_safe" data-incident-id="${inc.id}">Marcar Seguro</button>
                     </div>
@@ -48406,7 +48580,7 @@ export function initAdminAISecurityUI() {
     document.getElementById('admin-ai-scan-btn')?.addEventListener('click', () => {
         runAdminAIPlatformScan();
         if (typeof showToast === 'function') {
-            showToast('Auditoria IA Concluída ✨', 'Sistema analisou contas, chats, produtos, anúncios e recomendações.', 'blue');
+            showToast('Auditoria IA Concluída ✨', 'Sistema analisou contas, chats, comentários, produtos, anúncios e recomendações.', 'blue');
         }
     });
 
@@ -48420,6 +48594,7 @@ export function initAdminAISecurityUI() {
         ['admin-ai-toggle-scam-spam', 'antiScamSpamLinks'],
         ['admin-ai-toggle-fake-entities', 'antiFakeEntities'],
         ['admin-ai-toggle-strange-chats', 'strangeChatMonitor'],
+        ['admin-ai-toggle-comment-guard', 'commentModeration'],
         ['admin-ai-toggle-recommendations', 'smartRecommendations']
     ];
     for (const [id, key] of toggleBind) {
@@ -48461,4 +48636,635 @@ export function initAdminAISecurityUI() {
 
     updateAdminAIBadgeUI();
 }
+
+/* ==========================================================================
+   VORTEX AI COMMENT SHIELD - ANÁLISE, AUTO-EXCLUSÃO E BLOQUEIOS (48H / BAN PERMANENTE)
+   ========================================================================== */
+
+function persistCommentRestrictionsLocal() {
+    try {
+        const obj = {};
+        aiBehaviorTracker.commentRestrictions.forEach((v, k) => {
+            obj[k] = v;
+        });
+        localStorage.setItem('vortex_ai_comment_restrictions', JSON.stringify(obj));
+    } catch (_) {}
+}
+
+function normalizeProfanityTextForAI(text = '') {
+    const base = String(text || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase();
+    const leet = base
+        .replace(/@/g, 'a')
+        .replace(/0/g, 'o')
+        .replace(/[1!]/g, 'i')
+        .replace(/3/g, 'e')
+        .replace(/4/g, 'a')
+        .replace(/[$5]/g, 's');
+    const squashedDots = leet.replace(/(?<=\b[a-z])[.\-_*]+(?=[a-z]\b)/g, '');
+    return { leet, squashedDots };
+}
+
+function normalizeCommentForCompare(text = '') {
+    return String(text || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function isRandomOrSpamCommentForAI(text = '') {
+    const trimmed = String(text || '').trim();
+    if (!trimmed) return false;
+    // Repetição extrema do mesmo caractere (ex: aaaaaaa / kkkkkkkkkkk)
+    if (/(.)\1{6,}/i.test(trimmed)) return true;
+    const norm = normalizeCommentForCompare(trimmed);
+    const words = norm.split(' ').filter(Boolean);
+    // Mesma palavra repetida 3 ou mais vezes consecutivas/seguidas (ex: "top top top top")
+    if (words.length >= 3) {
+        const freq = new Map();
+        for (const w of words) {
+            freq.set(w, (freq.get(w) || 0) + 1);
+            if (w.length >= 2 && freq.get(w) >= 3 && words.length <= 6) return true;
+        }
+    }
+    // Sequência aleatória / embaralhamento sem vogais suficientes (ex: "qwrtypsdfghj")
+    const compact = norm.replace(/\s+/g, '');
+    if (compact.length >= 9) {
+        const vowels = (compact.match(/[aeiou]/g) || []).length;
+        if (vowels === 0 || (compact.length >= 12 && (vowels / compact.length) < 0.14)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Verifica se o usuário tem permissão para comentar (bloqueio permanente ou bloqueio temporário de 48 horas).
+ */
+export function canUserCommentByAI(uid, account = null, now = Date.now()) {
+    if (!uid) return { allowed: false, type: 'unauthenticated', reason: 'Faça login para comentar.' };
+    const isStaff = typeof isUserAdmin === 'function' && isUserAdmin({ uid, email: account?.email }, account);
+    if (isStaff) return { allowed: true, type: 'admin' };
+
+    const tracked = aiBehaviorTracker.commentRestrictions.get(uid) || null;
+    const isPerm = Boolean(account?.commentBanPermanent || tracked?.permanent);
+    if (isPerm) {
+        return {
+            allowed: false,
+            type: 'permanent',
+            reason: account?.commentBanReason || tracked?.reason || 'Seus comentários foram bloqueados permanentemente pela IA VORTEX Shield ✨ por envio de palavrões ou xingamentos. Você nunca mais poderá comentar em posts.'
+        };
+    }
+
+    const blockedUntil = Math.max(Number(account?.commentBlockedUntil) || 0, Number(tracked?.blockedUntil) || 0);
+    if (blockedUntil > now) {
+        const remainingMs = blockedUntil - now;
+        const hoursLeft = Math.max(1, Math.ceil(remainingMs / 3600000));
+        return {
+            allowed: false,
+            type: 'temporary_48h',
+            blockedUntil,
+            remainingMs,
+            reason: `Seus comentários estão bloqueados pela IA VORTEX Shield ✨ por envio rápido repetitivo (restam ~${hoursLeft}h de 48h).`
+        };
+    }
+
+    return { allowed: true, type: 'ok' };
+}
+
+/**
+ * Aplica punição automática da IA nos comentários do usuário:
+ * - 'permanent_ban': bloqueio permanente em comentários (nunca mais comenta) por palavrão/xingamento
+ * - 'block_48h': bloqueio de 48 horas em comentários por envio muito rápido
+ */
+export async function applyCommentPunishmentByAI(uid, punishmentType = 'block_48h', meta = {}) {
+    if (!uid) return null;
+    const now = meta.now || Date.now();
+    const isPerm = punishmentType === 'permanent_ban';
+    const durationMs = AI_SECURITY_CONFIG.commentBlock48hMs || COMMENT_BLOCK_48H_MS;
+    const reason = meta.reason || (isPerm
+        ? 'Bloqueio permanente nos comentários aplicado pela IA VORTEX Shield ✨ por envio de palavrões/xingamentos.'
+        : 'Bloqueio temporário de 48 horas nos comentários aplicado pela IA VORTEX Shield ✨ por envio muito rápido.');
+
+    const record = {
+        permanent: isPerm,
+        blockedUntil: isPerm ? Infinity : (now + durationMs),
+        reason,
+        updatedAt: now
+    };
+
+    const existing = aiBehaviorTracker.commentRestrictions.get(uid);
+    if (existing?.permanent && !isPerm) {
+        // Nunca rebaixa um ban permanente de comentários para 48h
+        return existing;
+    }
+
+    aiBehaviorTracker.commentRestrictions.set(uid, record);
+    persistCommentRestrictionsLocal();
+
+    if (typeof currentUser !== 'undefined' && currentUser && currentUser.uid === uid && typeof currentProfile !== 'undefined' && currentProfile) {
+        if (isPerm) {
+            currentProfile.commentBanPermanent = true;
+            currentProfile.commentBanReason = reason;
+            currentProfile.commentBannedAt = now;
+        } else {
+            currentProfile.commentBlockedUntil = record.blockedUntil;
+            currentProfile.commentBlockReason = reason;
+            currentProfile.commentBlockedAt = now;
+        }
+    }
+
+    try {
+        if (typeof db !== 'undefined' && db && typeof updateDoc === 'function' && typeof doc === 'function') {
+            const payload = isPerm
+                ? { commentBanPermanent: true, commentBanReason: reason, commentBannedAt: now }
+                : { commentBlockedUntil: record.blockedUntil, commentBlockReason: reason, commentBlockedAt: now };
+            await updateDoc(doc(db, 'users', uid), payload).catch(() => {});
+        }
+    } catch (_) {}
+
+    recordAIIncident({
+        uid,
+        targetName: meta.authorName || uid,
+        category: 'comment_moderation',
+        subReason: isPerm ? 'comment_profanity_permanent_ban' : 'comment_rapid_block_48h',
+        riskLevel: isPerm ? 'critical' : 'high',
+        riskScore: isPerm ? 98 : 86,
+        signals: meta.signals || [isPerm ? 'Palavrão/xingamento — ban permanente' : 'Rajada rápida — bloqueio 48h'],
+        summary: reason,
+        snippet: meta.text ? String(meta.text).slice(0, 120) : '',
+        entityType: 'user',
+        entityId: uid,
+        dedupKey: `comment_punish_${uid}_${punishmentType}`
+    });
+
+    try {
+        if (typeof notifyAdmins === 'function') {
+            notifyAdmins('🤖 IA Comentários VORTEX ✨', `${reason} (Usuário: ${meta.authorName || uid})`, 'warning');
+        }
+    } catch (_) {}
+
+    syncCommentInputLockUI();
+    return record;
+}
+
+/**
+ * Permite que o Administrador remova um bloqueio de comentários (48h ou permanente).
+ */
+export async function unblockUserCommentsByAI(uid) {
+    if (!uid) return false;
+    aiBehaviorTracker.commentRestrictions.delete(uid);
+    aiBehaviorTracker.commentTimestamps.delete(uid);
+    persistCommentRestrictionsLocal();
+
+    if (typeof currentUser !== 'undefined' && currentUser && currentUser.uid === uid && typeof currentProfile !== 'undefined' && currentProfile) {
+        currentProfile.commentBanPermanent = false;
+        currentProfile.commentBanReason = null;
+        currentProfile.commentBlockedUntil = 0;
+        currentProfile.commentBlockReason = null;
+    }
+    try {
+        if (typeof db !== 'undefined' && db && typeof updateDoc === 'function' && typeof doc === 'function') {
+            await updateDoc(doc(db, 'users', uid), {
+                commentBanPermanent: false,
+                commentBanReason: null,
+                commentBlockedUntil: 0,
+                commentBlockReason: null
+            }).catch(() => {});
+        }
+    } catch (_) {}
+
+    syncCommentInputLockUI();
+    return true;
+}
+
+/**
+ * Analisa um comentário quanto a links (https:///http://), palavrões/xingamentos, envio muito rápido,
+ * repetições no mesmo post, repetições do mesmo usuário, texto aleatório e denúncias acumuladas.
+ */
+export function analyzeCommentByAI({
+    uid = null,
+    postId = null,
+    commentId = null,
+    text = '',
+    post = null,
+    account = null,
+    reportsCount = null,
+    now = Date.now(),
+    trackRate = false
+} = {}) {
+    const cleanText = normalizeTextForAI(text);
+    const signals = [];
+    let hasProfanity = false;
+    let hasLink = false;
+    let isTooFast = false;
+    let isRepetitive = false;
+    let isRandomSpam = false;
+    let isHighlyReported = false;
+
+    if (!cleanText) {
+        return { isSafe: true, shouldDelete: false, punishment: 'none', riskScore: 0, riskLevel: 'low', signals };
+    }
+
+    // 1. Links http://, https:// e www.
+    for (const pat of AI_COMMENT_LINK_PATTERNS) {
+        if (pat.test(cleanText)) {
+            hasLink = true;
+            signals.push('Link (http:///https://) não permitido nos comentários');
+            break;
+        }
+    }
+
+    // 2. Palavrões e Xingamentos (bloqueio permanente nos comentários)
+    const { leet, squashedDots } = normalizeProfanityTextForAI(cleanText);
+    for (const pat of AI_COMMENT_PROFANITY_PATTERNS) {
+        if (pat.test(leet) || pat.test(squashedDots)) {
+            hasProfanity = true;
+            signals.push('Palavrão ou xingamento detectado (bloqueio permanente)');
+            break;
+        }
+    }
+
+    // 3. Envios muito rápidos (rajada em < 20s -> apagar e bloquear por 48h)
+    if (uid && trackRate) {
+        const hist = (aiBehaviorTracker.commentTimestamps.get(uid) || []).filter(c => now - c.ts <= 25000);
+        hist.push({ ts: now, postId, commentId, text: cleanText });
+        aiBehaviorTracker.commentTimestamps.set(uid, hist);
+        if (hist.length >= 3) {
+            isTooFast = true;
+            signals.push(`Comentários enviados muito rápido (${hist.length} em 25s — bloqueio 48h)`);
+        }
+    }
+
+    // 4. Repetitividade no mesmo post ou pelo mesmo usuário, além de texto aleatório/spam
+    const normNew = normalizeCommentForCompare(cleanText);
+    const postComments = Array.isArray(post?.comments) ? post.comments : [];
+    const othersOnPost = postComments.filter(c => !commentId || c.id !== commentId);
+
+    if (normNew && othersOnPost.some(c => normalizeCommentForCompare(c.text || '') === normNew)) {
+        isRepetitive = true;
+        signals.push('Comentário repetido no mesmo post');
+    }
+
+    if (uid) {
+        const sameUserOnPost = othersOnPost.filter(c => c.authorUid === uid);
+        if (sameUserOnPost.length >= 1 && sameUserOnPost.some(c => normalizeCommentForCompare(c.text || '') === normNew)) {
+            isRepetitive = true;
+            signals.push('Mesmo usuário enviando comentários repetidos no post');
+        }
+        if (sameUserOnPost.length >= 3) {
+            isRepetitive = true;
+            signals.push(`Usuário enviou muitos comentários seguidos no mesmo post (${sameUserOnPost.length + 1}x)`);
+        }
+    }
+
+    if (isRandomOrSpamCommentForAI(cleanText)) {
+        isRandomSpam = true;
+        signals.push('Comentário aleatório / spam repetitivo sem sentido');
+    }
+
+    // 5. Múltiplas denúncias (>= 3 denúncias -> apagar automaticamente)
+    const reportKey = commentId || `${postId || 'post'}_${normNew}`;
+    const trackedReports = aiBehaviorTracker.commentReports.get(reportKey)?.size || 0;
+    const totalReports = Math.max(Number(reportsCount) || 0, trackedReports);
+    const reportThreshold = AI_SECURITY_CONFIG.commentReportDeleteThreshold || 3;
+    if (totalReports >= reportThreshold) {
+        isHighlyReported = true;
+        signals.push(`Comentário com múltiplas denúncias (${totalReports})`);
+    }
+
+    const shouldDelete = Boolean(
+        AI_SECURITY_CONFIG.commentModeration &&
+        (hasProfanity || hasLink || isTooFast || isRepetitive || isRandomSpam || isHighlyReported)
+    );
+
+    let punishment = 'none';
+    if (hasProfanity) punishment = 'permanent_ban';
+    else if (isTooFast) punishment = 'block_48h';
+
+    let riskScore = 0;
+    if (hasProfanity) riskScore += 95;
+    if (isTooFast) riskScore += 82;
+    if (hasLink) riskScore += 75;
+    if (isHighlyReported) riskScore += 78;
+    if (isRepetitive || isRandomSpam) riskScore += 65;
+    riskScore = Math.min(100, riskScore);
+
+    return {
+        isSafe: !shouldDelete,
+        shouldDelete,
+        punishment,
+        hasProfanity,
+        hasLink,
+        isTooFast,
+        isRepetitive,
+        isRandomSpam,
+        isHighlyReported,
+        riskScore,
+        riskLevel: riskLevelFromScore(riskScore),
+        signals: [...new Set(signals)]
+    };
+}
+
+/**
+ * Varre todos os comentários de um post, remove duplicados no mesmo post, links (http/https),
+ * aleatórios/spam, altamente denunciados, palavrões (ban permanente) e rajadas rápidas (bloqueio 48h).
+ */
+export function moderatePostCommentsByAI(post = null, options = {}) {
+    if (!post || !Array.isArray(post.comments) || post.comments.length === 0 || !AI_SECURITY_CONFIG.commentModeration) {
+        return { cleanedComments: Array.isArray(post?.comments) ? [...post.comments] : [], removedComments: [], changed: false, punishmentsApplied: [] };
+    }
+
+    const seenSamePostNormalized = new Set();
+    const authorTimestampsMap = new Map();
+    const cleanedComments = [];
+    const removedComments = [];
+    const punishmentsApplied = [];
+
+    // Identifica autores com envio muito rápido dentro dos comentários armazenados no post
+    const rapidBurstAuthors = new Set();
+    for (const c of post.comments) {
+        if (!c || !c.authorUid) continue;
+        const ts = Number(c.createdAt) || 0;
+        if (!ts) continue;
+        const arr = authorTimestampsMap.get(c.authorUid) || [];
+        arr.push(ts);
+        authorTimestampsMap.set(c.authorUid, arr);
+    }
+    authorTimestampsMap.forEach((times, authorUid) => {
+        if (times.length < 3) return;
+        const sortedT = [...times].sort((a, b) => a - b);
+        for (let i = 0; i <= sortedT.length - 3; i++) {
+            if ((sortedT[i + 2] - sortedT[i]) <= 25000) {
+                rapidBurstAuthors.add(authorUid);
+                break;
+            }
+        }
+    });
+
+    for (const c of post.comments) {
+        if (!c) continue;
+        const cText = String(c.text || '');
+        const cNorm = normalizeCommentForCompare(cText);
+        const cUid = c.authorUid || c.uid || '';
+        const cReports = Math.max(
+            Number(c.reportsCount) || 0,
+            Array.isArray(c.reportedBy) ? c.reportedBy.length : 0,
+            Array.isArray(c.reports) ? c.reports.length : 0
+        );
+
+        const evalRes = analyzeCommentByAI({
+            uid: cUid,
+            postId: post.id,
+            commentId: c.id,
+            text: cText,
+            post: { id: post.id, comments: [] }, // duplicata controlada pelo seenSamePostNormalized
+            reportsCount: cReports,
+            trackRate: false
+        });
+
+        let removeReason = '';
+        if (evalRes.hasProfanity) removeReason = 'Palavrão / xingamento';
+        else if (evalRes.hasLink) removeReason = 'Link não permitido (http:// / https://)';
+        else if (evalRes.isHighlyReported) removeReason = `Múltiplas denúncias (${cReports})`;
+        else if (evalRes.isRandomSpam) removeReason = 'Comentário aleatório / spam';
+        else if (cUid && rapidBurstAuthors.has(cUid)) removeReason = 'Envio muito rápido repetitivo (48h)';
+        else if (cNorm && seenSamePostNormalized.has(cNorm)) removeReason = 'Comentário repetido no mesmo post';
+
+        if (removeReason) {
+            removedComments.push({ comment: c, reason: removeReason });
+            if (evalRes.hasProfanity && cUid) {
+                punishmentsApplied.push({ uid: cUid, punishment: 'permanent_ban' });
+                applyCommentPunishmentByAI(cUid, 'permanent_ban', {
+                    authorName: c.author || cUid,
+                    text: cText,
+                    signals: evalRes.signals
+                });
+            } else if (cUid && rapidBurstAuthors.has(cUid)) {
+                punishmentsApplied.push({ uid: cUid, punishment: 'block_48h' });
+                applyCommentPunishmentByAI(cUid, 'block_48h', {
+                    authorName: c.author || cUid,
+                    text: cText,
+                    signals: ['Rajada rápida de comentários no post (bloqueio 48h)']
+                });
+            } else if (cUid) {
+                recordAIIncident({
+                    uid: cUid,
+                    targetName: c.author || cUid,
+                    category: 'comment_moderation',
+                    subReason: removeReason.includes('Link') ? 'comment_link_deleted' : (removeReason.includes('denúncias') ? 'comment_reported_deleted' : 'comment_spam_deleted'),
+                    riskLevel: evalRes.riskLevel === 'low' ? 'medium' : evalRes.riskLevel,
+                    riskScore: Math.max(60, evalRes.riskScore),
+                    signals: evalRes.signals.length ? evalRes.signals : [removeReason],
+                    summary: `Comentário removido automaticamente pela IA: ${removeReason}.`,
+                    snippet: cText.slice(0, 120),
+                    entityType: 'comment',
+                    entityId: c.id || post.id,
+                    dedupKey: `comment_del_${post.id || 'p'}_${c.id || cNorm.slice(0, 24)}`
+                });
+            }
+        } else {
+            if (cNorm) seenSamePostNormalized.add(cNorm);
+            cleanedComments.push(c);
+        }
+    }
+
+    const changed = removedComments.length > 0;
+    if (changed) {
+        post.comments = cleanedComments;
+        if (options.persist !== false && post.id && typeof db !== 'undefined' && db && typeof updateDoc === 'function' && typeof doc === 'function') {
+            updateDoc(doc(db, 'posts', post.id), { comments: cleanedComments }).catch(() => {});
+        }
+    }
+
+    return { cleanedComments, removedComments, changed, punishmentsApplied };
+}
+
+/**
+ * Valida e executa ações da IA no envio ou edição de um comentário de post.
+ */
+export async function handleCommentSubmissionByAI({ uid, post, text, account = null, commentId = null, now = Date.now(), isEdit = false } = {}) {
+    const perm = canUserCommentByAI(uid, account, now);
+    if (!perm.allowed) {
+        if (typeof showToast === 'function') {
+            showToast(perm.type === 'permanent' ? 'Comentários Banidos Permanentemente 🚫' : 'Comentários Bloqueados (48h) 🛡️', perm.reason, 'red');
+        }
+        return { allowed: false, blockedType: perm.type, alertMessage: perm.reason };
+    }
+
+    const check = analyzeCommentByAI({
+        uid,
+        postId: post?.id,
+        commentId,
+        text,
+        post,
+        account,
+        now,
+        trackRate: !isEdit
+    });
+
+    if (!check.shouldDelete) {
+        return { allowed: true, analysis: check };
+    }
+
+    if (check.punishment === 'permanent_ban') {
+        await applyCommentPunishmentByAI(uid, 'permanent_ban', {
+            authorName: account?.name || uid,
+            text,
+            signals: check.signals,
+            now
+        });
+        if (post && Array.isArray(post.comments)) {
+            post.comments = post.comments.filter(c => c.authorUid !== uid && !normalizeProfanityTextForAI(c.text || '').leet.includes(normalizeProfanityTextForAI(text).leet));
+            if (post.id && typeof db !== 'undefined' && db && typeof updateDoc === 'function' && typeof doc === 'function') {
+                await updateDoc(doc(db, 'posts', post.id), { comments: post.comments }).catch(() => {});
+            }
+        }
+        if (typeof showToast === 'function') {
+            showToast('Bloqueio Permanente nos Comentários 🚫', 'A IA removeu o comentário por conter palavrão/xingamento e bloqueou seus comentários para sempre.', 'red');
+        }
+        return { allowed: false, punishment: 'permanent_ban', deletedComment: true, analysis: check, alertMessage: check.signals.join('; ') };
+    }
+
+    if (check.punishment === 'block_48h') {
+        await applyCommentPunishmentByAI(uid, 'block_48h', {
+            authorName: account?.name || uid,
+            text,
+            signals: check.signals,
+            now
+        });
+        // Apaga todos os comentários enviados rapidamente nessa rajada neste post
+        if (post && Array.isArray(post.comments)) {
+            const cleaned = post.comments.filter(c => !(c.authorUid === uid && (now - (Number(c.createdAt) || 0)) <= 30000));
+            if (cleaned.length !== post.comments.length) {
+                post.comments = cleaned;
+                if (post.id && typeof db !== 'undefined' && db && typeof updateDoc === 'function' && typeof doc === 'function') {
+                    await updateDoc(doc(db, 'posts', post.id), { comments: cleaned }).catch(() => {});
+                }
+            }
+        }
+        if (typeof showToast === 'function') {
+            showToast('Comentários Bloqueados por 48h 🛡️', 'Envio rápido repetitivo detectado! Os comentários da rajada foram apagados pela IA e seus comentários bloqueados por 48 horas.', 'red');
+        }
+        return { allowed: false, punishment: 'block_48h', deletedComment: true, analysis: check, alertMessage: check.signals.join('; ') };
+    }
+
+    // Links (http:///https://), comentários repetidos no mesmo post ou texto aleatório
+    recordAIIncident({
+        uid,
+        targetName: account?.name || uid,
+        category: 'comment_moderation',
+        subReason: check.hasLink ? 'comment_link_blocked' : 'comment_duplicate_or_random_blocked',
+        riskLevel: check.riskLevel === 'low' ? 'medium' : check.riskLevel,
+        riskScore: Math.max(65, check.riskScore),
+        signals: check.signals,
+        summary: `Comentário bloqueado/apagado pela IA: ${check.signals[0] || 'violação nos comentários'}.`,
+        snippet: String(text || '').slice(0, 120),
+        entityType: 'comment',
+        entityId: post?.id || uid,
+        dedupKey: `comment_sub_${uid}_${check.hasLink ? 'link' : 'repeat'}`
+    });
+
+    if (post && Array.isArray(post.comments)) {
+        moderatePostCommentsByAI(post, { persist: true });
+    }
+
+    if (typeof showToast === 'function') {
+        showToast('Comentário Removido pela IA 🛡️', `${check.signals[0] || 'Conteúdo não permitido nos comentários'}.`, 'red');
+    }
+    return { allowed: false, punishment: 'delete_only', deletedComment: true, analysis: check, alertMessage: check.signals.join('; ') };
+}
+
+/**
+ * Registra denúncia de comentário e solicita à IA exclusão automática se atingir o limite de denúncias.
+ */
+export async function reportCommentByAI(postId, commentId, reporterUid = 'anon') {
+    if (!postId || !commentId) return { deleted: false, reportsCount: 0 };
+    const set = aiBehaviorTracker.commentReports.get(commentId) || new Set();
+    set.add(reporterUid || `rep_${Date.now()}`);
+    aiBehaviorTracker.commentReports.set(commentId, set);
+    const reportsCount = set.size;
+
+    const postsList = [
+        ...((typeof cachedFeedPosts !== 'undefined' && Array.isArray(cachedFeedPosts)) ? cachedFeedPosts : []),
+        ...((typeof activeCommentPost !== 'undefined' && activeCommentPost && activeCommentPost.id === postId) ? [activeCommentPost] : [])
+    ];
+
+    let targetPost = postsList.find(p => p && p.id === postId) || null;
+    if (!targetPost && typeof db !== 'undefined' && db && typeof getDoc === 'function' && typeof doc === 'function') {
+        try {
+            const snap = await getDoc(doc(db, 'posts', postId));
+            if (snap.exists()) {
+                targetPost = { id: postId, ...snap.data() };
+            }
+        } catch (_) {}
+    }
+
+    if (!targetPost || !Array.isArray(targetPost.comments)) {
+        return { deleted: false, reportsCount };
+    }
+
+    targetPost.comments.forEach(c => {
+        if (c && (c.id === commentId || String(c.createdAt) === String(commentId))) {
+            c.reportedBy = Array.isArray(c.reportedBy) ? [...new Set([...c.reportedBy, reporterUid])] : [...set];
+            c.reportsCount = Math.max(Number(c.reportsCount) || 0, c.reportedBy.length, reportsCount);
+        }
+    });
+
+    const modRes = moderatePostCommentsByAI(targetPost, { persist: true });
+    const wasDeleted = modRes.removedComments.some(r => r.comment?.id === commentId || String(r.comment?.createdAt) === String(commentId));
+
+    if (typeof activeCommentPost !== 'undefined' && activeCommentPost && activeCommentPost.id === postId) {
+        activeCommentPost.comments = targetPost.comments;
+        if (typeof renderCommentsModalList === 'function') renderCommentsModalList();
+    }
+
+    return { deleted: wasDeleted, reportsCount, remainingComments: targetPost.comments.length };
+}
+
+/**
+ * Atualiza visualmente os campos de comentário (modal e cards) caso o usuário esteja bloqueado por 48h ou banido permanentemente.
+ */
+export function syncCommentInputLockUI() {
+    if (typeof document === 'undefined') return;
+    const uid = (typeof currentUser !== 'undefined' && currentUser) ? currentUser.uid : null;
+    if (!uid) return;
+    const perm = canUserCommentByAI(uid, (typeof currentProfile !== 'undefined' ? currentProfile : null));
+    const modalInp = document.getElementById('comment-modal-input');
+    const modalBtn = document.getElementById('comment-modal-send');
+    if (modalInp) {
+        if (!perm.allowed) {
+            modalInp.disabled = true;
+            modalInp.placeholder = perm.type === 'permanent'
+                ? '🚫 Comentários bloqueados permanentemente pela IA'
+                : '🛡️ Comentários bloqueados por 48h pela IA';
+        } else {
+            modalInp.disabled = false;
+            if (!modalInp.placeholder || modalInp.placeholder.includes('bloqueados')) {
+                modalInp.placeholder = 'Escreva um comentário...';
+            }
+        }
+    }
+    if (modalBtn) modalBtn.disabled = !perm.allowed;
+
+    document.querySelectorAll('.feed-comment-input').forEach(inp => {
+        if (!perm.allowed) {
+            inp.disabled = true;
+            inp.placeholder = perm.type === 'permanent'
+                ? '🚫 Comentários banidos pela IA'
+                : '🛡️ Comentários bloqueados por 48h';
+        } else {
+            inp.disabled = false;
+            if (!inp.placeholder || inp.placeholder.includes('bloqueados') || inp.placeholder.includes('banidos')) {
+                inp.placeholder = 'Escreva um comentário...';
+            }
+        }
+    });
+}
+
 

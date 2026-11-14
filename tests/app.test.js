@@ -18611,14 +18611,14 @@ test('195. Salvamento Automático do Tipo de Chave Pix (CPF, Telefone, E-mail, C
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
   // 1. Integridade de Versionamento v1.0.276+ (Build 276+)
-  assert.ok(['1.0.276', '1.0.277', '1.0.278', '1.0.279', '1.0.280', '1.0.281', '1.0.282'].includes(versionJson.version), 'version.json deve ser 1.0.276 ou superior');
-  assert.ok([276, 277, 278, 279, 280, 281, 282].includes(versionJson.build), 'build em version.json deve ser 276 ou superior');
-  assert.ok(['1.0.276', '1.0.277', '1.0.278', '1.0.279', '1.0.280', '1.0.281', '1.0.282'].includes(manifest.version), 'manifest.json deve ser 1.0.276 ou superior');
-  assert.ok(['1.0.276', '1.0.277', '1.0.278', '1.0.279', '1.0.280', '1.0.281', '1.0.282'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.276 ou superior');
-  assert.ok(swContent.includes('vortex-vip-v1.0.276') || swContent.includes('vortex-vip-v1.0.277') || swContent.includes('vortex-vip-v1.0.278') || swContent.includes('vortex-vip-v1.0.279') || swContent.includes('vortex-vip-v1.0.280') || swContent.includes('vortex-vip-v1.0.281') || swContent.includes('vortex-vip-v1.0.282'), 'sw.js deve conter cache v1.0.276+');
-  assert.ok(html.includes('script.js?v=1.0.276') || html.includes('script.js?v=1.0.277') || html.includes('script.js?v=1.0.278') || html.includes('script.js?v=1.0.279') || html.includes('script.js?v=1.0.280') || html.includes('script.js?v=1.0.281') || html.includes('script.js?v=1.0.282'), 'index.html deve referenciar script.js?v=1.0.276+');
-  assert.ok(html.includes('style.css?v=1.0.276') || html.includes('style.css?v=1.0.277') || html.includes('style.css?v=1.0.278') || html.includes('style.css?v=1.0.279') || html.includes('style.css?v=1.0.280') || html.includes('style.css?v=1.0.281') || html.includes('style.css?v=1.0.282'), 'index.html deve referenciar style.css?v=1.0.276+');
-  assert.ok(privacyHtml.includes('v1.0.276') || privacyHtml.includes('v1.0.277') || privacyHtml.includes('v1.0.278') || privacyHtml.includes('v1.0.279') || privacyHtml.includes('v1.0.280') || privacyHtml.includes('v1.0.281') || privacyHtml.includes('v1.0.282'), 'privacy.html deve referenciar v1.0.276+');
+  assert.ok(['1.0.276', '1.0.277', '1.0.278', '1.0.279', '1.0.280', '1.0.281', '1.0.282', '1.0.283'].includes(versionJson.version), 'version.json deve ser 1.0.276 ou superior');
+  assert.ok([276, 277, 278, 279, 280, 281, 282, 283].includes(versionJson.build), 'build em version.json deve ser 276 ou superior');
+  assert.ok(['1.0.276', '1.0.277', '1.0.278', '1.0.279', '1.0.280', '1.0.281', '1.0.282', '1.0.283'].includes(manifest.version), 'manifest.json deve ser 1.0.276 ou superior');
+  assert.ok(['1.0.276', '1.0.277', '1.0.278', '1.0.279', '1.0.280', '1.0.281', '1.0.282', '1.0.283'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.276 ou superior');
+  assert.ok(swContent.includes('vortex-vip-v1.0.276') || swContent.includes('vortex-vip-v1.0.277') || swContent.includes('vortex-vip-v1.0.278') || swContent.includes('vortex-vip-v1.0.279') || swContent.includes('vortex-vip-v1.0.280') || swContent.includes('vortex-vip-v1.0.281') || swContent.includes('vortex-vip-v1.0.282') || swContent.includes('vortex-vip-v1.0.283'), 'sw.js deve conter cache v1.0.276+');
+  assert.ok(html.includes('script.js?v=1.0.276') || html.includes('script.js?v=1.0.277') || html.includes('script.js?v=1.0.278') || html.includes('script.js?v=1.0.279') || html.includes('script.js?v=1.0.280') || html.includes('script.js?v=1.0.281') || html.includes('script.js?v=1.0.282') || html.includes('script.js?v=1.0.283'), 'index.html deve referenciar script.js?v=1.0.276+');
+  assert.ok(html.includes('style.css?v=1.0.276') || html.includes('style.css?v=1.0.277') || html.includes('style.css?v=1.0.278') || html.includes('style.css?v=1.0.279') || html.includes('style.css?v=1.0.280') || html.includes('style.css?v=1.0.281') || html.includes('style.css?v=1.0.282') || html.includes('style.css?v=1.0.283'), 'index.html deve referenciar style.css?v=1.0.276+');
+  assert.ok(privacyHtml.includes('v1.0.276') || privacyHtml.includes('v1.0.277') || privacyHtml.includes('v1.0.278') || privacyHtml.includes('v1.0.279') || privacyHtml.includes('v1.0.280') || privacyHtml.includes('v1.0.281') || privacyHtml.includes('v1.0.282') || privacyHtml.includes('v1.0.283'), 'privacy.html deve referenciar v1.0.276+');
 
   // 2. Elementos no HTML: Select com opções de Chave Pix e Botões Organizados
   assert.ok(html.includes('id="chest-pix-key-type"'), 'index.html deve conter select de tipo de chave Pix');
@@ -18741,14 +18741,14 @@ test('196. Barra de Rolagem Horizontal para os 3 Botões de Jogos (Tigrinho VIP,
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
   // 1. Integridade de Versionamento v1.0.278+ (Build 278+)
-  assert.ok(['1.0.278', '1.0.279', '1.0.280', '1.0.281', '1.0.282'].includes(versionJson.version), 'version.json deve ser 1.0.278+');
-  assert.ok([278, 279, 280, 281, 282].includes(versionJson.build), 'build em version.json deve ser 278+');
-  assert.ok(['1.0.278', '1.0.279', '1.0.280', '1.0.281', '1.0.282'].includes(manifest.version), 'manifest.json deve ser 1.0.278+');
-  assert.ok(['1.0.278', '1.0.279', '1.0.280', '1.0.281', '1.0.282'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.278+');
-  assert.ok(swContent.includes('vortex-vip-v1.0.278') || swContent.includes('vortex-vip-v1.0.279') || swContent.includes('vortex-vip-v1.0.280') || swContent.includes('vortex-vip-v1.0.281') || swContent.includes('vortex-vip-v1.0.282'), 'sw.js deve conter cache v1.0.278+');
-  assert.ok(html.includes('script.js?v=1.0.278') || html.includes('script.js?v=1.0.279') || html.includes('script.js?v=1.0.280') || html.includes('script.js?v=1.0.281') || html.includes('script.js?v=1.0.282'), 'index.html deve referenciar script.js?v=1.0.278+');
-  assert.ok(html.includes('style.css?v=1.0.278') || html.includes('style.css?v=1.0.279') || html.includes('style.css?v=1.0.280') || html.includes('style.css?v=1.0.281') || html.includes('style.css?v=1.0.282'), 'index.html deve referenciar style.css?v=1.0.278+');
-  assert.ok(privacyHtml.includes('v1.0.278') || privacyHtml.includes('v1.0.279') || privacyHtml.includes('v1.0.280') || privacyHtml.includes('v1.0.281') || privacyHtml.includes('v1.0.282'), 'privacy.html deve referenciar v1.0.278+');
+  assert.ok(['1.0.278', '1.0.279', '1.0.280', '1.0.281', '1.0.282', '1.0.283'].includes(versionJson.version), 'version.json deve ser 1.0.278+');
+  assert.ok([278, 279, 280, 281, 282, 283].includes(versionJson.build), 'build em version.json deve ser 278+');
+  assert.ok(['1.0.278', '1.0.279', '1.0.280', '1.0.281', '1.0.282', '1.0.283'].includes(manifest.version), 'manifest.json deve ser 1.0.278+');
+  assert.ok(['1.0.278', '1.0.279', '1.0.280', '1.0.281', '1.0.282', '1.0.283'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.278+');
+  assert.ok(swContent.includes('vortex-vip-v1.0.278') || swContent.includes('vortex-vip-v1.0.279') || swContent.includes('vortex-vip-v1.0.280') || swContent.includes('vortex-vip-v1.0.281') || swContent.includes('vortex-vip-v1.0.282') || swContent.includes('vortex-vip-v1.0.283'), 'sw.js deve conter cache v1.0.278+');
+  assert.ok(html.includes('script.js?v=1.0.278') || html.includes('script.js?v=1.0.279') || html.includes('script.js?v=1.0.280') || html.includes('script.js?v=1.0.281') || html.includes('script.js?v=1.0.282') || html.includes('script.js?v=1.0.283'), 'index.html deve referenciar script.js?v=1.0.278+');
+  assert.ok(html.includes('style.css?v=1.0.278') || html.includes('style.css?v=1.0.279') || html.includes('style.css?v=1.0.280') || html.includes('style.css?v=1.0.281') || html.includes('style.css?v=1.0.282') || html.includes('style.css?v=1.0.283'), 'index.html deve referenciar style.css?v=1.0.278+');
+  assert.ok(privacyHtml.includes('v1.0.278') || privacyHtml.includes('v1.0.279') || privacyHtml.includes('v1.0.280') || privacyHtml.includes('v1.0.281') || privacyHtml.includes('v1.0.282') || privacyHtml.includes('v1.0.283'), 'privacy.html deve referenciar v1.0.278+');
 
   // 2. Presença dos 3 Botões de Jogos no HTML
   assert.ok(html.includes('id="games-subtabs-nav"'), 'index.html deve conter #games-subtabs-nav');
@@ -18801,14 +18801,14 @@ test('197. Botão Publicar Status (#publish-status-btn) com Tamanho Aumentado e 
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
   // 1. Integridade de Versionamento v1.0.279+ (Build 279+)
-  assert.ok(['1.0.279', '1.0.280', '1.0.281', '1.0.282'].includes(versionJson.version), 'version.json deve ser 1.0.279+');
-  assert.ok([279, 280, 281, 282].includes(versionJson.build), 'build em version.json deve ser 279+');
-  assert.ok(['1.0.279', '1.0.280', '1.0.281', '1.0.282'].includes(manifest.version), 'manifest.json deve ser 1.0.279+');
-  assert.ok(['1.0.279', '1.0.280', '1.0.281', '1.0.282'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.279+');
-  assert.ok(swContent.includes('vortex-vip-v1.0.279') || swContent.includes('vortex-vip-v1.0.280') || swContent.includes('vortex-vip-v1.0.281') || swContent.includes('vortex-vip-v1.0.282'), 'sw.js deve conter cache v1.0.279+');
-  assert.ok(html.includes('script.js?v=1.0.279') || html.includes('script.js?v=1.0.280') || html.includes('script.js?v=1.0.281') || html.includes('script.js?v=1.0.282'), 'index.html deve referenciar script.js?v=1.0.279+');
-  assert.ok(html.includes('style.css?v=1.0.279') || html.includes('style.css?v=1.0.280') || html.includes('style.css?v=1.0.281') || html.includes('style.css?v=1.0.282'), 'index.html deve referenciar style.css?v=1.0.279+');
-  assert.ok(privacyHtml.includes('v1.0.279') || privacyHtml.includes('v1.0.280') || privacyHtml.includes('v1.0.281') || privacyHtml.includes('v1.0.282'), 'privacy.html deve referenciar v1.0.279+');
+  assert.ok(['1.0.279', '1.0.280', '1.0.281', '1.0.282', '1.0.283'].includes(versionJson.version), 'version.json deve ser 1.0.279+');
+  assert.ok([279, 280, 281, 282, 283].includes(versionJson.build), 'build em version.json deve ser 279+');
+  assert.ok(['1.0.279', '1.0.280', '1.0.281', '1.0.282', '1.0.283'].includes(manifest.version), 'manifest.json deve ser 1.0.279+');
+  assert.ok(['1.0.279', '1.0.280', '1.0.281', '1.0.282', '1.0.283'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.279+');
+  assert.ok(swContent.includes('vortex-vip-v1.0.279') || swContent.includes('vortex-vip-v1.0.280') || swContent.includes('vortex-vip-v1.0.281') || swContent.includes('vortex-vip-v1.0.282') || swContent.includes('vortex-vip-v1.0.283'), 'sw.js deve conter cache v1.0.279+');
+  assert.ok(html.includes('script.js?v=1.0.279') || html.includes('script.js?v=1.0.280') || html.includes('script.js?v=1.0.281') || html.includes('script.js?v=1.0.282') || html.includes('script.js?v=1.0.283'), 'index.html deve referenciar script.js?v=1.0.279+');
+  assert.ok(html.includes('style.css?v=1.0.279') || html.includes('style.css?v=1.0.280') || html.includes('style.css?v=1.0.281') || html.includes('style.css?v=1.0.282') || html.includes('style.css?v=1.0.283'), 'index.html deve referenciar style.css?v=1.0.279+');
+  assert.ok(privacyHtml.includes('v1.0.279') || privacyHtml.includes('v1.0.280') || privacyHtml.includes('v1.0.281') || privacyHtml.includes('v1.0.282') || privacyHtml.includes('v1.0.283'), 'privacy.html deve referenciar v1.0.279+');
 
   // 2. Presença do botão #publish-status-btn no HTML
   assert.ok(html.includes('id="publish-status-btn"'), 'index.html deve conter #publish-status-btn');
@@ -18852,14 +18852,14 @@ test('198. Botão Tester Beta nas Configurações, Modal com Descrição, Solici
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
   // 1. Integridade de Versionamento v1.0.280+ (Build 280+)
-  assert.ok(['1.0.280', '1.0.281', '1.0.282'].includes(versionJson.version), 'version.json deve ser 1.0.280+');
-  assert.ok([280, 281, 282].includes(versionJson.build), 'build em version.json deve ser 280+');
-  assert.ok(['1.0.280', '1.0.281', '1.0.282'].includes(manifest.version), 'manifest.json deve ser 1.0.280+');
-  assert.ok(['1.0.280', '1.0.281', '1.0.282'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.280+');
-  assert.ok(swContent.includes('vortex-vip-v1.0.280') || swContent.includes('vortex-vip-v1.0.281') || swContent.includes('vortex-vip-v1.0.282'), 'sw.js deve conter cache v1.0.280+');
-  assert.ok(html.includes('script.js?v=1.0.280') || html.includes('script.js?v=1.0.281') || html.includes('script.js?v=1.0.282'), 'index.html deve referenciar script.js?v=1.0.280+');
-  assert.ok(html.includes('style.css?v=1.0.280') || html.includes('style.css?v=1.0.281') || html.includes('style.css?v=1.0.282'), 'index.html deve referenciar style.css?v=1.0.280+');
-  assert.ok(privacyHtml.includes('v1.0.280') || privacyHtml.includes('v1.0.281') || privacyHtml.includes('v1.0.282'), 'privacy.html deve referenciar v1.0.280+');
+  assert.ok(['1.0.280', '1.0.281', '1.0.282', '1.0.283'].includes(versionJson.version), 'version.json deve ser 1.0.280+');
+  assert.ok([280, 281, 282, 283].includes(versionJson.build), 'build em version.json deve ser 280+');
+  assert.ok(['1.0.280', '1.0.281', '1.0.282', '1.0.283'].includes(manifest.version), 'manifest.json deve ser 1.0.280+');
+  assert.ok(['1.0.280', '1.0.281', '1.0.282', '1.0.283'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.280+');
+  assert.ok(swContent.includes('vortex-vip-v1.0.280') || swContent.includes('vortex-vip-v1.0.281') || swContent.includes('vortex-vip-v1.0.282') || swContent.includes('vortex-vip-v1.0.283'), 'sw.js deve conter cache v1.0.280+');
+  assert.ok(html.includes('script.js?v=1.0.280') || html.includes('script.js?v=1.0.281') || html.includes('script.js?v=1.0.282') || html.includes('script.js?v=1.0.283'), 'index.html deve referenciar script.js?v=1.0.280+');
+  assert.ok(html.includes('style.css?v=1.0.280') || html.includes('style.css?v=1.0.281') || html.includes('style.css?v=1.0.282') || html.includes('style.css?v=1.0.283'), 'index.html deve referenciar style.css?v=1.0.280+');
+  assert.ok(privacyHtml.includes('v1.0.280') || privacyHtml.includes('v1.0.281') || privacyHtml.includes('v1.0.282') || privacyHtml.includes('v1.0.283'), 'privacy.html deve referenciar v1.0.280+');
 
   // 2. Elementos no HTML (Configurações + Modal + Descrição + Botão Solicitar + Barra de 24h)
   assert.ok(html.includes('id="beta-tester-setting-item"'), 'Configurações deve conter #beta-tester-setting-item');
@@ -18942,14 +18942,14 @@ test('199. Ligação em Grupo para Contatos (Convidar até 4 Pessoas) v1.0.281',
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
   // 1. Integridade de Versionamento v1.0.281+ (Build 281+)
-  assert.ok(['1.0.281', '1.0.282'].includes(versionJson.version), 'version.json deve ser 1.0.281+');
-  assert.ok([281, 282].includes(versionJson.build), 'build em version.json deve ser 281+');
-  assert.ok(['1.0.281', '1.0.282'].includes(manifest.version), 'manifest.json deve ser 1.0.281+');
-  assert.ok(['1.0.281', '1.0.282'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.281+');
-  assert.ok(swContent.includes('vortex-vip-v1.0.281') || swContent.includes('vortex-vip-v1.0.282'), 'sw.js deve conter cache v1.0.281+');
-  assert.ok(html.includes('script.js?v=1.0.281') || html.includes('script.js?v=1.0.282'), 'index.html deve referenciar script.js?v=1.0.281+');
-  assert.ok(html.includes('style.css?v=1.0.281') || html.includes('style.css?v=1.0.282'), 'index.html deve referenciar style.css?v=1.0.281+');
-  assert.ok(privacyHtml.includes('v1.0.281') || privacyHtml.includes('v1.0.282'), 'privacy.html deve referenciar v1.0.281+');
+  assert.ok(['1.0.281', '1.0.282', '1.0.283'].includes(versionJson.version), 'version.json deve ser 1.0.281+');
+  assert.ok([281, 282, 283].includes(versionJson.build), 'build em version.json deve ser 281+');
+  assert.ok(['1.0.281', '1.0.282', '1.0.283'].includes(manifest.version), 'manifest.json deve ser 1.0.281+');
+  assert.ok(['1.0.281', '1.0.282', '1.0.283'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.281+');
+  assert.ok(swContent.includes('vortex-vip-v1.0.281') || swContent.includes('vortex-vip-v1.0.282') || swContent.includes('vortex-vip-v1.0.283'), 'sw.js deve conter cache v1.0.281+');
+  assert.ok(html.includes('script.js?v=1.0.281') || html.includes('script.js?v=1.0.282') || html.includes('script.js?v=1.0.283'), 'index.html deve referenciar script.js?v=1.0.281+');
+  assert.ok(html.includes('style.css?v=1.0.281') || html.includes('style.css?v=1.0.282') || html.includes('style.css?v=1.0.283'), 'index.html deve referenciar style.css?v=1.0.281+');
+  assert.ok(privacyHtml.includes('v1.0.281') || privacyHtml.includes('v1.0.282') || privacyHtml.includes('v1.0.283'), 'privacy.html deve referenciar v1.0.281+');
 
   // 2. Elementos no HTML
   assert.ok(html.includes('id="start-group-call-opt-btn"'), 'Modal de tipo de chamada deve conter opção Ligação em Grupo');
@@ -19061,15 +19061,15 @@ test('200. Sistema de IA VORTEX AI Shield & Recommender para Administrador (Segu
   const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
   const swContent = fs.readFileSync('public/sw.js', 'utf8');
 
-  // 1. Integridade de Versionamento v1.0.282 (Build 282)
-  assert.strictEqual(versionJson.version, '1.0.282', 'version.json deve ser 1.0.282');
-  assert.strictEqual(versionJson.build, 282, 'build em version.json deve ser 282');
-  assert.strictEqual(manifest.version, '1.0.282', 'manifest.json deve ser 1.0.282');
-  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.282', 'CURRENT_APP_VERSION deve ser 1.0.282');
-  assert.ok(swContent.includes('vortex-vip-v1.0.282'), 'sw.js deve conter cache v1.0.282');
-  assert.ok(html.includes('script.js?v=1.0.282'), 'index.html deve referenciar script.js?v=1.0.282');
-  assert.ok(html.includes('style.css?v=1.0.282'), 'index.html deve referenciar style.css?v=1.0.282');
-  assert.ok(privacyHtml.includes('v1.0.282'), 'privacy.html deve referenciar v1.0.282');
+  // 1. Integridade de Versionamento v1.0.282+ (Build 282+)
+  assert.ok(['1.0.282', '1.0.283'].includes(versionJson.version), 'version.json deve ser 1.0.282+');
+  assert.ok([282, 283].includes(versionJson.build), 'build em version.json deve ser 282+');
+  assert.ok(['1.0.282', '1.0.283'].includes(manifest.version), 'manifest.json deve ser 1.0.282+');
+  assert.ok(['1.0.282', '1.0.283'].includes(win.CURRENT_APP_VERSION), 'CURRENT_APP_VERSION deve ser 1.0.282+');
+  assert.ok(swContent.includes('vortex-vip-v1.0.282') || swContent.includes('vortex-vip-v1.0.283'), 'sw.js deve conter cache v1.0.282+');
+  assert.ok(html.includes('script.js?v=1.0.282') || html.includes('script.js?v=1.0.283'), 'index.html deve referenciar script.js?v=1.0.282+');
+  assert.ok(html.includes('style.css?v=1.0.282') || html.includes('style.css?v=1.0.283'), 'index.html deve referenciar style.css?v=1.0.282+');
+  assert.ok(privacyHtml.includes('v1.0.282') || privacyHtml.includes('v1.0.283'), 'privacy.html deve referenciar v1.0.282+');
 
   // 2. Presença da Aba ADM IA Segurança & Elementos no HTML e CSS
   assert.ok(html.includes('id="admin-tab-ai-security-btn"'), 'Painel ADM deve conter aba #admin-tab-ai-security-btn');
@@ -19245,4 +19245,201 @@ test('200. Sistema de IA VORTEX AI Shield & Recommender para Administrador (Segu
     if (ch === '}') closeBraces200++;
   }
   assert.strictEqual(openBraces200, closeBraces200, 'CSS deve ter chaves perfeitamente balanceadas após v1.0.282');
+});
+
+test('201. IA Moderação Inteligente de Comentários (Links http/https, Repetições no Mesmo Post, Envio Rápido 48h, Palavrão Ban Permanente e Múltiplas Denúncias) v1.0.283', async () => {
+  const env = createTestEnvironment();
+  const win = env.sandbox.window;
+  const html = fs.readFileSync('public/index.html', 'utf8');
+  const css = fs.readFileSync('public/style.css', 'utf8');
+  const privacyHtml = fs.readFileSync('public/privacy.html', 'utf8');
+  const manifest = JSON.parse(fs.readFileSync('public/manifest.json', 'utf8'));
+  const versionJson = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
+  const swContent = fs.readFileSync('public/sw.js', 'utf8');
+
+  // 1. Integridade de Versionamento v1.0.283 (Build 283)
+  assert.strictEqual(versionJson.version, '1.0.283', 'version.json deve ser 1.0.283');
+  assert.strictEqual(versionJson.build, 283, 'build em version.json deve ser 283');
+  assert.strictEqual(manifest.version, '1.0.283', 'manifest.json deve ser 1.0.283');
+  assert.strictEqual(win.CURRENT_APP_VERSION, '1.0.283', 'CURRENT_APP_VERSION deve ser 1.0.283');
+  assert.ok(swContent.includes('vortex-vip-v1.0.283'), 'sw.js deve conter cache v1.0.283');
+  assert.ok(html.includes('script.js?v=1.0.283'), 'index.html deve referenciar script.js?v=1.0.283');
+  assert.ok(html.includes('style.css?v=1.0.283'), 'index.html deve referenciar style.css?v=1.0.283');
+  assert.ok(privacyHtml.includes('v1.0.283'), 'privacy.html deve referenciar v1.0.283');
+
+  // 2. Elementos no HTML ADM para Comentários IA
+  assert.ok(html.includes('id="admin-ai-toggle-comment-guard"'), 'Painel ADM deve conter toggle #admin-ai-toggle-comment-guard');
+  assert.ok(html.includes('data-ai-cat="comment_moderation"'), 'Painel ADM deve conter filtro data-ai-cat="comment_moderation"');
+
+  win.initAdminAISecurityUI();
+  const now = Date.now();
+
+  // 3. Bloqueio de links (https:// e http://) em comentários e remoção automática
+  const linkHttpsRes = await win.handleCommentSubmissionByAI({
+    uid: 'u_comm_link1',
+    post: { id: 'p_comm_1', comments: [] },
+    text: 'Ganhe dinheiro fácil em https://golpe-pix.com/bonus',
+    account: { uid: 'u_comm_link1', name: 'Spammer Link' },
+    now
+  });
+  assert.strictEqual(linkHttpsRes.allowed, false, 'Comentário com https:// deve ser bloqueado');
+  assert.strictEqual(linkHttpsRes.analysis.hasLink, true);
+  assert.strictEqual(linkHttpsRes.analysis.shouldDelete, true);
+
+  const linkHttpRes = await win.handleCommentSubmissionByAI({
+    uid: 'u_comm_link2',
+    post: { id: 'p_comm_1', comments: [] },
+    text: 'Acesse agora http://site-suspeito.net/login',
+    account: { uid: 'u_comm_link2', name: 'Spammer HTTP' },
+    now
+  });
+  assert.strictEqual(linkHttpRes.allowed, false, 'Comentário com http:// deve ser bloqueado');
+  assert.strictEqual(linkHttpRes.analysis.hasLink, true);
+
+  // 4. Varredura automática (moderatePostCommentsByAI): remove duplicados no mesmo post, links e aleatórios
+  const dirtyPost = {
+    id: 'p_dirty_1',
+    authorUid: 'owner_1',
+    comments: [
+      { id: 'c_ok_1', authorUid: 'u_a', author: 'Ana', text: 'Adorei a foto!', createdAt: now - 50000 },
+      { id: 'c_dup_1', authorUid: 'u_a', author: 'Ana', text: 'Adorei a foto!', createdAt: now - 45000 },
+      { id: 'c_dup_2', authorUid: 'u_b', author: 'Beto', text: 'adorei a foto', createdAt: now - 40000 },
+      { id: 'c_link_1', authorUid: 'u_c', author: 'Caio', text: 'Clique http://promo-falsa.com', createdAt: now - 35000 },
+      { id: 'c_rand_1', authorUid: 'u_d', author: 'Dudu', text: 'qwrtypsdfghjklzxcvb', createdAt: now - 30000 },
+      { id: 'c_ok_2', authorUid: 'u_e', author: 'Eva', text: 'Sensacional demais!', createdAt: now - 25000 }
+    ]
+  };
+  env.firestoreDocs['posts/p_dirty_1'] = { ...dirtyPost };
+  const modRes = win.moderatePostCommentsByAI(dirtyPost, { persist: true });
+  assert.strictEqual(modRes.changed, true, 'IA deve detectar e limpar comentários irregulares');
+  assert.strictEqual(dirtyPost.comments.length, 2, 'Apenas os 2 comentários válidos e únicos devem permanecer');
+  assert.deepStrictEqual(Array.from(dirtyPost.comments.map(c => c.id)), ['c_ok_1', 'c_ok_2']);
+  assert.strictEqual(env.firestoreDocs['posts/p_dirty_1'].comments.length, 2, 'Firestore deve ser atualizado sem os comentários removidos pela IA');
+
+  // Repetição ao tentar comentar novamente o mesmo texto no mesmo post
+  const dupAttempt = await win.handleCommentSubmissionByAI({
+    uid: 'u_z',
+    post: dirtyPost,
+    text: 'Adorei a foto!',
+    account: { uid: 'u_z', name: 'Zeca' },
+    now
+  });
+  assert.strictEqual(dupAttempt.allowed, false, 'Comentário repetido no mesmo post deve ser bloqueado');
+  assert.strictEqual(dupAttempt.analysis.isRepetitive, true);
+
+  // 5. Envio muito rápido repetitivo -> apaga rajada do post + bloqueia por 48 HORAS
+  const fastUid = 'u_fast_commenter';
+  const fastPost = {
+    id: 'p_fast_1',
+    authorUid: 'owner_1',
+    comments: [
+      { id: 'c_keep', authorUid: 'u_normal', author: 'Normal', text: 'Belo registro!', createdAt: now - 60000 }
+    ]
+  };
+  env.firestoreDocs['posts/p_fast_1'] = { ...fastPost };
+  const f1 = await win.handleCommentSubmissionByAI({ uid: fastUid, post: fastPost, text: 'Primeiro comentário rápido', account: { uid: fastUid, name: 'Apressado' }, now: now - 2000 });
+  if (f1.allowed) fastPost.comments.push({ id: 'c_f1', authorUid: fastUid, author: 'Apressado', text: 'Primeiro comentário rápido', createdAt: now - 2000 });
+  const f2 = await win.handleCommentSubmissionByAI({ uid: fastUid, post: fastPost, text: 'Segundo comentário rápido', account: { uid: fastUid, name: 'Apressado' }, now: now - 1000 });
+  if (f2.allowed) fastPost.comments.push({ id: 'c_f2', authorUid: fastUid, author: 'Apressado', text: 'Segundo comentário rápido', createdAt: now - 1000 });
+  const f3 = await win.handleCommentSubmissionByAI({ uid: fastUid, post: fastPost, text: 'Terceiro comentário muito rápido', account: { uid: fastUid, name: 'Apressado' }, now });
+  assert.strictEqual(f1.allowed, true);
+  assert.strictEqual(f2.allowed, true);
+  assert.strictEqual(f3.allowed, false, '3º comentário muito rápido deve ser bloqueado');
+  assert.strictEqual(f3.punishment, 'block_48h', 'Envio muito rápido deve aplicar punição de 48h');
+  assert.strictEqual(f3.deletedComment, true);
+  assert.strictEqual(fastPost.comments.length, 1, 'Comentários da rajada rápida devem ser apagados pela IA mantendo o comentário normal');
+  assert.strictEqual(fastPost.comments[0].id, 'c_keep');
+
+  const check48hDuring = win.canUserCommentByAI(fastUid, null, now + 10000);
+  assert.strictEqual(check48hDuring.allowed, false, 'Usuário deve permanecer bloqueado durante as 48 horas');
+  assert.strictEqual(check48hDuring.type, 'temporary_48h');
+  assert.ok(Math.abs(check48hDuring.blockedUntil - (now + win.COMMENT_BLOCK_48H_MS)) < 500, 'Bloqueio deve durar exatamente 48 horas');
+
+  const check48hAfter = win.canUserCommentByAI(fastUid, null, now + win.COMMENT_BLOCK_48H_MS + 5000);
+  assert.strictEqual(check48hAfter.allowed, true, 'Após 48 horas o usuário volta a poder comentar');
+
+  // 6. Palavrão / xingamento -> apaga comentário e aplica BLOQUEIO PERMANENTE nos comentários (nunca mais comenta)
+  const rudeUid = 'u_rude_commenter';
+  env.firestoreDocs[`users/${rudeUid}`] = { uid: rudeUid, name: 'Infrator Boca Suja' };
+  const rudePost = {
+    id: 'p_rude_1',
+    authorUid: 'owner_1',
+    comments: [
+      { id: 'c_clean', authorUid: 'u_clean', author: 'Limpo', text: 'Parabéns!', createdAt: now - 5000 },
+      { id: 'c_old_rude', authorUid: rudeUid, author: 'Infrator', text: 'vai se fuder lixo', createdAt: now - 2000 }
+    ]
+  };
+  env.firestoreDocs['posts/p_rude_1'] = { ...rudePost };
+  const profanityRes = await win.handleCommentSubmissionByAI({
+    uid: rudeUid,
+    post: rudePost,
+    text: 'Seu arromb@do filho da puta',
+    account: { uid: rudeUid, name: 'Infrator Boca Suja' },
+    now
+  });
+  assert.strictEqual(profanityRes.allowed, false, 'Comentário com palavrão deve ser bloqueado imediatamente');
+  assert.strictEqual(profanityRes.punishment, 'permanent_ban', 'Palavrão deve aplicar bloqueio permanente nos comentários');
+  assert.strictEqual(profanityRes.deletedComment, true);
+  assert.strictEqual(profanityRes.analysis.hasProfanity, true);
+  assert.strictEqual(env.firestoreDocs[`users/${rudeUid}`].commentBanPermanent, true, 'Perfil no Firestore deve registrar bloqueio permanente de comentários');
+  assert.strictEqual(rudePost.comments.filter(c => c.authorUid === rudeUid).length, 0, 'Comentário ofensivo deve ser apagado pela IA');
+
+  // Mesmo anos depois, nunca mais poderá comentar
+  const tenYearsLater = now + (10 * 365 * 24 * 3600 * 1000);
+  const permCheckFuture = win.canUserCommentByAI(rudeUid, env.firestoreDocs[`users/${rudeUid}`], tenYearsLater);
+  assert.strictEqual(permCheckFuture.allowed, false, 'Banido por palavrão nunca mais pode comentar mesmo após anos');
+  assert.strictEqual(permCheckFuture.type, 'permanent');
+
+  const retryBenignAfterBan = await win.handleCommentSubmissionByAI({
+    uid: rudeUid,
+    post: rudePost,
+    text: 'Comentário educado depois do banimento',
+    account: env.firestoreDocs[`users/${rudeUid}`],
+    now: tenYearsLater
+  });
+  assert.strictEqual(retryBenignAfterBan.allowed, false);
+  assert.strictEqual(retryBenignAfterBan.blockedType, 'permanent');
+
+  // 7. Integração direta no fluxo real de UI (submitInlineComment / submitPostComment / reportCommentByAI >= 3 denúncias)
+  const uiPostId = 'p_ui_guard_1';
+  env.firestoreDocs[`posts/${uiPostId}`] = {
+    id: uiPostId,
+    authorUid: 'owner_ui',
+    authorName: 'Dono do Post',
+    comments: [
+      { id: 'comm_rep_target', authorUid: 'u_rep_target', author: 'Alvo', text: 'Comentário suspeito denunciado', createdAt: now - 10000 }
+    ]
+  };
+  const r1 = await win.reportCommentByAI(uiPostId, 'comm_rep_target', 'rep_u1');
+  const r2 = await win.reportCommentByAI(uiPostId, 'comm_rep_target', 'rep_u2');
+  assert.strictEqual(r1.deleted, false);
+  assert.strictEqual(r2.deleted, false);
+  const r3 = await win.reportCommentByAI(uiPostId, 'comm_rep_target', 'rep_u3');
+  assert.strictEqual(r3.deleted, true, 'Comentário com 3 denúncias deve ser apagado automaticamente pela IA');
+  assert.strictEqual(env.firestoreDocs[`posts/${uiPostId}`].comments.length, 0, 'Firestore deve remover comentário denunciado 3 vezes');
+
+  // Bloqueio em submitPostComment quando usuário tem ban permanente
+  win.setCurrentUser({ uid: rudeUid, displayName: 'Infrator' });
+  win.setCurrentProfile(env.firestoreDocs[`users/${rudeUid}`]);
+  win.openPostCommentModal({ id: uiPostId, authorName: 'Dono do Post', comments: [] });
+  env.elements['comment-modal-input'].value = 'Tentando comentar bloqueado';
+  await win.submitPostComment();
+  assert.strictEqual(env.firestoreDocs[`posts/${uiPostId}`].comments.length, 0, 'submitPostComment não deve publicar comentário de usuário banido permanentemente');
+  assert.strictEqual(env.elements['comment-modal-input'].disabled, true, 'Campo do modal deve ficar visualmente bloqueado para usuário banido');
+
+  // Ação do ADM liberando comentários se desejar
+  win.switchAdminTab('ai-security');
+  const commentInc = win.aiSecurityIncidents.find(i => i.category === 'comment_moderation' && i.uid === rudeUid);
+  assert.ok(commentInc, 'Painel ADM IA deve registrar incidente de comment_moderation');
+  const freed = await win.adminHandleAIIncidentAction(commentInc.id, 'unblock_comments');
+  assert.strictEqual(freed, true, 'ADM deve conseguir liberar comentários via ação unblock_comments');
+  assert.strictEqual(env.firestoreDocs[`users/${rudeUid}`].commentBanPermanent, false);
+
+  // 8. Balanço de Chaves do CSS
+  let openBraces201 = 0, closeBraces201 = 0;
+  for (const ch of css) {
+    if (ch === '{') openBraces201++;
+    if (ch === '}') closeBraces201++;
+  }
+  assert.strictEqual(openBraces201, closeBraces201, 'CSS deve manter chaves perfeitamente balanceadas na v1.0.283');
 });
