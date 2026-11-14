@@ -5383,26 +5383,44 @@ export function updateSystemThemeColor(targetColor) {
         const manifestLink = (typeof document.querySelector === 'function' ? document.querySelector('link[rel="manifest"]') : null) || (typeof document.getElementById === 'function' ? document.getElementById('app-manifest-link') : null);
         if (manifestLink && typeof manifestLink.setAttribute === 'function' && typeof Blob !== 'undefined' && typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function') {
             const isTotalBlack = (typeof currentProfile !== 'undefined' && currentProfile && currentProfile.themeEnabled === false);
-            const dynManifest = {
-                name: "VORTEX VIP ⚡ - Mensagens em Tempo Real",
-                short_name: "VORTEX VIP",
-                version: CURRENT_APP_VERSION,
-                start_url: "/?source=pwa",
-                scope: "/",
-                display: "standalone",
-                orientation: "portrait-primary",
-                background_color: isTotalBlack ? "#000000" : "#0a0a0c",
-                theme_color: color,
-                icons: [
-                    { src: "/icons/vortex-vip-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
-                    { src: "/icons/vortex-vip-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
-                    { src: "/icons/vortex-vip-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
-                    { src: "/icons/vortex-vip.svg", sizes: "any", type: "image/svg+xml", purpose: "any" }
-                ]
-            };
-            const blob = new Blob([JSON.stringify(dynManifest)], { type: 'application/manifest+json' });
-            const dynHref = URL.createObjectURL(blob);
-            manifestLink.setAttribute('href', dynHref);
+            const rawOrigin = (typeof window !== 'undefined' && window.location && typeof window.location.origin === 'string')
+                ? window.location.origin
+                : '';
+            const baseOrigin = /^https?:\/\//i.test(rawOrigin) ? rawOrigin.replace(/\/+$/, '') : '';
+            // Blobs precisam de URLs absolutas HTTP(S), pois caminhos relativos falham contra a base "blob:".
+            const resolveManifestUrl = (path) => (baseOrigin ? `${baseOrigin}${path}` : path);
+            const dynManifestKey = `${CURRENT_APP_VERSION}|${color}|${isTotalBlack}|${baseOrigin}`;
+            const cachedKey = manifestLink.dataset?.dynManifestKey;
+            if (!cachedKey || cachedKey !== dynManifestKey) {
+                const dynManifest = {
+                    name: "VORTEX VIP ⚡ - Mensagens em Tempo Real",
+                    short_name: "VORTEX VIP",
+                    version: CURRENT_APP_VERSION,
+                    start_url: resolveManifestUrl("/?source=pwa"),
+                    scope: resolveManifestUrl("/"),
+                    display: "standalone",
+                    orientation: "portrait-primary",
+                    background_color: isTotalBlack ? "#000000" : "#0a0a0c",
+                    theme_color: color,
+                    icons: [
+                        { src: resolveManifestUrl("/icons/vortex-vip-192.png"), sizes: "192x192", type: "image/png", purpose: "any" },
+                        { src: resolveManifestUrl("/icons/vortex-vip-512.png"), sizes: "512x512", type: "image/png", purpose: "any" },
+                        { src: resolveManifestUrl("/icons/vortex-vip-maskable-512.png"), sizes: "512x512", type: "image/png", purpose: "maskable" },
+                        { src: resolveManifestUrl("/icons/vortex-vip.svg"), sizes: "any", type: "image/svg+xml", purpose: "any" }
+                    ]
+                };
+                const prevBlobUrl = manifestLink.dataset?.dynBlobUrl;
+                const blob = new Blob([JSON.stringify(dynManifest)], { type: 'application/manifest+json' });
+                const dynHref = URL.createObjectURL(blob);
+                if (manifestLink.dataset) {
+                    manifestLink.dataset.dynManifestKey = dynManifestKey;
+                    manifestLink.dataset.dynBlobUrl = dynHref;
+                }
+                manifestLink.setAttribute('href', dynHref);
+                if (prevBlobUrl && prevBlobUrl.startsWith('blob:') && typeof URL.revokeObjectURL === 'function') {
+                    URL.revokeObjectURL(prevBlobUrl);
+                }
+            }
         }
     } catch (e) {}
 }
@@ -23194,7 +23212,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.286';
+export const CURRENT_APP_VERSION = '1.0.287';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
