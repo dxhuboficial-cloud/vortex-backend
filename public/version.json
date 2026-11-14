@@ -1,6 +1,6 @@
 {
-  "version": "1.0.295",
-  "build": 295,
+  "version": "1.0.296",
+  "build": 296,
   "releaseDate": "2026-11-14",
-  "notes": "Exibir quantidade de seguidores ao lado de inscritos no canal (com opção de configuração) e destaque colorido nos botões de curtida ativos v1.0.295"
+  "notes": "Barra de rolagem horizontal nas opções do canal e organização visual do card de origem de seguidores acima de Comunidade v1.0.296"
 }

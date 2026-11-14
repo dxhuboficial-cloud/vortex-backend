@@ -23344,7 +23344,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.295';
+export const CURRENT_APP_VERSION = '1.0.296';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -52519,7 +52519,9 @@ export function renderChannelScreen() {
             const analytics = getChannelFollowerAnalytics(uid, userData);
             insightsBar.style.display = 'flex';
             if (insightsTextEl) {
-                insightsTextEl.innerText = `${analytics.fromVideosCount} ${analytics.fromVideosCount === 1 ? 'seguidor veio' : 'seguidores vieram'} dos vídeos • ${analytics.fromChannelVisitCount} ${analytics.fromChannelVisitCount === 1 ? 'inscrito' : 'inscritos'} por visita no canal`;
+                const videoLine = `${analytics.fromVideosCount} ${analytics.fromVideosCount === 1 ? 'seguidor veio' : 'seguidores vieram'} dos vídeos`;
+                const visitLine = `${analytics.fromChannelVisitCount} ${analytics.fromChannelVisitCount === 1 ? 'inscrito' : 'inscritos'} por visita no canal`;
+                insightsTextEl.innerText = `${videoLine}\n${visitLine}`;
             }
         } else {
             insightsBar.style.display = 'none';
@@ -52681,6 +52683,10 @@ export async function openUserChannelScreen(targetUid = null, fallbackData = nul
         panel.classList.add('active');
         panel.setAttribute('aria-hidden', 'false');
     }
+    ['channel-owner-actions', 'channel-visitor-actions', 'channel-tabs-bar'].forEach(elId => {
+        const el = document.getElementById(elId);
+        if (el) el.scrollLeft = 0;
+    });
     if (currentUser?.uid && uid === currentUser.uid) {
         setBottomNavActive('channel-nav-btn');
     }
