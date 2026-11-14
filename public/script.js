@@ -11603,12 +11603,7 @@ function listenToStories() {
 }
 
 function openStoryViewer(stories, author, options = {}) {
-    if (currentFeedMusicAudio) {
-        try { currentFeedMusicAudio.pause(); } catch (e) {}
-        if (currentFeedMusicPostId) updateFeedMusicUI(currentFeedMusicPostId, false);
-        currentFeedMusicAudio = null;
-        currentFeedMusicPostId = null;
-    }
+    stopFeedPostMusic();
 
     const isPreview = !!(options && options.isPreview);
     isStoryPreviewMode = isPreview;
@@ -13794,6 +13789,16 @@ export async function loadMediaWithChunks(collectionName, docId, fallbackSrc = '
                 const sanitizedPayload = (typeof fullPayload === 'string') ? fullPayload.replace(/#t=[0-9,.]+$/, '') : fullPayload;
                 mediaChunkCache.set(cacheKey, sanitizedPayload);
                 return sanitizedPayload;
+            }
+        }
+        const mainDocSnap = await getDoc(doc(db, ...pathSegments, docId));
+        if (mainDocSnap && mainDocSnap.exists()) {
+            const mainData = mainDocSnap.data() || {};
+            const inlinePayload = mainData.audioData || mainData.mediaData || mainData.fileData || '';
+            if (inlinePayload && typeof inlinePayload === 'string') {
+                const sanitizedInline = inlinePayload.replace(/#t=[0-9,.]+$/, '');
+                mediaChunkCache.set(cacheKey, sanitizedInline);
+                return sanitizedInline;
             }
         }
     } catch (err) {
@@ -23344,7 +23349,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.298';
+export const CURRENT_APP_VERSION = '1.0.299';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -35307,6 +35312,14 @@ function resolvePostChunkedMedia(container, postsList) {
             el.removeAttribute('data-chunk-post-id');
         }).catch(err => console.warn('Erro ao carregar chunks de mídia do post:', err));
     });
+
+    if (Array.isArray(postsList) && typeof resolvePostMusicAudio === 'function') {
+        postsList.forEach(postObj => {
+            if (postObj && postObj.id && postObj.music && postObj.music.hasAudioChunks && !postObj.music.audioUrl) {
+                resolvePostMusicAudio(postObj).catch(() => {});
+            }
+        });
+    }
 }
 
 const pendingFollowToggleUids = new Set();
@@ -35739,18 +35752,7 @@ function renderPostsFeed(posts = []) {
                                 <span data-post-views-badge="${post.id}">${formattedViews} visualizaç${viewsCount === 1 ? 'ão' : 'ões'}</span>
                             </div>
                         </div>
-                        ${post.music && post.music.title ? `
-                            <div class="feed-music-badge ${isThisMusicPlaying ? 'playing' : ''}" id="preview-music-badge-${post.id}" data-action="toggle-feed-music" data-post-id="${post.id}" data-audio-url="${escapeHTML(post.music.audioUrl || '')}" data-snippet-start="${post.music.snippetStart || 0}" data-snippet-duration="${post.music.snippetDuration || 0}" role="button" tabindex="0" title="Tocar música">
-                                <i data-lucide="disc-3" class="feed-music-disc"></i>
-                                <div class="feed-music-info">
-                                    <span class="feed-music-title">${escapeHTML(post.music.title)}</span>
-                                    <span class="feed-music-artist">• ${escapeHTML(post.music.artist || 'Artista')}</span>
-                                </div>
-                                <button class="feed-music-toggle-btn" type="button" aria-label="Tocar música">
-                                    <i data-lucide="${isThisMusicPlaying ? 'pause' : 'play'}" id="preview-music-icon-${post.id}"></i>
-                                </button>
-                            </div>
-                        ` : ''}
+                        ${renderPostMusicBadgeHTML(post, { prefix: 'preview', isPlaying: isThisMusicPlaying })}
                         ${(isPostAd || isImageFeedPost(post) || (post.businessCategory || post.personalCategory || post.category)) ? `
                             <div class="feed-tags-row">
                                 ${getPostMediaTypeTagHTML(post)}
@@ -35991,18 +35993,7 @@ function renderPostsFeed(posts = []) {
                         <span data-post-views-badge="${post.id}">${formattedViews} visualizaç${viewsCount === 1 ? 'ão' : 'ões'}</span>
                     </div>
                 </div>
-                ${post.music && post.music.title ? `
-                    <div class="feed-music-badge ${isThisMusicPlaying ? 'playing' : ''}" id="feed-music-badge-${post.id}" data-action="toggle-feed-music" data-post-id="${post.id}" data-audio-url="${escapeHTML(post.music.audioUrl || '')}" data-snippet-start="${post.music.snippetStart || 0}" data-snippet-duration="${post.music.snippetDuration || 0}" role="button" tabindex="0" title="Tocar música">
-                        <i data-lucide="disc-3" class="feed-music-disc"></i>
-                        <div class="feed-music-info">
-                            <span class="feed-music-title">${escapeHTML(post.music.title)}</span>
-                            <span class="feed-music-artist">• ${escapeHTML(post.music.artist || 'Artista')}</span>
-                        </div>
-                        <button class="feed-music-toggle-btn" type="button" aria-label="Tocar música">
-                            <i data-lucide="${isThisMusicPlaying ? 'pause' : 'play'}" id="feed-music-icon-${post.id}"></i>
-                        </button>
-                    </div>
-                ` : ''}
+                ${renderPostMusicBadgeHTML(post, { prefix: 'feed', isPlaying: isThisMusicPlaying })}
                 <div class="feed-body">
                     ${(isPostAd || isImageFeedPost(post) || (post.businessCategory || post.personalCategory || post.category)) ? `
                         <div class="feed-tags-row">
@@ -36394,19 +36385,26 @@ function renderPostsFeed(posts = []) {
         });
     });
 
-    // Tocar/Pausar música do post (tanto no feed quanto em Publicações Recentes)
+    // Tocar/Pausar música do post (tanto no feed quanto em Publicações Recentes, inclusive áudio em chunks)
     document.querySelectorAll('.feed-music-badge').forEach(badge => {
         badge.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            const postId = badge.dataset.postId;
-            const audioUrl = badge.dataset.audioUrl;
-            const snippetStart = Number(badge.dataset.snippetStart) || 0;
-            const snippetDuration = Number(badge.dataset.snippetDuration) || 0;
-            if (postId && audioUrl) {
-                toggleFeedPostMusic(postId, audioUrl, snippetStart, snippetDuration);
-            }
+            togglePostMusicFromBadge(badge);
         });
+    });
+
+    // Permitir tocar/pausar a música diretamente ao tocar na imagem do post no feed/preview
+    document.querySelectorAll('.feed-card .feed-media img, .post-card .post-media img').forEach(imgEl => {
+        const postCard = imgEl.closest('.feed-card, .post-card');
+        const badge = postCard?.querySelector('.feed-music-badge');
+        if (badge) {
+            imgEl.style.cursor = 'pointer';
+            imgEl.addEventListener('click', (e) => {
+                if (e.target && e.target.closest?.('.feed-media-views-badge')) return;
+                togglePostMusicFromBadge(badge);
+            });
+        }
     });
 
     // Sincronizar reprodução de vídeos que possuem música anexada
@@ -36414,19 +36412,17 @@ function renderPostsFeed(posts = []) {
         const postCard = videoEl.closest('.feed-card, .post-card');
         const badge = postCard?.querySelector('.feed-music-badge');
         if (badge) {
-            const postId = badge.dataset.postId;
-            const audioUrl = badge.dataset.audioUrl;
-            const snippetStart = Number(badge.dataset.snippetStart) || 0;
-            const snippetDuration = Number(badge.dataset.snippetDuration) || 0;
-            if (postId && audioUrl) {
+            const postId = badge.dataset?.postId;
+            const hasAudio = Boolean(badge.dataset?.audioUrl || badge.dataset?.hasAudioChunks === 'true');
+            if (postId && hasAudio) {
                 videoEl.addEventListener('play', () => {
                     if (!currentFeedMusicAudio || currentFeedMusicPostId !== postId || currentFeedMusicAudio.paused) {
-                        toggleFeedPostMusic(postId, audioUrl, snippetStart, snippetDuration);
+                        togglePostMusicFromBadge(badge, { autoPlay: true });
                     }
                 });
                 videoEl.addEventListener('pause', () => {
                     if (currentFeedMusicAudio && currentFeedMusicPostId === postId && !currentFeedMusicAudio.paused) {
-                        toggleFeedPostMusic(postId, audioUrl, snippetStart, snippetDuration);
+                        togglePostMusicFromBadge(badge);
                     }
                 });
             }
@@ -37623,12 +37619,7 @@ function closeFeedOverlay() {
     // Fecha o painel de anexos para não vazar acima do feed (z-index)
     document.getElementById('attachment-panel')?.classList.remove('active');
     setBottomNavActive('');
-    if (currentFeedMusicAudio) {
-        try { currentFeedMusicAudio.pause(); } catch(e) {}
-        if (currentFeedMusicPostId) updateFeedMusicUI(currentFeedMusicPostId, false);
-        currentFeedMusicAudio = null;
-        currentFeedMusicPostId = null;
-    }
+    stopFeedPostMusic();
     const searchInput = document.getElementById('feed-search-input');
     if (searchInput && searchInput.value) {
         searchInput.value = '';
@@ -40686,6 +40677,7 @@ let currentlyPlayingComposerTarget = null;
 let composerPreviewTimer = null;
 let currentFeedMusicAudio = null;
 let currentFeedMusicPostId = null;
+let feedMusicRequestSeq = 0;
 let musicSearchDebounceTimer = null;
 let activeMusicGenre = 'trending';
 
@@ -41668,8 +41660,101 @@ function toggleComposerMusicPreview(target) {
     }
 }
 
-export async function toggleFeedPostMusic(postId, audioUrl, snippetStart = 0, snippetDuration = 0) {
-    if (currentFeedMusicAudio && currentFeedMusicPostId === postId) {
+export function hasPostMusicTrack(post) {
+    const m = post && post.music;
+    if (!m || typeof m !== 'object') return false;
+    return Boolean(m.title || m.audioUrl || m.hasAudioChunks);
+}
+
+export function stopFeedPostMusic() {
+    feedMusicRequestSeq++;
+    const activeId = currentFeedMusicPostId;
+    if (currentFeedMusicAudio) {
+        try { currentFeedMusicAudio.pause(); } catch (e) {}
+    }
+    currentFeedMusicAudio = null;
+    currentFeedMusicPostId = null;
+    if (activeId) updateFeedMusicUI(activeId, false);
+}
+
+export async function resolvePostMusicAudio(post) {
+    if (!post || !post.id || !post.music) return '';
+    const idStr = String(post.id);
+    if (post.music.audioUrl) return post.music.audioUrl;
+    const cached = mediaChunkCache.get(`post_audio_${idStr}`);
+    if (cached) {
+        post.music.audioUrl = cached;
+        return cached;
+    }
+    if (!post.music.hasAudioChunks || typeof loadMediaWithChunks !== 'function') return '';
+    try {
+        const loaded = await loadMediaWithChunks('post_audio', idStr);
+        if (loaded) {
+            mediaChunkCache.set(`post_audio_${idStr}`, loaded);
+            post.music.audioUrl = loaded;
+            if (typeof document !== 'undefined' && typeof document.querySelectorAll === 'function') {
+                document.querySelectorAll(`.feed-music-badge[data-post-id="${idStr}"]`).forEach(badge => {
+                    if (badge?.dataset) badge.dataset.audioUrl = loaded;
+                });
+            }
+            return loaded;
+        }
+    } catch (err) {
+        console.warn('Erro ao carregar áudio em chunks do post:', err);
+    }
+    return '';
+}
+
+export function renderPostMusicBadgeHTML(post, { prefix = 'feed', isPlaying = false } = {}) {
+    if (!hasPostMusicTrack(post)) return '';
+    const m = post.music;
+    const badgeId = `${prefix}-music-badge-${post.id}`;
+    const iconId = prefix === 'channel' ? `channel-music-icon-${post.id}` : `${prefix}-music-icon-${post.id}`;
+    const cachedAudio = m.audioUrl || (post.id ? mediaChunkCache.get(`post_audio_${post.id}`) : '') || '';
+    const title = m.title || 'Música';
+    const artist = m.artist || 'Artista';
+    return `
+        <div class="feed-music-badge ${isPlaying ? 'playing' : ''}" id="${badgeId}" data-action="toggle-feed-music" data-post-id="${escapeHTML(String(post.id))}" data-audio-url="${escapeHTML(cachedAudio)}" data-has-audio-chunks="${m.hasAudioChunks ? 'true' : 'false'}" data-snippet-start="${Number(m.snippetStart) || 0}" data-snippet-duration="${Number(m.snippetDuration) || 0}" role="button" tabindex="0" title="Tocar música">
+            <i data-lucide="disc-3" class="feed-music-disc"></i>
+            <div class="feed-music-info">
+                <span class="feed-music-title">${escapeHTML(title)}</span>
+                <span class="feed-music-artist">• ${escapeHTML(artist)}</span>
+            </div>
+            <button class="feed-music-toggle-btn" type="button" aria-label="Tocar música">
+                <i data-lucide="${isPlaying ? 'pause' : 'play'}" id="${iconId}"></i>
+            </button>
+        </div>
+    `;
+}
+
+function togglePostMusicFromBadge(badge, options = {}) {
+    if (!badge || !badge.dataset) return false;
+    const postId = badge.dataset.postId;
+    const audioUrl = badge.dataset.audioUrl || '';
+    const hasAudioChunks = badge.dataset.hasAudioChunks === 'true';
+    const snippetStart = Number(badge.dataset.snippetStart) || 0;
+    const snippetDuration = Number(badge.dataset.snippetDuration) || 0;
+    if (!postId || (!audioUrl && !hasAudioChunks)) return false;
+    toggleFeedPostMusic(postId, audioUrl, snippetStart, snippetDuration, options);
+    return true;
+}
+
+export async function toggleFeedPostMusic(postId, audioUrl = '', snippetStart = 0, snippetDuration = 0, options = {}) {
+    const autoPlay = Boolean(options && options.autoPlay);
+    if (currentFeedMusicAudio && String(currentFeedMusicPostId) === String(postId)) {
+        if (autoPlay) {
+            if (!currentFeedMusicAudio.paused) {
+                updateFeedMusicUI(postId, true);
+                return;
+            }
+            updateFeedMusicUI(postId, true);
+            try {
+                await currentFeedMusicAudio.play();
+            } catch (err) {
+                updateFeedMusicUI(postId, false);
+            }
+            return;
+        }
         if (!currentFeedMusicAudio.paused) {
             try { currentFeedMusicAudio.pause(); } catch(e) {}
             updateFeedMusicUI(postId, false);
@@ -41685,25 +41770,28 @@ export async function toggleFeedPostMusic(postId, audioUrl, snippetStart = 0, sn
         return;
     }
 
-    if (currentFeedMusicAudio) {
-        try { currentFeedMusicAudio.pause(); } catch(e) {}
-        if (currentFeedMusicPostId) updateFeedMusicUI(currentFeedMusicPostId, false);
-        currentFeedMusicAudio = null;
-        currentFeedMusicPostId = null;
-    }
-
+    stopFeedPostMusic();
     if (storyMusicAudio) {
-        try { storyMusicAudio.pause(); } catch(e) {}
+        try { storyMusicAudio.pause(); } catch (e) {}
         storyMusicAudio = null;
     }
+    const reqSeq = feedMusicRequestSeq;
 
     let finalAudio = audioUrl;
     if (!finalAudio && postId) {
-        finalAudio = mediaChunkCache.get(`post_audio_${postId}`) || await loadMediaWithChunks('post_audio', postId);
+        const cachedPost = (Array.isArray(cachedFeedPosts) ? cachedFeedPosts : []).find(p => p && String(p.id) === String(postId));
+        if (cachedPost?.music) {
+            finalAudio = await resolvePostMusicAudio(cachedPost);
+        } else {
+            finalAudio = mediaChunkCache.get(`post_audio_${postId}`) || await loadMediaWithChunks('post_audio', postId);
+        }
+        if (reqSeq !== feedMusicRequestSeq) return;
     }
 
     if (!finalAudio) {
-        showToast('Áudio indisponível', 'Não foi possível encontrar a faixa desta postagem.', 'red');
+        if (!autoPlay) {
+            showToast('Áudio indisponível', 'Não foi possível encontrar a faixa desta postagem.', 'red');
+        }
         return;
     }
 
@@ -41760,7 +41848,9 @@ export async function toggleFeedPostMusic(postId, audioUrl, snippetStart = 0, sn
                 console.warn("Erro ao reproduzir áudio do post:", err);
                 if (currentFeedMusicAudio === audio) {
                     updateFeedMusicUI(postId, false);
-                    showToast('Aviso', 'Toque novamente para iniciar a reprodução.', 'blue');
+                    if (!autoPlay) {
+                        showToast('Aviso', 'Toque novamente para iniciar a reprodução.', 'blue');
+                    }
                 }
             }
         }
@@ -41771,15 +41861,36 @@ export async function toggleFeedPostMusic(postId, audioUrl, snippetStart = 0, sn
 }
 
 export function updateFeedMusicUI(postId, isPlaying) {
-    const badge = document.getElementById(`feed-music-badge-${postId}`);
-    const previewBadge = document.getElementById(`preview-music-badge-${postId}`);
-    [badge, previewBadge].forEach(b => {
-        if (b) {
-            b.classList.toggle('playing', isPlaying);
-            const toggleBtn = b.querySelector('.feed-music-toggle-btn');
-            if (toggleBtn) {
-                toggleBtn.innerHTML = `<i data-lucide="${isPlaying ? 'pause' : 'play'}" id="feed-music-icon-${postId}"></i>`;
-            }
+    if (typeof document === 'undefined') return;
+    const badges = new Set();
+    ['feed-music-badge-', 'preview-music-badge-', 'channel-music-badge-'].forEach(prefix => {
+        const el = document.getElementById(`${prefix}${postId}`);
+        if (el) badges.add(el);
+    });
+    if (typeof document.querySelectorAll === 'function') {
+        document.querySelectorAll(`.feed-music-badge[data-post-id="${postId}"]`).forEach(el => {
+            if (el?.dataset?.postId && String(el.dataset.postId) !== String(postId)) return;
+            badges.add(el);
+        });
+    }
+    const channelSlot = document.getElementById('channel-viewer-music-slot');
+    if (channelSlot) {
+        if (String(activeChannelViewerPostId || '') === String(postId) && channelSlot.dataset) {
+            channelSlot.dataset.playing = isPlaying ? 'true' : 'false';
+        }
+        if (typeof channelSlot.querySelectorAll === 'function') {
+            channelSlot.querySelectorAll('.feed-music-badge').forEach(el => {
+                if (el?.dataset?.postId && String(el.dataset.postId) !== String(postId)) return;
+                badges.add(el);
+            });
+        }
+    }
+    badges.forEach(b => {
+        if (!b || !b.classList) return;
+        b.classList.toggle('playing', isPlaying);
+        const toggleBtn = b.querySelector ? b.querySelector('.feed-music-toggle-btn') : null;
+        if (toggleBtn) {
+            toggleBtn.innerHTML = `<i data-lucide="${isPlaying ? 'pause' : 'play'}" id="feed-music-icon-${postId}"></i>`;
         }
     });
     if (window.lucide) lucide.createIcons();
@@ -42897,6 +43008,11 @@ if (typeof window !== 'undefined') {
     window.closeStoryViewer = closeStoryViewer;
     window.displayCurrentStory = displayCurrentStory;
     window.toggleFeedPostMusic = toggleFeedPostMusic;
+    window.stopFeedPostMusic = stopFeedPostMusic;
+    window.hasPostMusicTrack = hasPostMusicTrack;
+    window.resolvePostMusicAudio = resolvePostMusicAudio;
+    window.resolvePostChunkedMedia = resolvePostChunkedMedia;
+    window.renderPostMusicBadgeHTML = renderPostMusicBadgeHTML;
     window.updateFeedMusicUI = updateFeedMusicUI;
     window.getCurrentFeedMusicAudio = () => currentFeedMusicAudio;
     window.getCurrentFeedMusicPostId = () => currentFeedMusicPostId;
@@ -52841,6 +52957,8 @@ export function renderChannelMediaGrid(items = [], tab = 'inicio', isOwner = fal
         const viewsLabel = typeof formatPostViewsCount === 'function' ? formatPostViewsCount(viewsCount) : String(viewsCount);
         const commentsCount = Array.isArray(post.comments) ? post.comments.length : Number(post.commentsCount || 0);
         const durationLabel = post.videoDuration ? formatChannelDuration(post.videoDuration) : '';
+        const hasMusic = typeof hasPostMusicTrack === 'function' ? hasPostMusicTrack(post) : Boolean(post.music && (post.music.title || post.music.audioUrl || post.music.hasAudioChunks));
+        const musicLabel = hasMusic ? `${post.music.title || 'Música'}${post.music.artist ? ` - ${post.music.artist}` : ''}` : '';
         const mediaTag = post.type === 'video'
             ? `<video src="${src}" ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="video"` : ''} muted playsinline preload="metadata" class="channel-ig-tile-media"></video>`
             : `<img src="${src}" ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="image"` : ''} alt="${escapeHTML(post.title || post.caption || (isImageTile ? 'Imagem do canal' : 'Vídeo do canal'))}" class="channel-ig-tile-media">`;
@@ -52850,6 +52968,7 @@ export function renderChannelMediaGrid(items = [], tab = 'inicio', isOwner = fal
                 ${mediaTag}
                 ${isImageTile ? '<span class="channel-ig-tile-image-tag"><i data-lucide="image"></i> Imagem</span>' : ''}
                 ${isPlayableTile ? '<span class="channel-ig-tile-play-overlay" aria-hidden="true"><i data-lucide="play" class="channel-ig-tile-play-icon"></i></span>' : ''}
+                ${hasMusic ? `<span class="channel-ig-tile-music-badge" title="${escapeHTML(`Música: ${musicLabel}`)}"><i data-lucide="music"></i></span>` : ''}
                 <span class="channel-ig-tile-top-badge" aria-hidden="true"><i data-lucide="${topIcon}"></i></span>
                 <span class="channel-ig-tile-bottom-overlay">
                     <span class="channel-ig-tile-meta-left">
@@ -52948,6 +53067,9 @@ export async function openUserChannelScreen(targetUid = null, fallbackData = nul
 }
 
 export function closeUserChannelScreen() {
+    if (typeof stopFeedPostMusic === 'function') {
+        stopFeedPostMusic();
+    }
     const panel = document.getElementById('channel-panel');
     if (panel) {
         panel.classList.remove('active');
@@ -53536,15 +53658,20 @@ export function openChannelGridMediaViewer(postId) {
     const mediaBox = document.getElementById('channel-viewer-media-box');
     if (!post || !modal || !mediaBox) return;
 
+    if (currentFeedMusicPostId && String(currentFeedMusicPostId) !== String(post.id) && typeof stopFeedPostMusic === 'function') {
+        stopFeedPostMusic();
+    }
+
     activeChannelViewerPostId = post.id;
     const rawMedia = post.mediaData || (post.hasChunks && post.id && mediaChunkCache.get(`posts_${post.id}`)) || '';
     const src = (post.type === 'video' && rawMedia)
         ? createBlobUrlFromData(String(rawMedia).replace(/#t=[0-9,.]+$/, ''))
         : (rawMedia || '');
+    const hasMusic = typeof hasPostMusicTrack === 'function' ? hasPostMusicTrack(post) : false;
 
     mediaBox.innerHTML = post.type === 'video'
         ? `<video src="${src}" controls autoplay playsinline controlsList="nodownload" disablePictureInPicture></video>`
-        : `<img src="${src}" alt="${escapeHTML(post.title || post.caption || 'Mídia')}">`;
+        : `<img src="${src}" alt="${escapeHTML(post.title || post.caption || 'Mídia')}" class="${hasMusic ? 'channel-viewer-music-interactive' : ''}">`;
 
     if (typeof resolvePostChunkedMedia === 'function') {
         resolvePostChunkedMedia(mediaBox, [post]);
@@ -53554,6 +53681,48 @@ export function openChannelGridMediaViewer(postId) {
     const capEl = document.getElementById('channel-viewer-caption');
     if (titleEl) titleEl.innerText = post.title || post.authorName || 'Vídeo do Canal';
     if (capEl) capEl.innerText = post.caption || '';
+
+    const musicSlot = document.getElementById('channel-viewer-music-slot');
+    if (musicSlot) {
+        if (hasMusic) {
+            const isThisMusicPlaying = Boolean(currentFeedMusicAudio && !currentFeedMusicAudio.paused && String(currentFeedMusicPostId) === String(post.id));
+            musicSlot.innerHTML = renderPostMusicBadgeHTML(post, { prefix: 'channel', isPlaying: isThisMusicPlaying });
+            musicSlot.style.display = 'flex';
+            if (musicSlot.dataset) {
+                musicSlot.dataset.postId = String(post.id);
+                musicSlot.dataset.playing = isThisMusicPlaying ? 'true' : 'false';
+            }
+        } else {
+            musicSlot.innerHTML = '';
+            musicSlot.style.display = 'none';
+            if (musicSlot.dataset) {
+                delete musicSlot.dataset.postId;
+                musicSlot.dataset.playing = 'false';
+            }
+        }
+    }
+
+    if (hasMusic && post.type === 'video') {
+        const vidEl = mediaBox.querySelector?.('video');
+        vidEl?.addEventListener?.('play', () => {
+            if (String(activeChannelViewerPostId || '') === String(post.id)) {
+                toggleFeedPostMusic(post.id, post.music.audioUrl || '', post.music.snippetStart || 0, post.music.snippetDuration || 0, { autoPlay: true });
+            }
+        });
+        vidEl?.addEventListener?.('pause', () => {
+            if (currentFeedMusicAudio && String(currentFeedMusicPostId) === String(post.id) && !currentFeedMusicAudio.paused) {
+                toggleFeedPostMusic(post.id, post.music.audioUrl || '', post.music.snippetStart || 0, post.music.snippetDuration || 0);
+            }
+        });
+    } else if (hasMusic) {
+        const imgEl = mediaBox.querySelector?.('img');
+        imgEl?.addEventListener?.('click', () => {
+            if (String(activeChannelViewerPostId || '') === String(post.id)) {
+                toggleFeedPostMusic(post.id, post.music.audioUrl || '', post.music.snippetStart || 0, post.music.snippetDuration || 0);
+            }
+        });
+    }
+
     syncChannelViewerStats(post);
     syncChannelViewerLikeButton(post);
     syncChannelViewerCommentButton(post);
@@ -53572,6 +53741,10 @@ export function openChannelGridMediaViewer(postId) {
     modal.setAttribute('aria-hidden', 'false');
     if (window.lucide) lucide.createIcons();
 
+    if (hasMusic && typeof toggleFeedPostMusic === 'function') {
+        toggleFeedPostMusic(post.id, post.music.audioUrl || '', post.music.snippetStart || 0, post.music.snippetDuration || 0, { autoPlay: true });
+    }
+
     if (currentUser?.uid && typeof registerPostView === 'function') {
         Promise.resolve(registerPostView(post.id)).then(() => {
             if (String(activeChannelViewerPostId || '') === String(post.id)) {
@@ -53588,6 +53761,18 @@ function closeChannelSubModal(modalId) {
     modal.setAttribute('aria-hidden', 'true');
     if (modalId === 'channel-media-viewer-modal') {
         activeChannelViewerPostId = null;
+        if (typeof stopFeedPostMusic === 'function') {
+            stopFeedPostMusic();
+        }
+        const musicSlot = document.getElementById('channel-viewer-music-slot');
+        if (musicSlot) {
+            musicSlot.innerHTML = '';
+            musicSlot.style.display = 'none';
+            if (musicSlot.dataset) {
+                delete musicSlot.dataset.postId;
+                musicSlot.dataset.playing = 'false';
+            }
+        }
         const mediaBox = document.getElementById('channel-viewer-media-box');
         if (mediaBox) {
             mediaBox.querySelectorAll('video').forEach(v => { try { v.pause(); } catch (_) {} });
@@ -53719,6 +53904,22 @@ function bindChannelScreenListeners() {
         const post = (Array.isArray(cachedFeedPosts) ? cachedFeedPosts : []).find(p => p && String(p.id) === String(targetPostId)) || null;
         playSound(clickSound);
         openPostViewsModal(post || targetPostId);
+    });
+
+    document.getElementById('channel-viewer-music-slot')?.addEventListener('click', (e) => {
+        e?.stopPropagation?.();
+        const badge = e?.target?.closest?.('[data-action="toggle-feed-music"]');
+        if (badge && typeof togglePostMusicFromBadge === 'function') {
+            togglePostMusicFromBadge(badge);
+            return;
+        }
+        const slot = document.getElementById('channel-viewer-music-slot');
+        const targetPostId = activeChannelViewerPostId || slot?.dataset?.postId || '';
+        if (!targetPostId) return;
+        const post = (Array.isArray(cachedFeedPosts) ? cachedFeedPosts : []).find(p => p && String(p.id) === String(targetPostId)) || null;
+        if (!post || !hasPostMusicTrack(post)) return;
+        const m = post.music || {};
+        toggleFeedPostMusic(String(targetPostId), m.audioUrl || '', Number(m.snippetStart) || 0, Number(m.snippetDuration) || 0);
     });
     document.getElementById('channel-viewer-follow-btn')?.addEventListener('click', async () => {
         const btn = document.getElementById('channel-viewer-follow-btn');

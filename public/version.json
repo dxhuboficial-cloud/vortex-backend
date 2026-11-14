@@ -1,6 +1,6 @@
 {
-  "version": "1.0.298",
-  "build": 298,
+  "version": "1.0.299",
+  "build": 299,
   "releaseDate": "2026-11-14",
-  "notes": "Ajuste no tamanho uniforme dos botões de curtida e comentário no visualizador do canal e do ícone de visualizações na grade v1.0.298"
+  "notes": "Imagens no canal e no feed agora carregam e reproduzem automaticamente com sua música anexada v1.0.299"
 }

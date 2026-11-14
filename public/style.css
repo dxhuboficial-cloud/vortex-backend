@@ -33896,5 +33896,59 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
     line-height: 1;
 }
 
+/* ==========================================================================
+   v1.0.299: Imagens com Música no Visualizador e Grade do Canal
+   ========================================================================== */
+.channel-viewer-music-slot {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    margin: 2px 0;
+}
+.channel-viewer-music-slot .feed-music-badge {
+    margin: 0;
+    max-width: 100%;
+    width: fit-content;
+}
+.channel-viewer-media-box img.channel-viewer-music-interactive {
+    cursor: pointer;
+}
+.channel-ig-tile-music-badge {
+    position: absolute;
+    top: 6px;
+    right: 34px;
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    background: rgba(10, 14, 24, 0.76);
+    border: 1px solid rgba(0, 243, 255, 0.45);
+    color: var(--accent-color, #00f3ff);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+    pointer-events: none;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+.channel-ig-tile-music-badge i,
+.channel-ig-tile-music-badge svg {
+    width: 13px;
+    height: 13px;
+    flex-shrink: 0;
+    display: block;
+}
+.channel-viewer-music-slot .feed-music-disc {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+}
+.channel-viewer-music-slot .feed-music-toggle-btn i,
+.channel-viewer-music-slot .feed-music-toggle-btn svg {
+    width: 14px;
+    height: 14px;
+    display: block;
+}
+
+
 
 
