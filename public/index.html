@@ -35,13 +35,13 @@
     <meta itemprop="image" content="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
     <link rel="image_src" type="image/png" href="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
 
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.293">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.293">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.293">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.293">
-    <link rel="stylesheet" href="style.css?v=1.0.293">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.294">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.294">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.294">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.294">
+    <link rel="stylesheet" href="style.css?v=1.0.294">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.293" id="app-manifest-link">
+    <link rel="manifest" href="manifest.json?v=1.0.294" id="app-manifest-link">
     <meta name="theme-color" content="#39ff14" id="app-theme-color-meta">
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#39ff14" id="app-theme-color-meta-dark">
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#39ff14" id="app-theme-color-meta-light">
@@ -50,8 +50,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.293">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.293">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.294">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.294">
     <!-- Sincronização Dinâmica da Barra de Status e Barra de Navegação do Celular -->
     <script>
         (function() {
@@ -3717,6 +3717,7 @@
                         <option value="auto" selected>Automático (Shorts / Vídeos pela duração)</option>
                         <option value="short">Shorts / Reels (Instagram Grid)</option>
                         <option value="video">Vídeo</option>
+                        <option value="image">Imagem</option>
                         <option value="podcast">Podcast</option>
                     </select>
                 </div>
@@ -3941,11 +3942,16 @@
                 </div>
             </div>
 
-            <!-- Abas de Filtro do Feed Reels (Todos / Favoritos) - v1.0.190 -->
+            <!-- Abas de Filtro do Feed Reels (Todos / Favoritos / Imagens) -->
             <div class="feed-filter-bar" id="feed-filter-bar">
                 <button type="button" class="feed-filter-tab active" id="feed-filter-all-btn" data-filter="all" aria-label="Ver todas as publicações">
                     <i data-lucide="layout-grid"></i>
                     <span>Todos</span>
+                </button>
+                <button type="button" class="feed-filter-tab" id="feed-filter-images-btn" data-filter="images" aria-label="Ver publicações com tag Imagem">
+                    <i data-lucide="image"></i>
+                    <span>Imagens</span>
+                    <span class="feed-fav-count-badge" id="feed-images-count">0</span>
                 </button>
                 <button type="button" class="feed-filter-tab" id="feed-filter-favorites-btn" data-filter="favorites" aria-label="Ver publicações salvas nos favoritos">
                     <i data-lucide="bookmark"></i>
@@ -6946,11 +6952,22 @@
                         <button type="button" id="channel-more-links-btn" class="channel-more-links-btn">Adicionar links</button>
                     </div>
 
-                    <!-- Ações do Dono (Personalizar o canal + Gerenciar vídeos) -->
+                    <!-- Ações do Dono (Personalizar o canal + Gerenciar vídeos + Seguidores & Vídeos) -->
                     <div id="channel-owner-actions" class="channel-actions-row">
                         <button type="button" id="channel-customize-btn" class="channel-pill-btn">Personalizar o canal</button>
                         <button type="button" id="channel-manage-videos-btn" class="channel-pill-btn">Gerenciar vídeos</button>
+                        <button type="button" id="channel-analytics-btn" class="channel-pill-btn channel-analytics-pill-btn" title="Ver seguidores vindos dos vídeos e inscritos por visita">
+                            <i data-lucide="bar-chart-3"></i>
+                            <span>Seguidores &amp; Vídeos</span>
+                        </button>
                     </div>
+
+                    <!-- Resumo de Interação Exclusivo para o Dono do Canal -->
+                    <button type="button" id="channel-owner-insights-bar" class="channel-owner-insights-bar" style="display:none;" title="Ver quantos seguidores vieram dos vídeos vs inscritos por visita no canal">
+                        <span class="channel-owner-insights-icon"><i data-lucide="trending-up"></i></span>
+                        <span id="channel-owner-insights-text" class="channel-owner-insights-text">0 seguidores pelos vídeos • 0 inscritos por visita no canal</span>
+                        <i data-lucide="chevron-right" class="channel-owner-insights-chevron"></i>
+                    </button>
 
                     <!-- Ações do Visitante (Inscrever-se + Mensagem) -->
                     <div id="channel-visitor-actions" class="channel-actions-row" style="display:none;">
@@ -6970,12 +6987,13 @@
                         <span id="channel-community-count-badge" class="channel-community-count-badge" style="display:none;">0</span>
                     </button>
 
-                    <!-- Abas do Canal (Início | Vídeos | Shorts | Podcasts | Playlists | >) -->
+                    <!-- Abas do Canal (Início | Vídeos | Shorts | Imagens | Podcasts | Playlists | >) -->
                     <div class="channel-tabs-bar-wrap">
                         <div id="channel-tabs-bar" class="channel-tabs-bar" role="tablist" aria-label="Abas do canal">
                             <button type="button" class="channel-tab-btn active" data-channel-tab="inicio" role="tab" aria-selected="true">Início</button>
                             <button type="button" class="channel-tab-btn" data-channel-tab="videos" role="tab" aria-selected="false">Vídeos</button>
                             <button type="button" class="channel-tab-btn" data-channel-tab="shorts" role="tab" aria-selected="false">Shorts</button>
+                            <button type="button" class="channel-tab-btn" data-channel-tab="imagens" role="tab" aria-selected="false">Imagens</button>
                             <button type="button" class="channel-tab-btn" data-channel-tab="podcasts" role="tab" aria-selected="false">Podcasts</button>
                             <button type="button" class="channel-tab-btn" data-channel-tab="playlists" role="tab" aria-selected="false">Playlists</button>
                         </div>
@@ -7118,6 +7136,17 @@
             </div>
         </div>
 
+        <!-- Modal: Origem dos Seguidores do Canal (Vídeos vs Visita no Canal) -->
+        <div id="channel-analytics-modal" class="custom-modal-overlay" style="display:none;" aria-hidden="true">
+            <div class="custom-modal-card channel-modal-card channel-analytics-modal-card">
+                <div class="panel-top-bar" style="padding:12px 16px;">
+                    <h3 class="modal-title" style="font-size:1rem;"><i data-lucide="bar-chart-3"></i> Seguidores &amp; Interação do Canal</h3>
+                    <div class="header-icon-btn" id="close-channel-analytics-modal" title="Fechar" aria-label="Fechar"><i data-lucide="x"></i></div>
+                </div>
+                <div id="channel-analytics-content" class="channel-modal-body"></div>
+            </div>
+        </div>
+
     </div> <!-- Fim do app-container -->
 
     <!-- =========================================================
@@ -7184,6 +7213,6 @@
         </main>
     </div>
 
-    <script type="module" src="script.js?v=1.0.293" defer></script>
+    <script type="module" src="script.js?v=1.0.294" defer></script>
 </body>
 </html>

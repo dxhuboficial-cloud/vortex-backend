@@ -825,7 +825,14 @@ export function formatVideoTime(seconds) {
 export function attachVortexVideoPlayer(video) {
     if (!video || typeof document === 'undefined') return;
     if (video._hasVortexPlayer) return;
-    if (video.id === 'chat-camera-video-feed' || video.id === 'local-webcam-feed' || video.id === 'remote-webcam-feed') {
+    if (
+        video.id === 'chat-camera-video-feed' ||
+        video.id === 'local-webcam-feed' ||
+        video.id === 'remote-webcam-feed' ||
+        video.classList?.contains('channel-ig-tile-media') ||
+        video.classList?.contains('channel-manage-thumb') ||
+        video.closest?.('.channel-ig-tile')
+    ) {
         return;
     }
     video._hasVortexPlayer = true;
@@ -1897,7 +1904,8 @@ onAuthStateChanged(auth, async (user) => {
                 lastSeen: createdNow,
                 pinnedChats: [],
                 following: [],
-                followers: []
+                followers: [],
+                channelFollowerSources: {}
             };
             await setDoc(userDocRef, currentProfile);
         } else {
@@ -23336,7 +23344,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.293';
+export const CURRENT_APP_VERSION = '1.0.294';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -34045,24 +34053,35 @@ export function isPostSaved(postId) {
     return getSavedPostIds().includes(String(postId));
 }
 
+export function isImageFeedPost(post) {
+    if (!post || post.type === 'video') return false;
+    return post.type === 'image' || String(post.channelFormat || '').toLowerCase() === 'image' || Boolean(post.mediaData || post.hasChunks);
+}
+
 export function updateFeedFavoritesBadge(activePosts = cachedFeedPosts) {
+    if (typeof document === 'undefined') return;
     const badge = document.getElementById('feed-favorites-count');
-    if (!badge) return;
+    const imagesBadge = document.getElementById('feed-images-count');
     const savedIds = getSavedPostIds();
     let count = savedIds.length;
+    let imagesCount = 0;
     if (Array.isArray(activePosts) && activePosts.length > 0) {
         const isAdmin = isUserAdmin(currentUser, currentProfile) || checkIsAdminUser(currentUser, currentProfile);
         const validPosts = activePosts.filter(p => p && !isUserAccountDeleted(p.authorUid) && !p.isDeleted && !p.deleted && !isPostExpired(p) && (!p.hiddenByAi || isAdmin));
         count = validPosts.filter(p => savedIds.includes(String(p.id))).length;
+        imagesCount = validPosts.filter(p => isImageFeedPost(p)).length;
     }
-    badge.innerText = String(count);
+    if (badge) badge.innerText = String(count);
+    if (imagesBadge) imagesBadge.innerText = String(imagesCount);
 }
 
 export function setFeedFilterMode(mode = 'all') {
-    currentFeedFilterMode = mode === 'favorites' ? 'favorites' : 'all';
+    currentFeedFilterMode = (mode === 'favorites' || mode === 'images') ? mode : 'all';
     const allBtn = document.getElementById('feed-filter-all-btn');
+    const imagesBtn = document.getElementById('feed-filter-images-btn');
     const favBtn = document.getElementById('feed-filter-favorites-btn');
     if (allBtn) allBtn.classList.toggle('active', currentFeedFilterMode === 'all');
+    if (imagesBtn) imagesBtn.classList.toggle('active', currentFeedFilterMode === 'images');
     if (favBtn) favBtn.classList.toggle('active', currentFeedFilterMode === 'favorites');
     renderPostsFeed(cachedFeedPosts);
     const fList = document.getElementById('feed-list');
@@ -34626,6 +34645,16 @@ export function getPostAdBadgeHTML(post) {
     `;
 }
 
+export function getPostMediaTypeTagHTML(post) {
+    if (!isImageFeedPost(post)) return '';
+    return `
+        <button type="button" class="feed-image-tag-pill" data-action="filter-media-type" data-media-type="image" title="Filtrar publicações com tag Imagem">
+            <i data-lucide="image" class="image-pill-icon"></i>
+            <span>Imagem</span>
+        </button>
+    `;
+}
+
 export function initBusinessPostControls() {
     const catSelect = document.getElementById('post-business-category-select');
     const catHint = document.getElementById('post-business-category-hint');
@@ -34929,6 +34958,7 @@ export function setupFeedSearchListeners() {
     }
 
     const filterAllBtn = document.getElementById('feed-filter-all-btn');
+    const filterImagesBtn = document.getElementById('feed-filter-images-btn');
     const filterFavBtn = document.getElementById('feed-filter-favorites-btn');
 
     if (filterAllBtn && !filterAllBtn.dataset.bound) {
@@ -34936,6 +34966,14 @@ export function setupFeedSearchListeners() {
         filterAllBtn.addEventListener('click', () => {
             playSound(clickSound);
             setFeedFilterMode('all');
+        });
+    }
+
+    if (filterImagesBtn && !filterImagesBtn.dataset.bound) {
+        filterImagesBtn.dataset.bound = 'true';
+        filterImagesBtn.addEventListener('click', () => {
+            playSound(clickSound);
+            setFeedFilterMode('images');
         });
     }
 
@@ -34951,6 +34989,9 @@ export function setupFeedSearchListeners() {
 window.normalizeSearchText = normalizeSearchText;
 window.filterFeedPosts = filterFeedPosts;
 window.setupFeedSearchListeners = setupFeedSearchListeners;
+window.isImageFeedPost = isImageFeedPost;
+window.getPostMediaTypeTagHTML = getPostMediaTypeTagHTML;
+window.setFeedFilterMode = setFeedFilterMode;
 window.getCurrentFeedSearchQuery = () => currentFeedSearchQuery;
 window.setFeedSearchQuery = (q) => {
     currentFeedSearchQuery = q;
@@ -35174,6 +35215,120 @@ function renderPostHeaderRightActionsHTML(post, canDeletePost, { compact = false
     return `<div class="feed-header-actions">${followBtnHtml}${secondaryBtnHtml}</div>`;
 }
 
+export function classifyFollowAttributionSource(meta = {}, targetPost = null) {
+    if (meta?.source === 'channel_visit') return 'channel_visit';
+    const post = targetPost || (meta?.postId && Array.isArray(cachedFeedPosts) ? cachedFeedPosts.find(p => p && p.id === meta.postId) : null);
+    const fmt = String(post?.channelFormat || '').toLowerCase();
+    if (
+        meta?.source === 'video' ||
+        meta?.source === 'video_viewer' ||
+        meta?.mediaType === 'video' ||
+        post?.type === 'video' ||
+        fmt === 'short' ||
+        fmt === 'video' ||
+        fmt === 'podcast'
+    ) {
+        return 'video';
+    }
+    if (post || meta?.postId || meta?.source === 'post_image') {
+        return 'post_image';
+    }
+    return 'profile';
+}
+
+async function syncUserChannelFollowerAttribution(targetUid, followerUid, shouldAdd, attribution = {}) {
+    if (!targetUid || !followerUid) return null;
+    const now = Date.now();
+    const cachedData = getEffectiveChannelUserData(targetUid, activeChannelUserData);
+    let existingUser = cachedData && typeof cachedData === 'object' ? { ...cachedData } : {};
+
+    if (typeof getDoc === 'function' && typeof doc === 'function' && typeof db !== 'undefined') {
+        try {
+            const snap = await getDoc(doc(db, 'users', targetUid));
+            const exists = snap && (typeof snap.exists === 'function' ? snap.exists() : !!snap.exists);
+            if (exists) {
+                existingUser = { ...existingUser, ...(snap.data() || {}) };
+            }
+        } catch (_) {}
+    }
+
+    const prevSources = (existingUser.channelFollowerSources && typeof existingUser.channelFollowerSources === 'object')
+        ? { ...existingUser.channelFollowerSources }
+        : {};
+    const channelSubs = Array.isArray(existingUser.channelSubscribers) ? existingUser.channelSubscribers : [];
+
+    if (shouldAdd) {
+        const incomingSource = attribution.source || 'profile';
+        const prevEntry = prevSources[followerUid];
+        if (incomingSource === 'channel_visit' && prevEntry?.source === 'video') {
+            // Preserva a origem original de vídeo caso o usuário também se inscreva depois no canal
+            prevSources[followerUid] = { ...prevEntry, alsoVisitedChannel: true, updatedAt: now };
+        } else {
+            prevSources[followerUid] = {
+                source: incomingSource,
+                postId: attribution.postId || '',
+                postTitle: attribution.postTitle || '',
+                mediaType: attribution.mediaType || '',
+                updatedAt: now
+            };
+        }
+    } else if (attribution.onlyChannelVisit) {
+        if (prevSources[followerUid]?.source === 'channel_visit') {
+            delete prevSources[followerUid];
+        }
+    } else {
+        if (channelSubs.includes(followerUid)) {
+            prevSources[followerUid] = { source: 'channel_visit', updatedAt: now };
+        } else {
+            delete prevSources[followerUid];
+        }
+    }
+
+    if (activeChannelUid === targetUid && activeChannelUserData) {
+        activeChannelUserData.channelFollowerSources = prevSources;
+    }
+    if (typeof contactUserDataMap !== 'undefined' && contactUserDataMap?.has(targetUid)) {
+        contactUserDataMap.set(targetUid, { ...contactUserDataMap.get(targetUid), channelFollowerSources: prevSources });
+    }
+    if (currentUser?.uid === targetUid && currentProfile) {
+        currentProfile.channelFollowerSources = prevSources;
+    }
+
+    if (typeof doc === 'function' && typeof db !== 'undefined') {
+        const userRef = doc(db, 'users', targetUid);
+        try {
+            if (typeof updateDoc === 'function') {
+                await updateDoc(userRef, { channelFollowerSources: prevSources });
+            }
+        } catch (_) {
+            try {
+                if (typeof setDoc === 'function') {
+                    await setDoc(userRef, { channelFollowerSources: prevSources }, { merge: true });
+                }
+            } catch (__) {}
+        }
+    }
+
+    if (attribution.postId && Array.isArray(cachedFeedPosts)) {
+        const localPost = cachedFeedPosts.find(p => p && p.id === attribution.postId);
+        if (localPost) {
+            const prevGained = Array.isArray(localPost.followersGained) ? localPost.followersGained : [];
+            localPost.followersGained = shouldAdd
+                ? [...new Set([...prevGained, followerUid])]
+                : prevGained.filter(id => id !== followerUid);
+        }
+    }
+    if (attribution.postId && typeof doc === 'function' && typeof db !== 'undefined' && typeof updateDoc === 'function') {
+        try {
+            await updateDoc(doc(db, 'posts', attribution.postId), {
+                followersGained: shouldAdd ? arrayUnion(followerUid) : arrayRemove(followerUid)
+            });
+        } catch (_) {}
+    }
+
+    return prevSources;
+}
+
 export async function toggleFollowUser(targetUid, meta = {}) {
     if (!currentUser?.uid) {
         if (typeof showToast === 'function') {
@@ -35202,6 +35357,17 @@ export async function toggleFollowUser(targetUid, meta = {}) {
             ? [...new Set([...prevFollowing, targetUid])]
             : prevFollowing.filter(id => id !== targetUid);
 
+        const targetPost = meta.postId && Array.isArray(cachedFeedPosts)
+            ? cachedFeedPosts.find(p => p && p.id === meta.postId)
+            : null;
+        const attributionSource = classifyFollowAttributionSource(meta, targetPost);
+        const attributionPayload = {
+            source: attributionSource,
+            postId: meta.postId || targetPost?.id || '',
+            postTitle: meta.postTitle || targetPost?.title || targetPost?.caption || '',
+            mediaType: meta.mediaType || targetPost?.type || ''
+        };
+
         const updateLocalFollowersCache = (obj) => {
             if (!obj || typeof obj !== 'object') return;
             const prevFollowers = Array.isArray(obj.followers) ? obj.followers : [];
@@ -35223,7 +35389,8 @@ export async function toggleFollowUser(targetUid, meta = {}) {
 
         await Promise.all([
             persistUserArrayMembership(currentUser.uid, 'following', targetUid, nowFollowing, { updatedAt: Date.now() }),
-            persistUserArrayMembership(targetUid, 'followers', currentUser.uid, nowFollowing)
+            persistUserArrayMembership(targetUid, 'followers', currentUser.uid, nowFollowing),
+            syncUserChannelFollowerAttribution(targetUid, currentUser.uid, nowFollowing, attributionPayload)
         ]);
 
         if (nowFollowing && typeof addDoc === 'function' && typeof collection === 'function' && typeof db !== 'undefined') {
@@ -35236,9 +35403,14 @@ export async function toggleFollowUser(targetUid, meta = {}) {
                 title: 'Novo seguidor!',
                 message: `${followerName} começou a seguir você.`,
                 postId: meta.postId || '',
+                source: attributionSource,
                 read: false,
                 createdAt: Date.now()
             }).catch(() => {});
+        }
+
+        if (activeChannelUid === targetUid && document.getElementById('channel-panel')?.classList?.contains('active')) {
+            renderChannelScreen();
         }
 
         const displayTarget = meta.authorName || contactUserDataMap?.get(targetUid)?.name || 'este usuário';
@@ -35250,7 +35422,7 @@ export async function toggleFollowUser(targetUid, meta = {}) {
             );
         }
 
-        return { success: true, following: nowFollowing, targetUid };
+        return { success: true, following: nowFollowing, targetUid, attributionSource };
     } finally {
         pendingFollowToggleUids.delete(targetUid);
     }
@@ -35284,8 +35456,10 @@ function renderPostsFeed(posts = []) {
 
     updateFeedFavoritesBadge(sorted);
     const allFilterBtn = document.getElementById('feed-filter-all-btn');
+    const imagesFilterBtn = document.getElementById('feed-filter-images-btn');
     const favFilterBtn = document.getElementById('feed-filter-favorites-btn');
     if (allFilterBtn) allFilterBtn.classList.toggle('active', currentFeedFilterMode === 'all');
+    if (imagesFilterBtn) imagesFilterBtn.classList.toggle('active', currentFeedFilterMode === 'images');
     if (favFilterBtn) favFilterBtn.classList.toggle('active', currentFeedFilterMode === 'favorites');
 
     syncFeedAuthorsVipStatus(sorted);
@@ -35378,8 +35552,9 @@ function renderPostsFeed(posts = []) {
                                 </button>
                             </div>
                         ` : ''}
-                        ${(isPostAd || (post.businessCategory || post.personalCategory || post.category)) ? `
+                        ${(isPostAd || isImageFeedPost(post) || (post.businessCategory || post.personalCategory || post.category)) ? `
                             <div class="feed-tags-row">
+                                ${getPostMediaTypeTagHTML(post)}
                                 ${getPostAdBadgeHTML(post)}
                                 ${getPostCategoryBadgeHTML(post)}
                             </div>
@@ -35454,7 +35629,7 @@ function renderPostsFeed(posts = []) {
 
     const basePosts = currentFeedFilterMode === 'favorites'
         ? sorted.filter(p => isPostSaved(p.id))
-        : sorted;
+        : (currentFeedFilterMode === 'images' ? sorted.filter(p => isImageFeedPost(p)) : sorted);
 
     const filtered = filterFeedPosts(basePosts, query);
 
@@ -35466,6 +35641,10 @@ function renderPostsFeed(posts = []) {
         if (countLabel) {
             countLabel.innerText = `${basePosts.length} ${basePosts.length === 1 ? 'favorito salvo' : 'favoritos salvos'}`;
         }
+    } else if (currentFeedFilterMode === 'images') {
+        if (countLabel) {
+            countLabel.innerText = `${basePosts.length} ${basePosts.length === 1 ? 'imagem' : 'imagens'}`;
+        }
     } else {
         if (countLabel) {
             countLabel.innerText = `${sorted.length} ${sorted.length === 1 ? 'postagem' : 'postagens'}`;
@@ -35474,6 +35653,22 @@ function renderPostsFeed(posts = []) {
 
     if (!sorted.length) {
         feedList.innerHTML = '<div class="post-empty">Nenhuma postagem ainda. Seja o primeiro a publicar.</div>';
+        if (window.lucide) lucide.createIcons();
+        return;
+    }
+
+    if (currentFeedFilterMode === 'images' && !basePosts.length) {
+        feedList.innerHTML = `
+            <div class="post-empty feed-favorites-empty">
+                <i data-lucide="image" class="feed-empty-search-icon"></i>
+                <h4 style="color:#ffffff; font-size:1.05rem; margin:6px 0 2px;">Nenhuma imagem encontrada</h4>
+                <p style="color:var(--text-dim, #888); font-size:0.86rem; margin:0 0 10px;">Nenhuma publicação com a tag <strong>Imagem</strong> disponível no momento.</p>
+                <button type="button" id="feed-images-empty-all-btn" class="feed-clear-search-link">Ver todos os posts</button>
+            </div>
+        `;
+        document.getElementById('feed-images-empty-all-btn')?.addEventListener('click', () => {
+            setFeedFilterMode('all');
+        });
         if (window.lucide) lucide.createIcons();
         return;
     }
@@ -35603,8 +35798,9 @@ function renderPostsFeed(posts = []) {
                     </div>
                 ` : ''}
                 <div class="feed-body">
-                    ${(isPostAd || (post.businessCategory || post.personalCategory || post.category)) ? `
+                    ${(isPostAd || isImageFeedPost(post) || (post.businessCategory || post.personalCategory || post.category)) ? `
                         <div class="feed-tags-row">
+                            ${getPostMediaTypeTagHTML(post)}
                             ${getPostAdBadgeHTML(post)}
                             ${getPostCategoryBadgeHTML(post)}
                         </div>
@@ -36031,6 +36227,17 @@ function renderPostsFeed(posts = []) {
         }
     });
 
+    // Filtrar por tag Imagem ao clicar na tag do post
+    document.querySelectorAll('[data-action="filter-media-type"]').forEach(pill => {
+        pill.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (pill.dataset.mediaType === 'image') {
+                setFeedFilterMode(currentFeedFilterMode === 'images' ? 'all' : 'images');
+            }
+        });
+    });
+
     // Filtrar por hashtag ou categoria ao clicar na pílula (v1.0.192 / v1.0.193)
     document.querySelectorAll('[data-action="filter-hashtag"], [data-action="filter-category"]').forEach(pill => {
         pill.addEventListener('click', (e) => {
@@ -36090,10 +36297,14 @@ function renderPostsFeed(posts = []) {
             e.preventDefault();
             e.stopPropagation();
             const authorUid = btn.dataset.authorUid;
+            const postId = btn.dataset.postId || '';
             if (!authorUid) return;
+            const targetPost = postId ? posts.find(p => p && p.id === postId) : null;
             await toggleFollowUser(authorUid, {
                 authorName: btn.dataset.authorName || '',
-                postId: btn.dataset.postId || ''
+                postId,
+                mediaType: targetPost?.type || '',
+                source: targetPost?.type === 'video' ? 'video' : (targetPost ? 'post_image' : 'feed')
             });
         });
     });
@@ -37022,7 +37233,7 @@ document.getElementById('publish-post-btn')?.addEventListener('click', async () 
                 hashtags: hashtagValidation.hashtags.slice(0, MAX_POST_HASHTAGS),
                 channelFormat: (() => {
                     const fmt = document.getElementById('post-channel-format-select')?.value || 'auto';
-                    return (fmt === 'auto') ? (isVideo ? ((pendingPostMediaInfo?.duration || (file && file.duration) || 0) > 60 ? 'video' : 'short') : null) : fmt;
+                    return (fmt === 'auto') ? (isVideo ? ((pendingPostMediaInfo?.duration || (file && file.duration) || 0) > 60 ? 'video' : 'short') : 'image') : fmt;
                 })(),
                 isAd: isPostAd,
                 contentType: isPostAd ? 'ad' : 'normal',
@@ -51937,10 +52148,14 @@ export function classifyChannelPostFormat(post = {}) {
     if (fmt === 'podcast') return 'podcasts';
     if (fmt === 'short') return 'shorts';
     if (fmt === 'video') return 'videos';
+    if (fmt === 'image') return 'imagens';
     const textBlob = `${post.title || ''} ${post.caption || ''} ${post.personalCategory || ''}`.toLowerCase();
     if (/\bpodcast\b/.test(textBlob)) return 'podcasts';
     if (post.type === 'video') {
         return Number(post.videoDuration) > 60 ? 'videos' : 'shorts';
+    }
+    if (typeof isImageFeedPost === 'function' ? isImageFeedPost(post) : post.type === 'image') {
+        return 'imagens';
     }
     return 'other';
 }
@@ -51986,6 +52201,10 @@ export function getChannelMediaPostsForUser(uid, tab = 'inicio', playlistFilter 
         })
         .sort((a, b) => (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0));
 
+    if (tab === 'imagens') {
+        return userPosts.filter(p => (typeof isImageFeedPost === 'function' ? isImageFeedPost(p) : p.type === 'image') || String(p.channelFormat || '').toLowerCase() === 'image');
+    }
+
     const channelItems = userPosts.filter(p => p.type === 'video' || ['short', 'video', 'podcast'].includes(String(p.channelFormat || '').toLowerCase()) || classifyChannelPostFormat(p) === 'podcasts');
 
     if (tab === 'videos') return channelItems.filter(p => classifyChannelPostFormat(p) === 'videos');
@@ -51999,6 +52218,109 @@ export function getChannelMediaPostsForUser(uid, tab = 'inicio', playlistFilter 
         return playlistItems;
     }
     return channelItems;
+}
+
+export function getChannelFollowerAnalytics(uid, userData = null, postsSource = cachedFeedPosts) {
+    const targetUid = uid || activeChannelUid || currentUser?.uid || '';
+    const effectiveUser = (userData && typeof userData === 'object')
+        ? userData
+        : getEffectiveChannelUserData(targetUid, activeChannelUserData);
+
+    const channelSubs = Array.isArray(effectiveUser?.channelSubscribers) ? effectiveUser.channelSubscribers.filter(Boolean) : [];
+    const profileFollowers = Array.isArray(effectiveUser?.followers) ? effectiveUser.followers.filter(Boolean) : [];
+    const sourcesMap = (effectiveUser?.channelFollowerSources && typeof effectiveUser.channelFollowerSources === 'object')
+        ? effectiveUser.channelFollowerSources
+        : {};
+
+    const videoFollowerUids = new Set();
+    const channelVisitUids = new Set();
+    const postImageUids = new Set();
+    const profileOtherUids = new Set();
+
+    Object.entries(sourcesMap).forEach(([fid, entry]) => {
+        if (!fid || !entry || typeof entry !== 'object') return;
+        const src = String(entry.source || '').toLowerCase();
+        if (src === 'video' || src === 'video_viewer') {
+            videoFollowerUids.add(fid);
+        } else if (src === 'channel_visit') {
+            channelVisitUids.add(fid);
+        } else if (src === 'post_image') {
+            postImageUids.add(fid);
+        } else {
+            profileOtherUids.add(fid);
+        }
+    });
+
+    const userVideos = getChannelMediaPostsForUser(targetUid, 'inicio', 'all', postsSource);
+    const videoBreakdown = userVideos.map(post => {
+        const gainedUids = new Set(Array.isArray(post.followersGained) ? post.followersGained.filter(Boolean) : []);
+        Object.entries(sourcesMap).forEach(([fid, entry]) => {
+            if (fid && entry && (entry.source === 'video' || entry.source === 'video_viewer') && entry.postId === post.id) {
+                gainedUids.add(fid);
+            }
+        });
+        gainedUids.forEach(fid => {
+            if (!channelVisitUids.has(fid) && !postImageUids.has(fid)) {
+                videoFollowerUids.add(fid);
+            }
+        });
+        const viewsCount = typeof getPostViewsCount === 'function'
+            ? getPostViewsCount(post)
+            : (Array.isArray(post.views) ? post.views.length : (post.viewsCount || 0));
+        return {
+            postId: post.id,
+            title: post.title || post.caption || 'Vídeo sem título',
+            format: classifyChannelPostFormat(post),
+            followersCount: gainedUids.size,
+            viewsCount
+        };
+    }).sort((a, b) => (b.followersCount - a.followersCount) || (b.viewsCount - a.viewsCount));
+
+    // Inscritos no canal sem registro prévio de origem contam como inscritos por visita no canal
+    channelSubs.forEach(fid => {
+        if (!videoFollowerUids.has(fid) && !postImageUids.has(fid) && !profileOtherUids.has(fid)) {
+            channelVisitUids.add(fid);
+        }
+    });
+
+    const fromVideosCount = videoFollowerUids.size;
+    const fromChannelVisitCount = channelVisitUids.size;
+    const fromImagesCount = postImageUids.size;
+    const fromProfileCount = profileOtherUids.size;
+    const allAudienceUids = new Set([
+        ...channelSubs,
+        ...profileFollowers,
+        ...videoFollowerUids,
+        ...channelVisitUids,
+        ...postImageUids,
+        ...profileOtherUids
+    ]);
+
+    const videoVsVisitTotal = fromVideosCount + fromChannelVisitCount;
+    const videoPercent = videoVsVisitTotal > 0 ? Math.round((fromVideosCount / videoVsVisitTotal) * 100) : 0;
+    const channelVisitPercent = videoVsVisitTotal > 0 ? (100 - videoPercent) : 0;
+
+    let dominantOrigin = 'none';
+    if (videoVsVisitTotal > 0) {
+        if (fromVideosCount > fromChannelVisitCount) dominantOrigin = 'videos';
+        else if (fromChannelVisitCount > fromVideosCount) dominantOrigin = 'channel_visit';
+        else dominantOrigin = 'tied';
+    }
+
+    return {
+        uid: targetUid,
+        fromVideosCount,
+        fromChannelVisitCount,
+        fromImagesCount,
+        fromProfileCount,
+        subscribersCount: channelSubs.length,
+        followersCount: profileFollowers.length,
+        totalAudienceCount: allAudienceUids.size,
+        videoPercent,
+        channelVisitPercent,
+        dominantOrigin,
+        videoBreakdown
+    };
 }
 
 function getEffectiveChannelUserData(uid, fallbackData = null) {
@@ -52124,6 +52446,21 @@ export function renderChannelScreen() {
     if (ownerActions) ownerActions.style.display = isOwner ? 'flex' : 'none';
     if (visitorActions) visitorActions.style.display = isOwner ? 'none' : 'flex';
 
+    // Resumo rápido do Dono: seguidores dos vídeos vs inscritos por visita no canal
+    const insightsBar = document.getElementById('channel-owner-insights-bar');
+    const insightsTextEl = document.getElementById('channel-owner-insights-text');
+    if (insightsBar) {
+        if (isOwner) {
+            const analytics = getChannelFollowerAnalytics(uid, userData);
+            insightsBar.style.display = 'flex';
+            if (insightsTextEl) {
+                insightsTextEl.innerText = `${analytics.fromVideosCount} ${analytics.fromVideosCount === 1 ? 'seguidor veio' : 'seguidores vieram'} dos vídeos • ${analytics.fromChannelVisitCount} ${analytics.fromChannelVisitCount === 1 ? 'inscrito' : 'inscritos'} por visita no canal`;
+            }
+        } else {
+            insightsBar.style.display = 'none';
+        }
+    }
+
     if (!isOwner) {
         const subBtn = document.getElementById('channel-subscribe-btn');
         const subLabel = document.getElementById('channel-subscribe-label');
@@ -52190,6 +52527,7 @@ export function renderChannelMediaGrid(items = [], tab = 'inicio', isOwner = fal
                 inicio: 'Nenhum vídeo ou Reels publicado ainda.',
                 videos: 'Nenhum vídeo longo publicado nesta aba ainda.',
                 shorts: 'Nenhum Shorts / Reels publicado nesta aba ainda.',
+                imagens: 'Nenhuma imagem publicada no canal ainda.',
                 podcasts: 'Nenhum episódio de Podcast publicado ainda.',
                 playlists: 'Nenhum vídeo organizado em playlists ainda.'
             };
@@ -52208,20 +52546,26 @@ export function renderChannelMediaGrid(items = [], tab = 'inicio', isOwner = fal
             ? createBlobUrlFromData(String(rawMedia).replace(/#t=[0-9,.]+$/, ''))
             : (rawMedia || '');
         const fmt = classifyChannelPostFormat(post);
-        const topIcon = fmt === 'podcasts' ? 'mic' : (fmt === 'videos' ? 'film' : 'clapperboard');
+        const isImageTile = (typeof isImageFeedPost === 'function' ? isImageFeedPost(post) : post.type === 'image') || fmt === 'imagens';
+        const isPlayableTile = !isImageTile && (post.type === 'video' || post.type === 'music' || post.type === 'audio' || ['videos', 'shorts', 'podcasts'].includes(fmt));
+        const topIcon = isImageTile
+            ? 'image'
+            : (fmt === 'podcasts' ? 'mic' : (fmt === 'videos' ? 'film' : 'clapperboard'));
         const viewsCount = typeof getPostViewsCount === 'function' ? getPostViewsCount(post) : (Array.isArray(post.views) ? post.views.length : (post.viewsCount || 0));
         const viewsLabel = typeof formatPostViewsCount === 'function' ? formatPostViewsCount(viewsCount) : String(viewsCount);
         const durationLabel = post.videoDuration ? formatChannelDuration(post.videoDuration) : '';
         const mediaTag = post.type === 'video'
             ? `<video src="${src}" ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="video"` : ''} muted playsinline preload="metadata" class="channel-ig-tile-media"></video>`
-            : `<img src="${src}" ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="image"` : ''} alt="${escapeHTML(post.title || post.caption || 'Vídeo do canal')}" class="channel-ig-tile-media">`;
+            : `<img src="${src}" ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="image"` : ''} alt="${escapeHTML(post.title || post.caption || (isImageTile ? 'Imagem do canal' : 'Vídeo do canal'))}" class="channel-ig-tile-media">`;
 
         return `
-            <button type="button" class="channel-ig-tile" data-post-id="${post.id}" title="${escapeHTML(post.title || post.caption || 'Assistir')}">
+            <button type="button" class="channel-ig-tile" data-post-id="${post.id}" title="${escapeHTML(post.title || post.caption || (isImageTile ? 'Ver imagem' : 'Assistir'))}">
                 ${mediaTag}
+                ${isImageTile ? '<span class="channel-ig-tile-image-tag"><i data-lucide="image"></i> Imagem</span>' : ''}
+                ${isPlayableTile ? '<span class="channel-ig-tile-play-overlay" aria-hidden="true"><i data-lucide="play" class="channel-ig-tile-play-icon"></i></span>' : ''}
                 <span class="channel-ig-tile-top-badge" aria-hidden="true"><i data-lucide="${topIcon}"></i></span>
                 <span class="channel-ig-tile-bottom-overlay">
-                    <span class="channel-ig-tile-views"><i data-lucide="play"></i> ${escapeHTML(String(viewsLabel))}</span>
+                    <span class="channel-ig-tile-views"><i data-lucide="${isImageTile ? 'eye' : 'play'}"></i> ${escapeHTML(String(viewsLabel))}</span>
                     ${durationLabel ? `<span class="channel-ig-tile-duration">${durationLabel}</span>` : ''}
                 </span>
             </button>
@@ -52243,7 +52587,7 @@ export function renderChannelMediaGrid(items = [], tab = 'inicio', isOwner = fal
 }
 
 export function switchChannelTab(tabName) {
-    const valid = ['inicio', 'videos', 'shorts', 'podcasts', 'playlists'];
+    const valid = ['inicio', 'videos', 'shorts', 'imagens', 'podcasts', 'playlists'];
     activeChannelTab = valid.includes(tabName) ? tabName : 'inicio';
     if (activeChannelTab !== 'playlists') activeChannelPlaylistFilter = 'all';
     renderChannelScreen();
@@ -52293,6 +52637,7 @@ export async function openUserChannelScreen(targetUid = null, fallbackData = nul
                     if (liveData.channelBio !== undefined) currentProfile.channelBio = liveData.channelBio;
                     if (liveData.channelLink !== undefined) currentProfile.channelLink = liveData.channelLink;
                     if (liveData.channelSubscribers !== undefined) currentProfile.channelSubscribers = liveData.channelSubscribers;
+                    if (liveData.channelFollowerSources !== undefined) currentProfile.channelFollowerSources = liveData.channelFollowerSources;
                     if (liveData.channelCommunityPosts !== undefined) currentProfile.channelCommunityPosts = liveData.channelCommunityPosts;
                 }
                 if (document.getElementById('channel-panel')?.classList.contains('active')) {
@@ -52487,9 +52832,15 @@ export async function toggleChannelSubscription(targetUid = activeChannelUid) {
     }
 
     try {
-        await updateDoc(doc(db, 'users', targetUid), {
-            channelSubscribers: alreadySubscribed ? arrayRemove(currentUser.uid) : arrayUnion(currentUser.uid)
-        });
+        await Promise.all([
+            updateDoc(doc(db, 'users', targetUid), {
+                channelSubscribers: alreadySubscribed ? arrayRemove(currentUser.uid) : arrayUnion(currentUser.uid)
+            }),
+            syncUserChannelFollowerAttribution(targetUid, currentUser.uid, !alreadySubscribed, {
+                source: 'channel_visit',
+                onlyChannelVisit: true
+            })
+        ]);
     } catch (_) {}
 
     renderChannelScreen();
@@ -52544,16 +52895,106 @@ export function openChannelCommunityModal() {
 
     const posts = Array.isArray(userData.channelCommunityPosts) ? [...userData.channelCommunityPosts].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)) : [];
     listEl.innerHTML = posts.length
-        ? posts.map(item => `
-            <div class="channel-community-post-card">
-                <div style="font-size:0.74rem; color:#9a9a9a; margin-bottom:4px;">${new Date(item.createdAt || Date.now()).toLocaleString([], { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</div>
-                <div style="font-size:0.88rem; color:#f1f1f1; white-space:pre-wrap;">${escapeHTML(item.text || '')}</div>
-            </div>
-        `).join('')
+        ? posts.map(item => {
+            const commId = String(item.id || item.createdAt || '');
+            const likesArr = Array.isArray(item.likes) ? item.likes.filter(Boolean) : [];
+            const isLiked = Boolean(currentUser?.uid && likesArr.includes(currentUser.uid));
+            return `
+                <div class="channel-community-post-card" data-comm-id="${escapeHTML(commId)}">
+                    <div style="font-size:0.74rem; color:#9a9a9a; margin-bottom:4px;">${new Date(item.createdAt || Date.now()).toLocaleString([], { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</div>
+                    <div style="font-size:0.88rem; color:#f1f1f1; white-space:pre-wrap;">${escapeHTML(item.text || '')}</div>
+                    <div class="channel-community-post-actions">
+                        <button type="button" class="channel-community-like-btn ${isLiked ? 'liked' : ''}" data-action="like-community-post" data-comm-id="${escapeHTML(commId)}" data-channel-uid="${escapeHTML(uid)}" aria-pressed="${isLiked ? 'true' : 'false'}">
+                            <i data-lucide="heart"></i>
+                            <span>${isLiked ? 'Curtido' : 'Curtir'}</span>
+                            <span class="channel-community-like-count">${likesArr.length}</span>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('')
         : '<div style="text-align:center; padding:18px; color:#8e8e93; font-size:0.85rem;">Nenhuma publicação na Comunidade deste canal ainda.</div>';
+
+    listEl.querySelectorAll('[data-action="like-community-post"]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            playSound(clickSound);
+            await toggleChannelCommunityPostLike(btn.dataset.channelUid || uid, btn.dataset.commId || '');
+        });
+    });
 
     modal.style.display = 'flex';
     modal.setAttribute('aria-hidden', 'false');
+    if (window.lucide) lucide.createIcons();
+}
+
+export async function toggleChannelCommunityPostLike(channelUid = activeChannelUid, commPostId = '') {
+    if (!currentUser?.uid) {
+        if (typeof showToast === 'function') {
+            showToast('Login necessário', 'Entre na sua conta para curtir avisos da comunidade.', 'yellow');
+        }
+        return { success: false, reason: 'unauthenticated' };
+    }
+    if (typeof isUserRestricted === 'function' && isUserRestricted(currentProfile)) {
+        return { success: false, reason: 'restricted' };
+    }
+    const targetUid = channelUid || activeChannelUid || currentUser.uid;
+    const postKey = String(commPostId || '');
+    if (!targetUid || !postKey) return { success: false, reason: 'invalid_args' };
+
+    let userData = getEffectiveChannelUserData(targetUid, activeChannelUserData);
+    if (typeof getDoc === 'function' && typeof doc === 'function' && typeof db !== 'undefined') {
+        try {
+            const snap = await getDoc(doc(db, 'users', targetUid));
+            const exists = snap && (typeof snap.exists === 'function' ? snap.exists() : !!snap.exists);
+            if (exists) {
+                userData = { ...userData, ...(snap.data() || {}) };
+            }
+        } catch (_) {}
+    }
+
+    const existing = Array.isArray(userData?.channelCommunityPosts) ? [...userData.channelCommunityPosts] : [];
+    const idx = existing.findIndex(item => item && String(item.id || item.createdAt || '') === postKey);
+    if (idx === -1) return { success: false, reason: 'not_found' };
+
+    const currentItem = { ...existing[idx] };
+    const prevLikes = Array.isArray(currentItem.likes) ? currentItem.likes.filter(Boolean) : [];
+    const alreadyLiked = prevLikes.includes(currentUser.uid);
+    const nextLikes = alreadyLiked
+        ? prevLikes.filter(id => id !== currentUser.uid)
+        : [...new Set([...prevLikes, currentUser.uid])];
+
+    currentItem.id = currentItem.id || postKey;
+    currentItem.likes = nextLikes;
+    const nextPosts = [...existing];
+    nextPosts[idx] = currentItem;
+
+    if (activeChannelUid === targetUid && activeChannelUserData) {
+        activeChannelUserData.channelCommunityPosts = nextPosts;
+    }
+    if (typeof contactUserDataMap !== 'undefined' && contactUserDataMap?.has(targetUid)) {
+        contactUserDataMap.set(targetUid, { ...contactUserDataMap.get(targetUid), channelCommunityPosts: nextPosts });
+    }
+    if (currentUser.uid === targetUid && currentProfile) {
+        currentProfile.channelCommunityPosts = nextPosts;
+    }
+
+    if (typeof doc === 'function' && typeof db !== 'undefined') {
+        const userRef = doc(db, 'users', targetUid);
+        try {
+            if (typeof setDoc === 'function') {
+                await setDoc(userRef, { channelCommunityPosts: nextPosts, updatedAt: Date.now() }, { merge: true });
+            } else if (typeof updateDoc === 'function') {
+                await updateDoc(userRef, { channelCommunityPosts: nextPosts, updatedAt: Date.now() });
+            }
+        } catch (_) {}
+    }
+
+    const modal = document.getElementById('channel-community-modal');
+    if (modal && modal.style.display === 'flex') {
+        openChannelCommunityModal();
+    }
+
+    return { success: true, liked: !alreadyLiked, likesCount: nextLikes.length, postId: currentItem.id };
 }
 
 export async function publishChannelCommunityPost() {
@@ -52571,7 +53012,7 @@ export async function publishChannelCommunityPost() {
     }
 
     const existing = Array.isArray(currentProfile.channelCommunityPosts) ? [...currentProfile.channelCommunityPosts] : [];
-    const nextList = [{ id: `comm_${Date.now()}`, text, createdAt: Date.now() }, ...existing].slice(0, 40);
+    const nextList = [{ id: `comm_${Date.now()}`, text, createdAt: Date.now(), likes: [] }, ...existing].slice(0, 40);
     currentProfile.channelCommunityPosts = nextList;
     if (activeChannelUid === currentUser.uid && activeChannelUserData) {
         activeChannelUserData.channelCommunityPosts = nextList;
@@ -52585,6 +53026,83 @@ export async function publishChannelCommunityPost() {
     openChannelCommunityModal();
     renderChannelScreen();
     showToast('Publicado na Comunidade! 📣', 'Seu recado já está visível no canal.', 'green');
+}
+
+export function openChannelAnalyticsModal() {
+    const modal = document.getElementById('channel-analytics-modal');
+    const contentEl = document.getElementById('channel-analytics-content');
+    if (!modal || !contentEl) return;
+
+    const uid = activeChannelUid || currentUser?.uid || '';
+    const isOwner = Boolean(uid && currentUser?.uid && uid === currentUser.uid);
+    if (!isOwner) return;
+
+    const analytics = getChannelFollowerAnalytics(uid);
+    let verdictText = 'Ainda não há seguidores atribuídos. Quando usuários clicarem em Seguir nos seus vídeos ou se inscreverem visitando o canal, a origem aparecerá aqui.';
+    if (analytics.dominantOrigin === 'videos') {
+        verdictText = `Seus vídeos estão convertendo mais seguidores (${analytics.videoPercent}%) do que visitas diretas no canal (${analytics.channelVisitPercent}%).`;
+    } else if (analytics.dominantOrigin === 'channel_visit') {
+        verdictText = `Mais usuários estão se inscrevendo visitando o canal (${analytics.channelVisitPercent}%) do que seguindo direto pelos vídeos (${analytics.videoPercent}%).`;
+    } else if (analytics.dominantOrigin === 'tied') {
+        verdictText = 'Seus seguidores estão divididos igualmente entre conversões pelos vídeos e inscrições por visita no canal.';
+    }
+
+    const otherCount = analytics.fromImagesCount + analytics.fromProfileCount;
+    const rowsHtml = analytics.videoBreakdown.length
+        ? analytics.videoBreakdown.slice(0, 15).map(item => `
+            <div class="channel-analytics-video-row" data-post-id="${escapeHTML(String(item.postId || ''))}">
+                <div style="min-width:0; flex:1;">
+                    <div class="channel-analytics-video-title">${escapeHTML(item.title)}</div>
+                    <div class="channel-analytics-video-sub">${item.viewsCount} ${item.viewsCount === 1 ? 'visualização' : 'visualizações'} • ${escapeHTML(item.format)}</div>
+                </div>
+                <span class="channel-analytics-video-badge">+${item.followersCount} ${item.followersCount === 1 ? 'seguidor' : 'seguidores'}</span>
+            </div>
+        `).join('')
+        : '<div style="text-align:center; padding:12px; color:#8e8e93; font-size:0.82rem;">Nenhum vídeo publicado no canal ainda.</div>';
+
+    contentEl.innerHTML = `
+        <div class="channel-analytics-summary-grid">
+            <div class="channel-analytics-stat-card videos">
+                <span class="channel-analytics-stat-value">${analytics.fromVideosCount}</span>
+                <span class="channel-analytics-stat-label">Seguidores dos Vídeos</span>
+                <span class="channel-analytics-stat-sub">${analytics.videoPercent}% entre vídeos vs canal</span>
+            </div>
+            <div class="channel-analytics-stat-card visits">
+                <span class="channel-analytics-stat-value">${analytics.fromChannelVisitCount}</span>
+                <span class="channel-analytics-stat-label">Inscritos por Visita no Canal</span>
+                <span class="channel-analytics-stat-sub">${analytics.channelVisitPercent}% entre vídeos vs canal</span>
+            </div>
+            <div class="channel-analytics-stat-card">
+                <span class="channel-analytics-stat-value">${otherCount}</span>
+                <span class="channel-analytics-stat-label">Via Imagens / Perfil</span>
+                <span class="channel-analytics-stat-sub">${analytics.fromImagesCount} por imagens • ${analytics.fromProfileCount} perfil</span>
+            </div>
+            <div class="channel-analytics-stat-card">
+                <span class="channel-analytics-stat-value">${analytics.totalAudienceCount}</span>
+                <span class="channel-analytics-stat-label">Público Total</span>
+                <span class="channel-analytics-stat-sub">${analytics.subscribersCount} inscritos • ${analytics.followersCount} seguidores</span>
+            </div>
+        </div>
+        <div class="channel-analytics-split-wrap">
+            <div style="display:flex; justify-content:space-between; font-size:0.74rem; color:#d4d4d8;">
+                <span>Vídeos (${analytics.fromVideosCount})</span>
+                <span>Visita no Canal (${analytics.fromChannelVisitCount})</span>
+            </div>
+            <div class="channel-analytics-split-bar" aria-hidden="true">
+                <div class="channel-analytics-split-fill-videos" style="width:${analytics.videoPercent}%;"></div>
+                <div class="channel-analytics-split-fill-visits" style="width:${analytics.channelVisitPercent}%;"></div>
+            </div>
+        </div>
+        <div class="channel-analytics-verdict-box">${escapeHTML(verdictText)}</div>
+        <div>
+            <div style="font-size:0.8rem; font-weight:700; color:#e4e4e7; margin-bottom:8px;">Seguidores por Vídeo</div>
+            <div class="channel-analytics-video-list">${rowsHtml}</div>
+        </div>
+    `;
+
+    modal.style.display = 'flex';
+    modal.setAttribute('aria-hidden', 'false');
+    if (window.lucide) lucide.createIcons();
 }
 
 export function openChannelManageModal() {
@@ -52686,6 +53204,8 @@ export function openChannelGridMediaViewer(postId) {
         viewerFollowBtn.dataset.authorUid = post.authorUid || '';
         viewerFollowBtn.dataset.authorName = post.authorName || 'Usuário';
         viewerFollowBtn.dataset.postId = post.id || '';
+        viewerFollowBtn.dataset.mediaType = post.type || '';
+        viewerFollowBtn.dataset.channelFormat = post.channelFormat || '';
         syncFollowButtonsInDOM(post.authorUid || '');
     }
 
@@ -52788,6 +53308,14 @@ function bindChannelScreenListeners() {
     });
     document.getElementById('channel-bio-more-btn')?.addEventListener('click', openChannelAboutModal);
     document.getElementById('channel-more-links-btn')?.addEventListener('click', openChannelAboutModal);
+    document.getElementById('channel-analytics-btn')?.addEventListener('click', () => {
+        playSound(clickSound);
+        openChannelAnalyticsModal();
+    });
+    document.getElementById('channel-owner-insights-bar')?.addEventListener('click', () => {
+        playSound(clickSound);
+        openChannelAnalyticsModal();
+    });
     document.getElementById('channel-community-btn')?.addEventListener('click', openChannelCommunityModal);
     document.getElementById('channel-community-publish-btn')?.addEventListener('click', publishChannelCommunityPost);
 
@@ -52797,7 +53325,7 @@ function bindChannelScreenListeners() {
         });
     });
     document.getElementById('channel-tabs-next-btn')?.addEventListener('click', () => {
-        const order = ['inicio', 'videos', 'shorts', 'podcasts', 'playlists'];
+        const order = ['inicio', 'videos', 'shorts', 'imagens', 'podcasts', 'playlists'];
         const idx = order.indexOf(activeChannelTab);
         switchChannelTab(order[(idx + 1) % order.length]);
     });
@@ -52815,7 +53343,12 @@ function bindChannelScreenListeners() {
         if (!authorUid) return;
         await toggleFollowUser(authorUid, {
             authorName: btn.dataset.authorName || '',
-            postId: btn.dataset.postId || ''
+            postId: btn.dataset.postId || '',
+            mediaType: btn.dataset.mediaType || '',
+            source: classifyFollowAttributionSource({
+                postId: btn.dataset.postId || '',
+                mediaType: btn.dataset.mediaType || ''
+            })
         });
     });
     document.getElementById('channel-viewer-open-feed-btn')?.addEventListener('click', () => {
@@ -52835,7 +53368,8 @@ function bindChannelScreenListeners() {
         ['close-channel-about-modal', 'channel-about-modal'],
         ['close-channel-community-modal', 'channel-community-modal'],
         ['close-channel-manage-modal', 'channel-manage-modal'],
-        ['close-channel-media-viewer-modal', 'channel-media-viewer-modal']
+        ['close-channel-media-viewer-modal', 'channel-media-viewer-modal'],
+        ['close-channel-analytics-modal', 'channel-analytics-modal']
     ].forEach(([btnId, modalId]) => {
         document.getElementById(btnId)?.addEventListener('click', () => closeChannelSubModal(modalId));
     });
@@ -52855,6 +53389,9 @@ if (typeof window !== 'undefined') {
     window.classifyChannelPostFormat = classifyChannelPostFormat;
     window.collectChannelLinks = collectChannelLinks;
     window.getChannelMediaPostsForUser = getChannelMediaPostsForUser;
+    window.getChannelFollowerAnalytics = getChannelFollowerAnalytics;
+    window.openChannelAnalyticsModal = openChannelAnalyticsModal;
+    window.classifyFollowAttributionSource = classifyFollowAttributionSource;
     window.uploadChannelBannerFile = uploadChannelBannerFile;
     window.removeChannelBanner = removeChannelBanner;
     window.openChannelCustomizeModal = openChannelCustomizeModal;
@@ -52862,6 +53399,7 @@ if (typeof window !== 'undefined') {
     window.toggleChannelSubscription = toggleChannelSubscription;
     window.openChannelAboutModal = openChannelAboutModal;
     window.openChannelCommunityModal = openChannelCommunityModal;
+    window.toggleChannelCommunityPostLike = toggleChannelCommunityPostLike;
     window.publishChannelCommunityPost = publishChannelCommunityPost;
     window.openChannelManageModal = openChannelManageModal;
     window.openChannelGridMediaViewer = openChannelGridMediaViewer;
