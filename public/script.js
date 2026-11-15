@@ -23349,7 +23349,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.299';
+export const CURRENT_APP_VERSION = '1.0.300';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -33520,17 +33520,31 @@ function resetPostComposer() {
 const openPostCommentCards = new Set();
 
 export async function deletePost(postId) {
-    if (typeof confirm === 'function' && !confirm('Deseja realmente excluir esta publicação?')) return;
+    if (!postId) return false;
+    if (typeof confirm === 'function' && !confirm('Deseja realmente excluir esta publicação?')) return false;
     try {
+        if (currentFeedMusicPostId && String(currentFeedMusicPostId) === String(postId) && typeof stopFeedPostMusic === 'function') {
+            stopFeedPostMusic();
+        }
         await deleteDoc(doc(db, 'posts', postId));
         getDocs(collection(db, 'posts', postId, 'chunks')).then(snap => {
             if (snap && snap.docs) snap.docs.forEach(d => deleteDoc(d.ref).catch(() => {}));
         }).catch(() => {});
+        deleteDoc(doc(db, 'post_audio', postId)).catch(() => {});
+        getDocs(collection(db, 'post_audio', postId, 'chunks')).then(snap => {
+            if (snap && snap.docs) snap.docs.forEach(d => deleteDoc(d.ref).catch(() => {}));
+        }).catch(() => {});
         mediaChunkCache.delete(`posts_${postId}`);
+        mediaChunkCache.delete(`post_audio_${postId}`);
+        if (Array.isArray(cachedFeedPosts)) {
+            cachedFeedPosts = cachedFeedPosts.filter(p => p && String(p.id) !== String(postId));
+        }
         showToast('Post excluído', 'A publicação foi removida com sucesso.', 'green');
+        return true;
     } catch (err) {
         console.error('Erro ao excluir post:', err);
         showToast('Erro', 'Não foi possível excluir a publicação.', 'red');
+        return false;
     }
 }
 
@@ -37370,18 +37384,7 @@ document.getElementById('publish-post-btn')?.addEventListener('click', async () 
 
     const savePostToFirestore = async (mediaPayload) => {
         try {
-            let localPostAudioPayload = null;
-            if (pendingPostMusic?.isLocal && pendingPostMusic.file) {
-                try {
-                    localPostAudioPayload = await extractAudioSnippetAsWav(
-                        pendingPostMusic.file,
-                        Number(pendingPostMusic.snippetStart) || 0,
-                        Number(pendingPostMusic.snippetDuration) || 15
-                    );
-                } catch (audioErr) {
-                    console.warn("Erro ao extrair áudio de post:", audioErr);
-                }
-            }
+            const { musicObj: postMusicPayload, localPostAudioPayload } = await buildPostMusicPayload(pendingPostMusic);
 
             const isCompany = isBusinessAccount(currentProfile) || isUserAdmin(currentUser, currentProfile);
             const isStrictBusiness = isBusinessAccount(currentProfile);
@@ -37477,18 +37480,7 @@ document.getElementById('publish-post-btn')?.addEventListener('click', async () 
                 views: [],
                 viewsCount: 0,
                 viewers: {},
-                music: pendingPostMusic ? {
-                    id: pendingPostMusic.id,
-                    title: pendingPostMusic.title,
-                    artist: pendingPostMusic.artist,
-                    cover: pendingPostMusic.cover,
-                    audioUrl: localPostAudioPayload ? '' : (pendingPostMusic.audioUrl || ''),
-                    hasAudioChunks: !!localPostAudioPayload,
-                    duration: pendingPostMusic.snippetDuration || 15,
-                    snippetStart: localPostAudioPayload ? 0 : (pendingPostMusic.snippetStart || 0),
-                    snippetDuration: pendingPostMusic.snippetDuration || 15,
-                    isLocal: !!pendingPostMusic.isLocal
-                } : null
+                music: postMusicPayload
             };
 
             if (typeof trackNewAccountBurstByAI === 'function') {
@@ -40669,7 +40661,8 @@ export const MUSIC_API_KEY = 'f2d4476c21ea34d6a6a917f5f9ab5f3aed4fc833';
 
 export let pendingStatusMusic = null;
 export let pendingPostMusic = null;
-export let activeMusicPickerTarget = null; // 'status' | 'post'
+export let activeMusicPickerTarget = null; // 'status' | 'post' | 'channel-manage'
+let pendingChannelManageMusicPostId = null;
 let musicPreviewAudio = null;
 let currentlyPlayingPreviewTrackId = null;
 let composerPreviewAudio = null;
@@ -41018,8 +41011,9 @@ export async function searchMusicTracks(query = '', genre = '') {
     return DEFAULT_TRENDING_TRACKS;
 }
 
-export function openMusicPicker(target = 'status') {
+export function openMusicPicker(target = 'status', targetPostId = null) {
     activeMusicPickerTarget = target;
+    pendingChannelManageMusicPostId = (target === 'channel-manage' && targetPostId) ? String(targetPostId) : null;
     const modal = document.getElementById('music-picker-modal');
     if (modal) modal.classList.add('active');
     
@@ -41046,6 +41040,7 @@ export function closeMusicPicker() {
     const modal = document.getElementById('music-picker-modal');
     if (modal) modal.classList.remove('active');
     activeMusicPickerTarget = null;
+    pendingChannelManageMusicPostId = null;
 }
 
 function stopMusicPreview() {
@@ -41487,6 +41482,35 @@ export function initMusicSnippetListeners() {
     });
 }
 
+async function buildPostMusicPayload(track) {
+    if (!track) return { musicObj: null, localPostAudioPayload: null };
+    const start = Number(track.snippetStart) || 0;
+    const dur = Number(track.snippetDuration) || 15;
+    let localPostAudioPayload = null;
+    if (track.isLocal && track.file && typeof extractAudioSnippetAsWav === 'function') {
+        try {
+            localPostAudioPayload = await extractAudioSnippetAsWav(track.file, start, dur);
+        } catch (audioErr) {
+            console.warn('Erro ao extrair áudio de post:', audioErr);
+        }
+    }
+    return {
+        localPostAudioPayload,
+        musicObj: {
+            id: track.id || '',
+            title: track.title || '',
+            artist: track.artist || '',
+            cover: track.cover || '',
+            audioUrl: localPostAudioPayload ? '' : (track.audioUrl || ''),
+            hasAudioChunks: !!localPostAudioPayload,
+            duration: dur,
+            snippetStart: localPostAudioPayload ? 0 : start,
+            snippetDuration: dur,
+            isLocal: !!track.isLocal
+        }
+    };
+}
+
 export function selectMusicTrack(track) {
     stopMusicPreview();
 
@@ -41526,6 +41550,15 @@ export function selectMusicTrack(track) {
         if (addBtn) addBtn.style.display = 'none';
 
         updateMusicSnippetUI('post');
+    } else if (activeMusicPickerTarget === 'channel-manage' && pendingChannelManageMusicPostId) {
+        const targetPostId = pendingChannelManageMusicPostId;
+        track.snippetDuration = Number(track.snippetDuration) || 30;
+        if (window.lucide) lucide.createIcons();
+        closeMusicPicker();
+        if (typeof attachMusicToManagedPost === 'function') {
+            attachMusicToManagedPost(targetPostId, track).catch(() => {});
+        }
+        return;
     }
 
     if (window.lucide) lucide.createIcons();
@@ -52482,6 +52515,8 @@ let activeChannelTab = 'inicio';
 let activeChannelPlaylistFilter = 'all';
 let activeChannelUnsubscribe = null;
 let activeChannelViewerPostId = null;
+let activeChannelManageFilter = 'videos';
+let activeChannelManageEditPostId = null;
 
 function normalizeChannelExternalUrl(rawUrl) {
     const trimmed = String(rawUrl || '').trim();
@@ -52909,6 +52944,13 @@ export function renderChannelScreen() {
         }
     }
 
+    const topCreateBtn = document.getElementById('channel-topbar-create-btn');
+    if (topCreateBtn) {
+        const isImagesTab = activeChannelTab === 'imagens';
+        topCreateBtn.innerText = isImagesTab ? '+ Imagem' : '+ Vídeo';
+        topCreateBtn.title = isImagesTab ? 'Publicar Imagem' : 'Publicar Vídeo ou Reels';
+    }
+
     // Grade estilo Instagram de Vídeos e Reels
     const tabItems = getChannelMediaPostsForUser(uid, activeChannelTab, activeChannelPlaylistFilter);
     renderChannelMediaGrid(tabItems, activeChannelTab, isOwner);
@@ -52935,7 +52977,10 @@ export function renderChannelMediaGrid(items = [], tab = 'inicio', isOwner = fal
             };
             emptyTextEl.innerText = labels[tab] || labels.inicio;
         }
-        if (emptyPostBtn) emptyPostBtn.style.display = isOwner ? 'inline-flex' : 'none';
+        if (emptyPostBtn) {
+            emptyPostBtn.style.display = isOwner ? 'inline-flex' : 'none';
+            emptyPostBtn.innerText = tab === 'imagens' ? '+ Publicar Imagem' : '+ Publicar Vídeo / Reels';
+        }
         if (window.lucide) lucide.createIcons();
         return;
     }
@@ -53530,67 +53575,302 @@ export function openChannelAnalyticsModal() {
     if (window.lucide) lucide.createIcons();
 }
 
-export function openChannelManageModal() {
+function normalizeChannelManageFilter(filter) {
+    const val = String(filter || '').toLowerCase();
+    return ['videos', 'imagens', 'all'].includes(val) ? val : 'videos';
+}
+
+/** Retorna as mídias do canal filtradas para o modal de gerenciamento (Vídeos, Imagens ou Todos). */
+export function getChannelManagePosts(uid, filter = 'videos', postsSource = cachedFeedPosts) {
+    const targetUid = uid || currentUser?.uid;
+    if (!targetUid) return [];
+    const normalized = normalizeChannelManageFilter(filter);
+    if (normalized === 'imagens') {
+        return getChannelMediaPostsForUser(targetUid, 'imagens', 'all', postsSource);
+    }
+    if (normalized === 'videos') {
+        return getChannelMediaPostsForUser(targetUid, 'inicio', 'all', postsSource);
+    }
+    const videos = getChannelMediaPostsForUser(targetUid, 'inicio', 'all', postsSource);
+    const images = getChannelMediaPostsForUser(targetUid, 'imagens', 'all', postsSource);
+    const byId = new Map();
+    [...videos, ...images].forEach(p => {
+        if (p && p.id && !byId.has(String(p.id))) {
+            byId.set(String(p.id), p);
+        }
+    });
+    return Array.from(byId.values()).sort((a, b) => (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0));
+}
+
+function refreshChannelAndFeedViews() {
+    if (document.getElementById('channel-panel')?.classList?.contains('active')) {
+        renderChannelScreen();
+    }
+    const feedOverlay = document.getElementById('feed-overlay');
+    if (feedOverlay?.classList?.contains('active') && typeof renderPostsFeed === 'function') {
+        renderPostsFeed(cachedFeedPosts);
+    }
+}
+
+function isChannelManageModalOpen() {
+    const modal = document.getElementById('channel-manage-modal');
+    return Boolean(modal && modal.style.display === 'flex');
+}
+
+/** Atualiza metadados editáveis (título, legenda, aba ou música) de uma publicação gerenciada no canal. */
+export async function updateChannelManagedPost(postId, updates = {}) {
+    const idStr = String(postId || '');
+    if (!idStr) return { success: false, reason: 'missing_id' };
+
+    const post = (Array.isArray(cachedFeedPosts) ? cachedFeedPosts : []).find(p => p && String(p.id) === idStr) || null;
+    const payload = {};
+
+    if (Object.prototype.hasOwnProperty.call(updates, 'title')) {
+        payload.title = String(updates.title || '').trim().slice(0, 80);
+    }
+    if (Object.prototype.hasOwnProperty.call(updates, 'caption')) {
+        payload.caption = String(updates.caption || '').trim().slice(0, 500);
+    }
+    if (Object.prototype.hasOwnProperty.call(updates, 'channelFormat')) {
+        payload.channelFormat = String(updates.channelFormat || '').trim();
+    }
+    if (Object.prototype.hasOwnProperty.call(updates, 'music')) {
+        payload.music = updates.music || null;
+    }
+    if (Object.keys(payload).length === 0) return { success: false, reason: 'empty_updates' };
+
+    if (post) {
+        Object.assign(post, payload);
+    }
+    try {
+        await updateDoc(doc(db, 'posts', idStr), payload);
+    } catch (err) {
+        console.warn('Erro ao atualizar mídia do canal no Firestore:', err);
+    }
+
+    if (activeChannelViewerPostId && String(activeChannelViewerPostId) === idStr) {
+        const titleEl = document.getElementById('channel-viewer-title');
+        const capEl = document.getElementById('channel-viewer-caption');
+        if (titleEl && post && Object.prototype.hasOwnProperty.call(payload, 'title')) {
+            titleEl.innerText = post.title || post.authorName || 'Mídia do Canal';
+        }
+        if (capEl && post && Object.prototype.hasOwnProperty.call(payload, 'caption')) {
+            capEl.innerText = post.caption || '';
+        }
+    }
+
+    if (isChannelManageModalOpen()) {
+        openChannelManageModal(activeChannelManageFilter);
+    }
+    refreshChannelAndFeedViews();
+    return { success: true, post, updates: payload };
+}
+
+/** Anexa ou substitui a música de uma publicação existente através do gerenciador do canal. */
+export async function attachMusicToManagedPost(postId, track) {
+    const idStr = String(postId || '');
+    if (!idStr || !track) return { success: false };
+
+    const { musicObj, localPostAudioPayload } = await buildPostMusicPayload(track);
+    if (localPostAudioPayload) {
+        await saveMediaWithChunks('post_audio', { postId: idStr }, 'audioData', localPostAudioPayload, idStr);
+        mediaChunkCache.set(`post_audio_${idStr}`, localPostAudioPayload);
+    } else {
+        mediaChunkCache.delete(`post_audio_${idStr}`);
+    }
+
+    if (currentFeedMusicPostId && String(currentFeedMusicPostId) === idStr && typeof stopFeedPostMusic === 'function') {
+        stopFeedPostMusic();
+    }
+    const res = await updateChannelManagedPost(idStr, { music: musicObj });
+    if (res.success) {
+        showToast('Música Atualizada 🎵', `${track.title || 'Música'} vinculada à publicação.`, 'green');
+    }
+    return res;
+}
+
+/** Remove a música anexada de uma publicação existente no gerenciador do canal. */
+export async function removeMusicFromManagedPost(postId) {
+    const idStr = String(postId || '');
+    if (!idStr) return { success: false };
+
+    if (currentFeedMusicPostId && String(currentFeedMusicPostId) === idStr && typeof stopFeedPostMusic === 'function') {
+        stopFeedPostMusic();
+    }
+    mediaChunkCache.delete(`post_audio_${idStr}`);
+    try {
+        await deleteDoc(doc(db, 'post_audio', idStr));
+    } catch (_) {}
+
+    const res = await updateChannelManagedPost(idStr, { music: null });
+    if (res.success) {
+        showToast('Música Removida', 'A trilha sonora foi removida desta mídia.', 'green');
+    }
+    return res;
+}
+
+/** Exclui uma publicação diretamente do gerenciador e atualiza modal, canal e feed. */
+export async function deleteChannelManagedPost(postId) {
+    const idStr = String(postId || '');
+    if (!idStr) return false;
+    const deleted = await deletePost(idStr);
+    if (!deleted) return false;
+    if (activeChannelManageEditPostId === idStr) {
+        activeChannelManageEditPostId = null;
+    }
+    if (isChannelManageModalOpen()) {
+        openChannelManageModal(activeChannelManageFilter);
+    }
+    refreshChannelAndFeedViews();
+    return true;
+}
+
+/** Altera o filtro ativo (Vídeos, Imagens ou Todos) dentro do modal de gerenciamento do canal. */
+export function setChannelManageFilter(filter) {
+    activeChannelManageFilter = normalizeChannelManageFilter(filter);
+    activeChannelManageEditPostId = null;
+    openChannelManageModal(activeChannelManageFilter);
+}
+
+function renderChannelManageItemHTML(post) {
+    const postId = String(post.id || '');
+    const fmt = classifyChannelPostFormat(post);
+    const isImageItem = (typeof isImageFeedPost === 'function' ? isImageFeedPost(post) : post.type === 'image') || fmt === 'imagens';
+    const rawMedia = post.mediaData || (post.hasChunks && post.id && mediaChunkCache.get(`posts_${post.id}`)) || '';
+    const isChunkPending = Boolean(post.hasChunks && !rawMedia && post.id);
+    const thumbSrc = rawMedia
+        ? (post.type === 'video' ? createBlobUrlFromData(String(rawMedia).replace(/#t=[0-9,.]+$/, '')) : rawMedia)
+        : '';
+    const chunkAttrs = isChunkPending
+        ? `data-chunk-post-id="${escapeHTML(postId)}" data-chunk-type="${post.type === 'video' ? 'video' : 'image'}"`
+        : '';
+    const mediaThumb = post.type === 'video'
+        ? `<video ${thumbSrc ? `src="${thumbSrc}"` : ''} ${chunkAttrs} muted playsinline preload="metadata" class="channel-manage-thumb"></video>`
+        : `<img ${thumbSrc ? `src="${thumbSrc}"` : ''} ${chunkAttrs} alt="${escapeHTML(post.title || post.caption || 'Imagem')}" class="channel-manage-thumb">`;
+
+    const viewsCount = typeof getPostViewsCount === 'function' ? getPostViewsCount(post) : Number(post.viewsCount || 0);
+    const likesCount = Array.isArray(post.likes) ? post.likes.length : 0;
+    const commentsCount = Array.isArray(post.comments) ? post.comments.length : Math.max(0, Number(post.commentsCount || 0));
+    const hasMusic = typeof hasPostMusicTrack === 'function' ? hasPostMusicTrack(post) : false;
+    const musicLabel = hasMusic ? ([post.music?.title, post.music?.artist].filter(Boolean).join(' • ') || 'Música anexada') : '';
+
+    const formatOptions = isImageItem
+        ? `
+            <option value="image" ${fmt === 'imagens' ? 'selected' : ''}>Imagem</option>
+            <option value="podcast" ${fmt === 'podcasts' ? 'selected' : ''}>Podcast</option>
+        `
+        : `
+            <option value="short" ${fmt === 'shorts' ? 'selected' : ''}>Shorts / Reels</option>
+            <option value="video" ${fmt === 'videos' ? 'selected' : ''}>Vídeo</option>
+            <option value="podcast" ${fmt === 'podcasts' ? 'selected' : ''}>Podcast</option>
+        `;
+
+    const isEditing = activeChannelManageEditPostId === postId;
+    const editBoxHTML = isEditing ? `
+        <div class="channel-manage-edit-box" data-post-id="${escapeHTML(postId)}">
+            <input type="text" class="channel-modal-input channel-manage-edit-title" maxlength="80" placeholder="Título..." value="${escapeHTML(post.title || '')}" aria-label="Título da publicação">
+            <textarea class="channel-modal-textarea channel-manage-edit-caption" rows="2" maxlength="500" placeholder="Legenda..." aria-label="Legenda da publicação">${escapeHTML(post.caption || '')}</textarea>
+            <div class="channel-manage-edit-music-row">
+                <button type="button" class="channel-pill-btn channel-manage-action-btn" data-action="channel-pick-music" data-post-id="${escapeHTML(postId)}">
+                    <i data-lucide="music"></i> ${hasMusic ? 'Trocar música' : 'Anexar música'}
+                </button>
+                ${hasMusic ? `<button type="button" class="channel-pill-btn channel-danger-pill channel-manage-action-btn" data-action="channel-remove-music" data-post-id="${escapeHTML(postId)}">Remover música</button>` : ''}
+            </div>
+            <div class="channel-manage-edit-actions">
+                <button type="button" class="channel-pill-btn channel-manage-action-btn" data-action="channel-cancel-edit" data-post-id="${escapeHTML(postId)}">Cancelar</button>
+                <button type="button" class="channel-pill-btn channel-manage-save-btn channel-manage-action-btn" data-action="channel-save-edit" data-post-id="${escapeHTML(postId)}">Salvar</button>
+            </div>
+        </div>
+    ` : '';
+
+    return `
+        <div class="channel-manage-item" data-post-id="${escapeHTML(postId)}">
+            <div class="channel-manage-main-row">
+                ${mediaThumb}
+                <div class="channel-manage-meta">
+                    <div class="channel-manage-title">${escapeHTML(post.title || post.caption || (isImageItem ? 'Imagem sem título' : 'Vídeo sem título'))}</div>
+                    <div class="channel-manage-submeta">
+                        <span class="channel-manage-stat-chip"><i data-lucide="eye"></i> ${escapeHTML(String(viewsCount))}</span>
+                        <span class="channel-manage-stat-chip"><i data-lucide="heart"></i> ${escapeHTML(String(likesCount))}</span>
+                        <span class="channel-manage-stat-chip"><i data-lucide="message-circle"></i> ${escapeHTML(String(commentsCount))}</span>
+                        ${hasMusic ? `<span class="channel-manage-music-pill" title="${escapeHTML(musicLabel)}"><i data-lucide="music"></i> ${escapeHTML(musicLabel)}</span>` : ''}
+                    </div>
+                    <div class="channel-manage-controls">
+                        <select class="channel-manage-select" data-action="channel-set-format" data-post-id="${escapeHTML(postId)}" aria-label="Aba no canal">
+                            ${formatOptions}
+                        </select>
+                        <button type="button" class="channel-pill-btn channel-manage-action-btn" data-action="channel-edit-media" data-post-id="${escapeHTML(postId)}">${isEditing ? 'Fechar' : 'Editar'}</button>
+                        <button type="button" class="channel-pill-btn channel-manage-action-btn" data-action="channel-view-media" data-post-id="${escapeHTML(postId)}">Ver</button>
+                        <button type="button" class="channel-pill-btn channel-danger-pill channel-manage-action-btn" data-action="channel-delete-media" data-post-id="${escapeHTML(postId)}">Excluir</button>
+                    </div>
+                </div>
+            </div>
+            ${editBoxHTML}
+        </div>
+    `;
+}
+
+export function openChannelManageModal(filter = activeChannelManageFilter) {
     const modal = document.getElementById('channel-manage-modal');
     const listEl = document.getElementById('channel-manage-list');
     if (!modal || !listEl || !currentUser?.uid) return;
 
-    const myVideos = getChannelMediaPostsForUser(currentUser.uid, 'inicio');
-    if (!myVideos.length) {
-        listEl.innerHTML = '<div style="text-align:center; padding:18px; color:#8e8e93; font-size:0.85rem;">Você ainda não publicou vídeos ou Reels no seu canal.</div>';
+    activeChannelManageFilter = normalizeChannelManageFilter(filter);
+    const metaByFilter = {
+        videos: {
+            icon: 'film',
+            title: 'Gerenciar vídeos',
+            newBtnText: '+ Novo Vídeo / Reels',
+            emptyText: 'Você ainda não publicou vídeos ou Reels no seu canal.'
+        },
+        imagens: {
+            icon: 'image',
+            title: 'Gerenciar imagens',
+            newBtnText: '+ Nova Imagem',
+            emptyText: 'Você ainda não publicou imagens no seu canal.'
+        },
+        all: {
+            icon: 'layers',
+            title: 'Gerenciar mídias',
+            newBtnText: '+ Nova Publicação',
+            emptyText: 'Você ainda não publicou mídias no seu canal.'
+        }
+    };
+    const meta = metaByFilter[activeChannelManageFilter] || metaByFilter.videos;
+
+    const modalTitleEl = document.getElementById('channel-manage-modal-title');
+    if (modalTitleEl) {
+        modalTitleEl.innerHTML = `<i data-lucide="${meta.icon}"></i> ${meta.title}`;
+    }
+    const newPostBtn = document.getElementById('channel-manage-new-post-btn');
+    if (newPostBtn) {
+        newPostBtn.innerText = meta.newBtnText;
+    }
+    const tabsWrap = document.getElementById('channel-manage-filter-tabs');
+    if (tabsWrap) {
+        if (tabsWrap.dataset) tabsWrap.dataset.activeFilter = activeChannelManageFilter;
+        if (typeof tabsWrap.querySelectorAll === 'function') {
+            tabsWrap.querySelectorAll('.channel-manage-filter-btn').forEach(btn => {
+                const isSelected = btn.dataset?.manageFilter === activeChannelManageFilter;
+                btn.classList?.toggle('active', isSelected);
+                btn.setAttribute?.('aria-selected', isSelected ? 'true' : 'false');
+            });
+        }
+    }
+
+    const items = getChannelManagePosts(currentUser.uid, activeChannelManageFilter);
+    if (!items.length) {
+        listEl.innerHTML = `<div style="text-align:center; padding:18px; color:#8e8e93; font-size:0.85rem;">${meta.emptyText}</div>`;
     } else {
-        listEl.innerHTML = myVideos.map(post => {
-            const fmt = classifyChannelPostFormat(post);
-            const rawMedia = post.mediaData || (post.hasChunks && post.id && mediaChunkCache.get(`posts_${post.id}`)) || '';
-            const thumbSrc = rawMedia ? (post.type === 'video' ? createBlobUrlFromData(String(rawMedia).replace(/#t=[0-9,.]+$/, '')) : rawMedia) : '';
-            const mediaThumb = post.type === 'video'
-                ? `<video src="${thumbSrc}" muted playsinline preload="metadata" class="channel-manage-thumb"></video>`
-                : `<img src="${thumbSrc}" alt="" class="channel-manage-thumb">`;
-            return `
-                <div class="channel-manage-item" data-post-id="${post.id}">
-                    ${mediaThumb}
-                    <div class="channel-manage-meta">
-                        <div class="channel-manage-title">${escapeHTML(post.title || post.caption || 'Vídeo sem título')}</div>
-                        <div class="channel-manage-controls">
-                            <select class="channel-manage-select" data-action="channel-set-format" data-post-id="${post.id}" aria-label="Formato no canal">
-                                <option value="short" ${fmt === 'shorts' ? 'selected' : ''}>Shorts / Reels</option>
-                                <option value="video" ${fmt === 'videos' ? 'selected' : ''}>Vídeo</option>
-                                <option value="podcast" ${fmt === 'podcasts' ? 'selected' : ''}>Podcast</option>
-                            </select>
-                            <button type="button" class="channel-pill-btn channel-danger-pill" style="flex:none; min-height:28px; padding:4px 10px; font-size:0.72rem;" data-action="channel-delete-video" data-post-id="${post.id}">Excluir</button>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }).join('');
-
-        listEl.querySelectorAll('[data-action="channel-set-format"]').forEach(sel => {
-            sel.addEventListener('change', async () => {
-                const postId = sel.dataset.postId;
-                const val = sel.value;
-                const p = cachedFeedPosts.find(item => item.id === postId);
-                if (p) p.channelFormat = val;
-                try {
-                    await updateDoc(doc(db, 'posts', postId), { channelFormat: val });
-                } catch (_) {}
-                renderChannelScreen();
-                showToast('Formato Atualizado', 'A aba do vídeo no canal foi atualizada.', 'green');
-            });
-        });
-
-        listEl.querySelectorAll('[data-action="channel-delete-video"]').forEach(btn => {
-            btn.addEventListener('click', async () => {
-                const postId = btn.dataset.postId;
-                if (!postId) return;
-                await deletePost(postId);
-                openChannelManageModal();
-                renderChannelScreen();
-            });
-        });
+        listEl.innerHTML = items.map(renderChannelManageItemHTML).join('');
+        if (typeof resolvePostChunkedMedia === 'function') {
+            resolvePostChunkedMedia(listEl, items);
+        }
     }
 
     modal.style.display = 'flex';
     modal.setAttribute('aria-hidden', 'false');
+    if (modal.dataset) modal.dataset.manageFilter = activeChannelManageFilter;
     if (window.lucide) lucide.createIcons();
 }
 
@@ -53778,6 +54058,9 @@ function closeChannelSubModal(modalId) {
             mediaBox.querySelectorAll('video').forEach(v => { try { v.pause(); } catch (_) {} });
             mediaBox.innerHTML = '';
         }
+    } else if (modalId === 'channel-manage-modal') {
+        activeChannelManageEditPostId = null;
+        activeChannelManageFilter = 'videos';
     }
 }
 
@@ -53800,21 +54083,28 @@ function bindChannelScreenListeners() {
         closeUserChannelScreen();
     });
 
-    const openComposerFromChannel = () => {
+    const openComposerFromChannel = (defaultFormat = 'auto') => {
         closeUserChannelScreen();
         closeFeedOverlay();
         closeBusinessCatalogModal();
         setBottomNavActive('new-post-nav-btn');
         resetPostComposer();
+        const formatSel = document.getElementById('post-channel-format-select');
+        if (formatSel && defaultFormat) formatSel.value = defaultFormat;
         document.getElementById('screenshot-gallery-overlay')?.classList.add('active');
         updateCompanyLinkSectionVisibility();
         updateStatusBusinessLinkVisibility();
     };
-    document.getElementById('channel-topbar-create-btn')?.addEventListener('click', openComposerFromChannel);
-    document.getElementById('channel-empty-post-btn')?.addEventListener('click', openComposerFromChannel);
+    document.getElementById('channel-topbar-create-btn')?.addEventListener('click', () => {
+        openComposerFromChannel(activeChannelTab === 'imagens' ? 'image' : 'auto');
+    });
+    document.getElementById('channel-empty-post-btn')?.addEventListener('click', () => {
+        openComposerFromChannel(activeChannelTab === 'imagens' ? 'image' : 'auto');
+    });
     document.getElementById('channel-manage-new-post-btn')?.addEventListener('click', () => {
+        const defaultFormat = activeChannelManageFilter === 'imagens' ? 'image' : 'auto';
         closeChannelSubModal('channel-manage-modal');
-        openComposerFromChannel();
+        openComposerFromChannel(defaultFormat);
     });
 
     const bannerFileInput = document.getElementById('channel-banner-file-input');
@@ -53846,7 +54136,64 @@ function bindChannelScreenListeners() {
 
     document.getElementById('channel-manage-videos-btn')?.addEventListener('click', () => {
         playSound(clickSound);
-        openChannelManageModal();
+        openChannelManageModal('videos');
+    });
+    document.getElementById('channel-manage-images-btn')?.addEventListener('click', () => {
+        playSound(clickSound);
+        openChannelManageModal('imagens');
+    });
+    document.getElementById('channel-manage-filter-tabs')?.addEventListener('click', (e) => {
+        const btn = e?.target?.closest?.('.channel-manage-filter-btn');
+        if (!btn || !btn.dataset?.manageFilter) return;
+        playSound(clickSound);
+        setChannelManageFilter(btn.dataset.manageFilter);
+    });
+
+    const manageListEl = document.getElementById('channel-manage-list');
+    manageListEl?.addEventListener('change', async (e) => {
+        const sel = e?.target?.closest?.('[data-action="channel-set-format"]');
+        if (!sel) return;
+        const postId = sel.dataset?.postId;
+        const val = sel.value;
+        if (!postId || !val) return;
+        await updateChannelManagedPost(postId, { channelFormat: val });
+        showToast('Aba Atualizada', 'A organização desta mídia no canal foi atualizada.', 'green');
+    });
+    manageListEl?.addEventListener('click', async (e) => {
+        const actionBtn = e?.target?.closest?.('[data-action]');
+        if (!actionBtn) return;
+        const action = actionBtn.dataset?.action;
+        const postId = actionBtn.dataset?.postId;
+        if (!postId) return;
+
+        if (action === 'channel-edit-media') {
+            activeChannelManageEditPostId = (activeChannelManageEditPostId === String(postId)) ? null : String(postId);
+            openChannelManageModal(activeChannelManageFilter);
+        } else if (action === 'channel-cancel-edit') {
+            activeChannelManageEditPostId = null;
+            openChannelManageModal(activeChannelManageFilter);
+        } else if (action === 'channel-save-edit') {
+            const card = actionBtn.closest?.('.channel-manage-item');
+            const titleInput = card?.querySelector?.('.channel-manage-edit-title');
+            const captionInput = card?.querySelector?.('.channel-manage-edit-caption');
+            activeChannelManageEditPostId = null;
+            await updateChannelManagedPost(postId, {
+                title: titleInput ? titleInput.value : '',
+                caption: captionInput ? captionInput.value : ''
+            });
+            showToast('Publicação Atualizada', 'Título e legenda salvos com sucesso.', 'green');
+        } else if (action === 'channel-pick-music') {
+            playSound(clickSound);
+            openMusicPicker('channel-manage', postId);
+        } else if (action === 'channel-remove-music') {
+            playSound(clickSound);
+            await removeMusicFromManagedPost(postId);
+        } else if (action === 'channel-view-media') {
+            closeChannelSubModal('channel-manage-modal');
+            openChannelGridMediaViewer(postId);
+        } else if (action === 'channel-delete-media' || action === 'channel-delete-video') {
+            await deleteChannelManagedPost(postId);
+        }
     });
     document.getElementById('channel-subscribe-btn')?.addEventListener('click', () => {
         playSound(clickSound);
@@ -53986,6 +54333,12 @@ if (typeof window !== 'undefined') {
     window.toggleChannelCommunityPostLike = toggleChannelCommunityPostLike;
     window.publishChannelCommunityPost = publishChannelCommunityPost;
     window.openChannelManageModal = openChannelManageModal;
+    window.setChannelManageFilter = setChannelManageFilter;
+    window.getChannelManagePosts = getChannelManagePosts;
+    window.updateChannelManagedPost = updateChannelManagedPost;
+    window.attachMusicToManagedPost = attachMusicToManagedPost;
+    window.removeMusicFromManagedPost = removeMusicFromManagedPost;
+    window.deleteChannelManagedPost = deleteChannelManagedPost;
     window.openChannelGridMediaViewer = openChannelGridMediaViewer;
     window.syncChannelViewerLikeButton = syncChannelViewerLikeButton;
     window.syncChannelViewerCommentButton = syncChannelViewerCommentButton;

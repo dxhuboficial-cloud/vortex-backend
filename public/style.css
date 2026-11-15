@@ -33949,6 +33949,130 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
     display: block;
 }
 
+/* ==========================================================================
+   v1.0.300: Gerenciador de Imagens e Mídias no Canal
+   ========================================================================== */
+#music-picker-modal.custom-modal-overlay {
+    z-index: 20030 !important;
+}
+.channel-manage-filter-tabs {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.channel-manage-filter-btn {
+    flex: 1;
+    min-height: 32px;
+    padding: 6px 10px;
+    border: none;
+    border-radius: 9px;
+    background: transparent;
+    color: #a1a1aa;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.16s ease, color 0.16s ease;
+}
+.channel-manage-filter-btn:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.06);
+}
+.channel-manage-filter-btn.active {
+    background: var(--accent-color, #39ff14);
+    color: #050505;
+}
+.channel-manage-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+}
+.channel-manage-main-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    width: 100%;
+    min-width: 0;
+}
+.channel-manage-submeta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 0.72rem;
+    color: #a1a1aa;
+    line-height: 1.25;
+}
+.channel-manage-stat-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.channel-manage-stat-chip i,
+.channel-manage-stat-chip svg {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+}
+.channel-manage-music-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    max-width: 100%;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: rgba(0, 243, 255, 0.12);
+    border: 1px solid rgba(0, 243, 255, 0.3);
+    color: #9bf7ff;
+    font-size: 0.69rem;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.channel-manage-music-pill i,
+.channel-manage-music-pill svg {
+    width: 11px;
+    height: 11px;
+    flex-shrink: 0;
+}
+.channel-manage-action-btn {
+    flex: none;
+    min-height: 28px;
+    padding: 4px 10px;
+    font-size: 0.72rem;
+}
+.channel-manage-edit-box {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.channel-manage-edit-music-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.channel-manage-edit-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+}
+.channel-manage-save-btn {
+    background: var(--accent-color, #39ff14);
+    color: #050505;
+}
+.channel-manage-save-btn:hover {
+    filter: brightness(1.06);
+    background: var(--accent-color, #39ff14);
+}
+
 
 
 

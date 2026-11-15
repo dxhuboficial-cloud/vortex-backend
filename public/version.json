@@ -1,6 +1,6 @@
 {
-  "version": "1.0.299",
-  "build": 299,
+  "version": "1.0.300",
+  "build": 300,
   "releaseDate": "2026-11-14",
-  "notes": "Imagens no canal e no feed agora carregam e reproduzem automaticamente com sua música anexada v1.0.299"
+  "notes": "Gerenciador de imagens adicionado ao Canal com edição de título/legenda, troca de música, alteração de aba e exclusão v1.0.300"
 }
