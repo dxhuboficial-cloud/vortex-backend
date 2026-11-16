@@ -35,13 +35,13 @@
     <meta itemprop="image" content="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
     <link rel="image_src" type="image/png" href="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
 
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.300">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.300">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.300">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.300">
-    <link rel="stylesheet" href="style.css?v=1.0.300">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.301">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.301">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.301">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.301">
+    <link rel="stylesheet" href="style.css?v=1.0.301">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.300" id="app-manifest-link">
+    <link rel="manifest" href="manifest.json?v=1.0.301" id="app-manifest-link">
     <meta name="theme-color" content="#39ff14" id="app-theme-color-meta">
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#39ff14" id="app-theme-color-meta-dark">
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#39ff14" id="app-theme-color-meta-light">
@@ -50,8 +50,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.300">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.300">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.301">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.301">
     <!-- Sincronização Dinâmica da Barra de Status e Barra de Navegação do Celular -->
     <script>
         (function() {
@@ -2806,6 +2806,17 @@
                     </label>
                 </div>
 
+                <div class="setting-item channel-enabled-setting-row" id="channel-enabled-setting-item">
+                    <label for="settings-channel-enabled-toggle" class="setting-info">
+                        <span class="setting-title"><i data-lucide="tv" style="width:16px;height:16px;vertical-align:middle;margin-right:4px;"></i> Canal Ativo</span>
+                        <small id="settings-channel-enabled-desc">Canal ativo: você pode postar fotos, vídeos e Stories. Desativando, só poderá postar Story.</small>
+                    </label>
+                    <label class="switch">
+                        <input type="checkbox" id="settings-channel-enabled-toggle" checked title="Ativar ou desativar o canal">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
                 <div class="setting-item">
                     <label for="pin-toggle" class="setting-info">
                         <span>Bloqueio por PIN</span>
@@ -3958,6 +3969,17 @@
                     <span>Favoritos</span>
                     <span class="feed-fav-count-badge" id="feed-favorites-count">0</span>
                 </button>
+            </div>
+
+            <div id="feed-channel-disabled-banner" class="channel-disabled-banner feed-channel-disabled-banner" style="display:none;">
+                <div class="channel-disabled-banner-info">
+                    <i data-lucide="ban"></i>
+                    <div>
+                        <strong>Canal desativado — somente Stories liberados</strong>
+                        <small>Ative seu canal para voltar a postar fotos e vídeos.</small>
+                    </div>
+                </div>
+                <button type="button" id="feed-reactivate-channel-btn" class="channel-pill-btn channel-enable-cta-btn">Ativar canal</button>
             </div>
 
             <div id="feed-list" class="feed-list"></div>
@@ -6952,15 +6974,31 @@
                         <button type="button" id="channel-more-links-btn" class="channel-more-links-btn">Adicionar links</button>
                     </div>
 
-                    <!-- Ações do Dono (Personalizar o canal + Gerenciar vídeos + Gerenciar imagens + Seguidores & Vídeos) -->
+                    <!-- Ações do Dono (Personalizar o canal + Gerenciar vídeos + Gerenciar imagens + Ativar/Desativar canal + Seguidores & Vídeos) -->
                     <div id="channel-owner-actions" class="channel-actions-row">
                         <button type="button" id="channel-customize-btn" class="channel-pill-btn">Personalizar o canal</button>
                         <button type="button" id="channel-manage-videos-btn" class="channel-pill-btn">Gerenciar vídeos</button>
                         <button type="button" id="channel-manage-images-btn" class="channel-pill-btn">Gerenciar imagens</button>
+                        <button type="button" id="channel-toggle-status-btn" class="channel-pill-btn channel-status-toggle-pill" title="Ativar ou desativar o canal">
+                            <i data-lucide="power"></i>
+                            <span id="channel-toggle-status-label">Desativar canal</span>
+                        </button>
                         <button type="button" id="channel-analytics-btn" class="channel-pill-btn channel-analytics-pill-btn" title="Ver seguidores vindos dos vídeos e inscritos por visita">
                             <i data-lucide="bar-chart-3"></i>
                             <span>Seguidores &amp; Vídeos</span>
                         </button>
+                    </div>
+
+                    <!-- Aviso rápido quando o canal do dono estiver desativado -->
+                    <div id="channel-disabled-owner-banner" class="channel-disabled-banner" style="display:none;">
+                        <div class="channel-disabled-banner-info">
+                            <i data-lucide="power-off"></i>
+                            <div>
+                                <strong>Seu canal está desativado</strong>
+                                <small>Você não pode postar fotos nem vídeos no momento — apenas Stories continuam liberados.</small>
+                            </div>
+                        </div>
+                        <button type="button" id="channel-quick-reactivate-btn" class="channel-pill-btn channel-enable-cta-btn">Ativar canal</button>
                     </div>
 
                     <!-- Resumo de Interação Exclusivo para o Dono do Canal -->
@@ -7017,6 +7055,11 @@
                         <p id="channel-media-empty-text">Nenhum vídeo ou Reels publicado nesta aba ainda.</p>
                         <button type="button" id="channel-empty-post-btn" class="channel-pill-btn channel-empty-post-btn">+ Publicar Vídeo / Reels</button>
                     </div>
+
+                    <div id="channel-disabled-visitor-state" class="channel-media-empty channel-disabled-visitor-state" style="display:none;">
+                        <i data-lucide="power-off"></i>
+                        <p>Este canal está desativado pelo criador no momento.</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -7069,6 +7112,14 @@
                         <label for="channel-customize-link-input" class="channel-modal-label">Link em destaque no canal</label>
                         <input type="url" id="channel-customize-link-input" class="channel-modal-input" maxlength="160" placeholder="https://seusite.com">
                     </div>
+
+                    <label class="channel-customize-toggle-card" for="channel-customize-enabled-toggle">
+                        <span class="channel-customize-toggle-info">
+                            <strong>Canal ativado (fotos e vídeos)</strong>
+                            <small>Se desativar o canal, você só conseguirá postar Story até ativar novamente.</small>
+                        </span>
+                        <input type="checkbox" id="channel-customize-enabled-toggle" class="channel-customize-checkbox" checked>
+                    </label>
 
                     <label class="channel-customize-toggle-card" for="channel-customize-show-followers-toggle">
                         <span class="channel-customize-toggle-info">
@@ -7236,6 +7287,6 @@
         </main>
     </div>
 
-    <script type="module" src="script.js?v=1.0.300" defer></script>
+    <script type="module" src="script.js?v=1.0.301" defer></script>
 </body>
 </html>

@@ -1,6 +1,6 @@
 {
-  "version": "1.0.300",
-  "build": 300,
-  "releaseDate": "2026-11-14",
-  "notes": "Gerenciador de imagens adicionado ao Canal com edição de título/legenda, troca de música, alteração de aba e exclusão v1.0.300"
+  "version": "1.0.301",
+  "build": 301,
+  "releaseDate": "2026-11-16",
+  "notes": "Opção para ativar/desativar o canal: com o canal desativado apenas Story é permitido e postagens de fotos e vídeos ficam bloqueadas até reativar v1.0.301"
 }
