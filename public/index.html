@@ -35,13 +35,13 @@
     <meta itemprop="image" content="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
     <link rel="image_src" type="image/png" href="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
 
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.303">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.303">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.303">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.303">
-    <link rel="stylesheet" href="style.css?v=1.0.303">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.304">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.304">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.304">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.304">
+    <link rel="stylesheet" href="style.css?v=1.0.304">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.303" id="app-manifest-link">
+    <link rel="manifest" href="manifest.json?v=1.0.304" id="app-manifest-link">
     <meta name="theme-color" content="#39ff14" id="app-theme-color-meta">
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#39ff14" id="app-theme-color-meta-dark">
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#39ff14" id="app-theme-color-meta-light">
@@ -50,8 +50,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.303">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.303">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.304">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.304">
     <!-- Sincronização Dinâmica da Barra de Status e Barra de Navegação do Celular -->
     <script>
         (function() {
@@ -3652,10 +3652,11 @@
 
             <div class="post-composer">
                 <div class="post-media-box">
-                    <input type="file" id="post-media-input" accept="image/*,video/*" class="hidden-file-input" aria-label="Escolher foto ou vídeo">
+                    <input type="file" id="post-media-input" accept="image/*,video/*" multiple class="hidden-file-input" aria-label="Escolher fotos ou vídeo">
+                    <input type="file" id="post-add-image-input" accept="image/*" multiple class="hidden-file-input" aria-label="Adicionar mais imagens">
                     <label for="post-media-input" class="post-media-trigger">
                         <i data-lucide="image-plus"></i>
-                        <span>Escolher foto ou vídeo</span>
+                        <span>Escolher fotos (até 5) ou vídeo</span>
                     </label>
 
                     <div id="post-preview-box" class="post-preview-box hidden">
@@ -3663,6 +3664,13 @@
                             <i data-lucide="x"></i>
                         </button>
                         <div id="post-preview" class="post-preview"></div>
+                        <div id="post-carousel-controls-bar" class="post-carousel-controls-bar" style="display: none;">
+                            <div id="post-carousel-strip" class="post-carousel-strip"></div>
+                            <button id="post-add-more-images-btn" class="post-add-more-images-btn" type="button" title="Adicionar mais fotos (até 5)">
+                                <i data-lucide="plus"></i>
+                                <span>Adicionar foto (<span id="post-images-count-label">1</span>/5)</span>
+                            </button>
+                        </div>
                         <div id="post-media-info-bar" class="post-media-info-bar" style="display: none;">
                             <div class="post-media-info-left">
                                 <span class="post-media-info-tag" id="post-preview-tag"><i data-lucide="image"></i> <span>Foto</span></span>
@@ -7296,6 +7304,6 @@
         </main>
     </div>
 
-    <script type="module" src="script.js?v=1.0.303" defer></script>
+    <script type="module" src="script.js?v=1.0.304" defer></script>
 </body>
 </html>

@@ -23382,7 +23382,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.303';
+export const CURRENT_APP_VERSION = '1.0.304';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -33448,9 +33448,12 @@ const postPreview = document.getElementById('post-preview');
 const postCaptionInput = document.getElementById('post-caption-input');
 let postsFeedUnsubscribe = null;
 
+export const MAX_POST_IMAGES = 5;
 let pendingPostFile = null;
 let pendingPostMediaData = null;
 let pendingPostMediaInfo = null;
+let pendingPostImages = [];
+let postImageSelectionSeq = 0;
 
 export function getPendingPostFile() {
     return pendingPostFile;
@@ -33460,6 +33463,9 @@ export function getPendingPostMediaData() {
 }
 export function getPendingPostMediaInfo() {
     return pendingPostMediaInfo;
+}
+export function getPendingPostImages() {
+    return pendingPostImages.slice();
 }
 
 function resetPostComposer() {
@@ -33519,6 +33525,17 @@ function resetPostComposer() {
     pendingPostMusic = null;
     pendingPostMediaData = null;
     pendingPostMediaInfo = null;
+    pendingPostImages = [];
+    postImageSelectionSeq++;
+    const addImgInput = document.getElementById('post-add-image-input');
+    if (addImgInput) addImgInput.value = '';
+    postPreviewBox?.classList?.remove('has-carousel');
+    const carouselBarEl = document.getElementById('post-carousel-controls-bar');
+    if (carouselBarEl) carouselBarEl.style.display = 'none';
+    const carouselStripEl = document.getElementById('post-carousel-strip');
+    if (carouselStripEl) carouselStripEl.innerHTML = '';
+    const countLabelEl = document.getElementById('post-images-count-label');
+    if (countLabelEl) countLabelEl.innerText = '0';
     const infoBar = document.getElementById('post-media-info-bar');
     if (infoBar) infoBar.style.display = 'none';
     const sizeEl = document.getElementById('post-preview-size');
@@ -33559,10 +33576,22 @@ export async function deletePost(postId) {
         if (currentFeedMusicPostId && String(currentFeedMusicPostId) === String(postId) && typeof stopFeedPostMusic === 'function') {
             stopFeedPostMusic();
         }
+        const postToDelete = Array.isArray(cachedFeedPosts)
+            ? cachedFeedPosts.find(p => p && String(p.id) === String(postId))
+            : null;
         await deleteDoc(doc(db, 'posts', postId));
         getDocs(collection(db, 'posts', postId, 'chunks')).then(snap => {
             if (snap && snap.docs) snap.docs.forEach(d => deleteDoc(d.ref).catch(() => {}));
         }).catch(() => {});
+        const slidesToClean = Math.max(MAX_POST_IMAGES, Number(postToDelete?.imagesCount || 0));
+        for (let sIdx = 1; sIdx < slidesToClean; sIdx++) {
+            const slideDocId = `${postId}_${sIdx}`;
+            deleteDoc(doc(db, 'post_slides', slideDocId)).catch(() => {});
+            getDocs(collection(db, 'post_slides', slideDocId, 'chunks')).then(snap => {
+                if (snap && snap.docs) snap.docs.forEach(d => deleteDoc(d.ref).catch(() => {}));
+            }).catch(() => {});
+            mediaChunkCache.delete(`post_slides_${slideDocId}`);
+        }
         deleteDoc(doc(db, 'post_audio', postId)).catch(() => {});
         getDocs(collection(db, 'post_audio', postId, 'chunks')).then(snap => {
             if (snap && snap.docs) snap.docs.forEach(d => deleteDoc(d.ref).catch(() => {}));
@@ -34166,7 +34195,244 @@ export function isPostSaved(postId) {
 
 export function isImageFeedPost(post) {
     if (!post || post.type === 'video') return false;
-    return post.type === 'image' || String(post.channelFormat || '').toLowerCase() === 'image' || Boolean(post.mediaData || post.hasChunks);
+    return post.type === 'image' ||
+        Boolean(post.isCarousel) ||
+        Number(post.imagesCount || 0) > 1 ||
+        String(post.channelFormat || '').toLowerCase() === 'image' ||
+        Boolean(post.mediaData || post.hasChunks || (Array.isArray(post.mediaItems) && post.mediaItems.length));
+}
+
+export function getPostImagesList(post) {
+    if (!post || post.type === 'video') return [];
+    const postId = post.id ? String(post.id) : '';
+    const fallbackFirst = post.mediaData || (post.hasChunks && postId && mediaChunkCache.get(`posts_${postId}`)) || '';
+    const rawArr = Array.isArray(post.mediaItems) ? post.mediaItems : [];
+    const expectedCount = Math.min(
+        MAX_POST_IMAGES,
+        Math.max(Number(post.imagesCount || 0), rawArr.length, fallbackFirst ? 1 : 0)
+    );
+    if (expectedCount <= 1) {
+        if (rawArr[0]) {
+            const firstItem = typeof rawArr[0] === 'string' ? rawArr[0] : (rawArr[0]?.mediaData || rawArr[0]?.url || '');
+            if (firstItem) return [firstItem];
+        }
+        return fallbackFirst ? [fallbackFirst] : [];
+    }
+    const slides = [];
+    for (let idx = 0; idx < expectedCount; idx++) {
+        let src = idx === 0 ? (fallbackFirst || '') : '';
+        if (!src && idx < rawArr.length && rawArr[idx]) {
+            const entry = rawArr[idx];
+            src = typeof entry === 'string' ? entry : (entry?.mediaData || entry?.url || '');
+        }
+        if (!src && postId) {
+            src = mediaChunkCache.get(`post_slides_${postId}_${idx}`) || '';
+        }
+        slides.push(src);
+    }
+    return slides;
+}
+
+export function renderPostCarouselHTML(postOrSlides, options = {}) {
+    const isPostObj = postOrSlides && !Array.isArray(postOrSlides) && typeof postOrSlides === 'object';
+    const post = isPostObj ? postOrSlides : null;
+    const postId = post?.id ? String(post.id) : String(options.postId || '');
+    const slides = isPostObj ? getPostImagesList(post) : (Array.isArray(postOrSlides) ? postOrSlides.slice(0, MAX_POST_IMAGES) : []);
+    const total = slides.length;
+    if (!total) return '';
+
+    const altText = escapeHTML(options.alt || post?.title || post?.caption || 'Postagem');
+    const imgClass = options.imgClass ? ` ${escapeHTML(options.imgClass)}` : '';
+    const extraClass = options.extraClass ? ` ${escapeHTML(options.extraClass)}` : '';
+    if (total === 1) {
+        const singleSrc = slides[0] || '';
+        const isFirstChunk = Boolean(post?.hasChunks && !singleSrc && postId);
+        return `<img src="${singleSrc}" ${isFirstChunk ? `data-chunk-post-id="${escapeHTML(postId)}" data-chunk-type="image"` : ''} alt="${altText}" draggable="false" oncontextmenu="return false;" class="protected-media${imgClass}" />`;
+    }
+
+    const slidesHTML = slides.map((src, idx) => {
+        let chunkAttr = '';
+        if (!src && postId) {
+            if (idx === 0 && post?.hasChunks) {
+                chunkAttr = `data-chunk-post-id="${escapeHTML(postId)}" data-chunk-type="image"`;
+            } else if (idx > 0 && (post?.hasSlideChunks || post?.isCarousel)) {
+                chunkAttr = `data-chunk-post-slide="${escapeHTML(postId)}:${idx}"`;
+            }
+        }
+        return `
+            <div class="vortex-carousel-slide${idx === 0 ? ' active' : ''}" data-slide-index="${idx}">
+                <img src="${src || ''}" ${chunkAttr} alt="${altText} (${idx + 1}/${total})" draggable="false" oncontextmenu="return false;" class="protected-media${imgClass}" />
+            </div>
+        `;
+    }).join('');
+
+    const dotsHTML = slides.map((_, idx) => `
+        <button type="button" class="vortex-carousel-dot${idx === 0 ? ' active' : ''}" data-carousel-action="goto" data-slide-index="${idx}" aria-label="Imagem ${idx + 1} de ${total}" aria-selected="${idx === 0 ? 'true' : 'false'}"></button>
+    `).join('');
+
+    return `
+        <div class="vortex-carousel${extraClass}" ${postId ? `data-post-id="${escapeHTML(postId)}"` : ''} data-carousel-index="0" data-carousel-total="${total}" role="region" aria-roledescription="carousel" aria-label="Carrossel com ${total} imagens">
+            <div class="vortex-carousel-viewport">
+                <div class="vortex-carousel-track" style="transform: translateX(0%);">
+                    ${slidesHTML}
+                </div>
+                <span class="vortex-carousel-counter" aria-live="polite">1/${total}</span>
+                <button type="button" class="vortex-carousel-arrow vortex-carousel-prev is-edge" data-carousel-action="prev" aria-label="Imagem anterior" disabled>
+                    <i data-lucide="chevron-left"></i>
+                </button>
+                <button type="button" class="vortex-carousel-arrow vortex-carousel-next" data-carousel-action="next" aria-label="Próxima imagem">
+                    <i data-lucide="chevron-right"></i>
+                </button>
+            </div>
+            <div class="vortex-carousel-dots" role="tablist" aria-label="Navegação do carrossel">
+                ${dotsHTML}
+            </div>
+        </div>
+    `;
+}
+
+export function renderPostMediaTagHTML(post, options = {}) {
+    if (!post) return '';
+    const rawMedia = post.mediaData || (post.hasChunks && post.id && mediaChunkCache.get(`posts_${post.id}`)) || '';
+    const isChunkPending = post.hasChunks && !rawMedia && post.id;
+    if (post.type === 'video') {
+        const clean = (typeof rawMedia === 'string') ? rawMedia.replace(/#t=[0-9,.]+$/, '') : rawMedia;
+        const bUrl = clean ? createBlobUrlFromData(clean) : '';
+        const videoSrc = (post.isTrimmed && bUrl && !bUrl.includes('#t=')) ? `${bUrl}#t=0,${post.videoDuration || 120}` : (bUrl || '');
+        const autoplayAttr = options.autoplay ? ' autoplay' : '';
+        const protectedClass = options.autoplay ? '' : ' class="protected-media"';
+        return `<video src="${videoSrc}" ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="video" data-chunk-trimmed="${post.isTrimmed ? 'true' : 'false'}" data-chunk-duration="${post.videoDuration || 120}"` : ''} controls${autoplayAttr} controlsList="nodownload" disablePictureInPicture oncontextmenu="return false;" playsinline${protectedClass}></video>`;
+    }
+    return renderPostCarouselHTML(post, options);
+}
+
+function getCarouselNode(carouselEl, selector) {
+    if (!carouselEl) return null;
+    if (typeof carouselEl.querySelectorAll === 'function') {
+        const list = carouselEl.querySelectorAll(selector);
+        if (list && list.length > 0) return list[0];
+    }
+    return carouselEl.querySelector?.(selector) || null;
+}
+
+export function setPostCarouselSlide(carouselEl, targetIndex) {
+    if (!carouselEl) return 0;
+    const total = Number(carouselEl.dataset?.carouselTotal || carouselEl.querySelectorAll?.('.vortex-carousel-slide')?.length || 0);
+    if (total <= 1) return 0;
+    const nextIdx = Math.max(0, Math.min(total - 1, Number(targetIndex) || 0));
+    if (carouselEl.dataset) {
+        carouselEl.dataset.carouselIndex = String(nextIdx);
+    }
+
+    const track = getCarouselNode(carouselEl, '.vortex-carousel-track');
+    if (track && track.style) {
+        track.style.transform = `translateX(-${nextIdx * 100}%)`;
+    }
+
+    const counter = getCarouselNode(carouselEl, '.vortex-carousel-counter');
+    if (counter) {
+        counter.textContent = `${nextIdx + 1}/${total}`;
+        counter.innerText = `${nextIdx + 1}/${total}`;
+    }
+
+    const prevBtn = getCarouselNode(carouselEl, '.vortex-carousel-prev');
+    if (prevBtn) {
+        prevBtn.disabled = nextIdx <= 0;
+        prevBtn.classList?.toggle('is-edge', nextIdx <= 0);
+    }
+
+    const nextBtn = getCarouselNode(carouselEl, '.vortex-carousel-next');
+    if (nextBtn) {
+        nextBtn.disabled = nextIdx >= total - 1;
+        nextBtn.classList?.toggle('is-edge', nextIdx >= total - 1);
+    }
+
+    carouselEl.querySelectorAll?.('.vortex-carousel-slide')?.forEach((slideEl, i) => {
+        slideEl.classList?.toggle('active', i === nextIdx);
+    });
+    carouselEl.querySelectorAll?.('.vortex-carousel-dot')?.forEach((dotEl, i) => {
+        const isCurrent = i === nextIdx;
+        dotEl.classList?.toggle('active', isCurrent);
+        dotEl.setAttribute?.('aria-selected', isCurrent ? 'true' : 'false');
+    });
+
+    if (carouselEl.closest?.('#post-preview')) {
+        document.getElementById('post-carousel-strip')?.querySelectorAll?.('.post-carousel-thumb-item')?.forEach((thumb, i) => {
+            thumb.classList?.toggle('active', i === nextIdx);
+        });
+    }
+    return nextIdx;
+}
+
+export function navigatePostCarousel(targetOrPostId, stepOrIndex, { absolute = false } = {}) {
+    let targets = [];
+    if (typeof targetOrPostId === 'string') {
+        const safeId = targetOrPostId.replace(/"/g, '\\"');
+        targets = Array.from(document.querySelectorAll?.(`.vortex-carousel[data-post-id="${safeId}"]`) || []);
+    } else if (targetOrPostId) {
+        targets = [targetOrPostId];
+    }
+    let lastIdx = 0;
+    targets.forEach(carouselEl => {
+        const cur = Number(carouselEl.dataset?.carouselIndex || 0);
+        const dest = absolute ? Number(stepOrIndex || 0) : (cur + (Number(stepOrIndex) || 0));
+        lastIdx = setPostCarouselSlide(carouselEl, dest);
+    });
+    return lastIdx;
+}
+
+export function bindPostCarousels(container) {
+    if (!container || typeof container.querySelectorAll !== 'function') return;
+    container.querySelectorAll('.vortex-carousel').forEach(carouselEl => {
+        if (carouselEl.dataset?.carouselBound === 'true') return;
+        if (carouselEl.dataset) carouselEl.dataset.carouselBound = 'true';
+
+        carouselEl.querySelectorAll('.vortex-carousel-arrow').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e?.preventDefault?.();
+                e?.stopPropagation?.();
+                const action = btn.dataset?.carouselAction;
+                const cur = Number(carouselEl.dataset?.carouselIndex || 0);
+                setPostCarouselSlide(carouselEl, cur + (action === 'prev' ? -1 : 1));
+            });
+        });
+
+        carouselEl.querySelectorAll('.vortex-carousel-dot').forEach(dot => {
+            dot.addEventListener('click', (e) => {
+                e?.preventDefault?.();
+                e?.stopPropagation?.();
+                setPostCarouselSlide(carouselEl, Number(dot.dataset?.slideIndex || 0));
+            });
+        });
+
+        const viewport = getCarouselNode(carouselEl, '.vortex-carousel-viewport');
+        if (viewport && typeof viewport.addEventListener === 'function') {
+            let startX = 0;
+            let startY = 0;
+            viewport.addEventListener('touchstart', (e) => {
+                const touch = e.touches?.[0];
+                if (!touch) return;
+                startX = touch.clientX;
+                startY = touch.clientY;
+            }, { passive: true });
+            viewport.addEventListener('touchend', (e) => {
+                const touch = e.changedTouches?.[0];
+                if (!touch) return;
+                const dx = touch.clientX - startX;
+                const dy = touch.clientY - startY;
+                if (Math.abs(dx) >= 36 && Math.abs(dx) > Math.abs(dy)) {
+                    const cur = Number(carouselEl.dataset?.carouselIndex || 0);
+                    setPostCarouselSlide(carouselEl, cur + (dx < 0 ? 1 : -1));
+                    if (carouselEl.dataset) {
+                        carouselEl.dataset.swiped = 'true';
+                        setTimeout(() => {
+                            if (carouselEl.dataset) delete carouselEl.dataset.swiped;
+                        }, 180);
+                    }
+                }
+            }, { passive: true });
+        }
+    });
 }
 
 export function updateFeedFavoritesBadge(activePosts = cachedFeedPosts) {
@@ -35373,6 +35639,27 @@ function resolvePostChunkedMedia(container, postsList) {
         }).catch(err => console.warn('Erro ao carregar chunks de mídia do post:', err));
     });
 
+    container.querySelectorAll('[data-chunk-post-slide]').forEach(el => {
+        const spec = el.dataset.chunkPostSlide || '';
+        const parts = spec.split(':');
+        const postId = parts[0];
+        const slideIdx = Number(parts[1]);
+        if (!postId || !Number.isInteger(slideIdx)) return;
+        const slideDocId = `${postId}_${slideIdx}`;
+        const cacheKey = `post_slides_${slideDocId}`;
+        if (mediaChunkCache.has(cacheKey)) {
+            el.src = mediaChunkCache.get(cacheKey);
+            el.removeAttribute('data-chunk-post-slide');
+            return;
+        }
+        loadMediaWithChunks('post_slides', slideDocId).then(fullData => {
+            if (!fullData) return;
+            mediaChunkCache.set(cacheKey, fullData);
+            el.src = fullData;
+            el.removeAttribute('data-chunk-post-slide');
+        }).catch(err => console.warn('Erro ao carregar slide do carrossel:', err));
+    });
+
     if (Array.isArray(postsList) && typeof resolvePostMusicAudio === 'function') {
         postsList.forEach(postObj => {
             if (postObj && postObj.id && postObj.music && postObj.music.hasAudioChunks && !postObj.music.audioUrl) {
@@ -35750,18 +36037,7 @@ function renderPostsFeed(posts = []) {
                 const userLiked = Boolean(currentUser?.uid && likesArr.includes(currentUser.uid));
                 const comments = (Array.isArray(post.comments) ? post.comments : []).filter(c => !isUserAccountDeleted(c.authorUid) && !c.isDeleted && !c.deleted);
                 const caption = post.caption || '';
-                const rawMedia = post.mediaData || (post.hasChunks && post.id && mediaChunkCache.get(`posts_${post.id}`)) || '';
-                const isChunkPending = post.hasChunks && !rawMedia && post.id;
-                const postMediaSrc = (post.type === 'video' && rawMedia)
-                    ? (() => {
-                        const clean = (typeof rawMedia === 'string') ? rawMedia.replace(/#t=[0-9,.]+$/, '') : rawMedia;
-                        const bUrl = createBlobUrlFromData(clean);
-                        return (post.isTrimmed && !bUrl.includes('#t=')) ? `${bUrl}#t=0,${post.videoDuration || 120}` : bUrl;
-                    })()
-                    : (rawMedia || '');
-                const mediaTag = post.type === 'video'
-                    ? `<video src="${postMediaSrc}" ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="video" data-chunk-trimmed="${post.isTrimmed ? 'true' : 'false'}" data-chunk-duration="${post.videoDuration || 120}"` : ''} controls controlsList="nodownload" disablePictureInPicture oncontextmenu="return false;" playsinline class="protected-media"></video>`
-                    : `<img src="${postMediaSrc}" ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="image"` : ''} alt="Postagem" draggable="false" oncontextmenu="return false;" class="protected-media" />`;
+                const mediaTag = renderPostMediaTagHTML(post);
                 const createdAt = new Date(post.createdAt || Date.now());
                 const timeLabel = createdAt.toLocaleString([], { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
                 const canDeletePost = isPostOwner(post, currentUser, currentProfile);
@@ -35853,6 +36129,7 @@ function renderPostsFeed(posts = []) {
             }).join('');
 
             resolvePostChunkedMedia(previewFeed, posts);
+            bindPostCarousels(previewFeed);
 
             previewFeed.querySelectorAll('[data-action="like-preview-post"]').forEach(btn => {
                 btn.addEventListener('click', async () => {
@@ -35990,18 +36267,7 @@ function renderPostsFeed(posts = []) {
         const rawComments = (Array.isArray(post.comments) ? post.comments : []).filter(c => !isUserAccountDeleted(c.authorUid) && !c.isDeleted && !c.deleted);
         const sortedComments = getSortedPostComments(rawComments);
         const caption = post.caption || '';
-        const rawMedia = post.mediaData || (post.hasChunks && post.id && mediaChunkCache.get(`posts_${post.id}`)) || '';
-        const isChunkPending = post.hasChunks && !rawMedia && post.id;
-        const postMediaSrc = (post.type === 'video' && rawMedia)
-            ? (() => {
-                const clean = (typeof rawMedia === 'string') ? rawMedia.replace(/#t=[0-9,.]+$/, '') : rawMedia;
-                const bUrl = createBlobUrlFromData(clean);
-                return (post.isTrimmed && !bUrl.includes('#t=')) ? `${bUrl}#t=0,${post.videoDuration || 120}` : bUrl;
-            })()
-            : (rawMedia || '');
-        const mediaTag = post.type === 'video'
-            ? `<video src="${postMediaSrc}" ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="video" data-chunk-trimmed="${post.isTrimmed ? 'true' : 'false'}" data-chunk-duration="${post.videoDuration || 120}"` : ''} controls controlsList="nodownload" disablePictureInPicture oncontextmenu="return false;" playsinline class="protected-media"></video>`
-            : `<img src="${postMediaSrc}" ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="image"` : ''} alt="Postagem" draggable="false" oncontextmenu="return false;" class="protected-media" />`;
+        const mediaTag = renderPostMediaTagHTML(post);
         const createdAt = new Date(post.createdAt || Date.now());
         const timeLabel = createdAt.toLocaleString([], { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
         const liked = currentUser && Array.isArray(post.likes) && post.likes.includes(currentUser.uid);
@@ -36190,6 +36456,7 @@ function renderPostsFeed(posts = []) {
     }).join('');
 
     resolvePostChunkedMedia(feedList, posts);
+    bindPostCarousels(feedList);
 
     feedList.querySelectorAll('video').forEach(videoEl => {
         videoEl.addEventListener('timeupdate', () => {
@@ -36461,7 +36728,8 @@ function renderPostsFeed(posts = []) {
         if (badge) {
             imgEl.style.cursor = 'pointer';
             imgEl.addEventListener('click', (e) => {
-                if (e.target && e.target.closest?.('.feed-media-views-badge')) return;
+                if (e.target && e.target.closest?.('.feed-media-views-badge, .vortex-carousel-arrow, .vortex-carousel-dot, .vortex-carousel-counter')) return;
+                if (imgEl.closest?.('.vortex-carousel')?.dataset?.swiped === 'true') return;
                 togglePostMusicFromBadge(badge);
             });
         }
@@ -37210,6 +37478,21 @@ export function handlePostMediaSelection(file) {
     if (!file) return;
     pendingPostFile = file;
     const isVideo = (file.type && file.type.startsWith('video'));
+    if (isVideo) {
+        pendingPostImages = [];
+        const carouselBarEl = document.getElementById('post-carousel-controls-bar');
+        if (carouselBarEl) carouselBarEl.style.display = 'none';
+        postPreviewBox?.classList?.remove('has-carousel');
+    } else {
+        const seedUrl = file.dataUrl || '';
+        pendingPostImages = [{
+            file,
+            dataUrl: seedUrl,
+            previewUrl: seedUrl,
+            sizeBytes: file.size || 102400,
+            name: file.name || 'imagem.jpg'
+        }];
+    }
     let objectUrl = null;
     try {
         const urlObj = (typeof window !== 'undefined' && window.URL) ? window.URL : (typeof URL !== 'undefined' ? URL : null);
@@ -37344,11 +37627,254 @@ export function handlePostMediaSelection(file) {
     }
 }
 
+function isImagePostFile(file) {
+    if (!file) return false;
+    const mime = String(file.type || '').toLowerCase();
+    if (mime.startsWith('image/')) return true;
+    if (!mime && file.name) {
+        return /\.(jpe?g|png|gif|webp|bmp|heic|heif)$/i.test(String(file.name));
+    }
+    return false;
+}
+
+export function syncPostComposerMediaUI() {
+    if (typeof document === 'undefined') return;
+    const count = pendingPostImages.length;
+    const controlsBar = document.getElementById('post-carousel-controls-bar');
+    const stripEl = document.getElementById('post-carousel-strip');
+    const countLabelEl = document.getElementById('post-images-count-label');
+    const addMoreBtn = document.getElementById('post-add-more-images-btn');
+    const infoBar = document.getElementById('post-media-info-bar');
+    const tagEl = document.getElementById('post-preview-tag');
+    const sizeEl = document.getElementById('post-preview-size');
+    const durEl = document.getElementById('post-preview-duration');
+    const trimBadge = document.getElementById('post-preview-trimmed-badge');
+
+    if (count === 0) {
+        if (controlsBar) controlsBar.style.display = 'none';
+        if (stripEl) stripEl.innerHTML = '';
+        if (countLabelEl) countLabelEl.innerText = '0';
+        postPreviewBox?.classList?.remove('has-carousel');
+        return;
+    }
+
+    if (postPreviewBox) {
+        postPreviewBox.classList?.remove('hidden');
+        postPreviewBox.classList?.toggle('has-carousel', count > 1);
+    }
+
+    const slides = pendingPostImages.map(item => item.dataUrl || item.previewUrl || '').filter(Boolean);
+    if (postPreview) {
+        if (slides.length > 1) {
+            postPreview.innerHTML = renderPostCarouselHTML(slides, { isComposer: true, alt: 'Prévia' });
+            bindPostCarousels(postPreview);
+        } else if (slides.length === 1) {
+            postPreview.innerHTML = `<img src="${slides[0]}" alt="Prévia">`;
+        } else {
+            postPreview.innerHTML = '';
+        }
+    }
+
+    if (controlsBar) controlsBar.style.display = 'flex';
+    if (countLabelEl) countLabelEl.innerText = String(count);
+    if (addMoreBtn) addMoreBtn.style.display = count < MAX_POST_IMAGES ? 'inline-flex' : 'none';
+
+    if (stripEl) {
+        stripEl.innerHTML = pendingPostImages.map((item, idx) => {
+            const thumbSrc = item.previewUrl || item.dataUrl || '';
+            return `
+                <div class="post-carousel-thumb-item${idx === 0 ? ' active' : ''}" data-slide-index="${idx}" title="Imagem ${idx + 1}">
+                    <img src="${thumbSrc}" alt="Foto ${idx + 1}">
+                    <span class="post-carousel-thumb-index">${idx + 1}</span>
+                    <button type="button" class="post-carousel-thumb-remove" data-remove-slide-index="${idx}" title="Remover foto ${idx + 1}" aria-label="Remover foto ${idx + 1}">×</button>
+                </div>
+            `;
+        }).join('');
+
+        stripEl.querySelectorAll?.('.post-carousel-thumb-remove')?.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e?.preventDefault?.();
+                e?.stopPropagation?.();
+                removePendingPostImage(Number(btn.dataset?.removeSlideIndex));
+            });
+        });
+
+        stripEl.querySelectorAll?.('.post-carousel-thumb-item')?.forEach(thumb => {
+            thumb.addEventListener('click', (e) => {
+                if (e.target?.closest?.('.post-carousel-thumb-remove')) return;
+                const slideIdx = Number(thumb.dataset?.slideIndex || 0);
+                const carouselEl = postPreview?.querySelector?.('.vortex-carousel');
+                if (carouselEl) setPostCarouselSlide(carouselEl, slideIdx);
+                stripEl.querySelectorAll?.('.post-carousel-thumb-item')?.forEach((el, i) => {
+                    el.classList?.toggle('active', i === slideIdx);
+                });
+            });
+        });
+    }
+
+    const totalBytes = pendingPostImages.reduce((sum, item) => sum + (Number(item.sizeBytes) || 0), 0) || 102400;
+    if (infoBar) infoBar.style.display = 'flex';
+    if (tagEl) {
+        tagEl.innerHTML = count > 1
+            ? `<i data-lucide="layers"></i> <span>Fotos (${count}/${MAX_POST_IMAGES})</span>`
+            : `<i data-lucide="image"></i> <span>Foto</span>`;
+    }
+    if (sizeEl) sizeEl.innerHTML = `<i data-lucide="hard-drive"></i> <span>${formatBytesToKB(totalBytes)}</span>`;
+    if (durEl) durEl.style.display = 'none';
+    if (trimBadge) trimBadge.style.display = 'none';
+    if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+}
+
+export function removePendingPostImage(index) {
+    const idx = Number(index);
+    if (!Number.isInteger(idx) || idx < 0 || idx >= pendingPostImages.length) {
+        return pendingPostImages.length;
+    }
+    pendingPostImages.splice(idx, 1);
+    if (pendingPostImages.length === 0) {
+        resetPostComposer();
+        return 0;
+    }
+    const totalBytes = pendingPostImages.reduce((sum, item) => sum + (Number(item.sizeBytes) || 0), 0) || 102400;
+    pendingPostFile = pendingPostImages[0].file || pendingPostFile;
+    pendingPostMediaData = pendingPostImages[0].dataUrl || pendingPostImages[0].previewUrl || pendingPostMediaData;
+    pendingPostMediaInfo = {
+        type: 'image',
+        file: pendingPostFile,
+        isCarousel: pendingPostImages.length > 1,
+        count: pendingPostImages.length,
+        sizeBytes: totalBytes,
+        sizeKB: Math.round(totalBytes / 1024),
+        sizeFormatted: formatBytesToKB(totalBytes),
+        isTrimmed: false,
+        duration: 0
+    };
+    syncPostComposerMediaUI();
+    return pendingPostImages.length;
+}
+
+export async function handlePostImagesSelection(fileList, { append = false } = {}) {
+    const rawFiles = Array.isArray(fileList)
+        ? fileList.filter(Boolean)
+        : (fileList && typeof fileList.length === 'number' ? Array.from(fileList).filter(Boolean) : (fileList ? [fileList] : []));
+    if (!rawFiles.length) return { added: 0, total: pendingPostImages.length, limitReached: false };
+
+    const seq = ++postImageSelectionSeq;
+    const videoFiles = rawFiles.filter(f => f && f.type && f.type.startsWith('video'));
+    const imageFiles = rawFiles.filter(isImagePostFile);
+
+    if (!append && videoFiles.length > 0 && imageFiles.length === 0) {
+        handlePostMediaSelection(videoFiles[0]);
+        return { added: 1, total: 0, isVideo: true, limitReached: false };
+    }
+
+    if (videoFiles.length > 0 && (append || imageFiles.length > 0)) {
+        showToast('Escolha apenas imagens 📸', 'Não é possível misturar vídeo e múltiplas fotos na mesma postagem.', 'yellow');
+    }
+
+    if (!imageFiles.length) {
+        return { added: 0, total: pendingPostImages.length, limitReached: false };
+    }
+
+    if (!append) {
+        pendingPostImages = [];
+    } else if (pendingPostImages.length === 0 && pendingPostFile && !(pendingPostFile.type && pendingPostFile.type.startsWith('video'))) {
+        pendingPostImages = [{
+            file: pendingPostFile,
+            dataUrl: pendingPostMediaData || '',
+            previewUrl: pendingPostMediaData || '',
+            sizeBytes: pendingPostFile.size || 102400,
+            name: pendingPostFile.name || 'imagem.jpg'
+        }];
+    } else if (pendingPostImages.length > 0 && !pendingPostImages[0].dataUrl && pendingPostMediaData) {
+        pendingPostImages[0].dataUrl = pendingPostMediaData;
+        pendingPostImages[0].previewUrl = pendingPostMediaData;
+    }
+
+    const remainingSlots = Math.max(0, MAX_POST_IMAGES - pendingPostImages.length);
+    const limitReached = imageFiles.length > remainingSlots || remainingSlots === 0;
+    if (limitReached) {
+        showToast('Limite de 5 imagens 📸', `Você pode adicionar no máximo ${MAX_POST_IMAGES} imagens por publicação.`, 'yellow');
+    }
+
+    const acceptedFiles = imageFiles.slice(0, remainingSlots);
+    if (!acceptedFiles.length) {
+        syncPostComposerMediaUI();
+        return { added: 0, total: pendingPostImages.length, limitReached };
+    }
+
+    const projectedTotal = Math.min(MAX_POST_IMAGES, pendingPostImages.length + acceptedFiles.length);
+    const targetMaxKB = projectedTotal > 1 ? 220 : 500;
+
+    for (const imgFile of acceptedFiles) {
+        if (seq !== postImageSelectionSeq) break;
+        let objectUrl = null;
+        try {
+            const urlObj = (typeof window !== 'undefined' && window.URL) ? window.URL : (typeof URL !== 'undefined' ? URL : null);
+            if (urlObj && typeof urlObj.createObjectURL === 'function') {
+                objectUrl = urlObj.createObjectURL(imgFile);
+            }
+        } catch (e) {}
+
+        let compressed = null;
+        try {
+            compressed = await compressImageFileToKB(imgFile, { maxDimension: 1280, targetMaxKB });
+        } catch (err) {
+            compressed = null;
+        }
+        if (seq !== postImageSelectionSeq) break;
+
+        let finalDataUrl = compressed?.dataUrl || '';
+        if (imgFile.dataUrl && typeof imgFile.dataUrl === 'string' && (!finalDataUrl || finalDataUrl.includes('mockpreview'))) {
+            finalDataUrl = imgFile.dataUrl;
+        }
+        if (!finalDataUrl) {
+            finalDataUrl = objectUrl || 'data:image/jpeg;base64,mockpreview';
+        }
+        const entryBytes = Number(compressed?.sizeBytes) || Number(imgFile.size) || 102400;
+        pendingPostImages.push({
+            file: imgFile,
+            dataUrl: finalDataUrl,
+            previewUrl: objectUrl || finalDataUrl,
+            sizeBytes: entryBytes,
+            name: imgFile.name || `imagem_${pendingPostImages.length + 1}.jpg`
+        });
+    }
+
+    if (seq !== postImageSelectionSeq || !pendingPostImages.length) {
+        return { added: 0, total: pendingPostImages.length, limitReached };
+    }
+
+    const totalBytes = pendingPostImages.reduce((sum, item) => sum + (Number(item.sizeBytes) || 0), 0) || 102400;
+    pendingPostFile = pendingPostImages[0].file;
+    pendingPostMediaData = pendingPostImages[0].dataUrl;
+    pendingPostMediaInfo = {
+        type: 'image',
+        file: pendingPostFile,
+        isCarousel: pendingPostImages.length > 1,
+        count: pendingPostImages.length,
+        sizeBytes: totalBytes,
+        sizeKB: Math.round(totalBytes / 1024),
+        sizeFormatted: formatBytesToKB(totalBytes),
+        isTrimmed: false,
+        duration: 0
+    };
+
+    syncPostComposerMediaUI();
+    return { added: acceptedFiles.length, total: pendingPostImages.length, limitReached };
+}
+
 if (postMediaInput) {
     postMediaInput.addEventListener('change', (event) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
+        const files = Array.from(event.target.files || []).filter(Boolean);
+        if (!files.length) return;
 
+        if (files.length > 1 || isImagePostFile(files[0])) {
+            handlePostImagesSelection(files, { append: false });
+            return;
+        }
+
+        const file = files[0];
         if (file.type && file.type.startsWith('video')) {
             const video = document.createElement('video');
             video.preload = 'metadata';
@@ -37374,6 +37900,36 @@ if (postMediaInput) {
     });
 }
 
+const postAddImageInput = document.getElementById('post-add-image-input');
+if (postAddImageInput) {
+    postAddImageInput.addEventListener('change', (event) => {
+        const files = Array.from(event.target.files || []).filter(Boolean);
+        if (files.length) {
+            handlePostImagesSelection(files, { append: true });
+        }
+        try { event.target.value = ''; } catch (err) {}
+    });
+}
+
+document.getElementById('post-add-more-images-btn')?.addEventListener('click', (e) => {
+    e?.preventDefault?.();
+    if (pendingPostImages.length >= MAX_POST_IMAGES) {
+        showToast('Limite de 5 imagens 📸', `Você já atingiu o limite de ${MAX_POST_IMAGES} imagens nesta publicação.`, 'yellow');
+        return;
+    }
+    const picker = document.getElementById('post-add-image-input') || postMediaInput;
+    picker?.click?.();
+});
+
+document.getElementById('post-carousel-strip')?.addEventListener('click', (e) => {
+    const removeBtn = e?.target?.closest?.('.post-carousel-thumb-remove');
+    if (removeBtn) {
+        e?.preventDefault?.();
+        e?.stopPropagation?.();
+        removePendingPostImage(Number(removeBtn.dataset?.removeSlideIndex));
+    }
+});
+
 document.getElementById('remove-post-media-btn')?.addEventListener('click', () => {
     resetPostComposer();
 });
@@ -37390,8 +37946,8 @@ document.getElementById('publish-post-btn')?.addEventListener('click', async () 
         return;
     }
 
-    const file = postMediaInput?.files?.[0] || pendingPostFile || pendingPostMediaInfo?.file;
-    if (!file && !pendingPostMediaData && !pendingPostMediaInfo) {
+    const file = postMediaInput?.files?.[0] || pendingPostFile || pendingPostMediaInfo?.file || pendingPostImages[0]?.file;
+    if (!file && !pendingPostMediaData && !pendingPostMediaInfo && pendingPostImages.length === 0) {
         showToast('Aviso', 'Selecione uma foto ou vídeo antes de publicar.', 'red');
         return;
     }
@@ -37502,6 +38058,18 @@ document.getElementById('publish-post-btn')?.addEventListener('click', async () 
                 isVip: checkIsVipUser(currentProfile),
                 isVerified: checkIsVipUser(currentProfile),
                 type: isVideo ? 'video' : 'image',
+                imagesCount: isVideo ? 0 : Math.max(pendingPostImages.length, 1),
+                isCarousel: !isVideo && pendingPostImages.length > 1,
+                hasSlideChunks: !isVideo && pendingPostImages.length > 1 && pendingPostImages.reduce((sum, item) => sum + String(item?.dataUrl || item?.previewUrl || '').length, 0) > 450000,
+                mediaItems: !isVideo && pendingPostImages.length > 1
+                    ? (() => {
+                        const rawUrls = pendingPostImages.map(item => item?.dataUrl || item?.previewUrl || '').filter(Boolean);
+                        const totalLen = rawUrls.reduce((sum, s) => sum + s.length, 0);
+                        return totalLen > 450000
+                            ? rawUrls.map((item, idx) => (idx === 0 && item.length <= 350000 ? item : ''))
+                            : rawUrls;
+                    })()
+                    : null,
                 mediaSizeKB: pendingPostMediaInfo?.sizeFormatted || formatBytesToKB(file?.size || 102400),
                 isTrimmed: !!(pendingPostMediaInfo && pendingPostMediaInfo.isTrimmed) || !!(file && file.isTrimmed),
                 videoDuration: isVideo ? (pendingPostMediaInfo?.duration || (file && file.duration) || 0) : null,
@@ -37586,7 +38154,27 @@ document.getElementById('publish-post-btn')?.addEventListener('click', async () 
                 postDoc.aiRecommendationScore = initialScore.aiScore;
             }
 
-            const postDocRef = await saveMediaWithChunks('posts', postDoc, 'mediaData', mediaPayload);
+            const imagesToSave = !isVideo
+                ? (pendingPostImages.length > 0
+                    ? pendingPostImages.map(item => item?.dataUrl || item?.previewUrl).filter(Boolean)
+                    : (mediaPayload ? [mediaPayload] : []))
+                : [];
+            const primaryMediaPayload = (!isVideo && imagesToSave.length > 0) ? imagesToSave[0] : mediaPayload;
+            const totalSlidesChars = imagesToSave.reduce((sum, s) => sum + String(s || '').length, 0);
+            const shouldChunkSlides = !isVideo && imagesToSave.length > 1 && totalSlidesChars > 450000;
+
+            const postDocRef = await saveMediaWithChunks('posts', postDoc, 'mediaData', primaryMediaPayload);
+
+            if (!isVideo && imagesToSave.length > 1 && postDocRef && postDocRef.id) {
+                for (let slideIdx = 1; slideIdx < imagesToSave.length; slideIdx++) {
+                    const slidePayload = imagesToSave[slideIdx];
+                    const slideDocId = `${postDocRef.id}_${slideIdx}`;
+                    mediaChunkCache.set(`post_slides_${slideDocId}`, slidePayload);
+                    if (shouldChunkSlides) {
+                        await saveMediaWithChunks('post_slides', { postId: postDocRef.id, slideIndex: slideIdx }, 'mediaData', slidePayload, slideDocId);
+                    }
+                }
+            }
 
             if (localPostAudioPayload && postDocRef && postDocRef.id) {
                 await saveMediaWithChunks('post_audio', { postId: postDocRef.id }, 'audioData', localPostAudioPayload, postDocRef.id);
@@ -37612,8 +38200,9 @@ document.getElementById('publish-post-btn')?.addEventListener('click', async () 
         }
     };
 
-    if (pendingPostMediaData) {
-        await savePostToFirestore(pendingPostMediaData);
+    const resolvedPendingMedia = pendingPostMediaData || (!isVideo && pendingPostImages[0]?.dataUrl) || '';
+    if (resolvedPendingMedia) {
+        await savePostToFirestore(resolvedPendingMedia);
         return;
     }
 
@@ -53367,9 +53956,14 @@ export function renderChannelMediaGrid(items = [], tab = 'inicio', isOwner = fal
         const fmt = classifyChannelPostFormat(post);
         const isImageTile = (typeof isImageFeedPost === 'function' ? isImageFeedPost(post) : post.type === 'image') || fmt === 'imagens';
         const isPlayableTile = !isImageTile && (post.type === 'video' || post.type === 'music' || post.type === 'audio' || ['videos', 'shorts', 'podcasts'].includes(fmt));
-        const topIcon = isImageTile
-            ? 'image'
-            : (fmt === 'podcasts' ? 'mic' : (fmt === 'videos' ? 'film' : 'clapperboard'));
+        const tileImages = isImageTile && typeof getPostImagesList === 'function' ? getPostImagesList(post) : [];
+        const tileImagesCount = isImageTile ? Math.max(Number(post.imagesCount || 0), tileImages.length) : 0;
+        const isCarouselTile = isImageTile && tileImagesCount > 1;
+        const topIcon = isCarouselTile
+            ? 'layers'
+            : (isImageTile
+                ? 'image'
+                : (fmt === 'podcasts' ? 'mic' : (fmt === 'videos' ? 'film' : 'clapperboard')));
         const viewsCount = typeof getPostViewsCount === 'function' ? getPostViewsCount(post) : (Array.isArray(post.views) ? post.views.length : (post.viewsCount || 0));
         const viewsLabel = typeof formatPostViewsCount === 'function' ? formatPostViewsCount(viewsCount) : String(viewsCount);
         const commentsCount = Array.isArray(post.comments) ? post.comments.length : Number(post.commentsCount || 0);
@@ -53381,12 +53975,12 @@ export function renderChannelMediaGrid(items = [], tab = 'inicio', isOwner = fal
             : `<img src="${src}" ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="image"` : ''} alt="${escapeHTML(post.title || post.caption || (isImageTile ? 'Imagem do canal' : 'Vídeo do canal'))}" class="channel-ig-tile-media">`;
 
         return `
-            <button type="button" class="channel-ig-tile" data-post-id="${post.id}" title="${escapeHTML(post.title || post.caption || (isImageTile ? 'Ver imagem' : 'Assistir'))}">
+            <button type="button" class="channel-ig-tile${isCarouselTile ? ' has-carousel' : ''}" data-post-id="${post.id}" title="${escapeHTML(post.title || post.caption || (isImageTile ? 'Ver imagem' : 'Assistir'))}">
                 ${mediaTag}
-                ${isImageTile ? '<span class="channel-ig-tile-image-tag"><i data-lucide="image"></i> Imagem</span>' : ''}
+                ${isImageTile ? `<span class="channel-ig-tile-image-tag"><i data-lucide="${isCarouselTile ? 'layers' : 'image'}"></i> ${isCarouselTile ? `${tileImagesCount} fotos` : 'Imagem'}</span>` : ''}
                 ${isPlayableTile ? '<span class="channel-ig-tile-play-overlay" aria-hidden="true"><i data-lucide="play" class="channel-ig-tile-play-icon"></i></span>' : ''}
                 ${hasMusic ? `<span class="channel-ig-tile-music-badge" title="${escapeHTML(`Música: ${musicLabel}`)}"><i data-lucide="music"></i></span>` : ''}
-                <span class="channel-ig-tile-top-badge" aria-hidden="true"><i data-lucide="${topIcon}"></i></span>
+                <span class="channel-ig-tile-top-badge${isCarouselTile ? ' channel-ig-tile-carousel-badge' : ''}" aria-hidden="true"><i data-lucide="${topIcon}"></i>${isCarouselTile ? `<span>${tileImagesCount}</span>` : ''}</span>
                 <span class="channel-ig-tile-bottom-overlay">
                     <span class="channel-ig-tile-meta-left">
                         <span class="channel-ig-tile-views"><i data-lucide="${isImageTile ? 'eye' : 'play'}"></i> ${escapeHTML(String(viewsLabel))}</span>
@@ -54152,6 +54746,8 @@ function renderChannelManageItemHTML(post) {
     const commentsCount = Array.isArray(post.comments) ? post.comments.length : Math.max(0, Number(post.commentsCount || 0));
     const hasMusic = typeof hasPostMusicTrack === 'function' ? hasPostMusicTrack(post) : false;
     const musicLabel = hasMusic ? ([post.music?.title, post.music?.artist].filter(Boolean).join(' • ') || 'Música anexada') : '';
+    const carouselImages = isImageItem && typeof getPostImagesList === 'function' ? getPostImagesList(post) : [];
+    const carouselCount = isImageItem ? Math.max(Number(post.imagesCount || 0), carouselImages.length) : 0;
 
     const formatOptions = isImageItem
         ? `
@@ -54192,6 +54788,7 @@ function renderChannelManageItemHTML(post) {
                         <span class="channel-manage-stat-chip"><i data-lucide="eye"></i> ${escapeHTML(String(viewsCount))}</span>
                         <span class="channel-manage-stat-chip"><i data-lucide="heart"></i> ${escapeHTML(String(likesCount))}</span>
                         <span class="channel-manage-stat-chip"><i data-lucide="message-circle"></i> ${escapeHTML(String(commentsCount))}</span>
+                        ${carouselCount > 1 ? `<span class="channel-manage-stat-chip"><i data-lucide="layers"></i> ${carouselCount} fotos</span>` : ''}
                         ${hasMusic ? `<span class="channel-manage-music-pill" title="${escapeHTML(musicLabel)}"><i data-lucide="music"></i> ${escapeHTML(musicLabel)}</span>` : ''}
                     </div>
                     <div class="channel-manage-controls">
@@ -54343,18 +54940,29 @@ export function openChannelGridMediaViewer(postId) {
     }
 
     activeChannelViewerPostId = post.id;
-    const rawMedia = post.mediaData || (post.hasChunks && post.id && mediaChunkCache.get(`posts_${post.id}`)) || '';
-    const src = (post.type === 'video' && rawMedia)
-        ? createBlobUrlFromData(String(rawMedia).replace(/#t=[0-9,.]+$/, ''))
-        : (rawMedia || '');
     const hasMusic = typeof hasPostMusicTrack === 'function' ? hasPostMusicTrack(post) : false;
 
-    mediaBox.innerHTML = post.type === 'video'
-        ? `<video src="${src}" controls autoplay playsinline controlsList="nodownload" disablePictureInPicture></video>`
-        : `<img src="${src}" alt="${escapeHTML(post.title || post.caption || 'Mídia')}" class="${hasMusic ? 'channel-viewer-music-interactive' : ''}">`;
+    mediaBox.innerHTML = typeof renderPostMediaTagHTML === 'function'
+        ? renderPostMediaTagHTML(post, {
+            autoplay: true,
+            imgClass: hasMusic ? 'channel-viewer-music-interactive' : '',
+            alt: post.title || post.caption || 'Mídia'
+        })
+        : (() => {
+            const rawMedia = post.mediaData || (post.hasChunks && post.id && mediaChunkCache.get(`posts_${post.id}`)) || '';
+            const src = (post.type === 'video' && rawMedia)
+                ? createBlobUrlFromData(String(rawMedia).replace(/#t=[0-9,.]+$/, ''))
+                : (rawMedia || '');
+            return post.type === 'video'
+                ? `<video src="${src}" controls autoplay playsinline controlsList="nodownload" disablePictureInPicture></video>`
+                : `<img src="${src}" alt="${escapeHTML(post.title || post.caption || 'Mídia')}" class="${hasMusic ? 'channel-viewer-music-interactive' : ''}">`;
+        })();
 
     if (typeof resolvePostChunkedMedia === 'function') {
         resolvePostChunkedMedia(mediaBox, [post]);
+    }
+    if (typeof bindPostCarousels === 'function') {
+        bindPostCarousels(mediaBox);
     }
 
     const titleEl = document.getElementById('channel-viewer-title');
@@ -54395,11 +55003,16 @@ export function openChannelGridMediaViewer(postId) {
             }
         });
     } else if (hasMusic) {
-        const imgEl = mediaBox.querySelector?.('img');
-        imgEl?.addEventListener?.('click', () => {
-            if (String(activeChannelViewerPostId || '') === String(post.id)) {
-                toggleFeedPostMusic(post.id, post.music.audioUrl || '', post.music.snippetStart || 0, post.music.snippetDuration || 0);
-            }
+        const imgs = mediaBox.querySelectorAll?.('img');
+        const imgTargets = (imgs && imgs.length) ? Array.from(imgs) : [mediaBox.querySelector?.('img')].filter(Boolean);
+        imgTargets.forEach(imgEl => {
+            imgEl?.addEventListener?.('click', (e) => {
+                if (e?.target?.closest?.('.vortex-carousel-arrow, .vortex-carousel-dot, .vortex-carousel-counter')) return;
+                if (imgEl.closest?.('.vortex-carousel')?.dataset?.swiped === 'true') return;
+                if (String(activeChannelViewerPostId || '') === String(post.id)) {
+                    toggleFeedPostMusic(post.id, post.music.audioUrl || '', post.music.snippetStart || 0, post.music.snippetDuration || 0);
+                }
+            });
         });
     }
 
@@ -54757,6 +55370,16 @@ if (typeof window !== 'undefined') {
     window.getUserFollowingCount = getUserFollowingCount;
     window.syncFollowButtonsInDOM = syncFollowButtonsInDOM;
     window.toggleFollowUser = toggleFollowUser;
+    window.MAX_POST_IMAGES = MAX_POST_IMAGES;
+    window.getPendingPostImages = getPendingPostImages;
+    window.handlePostImagesSelection = handlePostImagesSelection;
+    window.removePendingPostImage = removePendingPostImage;
+    window.getPostImagesList = getPostImagesList;
+    window.renderPostCarouselHTML = renderPostCarouselHTML;
+    window.renderPostMediaTagHTML = renderPostMediaTagHTML;
+    window.setPostCarouselSlide = setPostCarouselSlide;
+    window.navigatePostCarousel = navigatePostCarousel;
+    window.bindPostCarousels = bindPostCarousels;
 }
 
 
