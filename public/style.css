@@ -34445,6 +34445,90 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
     right: 54px;
 }
 
+/* ==========================================================================
+   v1.0.305: Capa Personalizada para Vídeos MP4
+   ========================================================================== */
+.post-preview-box.has-video-cover-option .post-media-info-bar {
+    position: static;
+    background: rgba(15, 18, 28, 0.94);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.post-video-cover-bar {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 10px 12px;
+    background: rgba(12, 16, 26, 0.94);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.post-video-cover-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 12px;
+    border-radius: 999px;
+    border: 1px dashed rgba(255, 255, 255, 0.28);
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-main, #fff);
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.16s ease, border-color 0.16s ease;
+}
+.post-video-cover-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: var(--accent-color, #39ff14);
+}
+.post-video-cover-btn i,
+.post-video-cover-btn svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+}
+.post-video-cover-preview-wrap {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 8px 4px 4px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+}
+.post-video-cover-thumb {
+    width: 36px;
+    height: 36px;
+    border-radius: 7px;
+    object-fit: cover;
+    display: block;
+    background: #000;
+    flex-shrink: 0;
+}
+.post-video-cover-meta {
+    font-size: 0.74rem;
+    font-weight: 600;
+    color: var(--text-main, #e5e5e5);
+}
+.post-video-cover-remove-btn {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(220, 38, 38, 0.9);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+}
+.post-video-cover-remove-btn i,
+.post-video-cover-remove-btn svg {
+    width: 12px;
+    height: 12px;
+}
+
 
 
 

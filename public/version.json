@@ -1,6 +1,6 @@
 {
-  "version": "1.0.304",
-  "build": 304,
+  "version": "1.0.305",
+  "build": 305,
   "releaseDate": "2026-11-16",
-  "notes": "Carrossel de múltiplas imagens (até 5 fotos por publicação) com navegação por setas, pontos, contador e deslize v1.0.304"
+  "notes": "Opção para adicionar imagem de capa personalizada em vídeos MP4 no compositor com exibição automática no Feed e Canal v1.0.305"
 }

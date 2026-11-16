@@ -35,13 +35,13 @@
     <meta itemprop="image" content="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
     <link rel="image_src" type="image/png" href="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
 
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.304">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.304">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.304">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.304">
-    <link rel="stylesheet" href="style.css?v=1.0.304">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.305">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.305">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.305">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.305">
+    <link rel="stylesheet" href="style.css?v=1.0.305">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.304" id="app-manifest-link">
+    <link rel="manifest" href="manifest.json?v=1.0.305" id="app-manifest-link">
     <meta name="theme-color" content="#39ff14" id="app-theme-color-meta">
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#39ff14" id="app-theme-color-meta-dark">
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#39ff14" id="app-theme-color-meta-light">
@@ -50,8 +50,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.304">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.304">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.305">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.305">
     <!-- Sincronização Dinâmica da Barra de Status e Barra de Navegação do Celular -->
     <script>
         (function() {
@@ -3681,6 +3681,20 @@
                                 <i data-lucide="scissors"></i> <span>Cortado (2 min)</span>
                             </span>
                         </div>
+                        <div id="post-video-cover-bar" class="post-video-cover-bar" style="display: none;">
+                            <input type="file" id="post-video-cover-input" accept="image/*" class="hidden-file-input" aria-label="Escolher capa do vídeo">
+                            <button type="button" id="post-add-video-cover-btn" class="post-video-cover-btn" title="Adicionar imagem de capa para vídeo MP4">
+                                <i data-lucide="image"></i>
+                                <span id="post-video-cover-btn-label">Adicionar capa do vídeo</span>
+                            </button>
+                            <div id="post-video-cover-preview-wrap" class="post-video-cover-preview-wrap" style="display: none;">
+                                <img id="post-video-cover-thumb" class="post-video-cover-thumb" src="" alt="Capa do vídeo">
+                                <span id="post-video-cover-meta" class="post-video-cover-meta">Capa selecionada</span>
+                                <button type="button" id="remove-video-cover-btn" class="post-video-cover-remove-btn" title="Remover capa do vídeo" aria-label="Remover capa do vídeo">
+                                    <i data-lucide="x"></i>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -7304,6 +7318,6 @@
         </main>
     </div>
 
-    <script type="module" src="script.js?v=1.0.304" defer></script>
+    <script type="module" src="script.js?v=1.0.305" defer></script>
 </body>
 </html>

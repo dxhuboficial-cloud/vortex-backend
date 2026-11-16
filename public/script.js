@@ -23382,7 +23382,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.304';
+export const CURRENT_APP_VERSION = '1.0.305';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -33454,6 +33454,9 @@ let pendingPostMediaData = null;
 let pendingPostMediaInfo = null;
 let pendingPostImages = [];
 let postImageSelectionSeq = 0;
+let pendingPostVideoCoverData = null;
+let pendingPostVideoCoverInfo = null;
+let postVideoCoverSeq = 0;
 
 export function getPendingPostFile() {
     return pendingPostFile;
@@ -33466,6 +33469,12 @@ export function getPendingPostMediaInfo() {
 }
 export function getPendingPostImages() {
     return pendingPostImages.slice();
+}
+export function getPendingPostVideoCoverData() {
+    return pendingPostVideoCoverData;
+}
+export function getPendingPostVideoCoverInfo() {
+    return pendingPostVideoCoverInfo;
 }
 
 function resetPostComposer() {
@@ -33527,9 +33536,21 @@ function resetPostComposer() {
     pendingPostMediaInfo = null;
     pendingPostImages = [];
     postImageSelectionSeq++;
+    pendingPostVideoCoverData = null;
+    pendingPostVideoCoverInfo = null;
+    postVideoCoverSeq++;
     const addImgInput = document.getElementById('post-add-image-input');
     if (addImgInput) addImgInput.value = '';
+    const videoCoverInput = document.getElementById('post-video-cover-input');
+    if (videoCoverInput) videoCoverInput.value = '';
     postPreviewBox?.classList?.remove('has-carousel');
+    postPreviewBox?.classList?.remove('has-video-cover-option');
+    if (typeof syncPostVideoCoverUI === 'function') {
+        syncPostVideoCoverUI(false);
+    } else {
+        const videoCoverBar = document.getElementById('post-video-cover-bar');
+        if (videoCoverBar) videoCoverBar.style.display = 'none';
+    }
     const carouselBarEl = document.getElementById('post-carousel-controls-bar');
     if (carouselBarEl) carouselBarEl.style.display = 'none';
     const carouselStripEl = document.getElementById('post-carousel-strip');
@@ -33592,6 +33613,11 @@ export async function deletePost(postId) {
             }).catch(() => {});
             mediaChunkCache.delete(`post_slides_${slideDocId}`);
         }
+        deleteDoc(doc(db, 'post_covers', postId)).catch(() => {});
+        getDocs(collection(db, 'post_covers', postId, 'chunks')).then(snap => {
+            if (snap && snap.docs) snap.docs.forEach(d => deleteDoc(d.ref).catch(() => {}));
+        }).catch(() => {});
+        mediaChunkCache.delete(`post_covers_${postId}`);
         deleteDoc(doc(db, 'post_audio', postId)).catch(() => {});
         getDocs(collection(db, 'post_audio', postId, 'chunks')).then(snap => {
             if (snap && snap.docs) snap.docs.forEach(d => deleteDoc(d.ref).catch(() => {}));
@@ -34291,6 +34317,23 @@ export function renderPostCarouselHTML(postOrSlides, options = {}) {
     `;
 }
 
+export function isMp4VideoFile(file) {
+    if (!file) return false;
+    const mime = String(file.type || '').toLowerCase().trim();
+    const name = String(file.name || '').toLowerCase().trim();
+    return mime === 'video/mp4' || mime === 'application/mp4' || /\.mp4(?:$|[?#])/i.test(name);
+}
+
+export function getPostVideoCover(post) {
+    if (!post || post.type !== 'video') return '';
+    const postId = post.id ? String(post.id) : '';
+    return post.videoCoverData ||
+        post.thumbnailData ||
+        post.coverData ||
+        (postId && mediaChunkCache.get(`post_covers_${postId}`)) ||
+        '';
+}
+
 export function renderPostMediaTagHTML(post, options = {}) {
     if (!post) return '';
     const rawMedia = post.mediaData || (post.hasChunks && post.id && mediaChunkCache.get(`posts_${post.id}`)) || '';
@@ -34299,9 +34342,11 @@ export function renderPostMediaTagHTML(post, options = {}) {
         const clean = (typeof rawMedia === 'string') ? rawMedia.replace(/#t=[0-9,.]+$/, '') : rawMedia;
         const bUrl = clean ? createBlobUrlFromData(clean) : '';
         const videoSrc = (post.isTrimmed && bUrl && !bUrl.includes('#t=')) ? `${bUrl}#t=0,${post.videoDuration || 120}` : (bUrl || '');
+        const coverUrl = getPostVideoCover(post);
+        const isCoverChunkPending = Boolean(post.hasVideoCoverChunks && !coverUrl && post.id);
         const autoplayAttr = options.autoplay ? ' autoplay' : '';
         const protectedClass = options.autoplay ? '' : ' class="protected-media"';
-        return `<video src="${videoSrc}" ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="video" data-chunk-trimmed="${post.isTrimmed ? 'true' : 'false'}" data-chunk-duration="${post.videoDuration || 120}"` : ''} controls${autoplayAttr} controlsList="nodownload" disablePictureInPicture oncontextmenu="return false;" playsinline${protectedClass}></video>`;
+        return `<video src="${videoSrc}" ${coverUrl ? `poster="${coverUrl}"` : ''} ${isCoverChunkPending ? `data-chunk-post-cover="${post.id}"` : ''} ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="video" data-chunk-trimmed="${post.isTrimmed ? 'true' : 'false'}" data-chunk-duration="${post.videoDuration || 120}"` : ''} controls${autoplayAttr} controlsList="nodownload" disablePictureInPicture oncontextmenu="return false;" playsinline${protectedClass}></video>`;
     }
     return renderPostCarouselHTML(post, options);
 }
@@ -35658,6 +35703,26 @@ function resolvePostChunkedMedia(container, postsList) {
             el.src = fullData;
             el.removeAttribute('data-chunk-post-slide');
         }).catch(err => console.warn('Erro ao carregar slide do carrossel:', err));
+    });
+
+    container.querySelectorAll('[data-chunk-post-cover]').forEach(el => {
+        const postId = el.dataset.chunkPostCover;
+        if (!postId) return;
+        const cacheKey = `post_covers_${postId}`;
+        if (mediaChunkCache.has(cacheKey)) {
+            const cachedCover = mediaChunkCache.get(cacheKey);
+            el.poster = cachedCover;
+            el.setAttribute?.('poster', cachedCover);
+            el.removeAttribute('data-chunk-post-cover');
+            return;
+        }
+        loadMediaWithChunks('post_covers', postId).then(fullData => {
+            if (!fullData) return;
+            mediaChunkCache.set(cacheKey, fullData);
+            el.poster = fullData;
+            el.setAttribute?.('poster', fullData);
+            el.removeAttribute('data-chunk-post-cover');
+        }).catch(err => console.warn('Erro ao carregar capa do vídeo:', err));
     });
 
     if (Array.isArray(postsList) && typeof resolvePostMusicAudio === 'function') {
@@ -37478,6 +37543,13 @@ export function handlePostMediaSelection(file) {
     if (!file) return;
     pendingPostFile = file;
     const isVideo = (file.type && file.type.startsWith('video'));
+    pendingPostVideoCoverData = null;
+    pendingPostVideoCoverInfo = null;
+    postVideoCoverSeq++;
+    const videoCoverInp = document.getElementById('post-video-cover-input');
+    if (videoCoverInp) {
+        try { videoCoverInp.value = ''; } catch (e) {}
+    }
     if (isVideo) {
         pendingPostImages = [];
         const carouselBarEl = document.getElementById('post-carousel-controls-bar');
@@ -37573,6 +37645,7 @@ export function handlePostMediaSelection(file) {
     }
 
     if (postPreviewBox) postPreviewBox.classList.remove('hidden');
+    syncPostVideoCoverUI(Boolean(isVideo && isMp4VideoFile(file)));
     if (window.lucide && typeof window.lucide.createIcons === 'function') {
         window.lucide.createIcons();
     }
@@ -37776,6 +37849,11 @@ export async function handlePostImagesSelection(fileList, { append = false } = {
         return { added: 0, total: pendingPostImages.length, limitReached: false };
     }
 
+    pendingPostVideoCoverData = null;
+    pendingPostVideoCoverInfo = null;
+    postVideoCoverSeq++;
+    syncPostVideoCoverUI(false);
+
     if (!append) {
         pendingPostImages = [];
     } else if (pendingPostImages.length === 0 && pendingPostFile && !(pendingPostFile.type && pendingPostFile.type.startsWith('video'))) {
@@ -37930,6 +38008,133 @@ document.getElementById('post-carousel-strip')?.addEventListener('click', (e) =>
     }
 });
 
+export function syncPostVideoCoverUI(showOption) {
+    if (typeof document === 'undefined') return;
+    const coverBar = document.getElementById('post-video-cover-bar');
+    const coverPreviewWrap = document.getElementById('post-video-cover-preview-wrap');
+    const coverThumb = document.getElementById('post-video-cover-thumb');
+    const coverMeta = document.getElementById('post-video-cover-meta');
+    const coverBtnLabel = document.getElementById('post-video-cover-btn-label');
+
+    const shouldShowBar = typeof showOption === 'boolean'
+        ? showOption
+        : Boolean(pendingPostFile && isMp4VideoFile(pendingPostFile));
+
+    postPreviewBox?.classList?.toggle('has-video-cover-option', shouldShowBar);
+    if (coverBar) coverBar.style.display = shouldShowBar ? 'flex' : 'none';
+
+    const hasCover = Boolean(shouldShowBar && pendingPostVideoCoverData);
+    if (coverPreviewWrap) coverPreviewWrap.style.display = hasCover ? 'inline-flex' : 'none';
+    if (coverThumb) coverThumb.src = hasCover ? pendingPostVideoCoverData : '';
+    if (coverMeta) {
+        const sizeText = pendingPostVideoCoverInfo?.sizeFormatted ? ` (${pendingPostVideoCoverInfo.sizeFormatted})` : '';
+        coverMeta.innerText = hasCover ? `Capa${sizeText}` : 'Capa selecionada';
+    }
+    if (coverBtnLabel) {
+        coverBtnLabel.innerText = hasCover ? 'Trocar capa do vídeo' : 'Adicionar capa do vídeo';
+    }
+
+    const videoEl = postPreview?.querySelector?.('video') || postPreview?.querySelectorAll?.('video')?.[0];
+    if (videoEl) {
+        if (hasCover) {
+            videoEl.poster = pendingPostVideoCoverData;
+            videoEl.setAttribute?.('poster', pendingPostVideoCoverData);
+        } else {
+            videoEl.poster = '';
+            videoEl.removeAttribute?.('poster');
+        }
+    }
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+    }
+}
+
+export function removePendingPostVideoCover() {
+    pendingPostVideoCoverData = null;
+    pendingPostVideoCoverInfo = null;
+    postVideoCoverSeq++;
+    const coverInputEl = document.getElementById('post-video-cover-input');
+    if (coverInputEl) {
+        try { coverInputEl.value = ''; } catch (e) {}
+    }
+    syncPostVideoCoverUI(Boolean(pendingPostFile && isMp4VideoFile(pendingPostFile)));
+}
+
+export async function handlePostVideoCoverSelection(coverFile) {
+    if (!coverFile) return null;
+    if (!pendingPostFile || !isMp4VideoFile(pendingPostFile)) {
+        showToast('Somente Vídeos MP4 🎬', 'A capa personalizada é exibida para vídeos em formato MP4.', 'yellow');
+        return null;
+    }
+    if (!isImagePostFile(coverFile)) {
+        showToast('Arquivo Inválido 🖼️', 'Selecione uma imagem (JPG, PNG ou WebP) para a capa do vídeo.', 'red');
+        return null;
+    }
+
+    const seq = ++postVideoCoverSeq;
+    let compressed = null;
+    try {
+        compressed = await compressImageFileToKB(coverFile, { maxDimension: 1280, targetMaxKB: 250 });
+    } catch (e) {
+        compressed = null;
+    }
+    if (seq !== postVideoCoverSeq || !pendingPostFile || !isMp4VideoFile(pendingPostFile)) {
+        return null;
+    }
+
+    let finalCoverUrl = compressed?.dataUrl || '';
+    if (coverFile.dataUrl && typeof coverFile.dataUrl === 'string' && (!finalCoverUrl || finalCoverUrl.includes('mockpreview'))) {
+        finalCoverUrl = coverFile.dataUrl;
+    }
+    if (!finalCoverUrl) {
+        finalCoverUrl = 'data:image/jpeg;base64,mockpreview';
+    }
+    const sizeBytes = Number(compressed?.sizeBytes) || Number(coverFile.size) || 102400;
+    pendingPostVideoCoverData = finalCoverUrl;
+    pendingPostVideoCoverInfo = {
+        name: coverFile.name || 'capa.jpg',
+        sizeBytes,
+        sizeKB: Math.round(sizeBytes / 1024),
+        sizeFormatted: formatBytesToKB(sizeBytes)
+    };
+
+    const videoEl = postPreview?.querySelector?.('video') || postPreview?.querySelectorAll?.('video')?.[0];
+    if (videoEl) {
+        try {
+            videoEl.pause?.();
+            videoEl.currentTime = 0;
+        } catch (e) {}
+    }
+    syncPostVideoCoverUI(true);
+    return pendingPostVideoCoverData;
+}
+
+const postVideoCoverInput = document.getElementById('post-video-cover-input');
+if (postVideoCoverInput) {
+    postVideoCoverInput.addEventListener('change', (event) => {
+        const coverFile = event?.target?.files?.[0];
+        if (coverFile) {
+            handlePostVideoCoverSelection(coverFile);
+        }
+        try { event.target.value = ''; } catch (err) {}
+    });
+}
+
+document.getElementById('post-add-video-cover-btn')?.addEventListener('click', (e) => {
+    e?.preventDefault?.();
+    if (!pendingPostFile || !isMp4VideoFile(pendingPostFile)) {
+        showToast('Somente Vídeos MP4 🎬', 'Selecione um arquivo de vídeo MP4 para adicionar capa.', 'yellow');
+        return;
+    }
+    document.getElementById('post-video-cover-input')?.click?.();
+});
+
+document.getElementById('remove-video-cover-btn')?.addEventListener('click', (e) => {
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
+    removePendingPostVideoCover();
+});
+
 document.getElementById('remove-post-media-btn')?.addEventListener('click', () => {
     resetPostComposer();
 });
@@ -38070,6 +38275,20 @@ document.getElementById('publish-post-btn')?.addEventListener('click', async () 
                             : rawUrls;
                     })()
                     : null,
+                videoCoverData: (() => {
+                    if (!isVideo || !pendingPostVideoCoverData) return null;
+                    const vLen = typeof mediaPayload === 'string' ? mediaPayload.length : 0;
+                    const coverLen = pendingPostVideoCoverData.length;
+                    const inlineOk = vLen <= MAX_DIRECT_PAYLOAD_CHARS ? (vLen + coverLen <= 450000) : (coverLen <= 350000);
+                    return inlineOk ? pendingPostVideoCoverData : null;
+                })(),
+                hasVideoCoverChunks: (() => {
+                    if (!isVideo || !pendingPostVideoCoverData) return false;
+                    const vLen = typeof mediaPayload === 'string' ? mediaPayload.length : 0;
+                    const coverLen = pendingPostVideoCoverData.length;
+                    const inlineOk = vLen <= MAX_DIRECT_PAYLOAD_CHARS ? (vLen + coverLen <= 450000) : (coverLen <= 350000);
+                    return !inlineOk;
+                })(),
                 mediaSizeKB: pendingPostMediaInfo?.sizeFormatted || formatBytesToKB(file?.size || 102400),
                 isTrimmed: !!(pendingPostMediaInfo && pendingPostMediaInfo.isTrimmed) || !!(file && file.isTrimmed),
                 videoDuration: isVideo ? (pendingPostMediaInfo?.duration || (file && file.duration) || 0) : null,
@@ -38164,6 +38383,13 @@ document.getElementById('publish-post-btn')?.addEventListener('click', async () 
             const shouldChunkSlides = !isVideo && imagesToSave.length > 1 && totalSlidesChars > 450000;
 
             const postDocRef = await saveMediaWithChunks('posts', postDoc, 'mediaData', primaryMediaPayload);
+
+            if (isVideo && pendingPostVideoCoverData && postDocRef && postDocRef.id) {
+                mediaChunkCache.set(`post_covers_${postDocRef.id}`, pendingPostVideoCoverData);
+                if (postDoc.hasVideoCoverChunks) {
+                    await saveMediaWithChunks('post_covers', { postId: postDocRef.id }, 'mediaData', pendingPostVideoCoverData, postDocRef.id);
+                }
+            }
 
             if (!isVideo && imagesToSave.length > 1 && postDocRef && postDocRef.id) {
                 for (let slideIdx = 1; slideIdx < imagesToSave.length; slideIdx++) {
@@ -53970,8 +54196,10 @@ export function renderChannelMediaGrid(items = [], tab = 'inicio', isOwner = fal
         const durationLabel = post.videoDuration ? formatChannelDuration(post.videoDuration) : '';
         const hasMusic = typeof hasPostMusicTrack === 'function' ? hasPostMusicTrack(post) : Boolean(post.music && (post.music.title || post.music.audioUrl || post.music.hasAudioChunks));
         const musicLabel = hasMusic ? `${post.music.title || 'Música'}${post.music.artist ? ` - ${post.music.artist}` : ''}` : '';
+        const videoCoverSrc = (post.type === 'video' && typeof getPostVideoCover === 'function') ? getPostVideoCover(post) : '';
+        const isCoverChunkPending = Boolean(post.type === 'video' && post.hasVideoCoverChunks && !videoCoverSrc && post.id);
         const mediaTag = post.type === 'video'
-            ? `<video src="${src}" ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="video"` : ''} muted playsinline preload="metadata" class="channel-ig-tile-media"></video>`
+            ? `<video src="${src}" ${videoCoverSrc ? `poster="${videoCoverSrc}"` : ''} ${isCoverChunkPending ? `data-chunk-post-cover="${post.id}"` : ''} ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="video"` : ''} muted playsinline preload="metadata" class="channel-ig-tile-media"></video>`
             : `<img src="${src}" ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="image"` : ''} alt="${escapeHTML(post.title || post.caption || (isImageTile ? 'Imagem do canal' : 'Vídeo do canal'))}" class="channel-ig-tile-media">`;
 
         return `
@@ -54737,8 +54965,11 @@ function renderChannelManageItemHTML(post) {
     const chunkAttrs = isChunkPending
         ? `data-chunk-post-id="${escapeHTML(postId)}" data-chunk-type="${post.type === 'video' ? 'video' : 'image'}"`
         : '';
+    const videoCoverSrc = (post.type === 'video' && typeof getPostVideoCover === 'function') ? getPostVideoCover(post) : '';
+    const isCoverChunkPending = Boolean(post.type === 'video' && post.hasVideoCoverChunks && !videoCoverSrc && post.id);
+    const coverChunkAttr = isCoverChunkPending ? `data-chunk-post-cover="${escapeHTML(postId)}"` : '';
     const mediaThumb = post.type === 'video'
-        ? `<video ${thumbSrc ? `src="${thumbSrc}"` : ''} ${chunkAttrs} muted playsinline preload="metadata" class="channel-manage-thumb"></video>`
+        ? `<video ${thumbSrc ? `src="${thumbSrc}"` : ''} ${videoCoverSrc ? `poster="${videoCoverSrc}"` : ''} ${coverChunkAttr} ${chunkAttrs} muted playsinline preload="metadata" class="channel-manage-thumb"></video>`
         : `<img ${thumbSrc ? `src="${thumbSrc}"` : ''} ${chunkAttrs} alt="${escapeHTML(post.title || post.caption || 'Imagem')}" class="channel-manage-thumb">`;
 
     const viewsCount = typeof getPostViewsCount === 'function' ? getPostViewsCount(post) : Number(post.viewsCount || 0);
@@ -55380,6 +55611,13 @@ if (typeof window !== 'undefined') {
     window.setPostCarouselSlide = setPostCarouselSlide;
     window.navigatePostCarousel = navigatePostCarousel;
     window.bindPostCarousels = bindPostCarousels;
+    window.isMp4VideoFile = isMp4VideoFile;
+    window.getPostVideoCover = getPostVideoCover;
+    window.getPendingPostVideoCoverData = getPendingPostVideoCoverData;
+    window.getPendingPostVideoCoverInfo = getPendingPostVideoCoverInfo;
+    window.handlePostVideoCoverSelection = handlePostVideoCoverSelection;
+    window.removePendingPostVideoCover = removePendingPostVideoCover;
+    window.syncPostVideoCoverUI = syncPostVideoCoverUI;
 }
 
 
