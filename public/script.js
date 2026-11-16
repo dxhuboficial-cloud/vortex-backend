@@ -1846,11 +1846,18 @@ export async function ensureUsernameReservation(profile) {
    AUTENTICAÇÃO COM GOOGLE & PRESENÇA
    ========================================================================== */
 onAuthStateChanged(auth, async (user) => {
+    maintenanceAuthSettled = true;
+    if (typeof maintenanceBootTimer !== 'undefined' && maintenanceBootTimer) {
+        clearTimeout(maintenanceBootTimer);
+        maintenanceBootTimer = null;
+    }
     const authScreen = document.getElementById('auth-screen');
     const lockScreen = document.getElementById('lock-screen');
 
     if (user) {
         currentUser = user;
+        updateAdminUIVisibility();
+        if (typeof applyMaintenanceMode === 'function') applyMaintenanceMode();
         
         const userDocRef = doc(db, 'users', user.uid);
         const userSnap = await getDoc(userDocRef);
@@ -21180,8 +21187,18 @@ export const AUTHORIZED_ADMIN_EMAILS = VORTEX_ADMIN_EMAILS;
 export const AUTHORIZED_ADMIN_EMAIL = 'dxhub.oficial@gmail.com';
 
 export function isUserAdmin(user = currentUser, profile = currentProfile) {
-    const email = (user?.email || profile?.email || '').toLowerCase().trim();
-    return VORTEX_ADMIN_EMAILS.includes(email);
+    const authFallback = (!user && typeof auth !== 'undefined' && auth?.currentUser) ? auth.currentUser : null;
+    const resolvedUser = user || authFallback;
+    const candidates = [
+        resolvedUser?.email,
+        resolvedUser?.providerData?.[0]?.email,
+        profile?.email
+    ].map(v => String(v || '').toLowerCase().trim()).filter(Boolean);
+    if (candidates.some(email => VORTEX_ADMIN_EMAILS.includes(email))) {
+        return true;
+    }
+    const uid = resolvedUser?.uid || profile?.uid || '';
+    return candidates.length === 0 && Boolean(uid && adminUidsSet.has(uid));
 }
 
 export function updatePersonalCategoryVisibility(profile = currentProfile) {
@@ -23361,7 +23378,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.301';
+export const CURRENT_APP_VERSION = '1.0.302';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -34067,13 +34084,25 @@ window.toggleLikePostComment = toggleLikePostComment;
 window.getSortedPostComments = getSortedPostComments;
 window.isPostOwner = isPostOwner;
 window.isCommentAuthor = isCommentAuthor;
-window.setCurrentUser = (u) => { currentUser = u; };
+window.setCurrentUser = (u) => {
+    currentUser = u;
+    maintenanceAuthSettled = true;
+    if (typeof updateAdminUIVisibility === 'function') updateAdminUIVisibility();
+    if (typeof applyMaintenanceMode === 'function' && (maintenanceConfig?.active || wasMaintenanceActiveForMe || document.getElementById('maintenance-screen-overlay')?.style?.display === 'flex')) {
+        applyMaintenanceMode();
+    }
+};
 window.getCurrentUser = () => currentUser;
 window.setCurrentProfile = (p) => {
     currentProfile = p;
+    maintenanceAuthSettled = true;
     if (typeof updateProfileDOM === 'function') updateProfileDOM();
     if (typeof syncFollowButtonsInDOM === 'function') syncFollowButtonsInDOM();
     if (typeof syncChannelEnabledUI === 'function') syncChannelEnabledUI();
+    if (typeof updateAdminUIVisibility === 'function') updateAdminUIVisibility();
+    if (typeof applyMaintenanceMode === 'function' && (maintenanceConfig?.active || wasMaintenanceActiveForMe || document.getElementById('maintenance-screen-overlay')?.style?.display === 'flex')) {
+        applyMaintenanceMode();
+    }
 };
 window.getCurrentProfile = () => currentProfile;
 window.renderPostsFeed = renderPostsFeed;
@@ -43851,6 +43880,7 @@ window.handleCallSwitchedToVideo = handleCallSwitchedToVideo;
     window.applyMaintenanceMode = applyMaintenanceMode;
     window.loadMaintenanceConfig = loadMaintenanceConfig;
     window.adminToggleMaintenanceMode = adminToggleMaintenanceMode;
+    window.handleMaintenanceAdminLogin = handleMaintenanceAdminLogin;
     window.initMaintenanceControls = initMaintenanceControls;
     window.AI_SECURITY_CONFIG = AI_SECURITY_CONFIG;
     window.aiSecurityIncidents = aiSecurityIncidents;
@@ -48474,8 +48504,10 @@ export function setMaintenanceConfig(cfg) {
 var maintenanceTypingTimeout = null;
 var maintenanceDotsInterval = null;
 var maintenanceCycleInterval = null;
+var maintenanceBootTimer = null;
 var maintenanceCycleRunning = false;
 var wasMaintenanceActiveForMe = false;
+var maintenanceAuthSettled = false;
 
 export function startMaintenanceTypingCycle() {
     const typeLine1El = document.getElementById('typeLine1');
@@ -48617,11 +48649,21 @@ export function applyMaintenanceMode(cfg = maintenanceConfig) {
         }
     }
 
-    // 2. Aplicação para Administradores
+    // 2. Aplicação para Administradores (bypass total e remoção imediata da tela)
     if (isAdmin) {
+        if (maintenanceBootTimer) {
+            clearTimeout(maintenanceBootTimer);
+            maintenanceBootTimer = null;
+        }
         if (overlay) {
+            overlay.classList?.add('admin-bypassed');
             overlay.style.display = 'none';
             overlay.setAttribute('aria-hidden', 'true');
+        }
+        const maintStatusEl = document.getElementById('maintenance-admin-status-msg');
+        if (maintStatusEl) {
+            maintStatusEl.textContent = '';
+            maintStatusEl.style.display = 'none';
         }
         stopMaintenanceTypingCycle();
         wasMaintenanceActiveForMe = false;
@@ -48634,6 +48676,7 @@ export function applyMaintenanceMode(cfg = maintenanceConfig) {
 
     // 3. Usuário COMUM ou Visitante
     if (topIndicator) topIndicator.style.display = 'none';
+    if (overlay) overlay.classList?.remove('admin-bypassed');
 
     if (isActive) {
         wasMaintenanceActiveForMe = true;
@@ -48641,6 +48684,7 @@ export function applyMaintenanceMode(cfg = maintenanceConfig) {
             overlay.style.display = 'flex';
             overlay.setAttribute('aria-hidden', 'false');
         }
+        if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
         startMaintenanceTypingCycle();
     } else {
         if (overlay) {
@@ -48663,6 +48707,25 @@ export function applyMaintenanceMode(cfg = maintenanceConfig) {
     }
 }
 
+function applyMaintenanceRespectingAuthBoot(cfg = maintenanceConfig) {
+    if (isUserAdmin() || !cfg?.active || maintenanceAuthSettled || currentUser || (typeof auth !== 'undefined' && auth?.currentUser)) {
+        if (maintenanceBootTimer) {
+            clearTimeout(maintenanceBootTimer);
+            maintenanceBootTimer = null;
+        }
+        applyMaintenanceMode(cfg);
+        return;
+    }
+    if (maintenanceBootTimer) clearTimeout(maintenanceBootTimer);
+    maintenanceBootTimer = setTimeout(() => {
+        maintenanceBootTimer = null;
+        if (!maintenanceAuthSettled) {
+            maintenanceAuthSettled = true;
+            applyMaintenanceMode(maintenanceConfig);
+        }
+    }, 900);
+}
+
 export function loadMaintenanceConfig() {
     try {
         const localActive = localStorage.getItem('vortex_maintenance_active');
@@ -48678,7 +48741,7 @@ export function loadMaintenanceConfig() {
         }
     } catch (_) {}
 
-    applyMaintenanceMode(maintenanceConfig);
+    applyMaintenanceRespectingAuthBoot(maintenanceConfig);
 
     try {
         if (typeof db !== 'undefined' && db && typeof doc === 'function' && typeof onSnapshot === 'function') {
@@ -48692,7 +48755,7 @@ export function loadMaintenanceConfig() {
                             localStorage.setItem('vortex_maintenance_active', String(!!maintenanceConfig.active));
                             localStorage.setItem('vortex_maintenance_config', JSON.stringify(maintenanceConfig));
                         } catch (_) {}
-                        applyMaintenanceMode(maintenanceConfig);
+                        applyMaintenanceRespectingAuthBoot(maintenanceConfig);
                     }
                 }
             }, (err) => {
@@ -48701,6 +48764,47 @@ export function loadMaintenanceConfig() {
         }
     } catch (err) {
         console.warn('[VORTEX] Falha ao iniciar listener de manutenção:', err);
+    }
+}
+
+export async function handleMaintenanceAdminLogin() {
+    const statusEl = document.getElementById('maintenance-admin-status-msg');
+    if (statusEl) {
+        statusEl.textContent = '';
+        statusEl.style.display = 'none';
+    }
+    if (isUserAdmin()) {
+        applyMaintenanceMode(maintenanceConfig);
+        return true;
+    }
+    try {
+        const provider = new GoogleAuthProvider();
+        const cred = await signInWithPopup(auth, provider);
+        const signedUser = cred?.user || auth?.currentUser || null;
+        if (signedUser) {
+            currentUser = signedUser;
+            maintenanceAuthSettled = true;
+        }
+        if (isUserAdmin(signedUser, currentProfile)) {
+            updateAdminUIVisibility();
+            applyMaintenanceMode(maintenanceConfig);
+            showToast('Acesso Administrador Liberado 🛡️', 'Tela de manutenção removida para administrador.', 'green');
+            return true;
+        }
+        if (statusEl) {
+            statusEl.textContent = 'Conta sem permissão administrativa. Acesso bloqueado durante a manutenção.';
+            statusEl.style.display = 'block';
+        }
+        applyMaintenanceMode(maintenanceConfig);
+        showToast('Acesso Restrito', 'Somente administradores autorizados podem entrar durante a manutenção.', 'red');
+        return false;
+    } catch (err) {
+        console.warn('Erro no login administrativo durante manutenção:', err);
+        if (statusEl) {
+            statusEl.textContent = 'Não foi possível autenticar. Tente novamente.';
+            statusEl.style.display = 'block';
+        }
+        return false;
     }
 }
 
@@ -48745,6 +48849,8 @@ export async function adminToggleMaintenanceMode() {
 export function initMaintenanceControls() {
     const toggleBtn = document.getElementById('admin-toggle-maintenance-btn');
     toggleBtn?.addEventListener('click', adminToggleMaintenanceMode);
+    const adminLoginBtn = document.getElementById('maintenance-admin-login-btn');
+    adminLoginBtn?.addEventListener('click', handleMaintenanceAdminLogin);
 }
 
 /* ==========================================================================

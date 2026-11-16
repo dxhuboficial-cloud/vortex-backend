@@ -34145,6 +34145,57 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
     opacity: 0.56;
 }
 
+/* ==========================================================================
+   v1.0.302: Bypass Imediato & Acesso Administrativo na Manutenção
+   ========================================================================== */
+#maintenance-screen-overlay.admin-bypassed {
+    display: none !important;
+}
+#toast-container {
+    z-index: 1000010 !important;
+}
+.vortex-maint-admin-actions {
+    margin-top: 28px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+.vortex-maint-admin-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 16px;
+    border-radius: 999px;
+    border: 1px solid rgba(25, 28, 36, 0.25);
+    background: rgba(25, 28, 36, 0.88);
+    color: #ffe052;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
+    transition: transform 0.14s ease, background 0.18s ease;
+}
+.vortex-maint-admin-btn:hover {
+    background: #14171f;
+    transform: translateY(-1px);
+}
+.vortex-maint-admin-btn i,
+.vortex-maint-admin-btn svg {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+}
+.vortex-maint-admin-status {
+    margin: 0;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #991b1b;
+    background: rgba(255, 255, 255, 0.78);
+    padding: 6px 12px;
+    border-radius: 999px;
+}
+
 
 
 

@@ -1,6 +1,6 @@
 {
-  "version": "1.0.301",
-  "build": 301,
+  "version": "1.0.302",
+  "build": 302,
   "releaseDate": "2026-11-16",
-  "notes": "Opção para ativar/desativar o canal: com o canal desativado apenas Story é permitido e postagens de fotos e vídeos ficam bloqueadas até reativar v1.0.301"
+  "notes": "Tela de manutenção removida definitivamente para administradores em qualquer fluxo de boot ou login v1.0.302"
 }
