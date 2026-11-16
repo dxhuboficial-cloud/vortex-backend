@@ -1,6 +1,6 @@
 {
-  "version": "1.0.302",
-  "build": 302,
+  "version": "1.0.303",
+  "build": 303,
   "releaseDate": "2026-11-16",
-  "notes": "Tela de manutenção removida definitivamente para administradores em qualquer fluxo de boot ou login v1.0.302"
+  "notes": "Botão Acesso Administrador na tela de manutenção exibido exclusivamente para os 3 emails Gmail dos administradores v1.0.303"
 }

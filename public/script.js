@@ -21235,6 +21235,10 @@ export function updateAdminUIVisibility() {
         adminPanel.classList.remove('active');
     }
 
+    if (typeof syncMaintenanceAdminButtonVisibility === 'function') {
+        syncMaintenanceAdminButtonVisibility();
+    }
+
     updateCompanyLinkSectionVisibility();
     updateStatusBusinessLinkVisibility();
 }
@@ -23378,7 +23382,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.302';
+export const CURRENT_APP_VERSION = '1.0.303';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -43880,6 +43884,8 @@ window.handleCallSwitchedToVideo = handleCallSwitchedToVideo;
     window.applyMaintenanceMode = applyMaintenanceMode;
     window.loadMaintenanceConfig = loadMaintenanceConfig;
     window.adminToggleMaintenanceMode = adminToggleMaintenanceMode;
+    window.shouldShowMaintenanceAdminButton = shouldShowMaintenanceAdminButton;
+    window.syncMaintenanceAdminButtonVisibility = syncMaintenanceAdminButtonVisibility;
     window.handleMaintenanceAdminLogin = handleMaintenanceAdminLogin;
     window.initMaintenanceControls = initMaintenanceControls;
     window.AI_SECURITY_CONFIG = AI_SECURITY_CONFIG;
@@ -48608,6 +48614,55 @@ export function stopMaintenanceTypingCycle() {
     }
 }
 
+export function shouldShowMaintenanceAdminButton(user = currentUser, profile = currentProfile) {
+    if (isUserAdmin(user, profile)) {
+        const verifiedEmail = [
+            user?.email,
+            user?.providerData?.[0]?.email,
+            profile?.email,
+            (typeof auth !== 'undefined' ? auth?.currentUser?.email : '')
+        ].map(v => String(v || '').toLowerCase().trim()).find(e => VORTEX_ADMIN_EMAILS.includes(e));
+        if (verifiedEmail) {
+            try {
+                if (typeof localStorage !== 'undefined') {
+                    localStorage.setItem('vortex_admin_known_email', verifiedEmail);
+                }
+            } catch (_) {}
+        }
+        return true;
+    }
+
+    const authFallback = (!user && typeof auth !== 'undefined' && auth?.currentUser) ? auth.currentUser : null;
+    const resolvedUser = user || authFallback;
+    const activeEmail = String(
+        resolvedUser?.email ||
+        resolvedUser?.providerData?.[0]?.email ||
+        profile?.email ||
+        ''
+    ).toLowerCase().trim();
+
+    if (activeEmail) {
+        return false;
+    }
+
+    try {
+        if (typeof localStorage !== 'undefined') {
+            const knownAdminEmail = String(localStorage.getItem('vortex_admin_known_email') || '').toLowerCase().trim();
+            return Boolean(knownAdminEmail && VORTEX_ADMIN_EMAILS.includes(knownAdminEmail));
+        }
+    } catch (_) {}
+    return false;
+}
+
+export function syncMaintenanceAdminButtonVisibility(user = currentUser, profile = currentProfile) {
+    const show = shouldShowMaintenanceAdminButton(user, profile);
+    const wrap = document.getElementById('maintenance-admin-actions');
+    const btn = document.getElementById('maintenance-admin-login-btn');
+    if (wrap) wrap.style.display = show ? 'flex' : 'none';
+    if (btn) btn.style.display = show ? 'inline-flex' : 'none';
+    return show;
+}
+
 export function applyMaintenanceMode(cfg = maintenanceConfig) {
     const overlay = document.getElementById('maintenance-screen-overlay');
     const topIndicator = document.getElementById('admin-maint-top-indicator');
@@ -48619,6 +48674,7 @@ export function applyMaintenanceMode(cfg = maintenanceConfig) {
 
     const isActive = !!(cfg && cfg.active);
     const isAdmin = isUserAdmin(currentUser, currentProfile);
+    syncMaintenanceAdminButtonVisibility(currentUser, currentProfile);
 
     // 1. Atualização dos componentes visuais do Painel ADM
     if (banner) {
@@ -48851,6 +48907,7 @@ export function initMaintenanceControls() {
     toggleBtn?.addEventListener('click', adminToggleMaintenanceMode);
     const adminLoginBtn = document.getElementById('maintenance-admin-login-btn');
     adminLoginBtn?.addEventListener('click', handleMaintenanceAdminLogin);
+    syncMaintenanceAdminButtonVisibility(currentUser, currentProfile);
 }
 
 /* ==========================================================================
