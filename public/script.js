@@ -1853,6 +1853,9 @@ export async function ensureUsernameReservation(profile) {
    ========================================================================== */
 onAuthStateChanged(auth, async (user) => {
     maintenanceAuthSettled = true;
+    if (typeof markVortexLoadingAuthSettled === 'function') {
+        markVortexLoadingAuthSettled();
+    }
     if (typeof maintenanceBootTimer !== 'undefined' && maintenanceBootTimer) {
         clearTimeout(maintenanceBootTimer);
         maintenanceBootTimer = null;
@@ -23388,7 +23391,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.308';
+export const CURRENT_APP_VERSION = '1.0.309';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -56699,6 +56702,521 @@ if (typeof window !== 'undefined') {
     window.getPostVisibilityBadgeHTML = getPostVisibilityBadgeHTML;
     window.setPostComposerVisibility = setPostComposerVisibility;
     window.togglePostVisibility = togglePostVisibility;
+}
+
+/* ==========================================================================
+   v1.0.309: TELA DE CARREGAMENTO OFICIAL VORTEX VIP
+   Estrelas cintilantes, meteoros neon diagonais, 4 estágios, barra shimmer,
+   selo de criptografia quântica e efeito warp ao concluir.
+   ========================================================================== */
+export const VORTEX_LOADING_METEOR_COLORS = Object.freeze([
+    '#00E5FF',
+    '#FF1E8A',
+    '#A855F7',
+    '#10B981',
+    '#FFE600',
+    '#F43F5E'
+]);
+
+export const VORTEX_LOADING_STAR_COLORS = Object.freeze([
+    '#FFFFFF',
+    '#FFFFFF',
+    '#FFFFFF',
+    '#FFE600',
+    '#38BDF8',
+    '#F472B6'
+]);
+
+export const VORTEX_LOADING_STAGES = Object.freeze([
+    { threshold: 0, phase: 'Autenticação VIP', status: 'Inicializando protocolo de conexão segura...' },
+    { threshold: 26, phase: 'Criptografia Quântica', status: 'Validando chaves ponta a ponta do dispositivo...' },
+    { threshold: 55, phase: 'Feed & Mensagens', status: 'Sincronizando canais VIP, grupos e mídia em tempo real...' },
+    { threshold: 82, phase: 'Finalizando Ambiente', status: 'Preparando interface VORTEX VIP...' },
+    { threshold: 100, phase: 'Sistema Pronto', status: 'Conexão quântica estabelecida. Bem-vindo ao VORTEX VIP!' }
+]);
+
+var vortexLoadingState = {
+    initialized: false,
+    progress: 0,
+    loadingTimer: null,
+    animFrameId: null,
+    autoDismissTimer: null,
+    fadeHideTimer: null,
+    loopRestartTimer: null,
+    stageFadeTimer: null,
+    toastTimer: null,
+    isLooping: false,
+    authSettled: false,
+    dismissed: false,
+    currentStageIndex: -1,
+    warpMultiplier: 1,
+    width: 0,
+    height: 0,
+    mouseX: 0,
+    mouseY: 0,
+    stars: [],
+    meteors: []
+};
+
+export function getVortexLoadingState() {
+    return {
+        ...vortexLoadingState,
+        starsCount: vortexLoadingState.stars.length,
+        meteorsCount: vortexLoadingState.meteors.length
+    };
+}
+
+function unrefVortexLoadingHandle(handle) {
+    try {
+        if (handle && typeof handle.unref === 'function') handle.unref();
+    } catch (_) {}
+}
+
+function clearVortexLoadingTimers({ cancelFrame = false } = {}) {
+    ['loadingTimer', 'autoDismissTimer', 'fadeHideTimer', 'loopRestartTimer', 'stageFadeTimer'].forEach(key => {
+        if (vortexLoadingState[key]) {
+            clearInterval(vortexLoadingState[key]);
+            clearTimeout(vortexLoadingState[key]);
+            vortexLoadingState[key] = null;
+        }
+    });
+    if (cancelFrame && vortexLoadingState.animFrameId && typeof cancelAnimationFrame === 'function') {
+        cancelAnimationFrame(vortexLoadingState.animFrameId);
+        vortexLoadingState.animFrameId = null;
+    }
+}
+
+export function showVortexLoadingToast(message) {
+    if (typeof document === 'undefined') return;
+    const toastEl = document.getElementById('vortex-toast');
+    const toastMsg = document.getElementById('toast-message');
+    if (toastMsg) toastMsg.innerText = String(message || 'Conexão estabelecida com sucesso!');
+    if (!toastEl) return;
+
+    if (vortexLoadingState.toastTimer) {
+        clearTimeout(vortexLoadingState.toastTimer);
+        vortexLoadingState.toastTimer = null;
+    }
+    toastEl.classList?.add('is-visible');
+    vortexLoadingState.toastTimer = setTimeout(() => {
+        toastEl.classList?.remove('is-visible');
+        vortexLoadingState.toastTimer = null;
+    }, 3200);
+    unrefVortexLoadingHandle(vortexLoadingState.toastTimer);
+}
+
+function createVortexLoadingMeteor(randomStart = false) {
+    const w = vortexLoadingState.width || (typeof window !== 'undefined' ? window.innerWidth : 1280) || 1280;
+    const h = vortexLoadingState.height || (typeof window !== 'undefined' ? window.innerHeight : 720) || 720;
+    const angle = (38 + (Math.random() * 6 - 3)) * (Math.PI / 180);
+    const speed = Math.random() * 3.2 + 2.2;
+    const length = Math.random() * 130 + 75;
+    const color = VORTEX_LOADING_METEOR_COLORS[Math.floor(Math.random() * VORTEX_LOADING_METEOR_COLORS.length)];
+
+    let startX;
+    let startY;
+    if (randomStart) {
+        startX = Math.random() * (w + 300);
+        startY = Math.random() * (h + 300) - 150;
+    } else if (Math.random() > 0.35) {
+        startX = Math.random() * (w + 250);
+        startY = -40 - Math.random() * 120;
+    } else {
+        startX = w + 40 + Math.random() * 120;
+        startY = Math.random() * (h * 0.85);
+    }
+
+    return {
+        x: startX,
+        y: startY,
+        vx: -Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        angle,
+        length,
+        color,
+        width: Math.random() * 1.3 + 1.1,
+        opacity: Math.random() * 0.45 + 0.45
+    };
+}
+
+function populateVortexLoadingScene() {
+    const w = vortexLoadingState.width || 1280;
+    const h = vortexLoadingState.height || 720;
+    const area = w * h;
+    const starCount = Math.min(Math.floor(area / 6500), 220);
+    const meteorCount = Math.min(Math.max(Math.floor(w / 85), 10), 24);
+
+    const nextStars = [];
+    for (let i = 0; i < starCount; i++) {
+        nextStars.push({
+            x: Math.random() * w,
+            y: Math.random() * h,
+            radius: Math.random() * 1.4 + 0.4,
+            color: VORTEX_LOADING_STAR_COLORS[Math.floor(Math.random() * VORTEX_LOADING_STAR_COLORS.length)],
+            alpha: Math.random() * 0.7 + 0.2,
+            twinkleSpeed: Math.random() * 0.02 + 0.005,
+            twinklePhase: Math.random() * Math.PI * 2,
+            depth: Math.random() * 0.6 + 0.2
+        });
+    }
+
+    const nextMeteors = [];
+    for (let i = 0; i < meteorCount; i++) {
+        nextMeteors.push(createVortexLoadingMeteor(true));
+    }
+
+    vortexLoadingState.stars = nextStars;
+    vortexLoadingState.meteors = nextMeteors;
+}
+
+function resizeVortexLoadingCanvas() {
+    if (typeof document === 'undefined' || typeof window === 'undefined') return;
+    const canvas = document.getElementById('vortex-canvas');
+    if (!canvas) return;
+    const ctx = typeof canvas.getContext === 'function' ? canvas.getContext('2d') : null;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = window.innerWidth || 1280;
+    const h = window.innerHeight || 720;
+    vortexLoadingState.width = w;
+    vortexLoadingState.height = h;
+    if (ctx) {
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+        if (typeof ctx.setTransform === 'function') {
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
+    }
+    populateVortexLoadingScene();
+}
+
+function renderVortexLoadingBackgroundFrame() {
+    if (vortexLoadingState.dismissed) {
+        vortexLoadingState.animFrameId = null;
+        return;
+    }
+    if (typeof document === 'undefined') return;
+    const canvas = document.getElementById('vortex-canvas');
+    const ctx = (canvas && typeof canvas.getContext === 'function') ? canvas.getContext('2d') : null;
+    if (!ctx || typeof ctx.fillRect !== 'function' || typeof ctx.beginPath !== 'function') {
+        vortexLoadingState.animFrameId = null;
+        return;
+    }
+
+    const w = vortexLoadingState.width || (typeof window !== 'undefined' ? window.innerWidth : 1280) || 1280;
+    const h = vortexLoadingState.height || (typeof window !== 'undefined' ? window.innerHeight : 720) || 720;
+
+    ctx.fillStyle = '#06060A';
+    ctx.fillRect(0, 0, w, h);
+
+    const parallaxX = (vortexLoadingState.mouseX - w / 2) * 0.015;
+    const parallaxY = (vortexLoadingState.mouseY - h / 2) * 0.015;
+
+    for (let i = 0; i < vortexLoadingState.stars.length; i++) {
+        const s = vortexLoadingState.stars[i];
+        s.twinklePhase += s.twinkleSpeed;
+        const currentAlpha = s.alpha * (0.65 + 0.35 * Math.sin(s.twinklePhase));
+        const drawX = s.x + parallaxX * s.depth;
+        const drawY = s.y + parallaxY * s.depth;
+
+        ctx.beginPath();
+        ctx.arc(drawX, drawY, s.radius, 0, Math.PI * 2);
+        ctx.fillStyle = s.color;
+        ctx.globalAlpha = currentAlpha;
+        ctx.fill();
+    }
+
+    ctx.globalAlpha = 1;
+    for (let i = 0; i < vortexLoadingState.meteors.length; i++) {
+        const m = vortexLoadingState.meteors[i];
+        m.x += m.vx * vortexLoadingState.warpMultiplier;
+        m.y += m.vy * vortexLoadingState.warpMultiplier;
+
+        const tailLength = m.length * (vortexLoadingState.warpMultiplier > 1 ? 1.8 : 1);
+        const tailX = m.x + Math.cos(m.angle) * tailLength;
+        const tailY = m.y - Math.sin(m.angle) * tailLength;
+
+        const gradient = ctx.createLinearGradient(m.x, m.y, tailX, tailY);
+        gradient.addColorStop(0, '#FFFFFF');
+        gradient.addColorStop(0.15, m.color);
+        gradient.addColorStop(1, 'rgba(6, 6, 10, 0)');
+
+        ctx.beginPath();
+        ctx.moveTo(m.x, m.y);
+        ctx.lineTo(tailX, tailY);
+        ctx.strokeStyle = gradient;
+        ctx.lineWidth = m.width;
+        ctx.lineCap = 'round';
+        ctx.globalAlpha = m.opacity;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(m.x, m.y, m.width * 1.15, 0, Math.PI * 2);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.globalAlpha = Math.min(m.opacity + 0.3, 1);
+        ctx.fill();
+
+        if (tailX < -60 || tailY > h + 60) {
+            vortexLoadingState.meteors[i] = createVortexLoadingMeteor(false);
+        }
+    }
+
+    ctx.globalAlpha = 1;
+    if (typeof requestAnimationFrame === 'function') {
+        vortexLoadingState.animFrameId = requestAnimationFrame(renderVortexLoadingBackgroundFrame);
+    }
+}
+
+export function dismissVortexLoadingScreen({ withWarp = true, showWelcomeToast = false, delayMs = 0 } = {}) {
+    if (typeof document === 'undefined') return false;
+    const screenEl = document.getElementById('vortex-loading-screen');
+    if (!screenEl) return false;
+
+    if (withWarp) {
+        vortexLoadingState.warpMultiplier = 6.5;
+    }
+    if (showWelcomeToast) {
+        showVortexLoadingToast('Acesso VIP autorizado! Carregando painel principal...');
+    }
+
+    const performHide = () => {
+        if (vortexLoadingState.loadingTimer) {
+            clearInterval(vortexLoadingState.loadingTimer);
+            vortexLoadingState.loadingTimer = null;
+        }
+        vortexLoadingState.dismissed = true;
+        vortexLoadingState.warpMultiplier = 1;
+        screenEl.classList?.add('is-hiding');
+        screenEl.setAttribute?.('aria-hidden', 'true');
+
+        if (vortexLoadingState.fadeHideTimer) {
+            clearTimeout(vortexLoadingState.fadeHideTimer);
+        }
+        const finalizeDisplayNone = () => {
+            screenEl.classList?.add('is-hidden');
+            screenEl.style.display = 'none';
+            if (vortexLoadingState.animFrameId && typeof cancelAnimationFrame === 'function') {
+                cancelAnimationFrame(vortexLoadingState.animFrameId);
+                vortexLoadingState.animFrameId = null;
+            }
+        };
+        if (delayMs > 0 || (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function')) {
+            vortexLoadingState.fadeHideTimer = setTimeout(finalizeDisplayNone, 520);
+            unrefVortexLoadingHandle(vortexLoadingState.fadeHideTimer);
+        } else {
+            finalizeDisplayNone();
+        }
+    };
+
+    if (delayMs > 0) {
+        if (vortexLoadingState.autoDismissTimer) {
+            clearTimeout(vortexLoadingState.autoDismissTimer);
+        }
+        vortexLoadingState.autoDismissTimer = setTimeout(performHide, delayMs);
+        unrefVortexLoadingHandle(vortexLoadingState.autoDismissTimer);
+    } else {
+        performHide();
+    }
+    return true;
+}
+
+export function updateVortexLoadingUI(value) {
+    const clamped = Math.max(0, Math.min(100, Number(value) || 0));
+    const rounded = Math.floor(clamped);
+    vortexLoadingState.progress = clamped;
+
+    if (typeof document === 'undefined') return rounded;
+
+    const fillEl = document.getElementById('progress-bar-fill');
+    const pctEl = document.getElementById('loading-percentage');
+    const phaseEl = document.getElementById('loading-phase-label');
+    const statusEl = document.getElementById('loading-status-text');
+    const completeEl = document.getElementById('complete-actions');
+
+    if (fillEl) fillEl.style.width = `${clamped}%`;
+    if (pctEl) pctEl.innerText = `${rounded}%`;
+
+    const activeSteps = clamped >= 100 ? 4 : Math.floor(clamped / 25) + 1;
+    for (let i = 1; i <= 4; i++) {
+        const stepEl = document.getElementById(`step-${i}`);
+        if (stepEl) {
+            stepEl.classList?.toggle('is-active', i <= activeSteps);
+        }
+    }
+
+    let stageIdx = 0;
+    for (let i = VORTEX_LOADING_STAGES.length - 1; i >= 0; i--) {
+        if (rounded >= VORTEX_LOADING_STAGES[i].threshold) {
+            stageIdx = i;
+            break;
+        }
+    }
+
+    if (stageIdx !== vortexLoadingState.currentStageIndex) {
+        vortexLoadingState.currentStageIndex = stageIdx;
+        const stage = VORTEX_LOADING_STAGES[stageIdx];
+        if (phaseEl) phaseEl.innerText = stage.phase;
+        if (statusEl) {
+            statusEl.style.opacity = '0';
+            if (vortexLoadingState.stageFadeTimer) {
+                clearTimeout(vortexLoadingState.stageFadeTimer);
+                vortexLoadingState.stageFadeTimer = null;
+            }
+            const applyStageText = () => {
+                statusEl.innerText = stage.status;
+                statusEl.style.opacity = '1';
+                vortexLoadingState.stageFadeTimer = null;
+            };
+            if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+                vortexLoadingState.stageFadeTimer = setTimeout(applyStageText, 150);
+                unrefVortexLoadingHandle(vortexLoadingState.stageFadeTimer);
+            } else {
+                applyStageText();
+            }
+        }
+    }
+
+    if (rounded >= 100) {
+        if (completeEl) completeEl.classList?.add('is-ready');
+        if (vortexLoadingState.isLooping) {
+            if (vortexLoadingState.loopRestartTimer) {
+                clearTimeout(vortexLoadingState.loopRestartTimer);
+            }
+            vortexLoadingState.loopRestartTimer = setTimeout(() => {
+                if (vortexLoadingState.isLooping) startVortexLoadingScreen();
+            }, 1800);
+            unrefVortexLoadingHandle(vortexLoadingState.loopRestartTimer);
+        } else if (!vortexLoadingState.dismissed && !vortexLoadingState.autoDismissTimer) {
+            dismissVortexLoadingScreen({ withWarp: true, showWelcomeToast: false, delayMs: 900 });
+        }
+    }
+    return rounded;
+}
+
+export function startVortexLoadingScreen({ showScreen = true } = {}) {
+    clearVortexLoadingTimers({ cancelFrame: false });
+    vortexLoadingState.progress = 0;
+    vortexLoadingState.currentStageIndex = -1;
+    vortexLoadingState.warpMultiplier = 1;
+    vortexLoadingState.dismissed = false;
+
+    if (typeof document !== 'undefined') {
+        const screenEl = document.getElementById('vortex-loading-screen');
+        if (screenEl && showScreen) {
+            screenEl.classList?.remove('is-hiding', 'is-hidden');
+            screenEl.style.display = '';
+            screenEl.setAttribute?.('aria-hidden', 'false');
+        }
+        const completeEl = document.getElementById('complete-actions');
+        if (completeEl) completeEl.classList?.remove('is-ready');
+    }
+
+    updateVortexLoadingUI(0);
+
+    if (!vortexLoadingState.animFrameId && typeof requestAnimationFrame === 'function') {
+        const canvas = typeof document !== 'undefined' ? document.getElementById('vortex-canvas') : null;
+        const ctx = (canvas && typeof canvas.getContext === 'function') ? canvas.getContext('2d') : null;
+        if (ctx && typeof ctx.fillRect === 'function') {
+            renderVortexLoadingBackgroundFrame();
+        }
+    }
+
+    vortexLoadingState.loadingTimer = setInterval(() => {
+        if (vortexLoadingState.progress >= 100) {
+            if (vortexLoadingState.loadingTimer) {
+                clearInterval(vortexLoadingState.loadingTimer);
+                vortexLoadingState.loadingTimer = null;
+            }
+            updateVortexLoadingUI(100);
+            return;
+        }
+        let increment = 0;
+        if (vortexLoadingState.progress < 30) {
+            increment = Math.random() * 2.4 + 1.1;
+        } else if (vortexLoadingState.progress < 75) {
+            increment = Math.random() * 1.6 + 0.5;
+        } else {
+            increment = Math.random() * 2.2 + 0.9;
+        }
+        const nextVal = Math.min(vortexLoadingState.progress + increment, 100);
+        updateVortexLoadingUI(nextVal);
+    }, 65);
+    unrefVortexLoadingHandle(vortexLoadingState.loadingTimer);
+}
+
+export function markVortexLoadingAuthSettled() {
+    vortexLoadingState.authSettled = true;
+}
+
+export function initVortexLoadingScreen() {
+    if (typeof document === 'undefined' || typeof window === 'undefined') return false;
+    const screenEl = document.getElementById('vortex-loading-screen');
+    if (!screenEl) return false;
+
+    vortexLoadingState.mouseX = (window.innerWidth || 1280) / 2;
+    vortexLoadingState.mouseY = (window.innerHeight || 720) / 2;
+    resizeVortexLoadingCanvas();
+
+    if (!vortexLoadingState.initialized) {
+        vortexLoadingState.initialized = true;
+        window.addEventListener?.('resize', resizeVortexLoadingCanvas);
+        window.addEventListener?.('mousemove', (e) => {
+            if (e) {
+                vortexLoadingState.mouseX = e.clientX || 0;
+                vortexLoadingState.mouseY = e.clientY || 0;
+            }
+        });
+        window.addEventListener?.('touchmove', (e) => {
+            if (e?.touches && e.touches.length > 0) {
+                vortexLoadingState.mouseX = e.touches[0].clientX || 0;
+                vortexLoadingState.mouseY = e.touches[0].clientY || 0;
+            }
+        }, { passive: true });
+
+        document.getElementById('replay-btn')?.addEventListener('click', () => {
+            startVortexLoadingScreen({ showScreen: true });
+        });
+
+        const loopBtn = document.getElementById('loop-toggle-btn');
+        loopBtn?.addEventListener('click', () => {
+            vortexLoadingState.isLooping = !vortexLoadingState.isLooping;
+            loopBtn.innerText = vortexLoadingState.isLooping ? 'Loop: On' : 'Loop: Off';
+            loopBtn.classList?.toggle('is-loop-on', vortexLoadingState.isLooping);
+            if (vortexLoadingState.isLooping && vortexLoadingState.autoDismissTimer) {
+                clearTimeout(vortexLoadingState.autoDismissTimer);
+                vortexLoadingState.autoDismissTimer = null;
+            }
+            if (vortexLoadingState.isLooping && vortexLoadingState.progress >= 100) {
+                startVortexLoadingScreen({ showScreen: true });
+            }
+        });
+
+        document.getElementById('enter-btn')?.addEventListener('click', () => {
+            vortexLoadingState.isLooping = false;
+            if (loopBtn) {
+                loopBtn.innerText = 'Loop: Off';
+                loopBtn.classList?.remove('is-loop-on');
+            }
+            dismissVortexLoadingScreen({ withWarp: true, showWelcomeToast: true, delayMs: 450 });
+        });
+    }
+
+    startVortexLoadingScreen({ showScreen: true });
+    return true;
+}
+
+if (typeof window !== 'undefined') {
+    window.VORTEX_LOADING_STAGES = VORTEX_LOADING_STAGES;
+    window.VORTEX_LOADING_METEOR_COLORS = VORTEX_LOADING_METEOR_COLORS;
+    window.VORTEX_LOADING_STAR_COLORS = VORTEX_LOADING_STAR_COLORS;
+    window.getVortexLoadingState = getVortexLoadingState;
+    window.showVortexLoadingToast = showVortexLoadingToast;
+    window.updateVortexLoadingUI = updateVortexLoadingUI;
+    window.startVortexLoadingScreen = startVortexLoadingScreen;
+    window.dismissVortexLoadingScreen = dismissVortexLoadingScreen;
+    window.markVortexLoadingAuthSettled = markVortexLoadingAuthSettled;
+    window.initVortexLoadingScreen = initVortexLoadingScreen;
+
+    initVortexLoadingScreen();
 }
 
 

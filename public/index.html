@@ -35,13 +35,17 @@
     <meta itemprop="image" content="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
     <link rel="image_src" type="image/png" href="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
 
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.308">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.308">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.308">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.308">
-    <link rel="stylesheet" href="style.css?v=1.0.308">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.309">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.309">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.309">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.309">
+    <!-- Fonte Inter para Tela de Carregamento e UI -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=1.0.309">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.308" id="app-manifest-link">
+    <link rel="manifest" href="manifest.json?v=1.0.309" id="app-manifest-link">
     <meta name="theme-color" content="#39ff14" id="app-theme-color-meta">
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#39ff14" id="app-theme-color-meta-dark">
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#39ff14" id="app-theme-color-meta-light">
@@ -50,8 +54,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.308">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.308">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.309">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.309">
     <!-- Sincronização Dinâmica da Barra de Status e Barra de Navegação do Celular -->
     <script>
         (function() {
@@ -7318,6 +7322,128 @@
     </div> <!-- Fim do app-container -->
 
     <!-- =========================================================
+         TELA DE CARREGAMENTO OFICIAL VORTEX VIP (v1.0.309)
+         Céu estrelado, meteoros neon diagonais, anéis cósmicos, barra de progresso
+         e transição suave com efeito dobra espacial ("warp") ao entrar.
+         ========================================================= -->
+    <div id="vortex-loading-screen" class="vortex-loading-screen" role="status" aria-live="polite" aria-label="Tela de carregamento VORTEX VIP">
+        <!-- Canvas de Fundo: Estrelas cintilantes e meteoros neon diagonais -->
+        <canvas id="vortex-canvas" aria-hidden="true"></canvas>
+
+        <!-- Camada de Atmosfera Cósmica e Anéis Concêntricos -->
+        <div class="cosmic-vignette vortex-loading-vignette" aria-hidden="true">
+            <div class="vortex-ring vortex-ring-1" style="animation-delay: 0s;"></div>
+            <div class="vortex-ring vortex-ring-2" style="animation-delay: 1s;"></div>
+            <div class="vortex-ring vortex-ring-3" style="animation-delay: 2s;"></div>
+            <div class="vortex-ring vortex-ring-4" style="animation-delay: 3s;"></div>
+        </div>
+
+        <!-- Barra Superior Discreta com Marca e Status de Rede -->
+        <header class="vortex-loading-header">
+            <div class="vortex-loading-brand">
+                <span class="vortex-loading-brand-dot"></span>
+                <span class="vortex-loading-brand-text">
+                    <span class="vortex-loading-brand-white">VORTEX</span>
+                    <span class="vortex-loading-brand-vip">VIP</span>
+                </span>
+            </div>
+
+            <div class="vortex-loading-ping-pill">
+                <span class="vortex-loading-ping-dot"></span>
+                <span id="network-ping">Servidor Quântico • 14ms</span>
+            </div>
+        </header>
+
+        <!-- Conteúdo Central da Tela de Carregamento -->
+        <main id="loading-container" class="vortex-loading-main">
+            <!-- Emblema Circular com Raio -->
+            <div class="vortex-loading-emblem-wrap">
+                <div class="vortex-loading-halo-outer" aria-hidden="true"></div>
+                <div class="vortex-loading-halo-inner" aria-hidden="true"></div>
+
+                <div class="vortex-loading-emblem-circle vortex-emblem-glow">
+                    <svg class="vortex-loading-emblem-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M13 2L4.5 13.5H11.5L10.5 22L19.5 10.5H12.5L13 2Z" />
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Título Principal -->
+            <h1 class="vortex-loading-title">
+                <span class="vortex-loading-title-main">VORTEX</span>
+                <span class="vortex-loading-title-vip">VIP</span>
+            </h1>
+
+            <!-- Subtítulo Dinâmico de Carregamento -->
+            <p id="loading-status-text" class="vortex-loading-subtitle">
+                Inicializando protocolo de conexão segura...
+            </p>
+
+            <!-- Módulo de Barra de Progresso -->
+            <div class="vortex-loading-progress-wrap">
+                <div class="vortex-loading-progress-meta">
+                    <span id="loading-phase-label" class="vortex-loading-phase-label">Sincronizando dados</span>
+                    <span id="loading-percentage" class="vortex-loading-percentage">0%</span>
+                </div>
+
+                <div class="vortex-loading-progress-track">
+                    <div id="progress-bar-fill" class="vortex-loading-progress-fill progress-shimmer" style="width: 0%;"></div>
+                </div>
+
+                <!-- Etapas Visuais (4 pontos de verificação) -->
+                <div class="vortex-loading-steps">
+                    <div id="step-1" class="vortex-loading-step is-active"></div>
+                    <div id="step-2" class="vortex-loading-step"></div>
+                    <div id="step-3" class="vortex-loading-step"></div>
+                    <div id="step-4" class="vortex-loading-step"></div>
+                </div>
+            </div>
+
+            <!-- Selo de Segurança -->
+            <div class="vortex-loading-security-pill">
+                <svg class="vortex-loading-lock-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+                <span class="vortex-loading-security-text">
+                    Criptografia ponta a ponta e rede quântica ativa
+                </span>
+            </div>
+
+            <!-- Botão de Ação ao Concluir 100% -->
+            <div id="complete-actions" class="vortex-loading-complete-actions">
+                <button type="button" id="enter-btn" class="vortex-loading-enter-btn">
+                    <span>Acessar VORTEX VIP</span>
+                    <svg class="vortex-loading-enter-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M5 12h14"></path>
+                        <path d="m12 5 7 7-7 7"></path>
+                    </svg>
+                </button>
+            </div>
+        </main>
+
+        <!-- Rodapé com Controles Discretos -->
+        <footer class="vortex-loading-footer">
+            <div class="vortex-loading-footer-version">VORTEX VIP &bull; v1.0.309</div>
+
+            <div class="vortex-loading-footer-actions">
+                <button type="button" id="replay-btn" class="vortex-loading-footer-btn">
+                    ↻ Reiniciar
+                </button>
+                <button type="button" id="loop-toggle-btn" class="vortex-loading-footer-btn">
+                    Loop: Off
+                </button>
+            </div>
+        </footer>
+
+        <!-- Notificação Toast Customizada -->
+        <div id="vortex-toast" class="vortex-loading-toast">
+            <span class="vortex-loading-toast-dot"></span>
+            <span id="toast-message">Conexão estabelecida com sucesso!</span>
+        </div>
+    </div>
+
+    <!-- =========================================================
          TELA DE MANUTENÇÃO OFICIAL VORTEX VIP (v1.0.281)
          Ativada via Painel ADM; exibida apenas para usuários comuns e visitantes.
          Administradores possuem bypass total e não visualizam esta tela.
@@ -7390,6 +7516,6 @@
         </main>
     </div>
 
-    <script type="module" src="script.js?v=1.0.308" defer></script>
+    <script type="module" src="script.js?v=1.0.309" defer></script>
 </body>
 </html>

@@ -35042,6 +35042,534 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
     height: 11px;
 }
 
+/* ==========================================================================
+   v1.0.309: Tela de Carregamento Oficial VORTEX VIP
+   ========================================================================== */
+.vortex-loading-screen {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: #06060A;
+    color: #ffffff;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-font-smoothing: antialiased;
+    z-index: 999990;
+    opacity: 1;
+    transition: opacity 0.55s ease, visibility 0.55s ease;
+}
+.vortex-loading-screen.is-hiding {
+    opacity: 0;
+    pointer-events: none;
+}
+.vortex-loading-screen.is-hidden {
+    display: none;
+    opacity: 0;
+    pointer-events: none;
+}
+.vortex-loading-screen ::selection {
+    background-color: #FFE600;
+    color: #000000;
+}
+
+#vortex-canvas {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    display: block;
+}
+
+.cosmic-vignette {
+    background: radial-gradient(circle at 50% 48%, rgba(88, 28, 135, 0.14) 0%, rgba(24, 16, 48, 0.08) 38%, rgba(6, 6, 10, 0.78) 100%);
+}
+.vortex-loading-vignette {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 10;
+    overflow: hidden;
+}
+
+@keyframes ringBreath {
+    0%, 100% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 0.45;
+    }
+    50% {
+        transform: translate(-50%, -50%) scale(1.035);
+        opacity: 0.85;
+    }
+}
+@keyframes vortexLoadingFloat {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-6px); }
+}
+@keyframes vortexLoadingSpin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+@keyframes vortexLoadingSpinReverse {
+    from { transform: rotate(360deg); }
+    to { transform: rotate(0deg); }
+}
+@keyframes vortexLoadingPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.45; }
+}
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(200%); }
+}
+
+.vortex-ring {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    border-radius: 9999px;
+    border: 1px solid rgba(255, 255, 255, 0.035);
+    pointer-events: none;
+    animation: ringBreath 6s ease-in-out infinite;
+}
+.vortex-ring-1 { width: 240px; height: 240px; }
+.vortex-ring-2 { width: 380px; height: 380px; }
+.vortex-ring-3 { width: 540px; height: 540px; }
+.vortex-ring-4 { width: 720px; height: 720px; }
+@media (min-width: 640px) {
+    .vortex-ring-1 { width: 300px; height: 300px; }
+    .vortex-ring-2 { width: 480px; height: 480px; }
+    .vortex-ring-3 { width: 680px; height: 680px; }
+    .vortex-ring-4 { width: 920px; height: 920px; }
+}
+
+.vortex-loading-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+}
+@media (min-width: 640px) {
+    .vortex-loading-header {
+        padding: 24px 32px;
+    }
+}
+.vortex-loading-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.vortex-loading-brand-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 9999px;
+    background-color: #FFE600;
+    box-shadow: 0 0 10px #FFE600;
+    animation: vortexLoadingPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+.vortex-loading-brand-text {
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+@media (min-width: 640px) {
+    .vortex-loading-brand-text {
+        font-size: 0.875rem;
+    }
+}
+.vortex-loading-brand-white {
+    color: #ffffff;
+}
+.vortex-loading-brand-vip {
+    color: #FFE600;
+    margin-left: 2px;
+}
+.vortex-loading-ping-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: #8E92A4;
+    background: rgba(14, 14, 21, 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    padding: 6px 12px;
+    border-radius: 9999px;
+}
+@media (min-width: 640px) {
+    .vortex-loading-ping-pill {
+        font-size: 0.75rem;
+    }
+}
+.vortex-loading-ping-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 9999px;
+    background-color: #34d399;
+}
+
+.vortex-loading-main {
+    position: relative;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding: 0 24px;
+    text-align: center;
+    transition: all 0.7s ease;
+}
+
+.vortex-loading-emblem-wrap {
+    position: relative;
+    margin-bottom: 28px;
+    animation: vortexLoadingFloat 6s ease-in-out infinite;
+}
+.vortex-loading-halo-outer {
+    position: absolute;
+    inset: -12px;
+    border-radius: 9999px;
+    border: 1px dashed rgba(255, 230, 0, 0.25);
+    animation: vortexLoadingSpin 24s linear infinite;
+}
+.vortex-loading-halo-inner {
+    position: absolute;
+    inset: -24px;
+    border-radius: 9999px;
+    border: 1px solid rgba(168, 85, 247, 0.1);
+    animation: vortexLoadingSpinReverse 32s linear infinite;
+}
+.vortex-loading-emblem-circle {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    border-radius: 9999px;
+    background: rgba(13, 13, 20, 0.9);
+    border: 2px solid #FFE600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+@media (min-width: 640px) {
+    .vortex-loading-emblem-circle {
+        width: 96px;
+        height: 96px;
+    }
+}
+.vortex-emblem-glow {
+    box-shadow: 0 0 32px rgba(255, 230, 0, 0.24), 0 0 70px rgba(255, 230, 0, 0.08), inset 0 0 22px rgba(255, 230, 0, 0.14);
+}
+.vortex-loading-emblem-svg {
+    width: 36px;
+    height: 36px;
+    color: #FFE600;
+    filter: drop-shadow(0 0 8px rgba(255, 230, 0, 0.6));
+}
+@media (min-width: 640px) {
+    .vortex-loading-emblem-svg {
+        width: 44px;
+        height: 44px;
+    }
+}
+
+.vortex-loading-title {
+    font-size: 1.5rem;
+    line-height: 2rem;
+    font-weight: 800;
+    letter-spacing: -0.025em;
+    margin: 0 0 10px 0;
+}
+@media (min-width: 640px) {
+    .vortex-loading-title {
+        font-size: 2.25rem;
+        line-height: 2.5rem;
+    }
+}
+.vortex-loading-title-main {
+    color: #ffffff;
+}
+.vortex-loading-title-vip {
+    color: #FFE600;
+    margin-left: 6px;
+}
+
+.vortex-loading-subtitle {
+    font-size: 0.75rem;
+    line-height: 1rem;
+    color: #8E92A4;
+    max-width: 28rem;
+    min-height: 20px;
+    transition: opacity 0.3s ease;
+    margin: 0 0 28px 0;
+}
+@media (min-width: 640px) {
+    .vortex-loading-subtitle {
+        font-size: 0.875rem;
+        line-height: 1.25rem;
+    }
+}
+
+.vortex-loading-progress-wrap {
+    width: 100%;
+    max-width: 20rem;
+    margin-bottom: 32px;
+}
+@media (min-width: 640px) {
+    .vortex-loading-progress-wrap {
+        max-width: 24rem;
+    }
+}
+.vortex-loading-progress-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+    font-weight: 500;
+    margin-bottom: 8px;
+    padding: 0 2px;
+}
+@media (min-width: 640px) {
+    .vortex-loading-progress-meta {
+        font-size: 0.75rem;
+    }
+}
+.vortex-loading-phase-label {
+    color: #a1a1aa;
+}
+.vortex-loading-percentage {
+    color: #FFE600;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+.vortex-loading-progress-track {
+    position: relative;
+    width: 100%;
+    height: 8px;
+    background-color: #14141F;
+    border-radius: 9999px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 1px;
+    box-sizing: border-box;
+}
+.vortex-loading-progress-fill {
+    position: relative;
+    height: 100%;
+    width: 0;
+    border-radius: 9999px;
+    background: linear-gradient(90deg, #fbbf24 0%, #FFE600 50%, #fef08a 100%);
+    box-shadow: 0 0 14px rgba(255, 230, 0, 0.75);
+    transition: width 0.2s ease-out;
+}
+.progress-shimmer::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.65), transparent);
+    animation: shimmer 1.8s infinite ease-in-out;
+}
+.vortex-loading-steps {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 12px;
+}
+.vortex-loading-step {
+    height: 4px;
+    border-radius: 9999px;
+    background-color: rgba(255, 255, 255, 0.1);
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+.vortex-loading-step.is-active {
+    background-color: #FFE600;
+    box-shadow: 0 0 8px rgba(255, 230, 0, 0.5);
+}
+
+.vortex-loading-security-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px;
+    border-radius: 9999px;
+    background: rgba(16, 16, 24, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+}
+@media (min-width: 640px) {
+    .vortex-loading-security-pill {
+        padding: 10px 20px;
+    }
+}
+.vortex-loading-lock-svg {
+    width: 14px;
+    height: 14px;
+    color: #a1a1aa;
+    flex-shrink: 0;
+}
+@media (min-width: 640px) {
+    .vortex-loading-lock-svg {
+        width: 16px;
+        height: 16px;
+    }
+}
+.vortex-loading-security-text {
+    font-size: 11px;
+    color: #a1a1aa;
+    font-weight: 500;
+}
+@media (min-width: 640px) {
+    .vortex-loading-security-text {
+        font-size: 0.75rem;
+    }
+}
+
+.vortex-loading-complete-actions {
+    margin-top: 28px;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(8px);
+    transition: all 0.5s ease;
+}
+.vortex-loading-complete-actions.is-ready {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+}
+.vortex-loading-enter-btn {
+    padding: 10px 24px;
+    border-radius: 9999px;
+    border: none;
+    background-color: #FFE600;
+    color: #000000;
+    font-weight: 700;
+    font-size: 0.75rem;
+    letter-spacing: 0.025em;
+    box-shadow: 0 0 25px rgba(255, 230, 0, 0.45);
+    transition: all 0.2s ease;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 auto;
+}
+@media (min-width: 640px) {
+    .vortex-loading-enter-btn {
+        font-size: 0.875rem;
+    }
+}
+.vortex-loading-enter-btn:hover {
+    background-color: #fde047;
+}
+.vortex-loading-enter-btn:active {
+    transform: scale(0.95);
+}
+.vortex-loading-enter-arrow {
+    width: 16px;
+    height: 16px;
+}
+
+.vortex-loading-footer {
+    position: fixed;
+    bottom: 16px;
+    left: 0;
+    right: 0;
+    z-index: 30;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 0 20px;
+    font-size: 11px;
+    color: #71717a;
+}
+@media (min-width: 640px) {
+    .vortex-loading-footer {
+        flex-direction: row;
+        padding: 0 32px;
+    }
+}
+.vortex-loading-footer-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.vortex-loading-footer-btn {
+    padding: 4px 12px;
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.04);
+    color: #d4d4d8;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: 11px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+.vortex-loading-footer-btn:hover {
+    background: rgba(255, 255, 255, 0.09);
+}
+.vortex-loading-footer-btn.is-loop-on {
+    color: #FFE600;
+    border-color: rgba(255, 230, 0, 0.4);
+}
+
+.vortex-loading-toast {
+    position: fixed;
+    top: 64px;
+    left: 50%;
+    transform: translate(-50%, -8px);
+    z-index: 50;
+    padding: 10px 16px;
+    border-radius: 9999px;
+    background: rgba(20, 20, 31, 0.95);
+    border: 1px solid rgba(255, 230, 0, 0.5);
+    font-size: 0.75rem;
+    color: #ffffff;
+    box-shadow: 0 0 25px rgba(255, 230, 0, 0.2);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+@media (min-width: 640px) {
+    .vortex-loading-toast {
+        font-size: 0.875rem;
+    }
+}
+.vortex-loading-toast.is-visible {
+    opacity: 1;
+    transform: translate(-50%, 0);
+}
+.vortex-loading-toast-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 9999px;
+    background-color: #FFE600;
+}
+
 
 
 
