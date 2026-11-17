@@ -23388,7 +23388,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.307';
+export const CURRENT_APP_VERSION = '1.0.308';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -33530,6 +33530,9 @@ function resetPostComposer() {
     if (postTypeSelect) postTypeSelect.value = 'normal';
     const postChannelFormatSelect = document.getElementById('post-channel-format-select');
     if (postChannelFormatSelect) postChannelFormatSelect.value = 'auto';
+    if (typeof setPostComposerVisibility === 'function') {
+        setPostComposerVisibility('public');
+    }
     const postTypeHint = document.getElementById('post-content-type-hint');
     if (postTypeHint) postTypeHint.style.display = 'none';
     if (typeof updateCompanyLinkSectionVisibility === 'function') {
@@ -33673,6 +33676,118 @@ export function isPostOwner(postData, user = currentUser, profile = currentProfi
         return profile.name === postData.authorName;
     }
     return false;
+}
+
+export function normalizePostVisibility(rawValue, postObj = null) {
+    if (postObj && (postObj.isPrivate === true || postObj.private === true)) return 'private';
+    const val = String(rawValue ?? postObj?.visibility ?? '').trim().toLowerCase();
+    if (val === 'private' || val === 'privado' || val === 'only_me' || val === 'somente_eu') {
+        return 'private';
+    }
+    return 'public';
+}
+
+export function isPostPrivate(post) {
+    if (!post || typeof post !== 'object') return false;
+    return normalizePostVisibility(post.visibility, post) === 'private';
+}
+
+export function canUserViewPost(post, viewerUser = currentUser, viewerProfile = currentProfile) {
+    if (!post || typeof post !== 'object') return false;
+    if (!isPostPrivate(post)) return true;
+    const viewerUid = viewerUser?.uid || viewerProfile?.uid || '';
+    if (!viewerUid) return false;
+    if (post.authorUid && String(post.authorUid) === String(viewerUid)) return true;
+    return isPostOwner(post, viewerUser, viewerProfile);
+}
+
+export function getPostVisibilityBadgeHTML(post) {
+    if (!isPostPrivate(post)) return '';
+    return `<span class="post-visibility-pill is-private" title="Post Privado — somente você pode ver"><i data-lucide="lock"></i> <span>Privado</span></span>`;
+}
+
+export function setPostComposerVisibility(visibility = 'public') {
+    const normalized = normalizePostVisibility(visibility);
+    const isPriv = normalized === 'private';
+    const input = document.getElementById('post-visibility-input');
+    if (input) input.value = normalized;
+    const pubBtn = document.getElementById('post-visibility-public-btn');
+    const privBtn = document.getElementById('post-visibility-private-btn');
+    if (pubBtn) {
+        pubBtn.classList?.toggle('active', !isPriv);
+        pubBtn.setAttribute?.('aria-pressed', !isPriv ? 'true' : 'false');
+    }
+    if (privBtn) {
+        privBtn.classList?.toggle('active', isPriv);
+        privBtn.setAttribute?.('aria-pressed', isPriv ? 'true' : 'false');
+    }
+    const badge = document.getElementById('post-visibility-badge');
+    if (badge) {
+        badge.classList?.toggle('is-private', isPriv);
+        badge.classList?.toggle('is-public', !isPriv);
+        badge.innerText = isPriv ? 'Privado 🔒' : 'Público 🌐';
+    }
+    const hint = document.getElementById('post-visibility-hint');
+    if (hint) {
+        hint.classList?.toggle('is-private', isPriv);
+        hint.innerHTML = isPriv
+            ? '<i data-lucide="lock"></i><span>Privado: somente você pode ver este post no seu Feed e Canal.</span>'
+            : '<i data-lucide="globe"></i><span>Público: todos podem ver no Feed e no seu canal.</span>';
+    }
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+    }
+    return normalized;
+}
+
+export async function togglePostVisibility(postId, forceVisibility = null) {
+    const idStr = String(postId || '');
+    if (!idStr || !currentUser) return { success: false, reason: 'unauthorized' };
+    const post = (Array.isArray(cachedFeedPosts) ? cachedFeedPosts : []).find(p => p && String(p.id) === idStr) || null;
+    if (!post) return { success: false, reason: 'not_found' };
+    if (!isPostOwner(post, currentUser, currentProfile)) {
+        showToast('Sem permissão', 'Apenas o autor pode alterar a visibilidade desta publicação.', 'red');
+        return { success: false, reason: 'forbidden' };
+    }
+    const currentIsPrivate = isPostPrivate(post);
+    const nextVisibility = forceVisibility !== null
+        ? normalizePostVisibility(forceVisibility)
+        : (currentIsPrivate ? 'public' : 'private');
+    const nextIsPrivate = nextVisibility === 'private';
+
+    post.visibility = nextVisibility;
+    post.isPrivate = nextIsPrivate;
+
+    try {
+        await updateDoc(doc(db, 'posts', idStr), {
+            visibility: nextVisibility,
+            isPrivate: nextIsPrivate
+        });
+    } catch (err) {
+        console.warn('Erro ao atualizar visibilidade do post no Firestore:', err);
+    }
+
+    if (String(activeChannelViewerPostId || '') === idStr) {
+        const viewerBadge = document.getElementById('channel-viewer-visibility-badge');
+        if (viewerBadge) viewerBadge.style.display = nextIsPrivate ? 'inline-flex' : 'none';
+    }
+    if (typeof renderPostsFeed === 'function') {
+        renderPostsFeed(cachedFeedPosts);
+    }
+    if (document.getElementById('channel-panel')?.classList?.contains('active') && typeof renderChannelScreen === 'function') {
+        renderChannelScreen();
+    }
+    if (typeof isChannelManageModalOpen === 'function' && isChannelManageModalOpen()) {
+        openChannelManageModal(activeChannelManageFilter);
+    }
+    showToast(
+        nextIsPrivate ? 'Post Privado 🔒' : 'Post Público 🌐',
+        nextIsPrivate
+            ? 'Somente você pode visualizar esta publicação agora.'
+            : 'Esta publicação agora está visível para todos no Feed e no Canal.',
+        nextIsPrivate ? 'yellow' : 'green'
+    );
+    return { success: true, visibility: nextVisibility, isPrivate: nextIsPrivate, post };
 }
 
 export function isCommentAuthor(commentData, user = currentUser, profile = currentProfile) {
@@ -34505,7 +34620,7 @@ export function updateFeedFavoritesBadge(activePosts = cachedFeedPosts) {
     let imagesCount = 0;
     if (Array.isArray(activePosts) && activePosts.length > 0) {
         const isAdmin = isUserAdmin(currentUser, currentProfile) || checkIsAdminUser(currentUser, currentProfile);
-        const validPosts = activePosts.filter(p => p && !isUserAccountDeleted(p.authorUid) && !p.isDeleted && !p.deleted && !isPostExpired(p) && (!p.hiddenByAi || isAdmin));
+        const validPosts = activePosts.filter(p => p && !isUserAccountDeleted(p.authorUid) && !p.isDeleted && !p.deleted && !isPostExpired(p) && (!p.hiddenByAi || isAdmin) && canUserViewPost(p));
         count = validPosts.filter(p => savedIds.includes(String(p.id))).length;
         imagesCount = validPosts.filter(p => isImageFeedPost(p)).length;
     }
@@ -35481,7 +35596,7 @@ export function normalizeSearchText(str) {
 
 export function filterFeedPosts(posts = [], query = '') {
     const q = normalizeSearchText(query);
-    const active = posts.filter(p => !isUserAccountDeleted(p.authorUid) && !p.isDeleted && !p.deleted && !isPostExpired(p));
+    const active = posts.filter(p => !isUserAccountDeleted(p.authorUid) && !p.isDeleted && !p.deleted && !isPostExpired(p) && canUserViewPost(p));
     if (!q) return active;
 
     return active.filter(p => {
@@ -35839,6 +35954,14 @@ function renderPostFollowButtonHTML(post) {
 
 function renderPostHeaderRightActionsHTML(post, canDeletePost, { compact = false } = {}) {
     const followBtnHtml = renderPostFollowButtonHTML(post);
+    const postIsPrivate = isPostPrivate(post);
+    const visibilityBtnHtml = canDeletePost
+        ? `
+            <button class="post-visibility-toggle-btn ${postIsPrivate ? 'is-private' : 'is-public'}" type="button" data-action="toggle-post-visibility" data-post-id="${post.id}" title="${postIsPrivate ? 'Post Privado — Clique para tornar Público' : 'Post Público — Clique para tornar Privado'}">
+                <i data-lucide="${postIsPrivate ? 'lock' : 'globe'}"></i>${compact ? '' : ` <span>${postIsPrivate ? 'Privado' : 'Público'}</span>`}
+            </button>
+        `
+        : '';
     const secondaryBtnHtml = canDeletePost
         ? `
             <button class="post-delete-btn" type="button" data-action="delete-post" data-post-id="${post.id}" title="${compact ? 'Excluir publicação' : 'Excluir post'}">
@@ -35850,7 +35973,7 @@ function renderPostHeaderRightActionsHTML(post, canDeletePost, { compact = false
                 <i data-lucide="flag"></i> <span>Denunciar</span>
             </button>
         `;
-    return `<div class="feed-header-actions">${followBtnHtml}${secondaryBtnHtml}</div>`;
+    return `<div class="feed-header-actions">${followBtnHtml}${visibilityBtnHtml}${secondaryBtnHtml}</div>`;
 }
 
 export function classifyFollowAttributionSource(meta = {}, targetPost = null) {
@@ -36084,6 +36207,7 @@ function renderPostsFeed(posts = []) {
     const sorted = [...posts]
         .filter(p => {
             if (isUserAccountDeleted(p.authorUid) || p.isDeleted || p.deleted || isPostExpired(p)) return false;
+            if (!canUserViewPost(p)) return false;
             if (p.hiddenByAi && !isAdmin) return false;
             if (!isAdmin && typeof scorePostRecommendationByAI === 'function' && (AI_SECURITY_CONFIG?.antiFakeEntities || AI_SECURITY_CONFIG?.antiScamSpamLinks)) {
                 const postAi = scorePostRecommendationByAI(p);
@@ -36178,11 +36302,12 @@ function renderPostsFeed(posts = []) {
                             </div>
                         </div>
                         ${renderPostMusicBadgeHTML(post, { prefix: 'preview', isPlaying: isThisMusicPlaying })}
-                        ${(isPostAd || isImageFeedPost(post) || (post.businessCategory || post.personalCategory || post.category)) ? `
+                        ${(isPostAd || isImageFeedPost(post) || (post.businessCategory || post.personalCategory || post.category) || isPostPrivate(post)) ? `
                             <div class="feed-tags-row">
                                 ${getPostMediaTypeTagHTML(post)}
                                 ${getPostAdBadgeHTML(post)}
                                 ${getPostCategoryBadgeHTML(post)}
+                                ${getPostVisibilityBadgeHTML(post)}
                             </div>
                         ` : ''}
                         ${post.title ? `<h4 class="post-card-title">${escapeHTML(post.title)}</h4>` : ''}
@@ -36411,11 +36536,12 @@ function renderPostsFeed(posts = []) {
                 </div>
                 ${renderPostMusicBadgeHTML(post, { prefix: 'feed', isPlaying: isThisMusicPlaying })}
                 <div class="feed-body">
-                    ${(isPostAd || isImageFeedPost(post) || (post.businessCategory || post.personalCategory || post.category)) ? `
+                    ${(isPostAd || isImageFeedPost(post) || (post.businessCategory || post.personalCategory || post.category) || isPostPrivate(post)) ? `
                         <div class="feed-tags-row">
                             ${getPostMediaTypeTagHTML(post)}
                             ${getPostAdBadgeHTML(post)}
                             ${getPostCategoryBadgeHTML(post)}
+                            ${getPostVisibilityBadgeHTML(post)}
                         </div>
                     ` : ''}
                     ${post.title ? `<h4 class="feed-post-title">${escapeHTML(post.title)}</h4>` : ''}
@@ -36734,6 +36860,18 @@ function renderPostsFeed(posts = []) {
             const commentId = btn.dataset.commentId;
             if (postId) {
                 deletePostComment(postId, commentId || commentIdx);
+            }
+        });
+    });
+
+    // Alternar visibilidade do post (Público <-> Privado) pelo autor
+    document.querySelectorAll('[data-action="toggle-post-visibility"]').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const postId = btn.dataset.postId;
+            if (postId) {
+                await togglePostVisibility(postId);
             }
         });
     });
@@ -37327,6 +37465,10 @@ export function getPostShareText(post) {
 
 export function openPostShareModal(post) {
     if (!post) return;
+    if (isPostPrivate(post)) {
+        showToast('Post Privado 🔒', 'Posts privados só podem ser vistos por você. Altere para Público se quiser compartilhar.', 'yellow');
+        return false;
+    }
     activeSharePost = post;
     const modal = document.getElementById('post-share-modal');
     if (!modal) return;
@@ -38167,6 +38309,14 @@ document.getElementById('remove-post-media-btn')?.addEventListener('click', () =
     resetPostComposer();
 });
 
+document.getElementById('post-visibility-public-btn')?.addEventListener('click', () => {
+    setPostComposerVisibility('public');
+});
+
+document.getElementById('post-visibility-private-btn')?.addEventListener('click', () => {
+    setPostComposerVisibility('private');
+});
+
 document.getElementById('publish-post-btn')?.addEventListener('click', async () => {
     if (!currentUser) {
         showToast('Erro', 'Você precisa estar logado para publicar.', 'red');
@@ -38229,6 +38379,11 @@ document.getElementById('publish-post-btn')?.addEventListener('click', async () 
 
             const isCompany = isBusinessAccount(currentProfile) || isUserAdmin(currentUser, currentProfile);
             const isStrictBusiness = isBusinessAccount(currentProfile);
+            const rawComposerVisibility = document.getElementById('post-visibility-input')?.value
+                || document.querySelector('.post-visibility-option-btn.active')?.dataset?.visibility
+                || 'public';
+            const postVisibility = normalizePostVisibility(rawComposerVisibility);
+            const postIsPrivate = postVisibility === 'private';
             const postContentType = isCompany ? (document.getElementById('post-content-type-select')?.value || 'normal') : 'normal';
             const isPostAd = isCompany && postContentType === 'ad';
             const selectedCategory = isCompany ? (document.getElementById('post-business-category-select')?.value?.trim() || '') : '';
@@ -38330,6 +38485,8 @@ document.getElementById('publish-post-btn')?.addEventListener('click', async () 
                 })(),
                 isAd: isPostAd,
                 contentType: isPostAd ? 'ad' : 'normal',
+                visibility: postVisibility,
+                isPrivate: postIsPrivate,
                 businessCategory: isTemporaryCategory ? selectedCategory : null,
                 personalCategory: (!isTemporaryCategory && validPersonalCategory) ? validPersonalCategory : null,
                 category: isTemporaryCategory ? selectedCategory : (validPersonalCategory || null),
@@ -38438,6 +38595,8 @@ document.getElementById('publish-post-btn')?.addEventListener('click', async () 
 
             if (isPostScheduled) {
                 showToast('Post Programado! 📅', `Sua postagem foi agendada para ${postScheduleResult.formatted}.`, 'green');
+            } else if (postIsPrivate) {
+                showToast('Post Privado Salvo 🔒', 'Sua publicação privada foi salva e só aparece para você.', 'yellow');
             } else {
                 showToast('Post publicado', 'Sua foto ou vídeo foi enviado com sucesso.', 'green');
             }
@@ -54144,6 +54303,7 @@ export function getChannelMediaPostsForUser(uid, tab = 'inicio', playlistFilter 
             if (p.published === false) return false;
             if ((p.scheduled || p.isScheduled) && p.scheduledFor && p.scheduledFor > now) return false;
             if (p.isTemporary && p.expiresAt && p.expiresAt <= now) return false;
+            if (!canUserViewPost(p)) return false;
             return true;
         })
         .sort((a, b) => (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0));
@@ -54349,6 +54509,7 @@ export function evaluateChannelMembershipEligibility(uid, userData = null, posts
         if (p.published === false) return false;
         if ((p.scheduled || p.isScheduled) && p.scheduledFor && p.scheduledFor > now) return false;
         if (p.isTemporary && p.expiresAt && p.expiresAt <= now) return false;
+        if (isPostPrivate(p)) return false;
         return true;
     });
 
@@ -54826,6 +54987,10 @@ export function renderChannelMediaGrid(items = [], tab = 'inicio', isOwner = fal
         const isImageTile = (typeof isImageFeedPost === 'function' ? isImageFeedPost(post) : post.type === 'image') || fmt === 'imagens';
         const isPlayableTile = !isImageTile && (post.type === 'video' || post.type === 'music' || post.type === 'audio' || ['videos', 'shorts', 'podcasts'].includes(fmt));
         const isShortTile = fmt === 'shorts' && post.type === 'video';
+        const isPrivateTile = isPostPrivate(post);
+        const privateBadgeHTML = isPrivateTile
+            ? `<span class="channel-ig-tile-private-badge" title="Post Privado — somente você pode ver"><i data-lucide="lock"></i><span>Privado</span></span>`
+            : '';
         const isPinnedShort = canPinShorts && isShortTile && pinnedIdsSet.has(String(post.id));
         const pinOverlayHTML = (isOwner && canPinShorts && isShortTile)
             ? `<span role="button" tabindex="0" class="channel-ig-tile-pin-action${isPinnedShort ? ' pinned' : ''}" data-action="toggle-pin-short" data-post-id="${post.id}" title="${isPinnedShort ? 'Desafixar Short' : 'Fixar Short no topo (máx. 3)'}"><i data-lucide="pin"></i><span>${isPinnedShort ? 'Fixado' : 'Fixar'}</span></span>`
@@ -54851,8 +55016,9 @@ export function renderChannelMediaGrid(items = [], tab = 'inicio', isOwner = fal
             : `<img src="${src}" ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="image"` : ''} alt="${escapeHTML(post.title || post.caption || (isImageTile ? 'Imagem do canal' : 'Vídeo do canal'))}" class="channel-ig-tile-media">`;
 
         return `
-            <button type="button" class="channel-ig-tile${isCarouselTile ? ' has-carousel' : ''}${isPinnedShort ? ' is-pinned-short' : ''}" data-post-id="${post.id}" title="${escapeHTML(post.title || post.caption || (isImageTile ? 'Ver imagem' : 'Assistir'))}">
+            <button type="button" class="channel-ig-tile${isCarouselTile ? ' has-carousel' : ''}${isPinnedShort ? ' is-pinned-short' : ''}${isPrivateTile ? ' is-private-tile' : ''}" data-post-id="${post.id}" title="${escapeHTML(post.title || post.caption || (isImageTile ? 'Ver imagem' : 'Assistir'))}">
                 ${mediaTag}
+                ${privateBadgeHTML}
                 ${pinOverlayHTML}
                 ${isImageTile ? `<span class="channel-ig-tile-image-tag"><i data-lucide="${isCarouselTile ? 'layers' : 'image'}"></i> ${isCarouselTile ? `${tileImagesCount} fotos` : 'Imagem'}</span>` : ''}
                 ${isPlayableTile ? '<span class="channel-ig-tile-play-overlay" aria-hidden="true"><i data-lucide="play" class="channel-ig-tile-play-icon"></i></span>' : ''}
@@ -55678,6 +55844,13 @@ export async function updateChannelManagedPost(postId, updates = {}) {
     if (Object.prototype.hasOwnProperty.call(updates, 'music')) {
         payload.music = updates.music || null;
     }
+    if (Object.prototype.hasOwnProperty.call(updates, 'visibility') || Object.prototype.hasOwnProperty.call(updates, 'isPrivate')) {
+        const nextVis = normalizePostVisibility(
+            Object.prototype.hasOwnProperty.call(updates, 'visibility') ? updates.visibility : (updates.isPrivate ? 'private' : 'public')
+        );
+        payload.visibility = nextVis;
+        payload.isPrivate = nextVis === 'private';
+    }
     if (Object.keys(payload).length === 0) return { success: false, reason: 'empty_updates' };
 
     if (post) {
@@ -55804,6 +55977,7 @@ function renderChannelManageItemHTML(post) {
     const pinnedShortsArr = Array.isArray(currentProfile?.channelPinnedShorts) ? currentProfile.channelPinnedShorts.map(String) : [];
     const isShortPost = !isImageItem && fmt === 'shorts';
     const isPinnedShort = Boolean(isShortPost && pinnedShortsArr.includes(postId));
+    const postIsPrivate = isPostPrivate(post);
 
     const formatOptions = isImageItem
         ? `
@@ -55845,11 +56019,16 @@ function renderChannelManageItemHTML(post) {
                         <span class="channel-manage-stat-chip"><i data-lucide="heart"></i> ${escapeHTML(String(likesCount))}</span>
                         <span class="channel-manage-stat-chip"><i data-lucide="message-circle"></i> ${escapeHTML(String(commentsCount))}</span>
                         ${carouselCount > 1 ? `<span class="channel-manage-stat-chip"><i data-lucide="layers"></i> ${carouselCount} fotos</span>` : ''}
+                        ${postIsPrivate ? `<span class="channel-manage-visibility-pill" title="Post Privado — somente você vê"><i data-lucide="lock"></i> Privado</span>` : ''}
                         ${hasMusic ? `<span class="channel-manage-music-pill" title="${escapeHTML(musicLabel)}"><i data-lucide="music"></i> ${escapeHTML(musicLabel)}</span>` : ''}
                     </div>
                     <div class="channel-manage-controls">
                         <select class="channel-manage-select" data-action="channel-set-format" data-post-id="${escapeHTML(postId)}" aria-label="Aba no canal">
                             ${formatOptions}
+                        </select>
+                        <select class="channel-manage-select channel-manage-visibility-select" data-action="channel-set-visibility" data-post-id="${escapeHTML(postId)}" aria-label="Visibilidade do post">
+                            <option value="public" ${!postIsPrivate ? 'selected' : ''}>🌐 Público</option>
+                            <option value="private" ${postIsPrivate ? 'selected' : ''}>🔒 Privado</option>
                         </select>
                         <button type="button" class="channel-pill-btn channel-manage-action-btn" data-action="channel-edit-media" data-post-id="${escapeHTML(postId)}">${isEditing ? 'Fechar' : 'Editar'}</button>
                         <button type="button" class="channel-pill-btn channel-manage-action-btn" data-action="channel-view-media" data-post-id="${escapeHTML(postId)}">Ver</button>
@@ -55991,6 +56170,10 @@ export function openChannelGridMediaViewer(postId) {
     const modal = document.getElementById('channel-media-viewer-modal');
     const mediaBox = document.getElementById('channel-viewer-media-box');
     if (!post || !modal || !mediaBox) return;
+    if (!canUserViewPost(post)) {
+        showToast('Post Privado 🔒', 'Este conteúdo é privado e só pode ser visualizado pelo autor.', 'yellow');
+        return;
+    }
 
     if (currentFeedMusicPostId && String(currentFeedMusicPostId) !== String(post.id) && typeof stopFeedPostMusic === 'function') {
         stopFeedPostMusic();
@@ -56036,6 +56219,10 @@ export function openChannelGridMediaViewer(postId) {
 
     const titleEl = document.getElementById('channel-viewer-title');
     const capEl = document.getElementById('channel-viewer-caption');
+    const viewerVisBadge = document.getElementById('channel-viewer-visibility-badge');
+    if (viewerVisBadge) {
+        viewerVisBadge.style.display = isPostPrivate(post) ? 'inline-flex' : 'none';
+    }
     if (titleEl) titleEl.innerText = post.title || post.authorName || 'Vídeo do Canal';
     if (capEl) capEl.innerText = post.caption || '';
 
@@ -56233,13 +56420,22 @@ function bindChannelScreenListeners() {
 
     const manageListEl = document.getElementById('channel-manage-list');
     manageListEl?.addEventListener('change', async (e) => {
-        const sel = e?.target?.closest?.('[data-action="channel-set-format"]');
-        if (!sel) return;
-        const postId = sel.dataset?.postId;
-        const val = sel.value;
-        if (!postId || !val) return;
-        await updateChannelManagedPost(postId, { channelFormat: val });
-        showToast('Aba Atualizada', 'A organização desta mídia no canal foi atualizada.', 'green');
+        const formatSel = e?.target?.closest?.('[data-action="channel-set-format"]');
+        if (formatSel) {
+            const postId = formatSel.dataset?.postId;
+            const val = formatSel.value;
+            if (!postId || !val) return;
+            await updateChannelManagedPost(postId, { channelFormat: val });
+            showToast('Aba Atualizada', 'A organização desta mídia no canal foi atualizada.', 'green');
+            return;
+        }
+        const visSel = e?.target?.closest?.('[data-action="channel-set-visibility"]');
+        if (visSel) {
+            const postId = visSel.dataset?.postId;
+            const val = visSel.value;
+            if (!postId || !val) return;
+            await togglePostVisibility(postId, val);
+        }
     });
     manageListEl?.addEventListener('click', async (e) => {
         const actionBtn = e?.target?.closest?.('[data-action]');
@@ -56497,6 +56693,12 @@ if (typeof window !== 'undefined') {
     window.renderVortexStarSealHTML = renderVortexStarSealHTML;
     window.togglePinChannelShort = togglePinChannelShort;
     window.openLevelProgressionModal = openLevelProgressionModal;
+    window.normalizePostVisibility = normalizePostVisibility;
+    window.isPostPrivate = isPostPrivate;
+    window.canUserViewPost = canUserViewPost;
+    window.getPostVisibilityBadgeHTML = getPostVisibilityBadgeHTML;
+    window.setPostComposerVisibility = setPostComposerVisibility;
+    window.togglePostVisibility = togglePostVisibility;
 }
 
 

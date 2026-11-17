@@ -34857,6 +34857,191 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
     color: var(--accent-color, #39ff14);
 }
 
+/* ==========================================================================
+   v1.0.308: Visibilidade do Post (Público / Privado)
+   ========================================================================== */
+.post-visibility-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+    padding: 12px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+}
+.post-visibility-badge {
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 2px 10px;
+    border-radius: 999px;
+    transition: all 0.2s ease;
+}
+.post-visibility-badge.is-public {
+    background: rgba(57, 255, 20, 0.14);
+    color: var(--accent-color, #39ff14);
+    border: 1px solid rgba(57, 255, 20, 0.28);
+}
+.post-visibility-badge.is-private {
+    background: rgba(251, 191, 36, 0.16);
+    color: #fbbf24;
+    border: 1px solid rgba(251, 191, 36, 0.35);
+}
+.post-visibility-toggle-group {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+.post-visibility-option-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-dim, #a1a1aa);
+    font-size: 0.86rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.post-visibility-option-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+}
+.post-visibility-option-btn i,
+.post-visibility-option-btn svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+.post-visibility-option-btn[data-visibility="public"].active {
+    background: rgba(57, 255, 20, 0.16);
+    border-color: rgba(57, 255, 20, 0.65);
+    color: #ffffff;
+    box-shadow: 0 0 12px rgba(57, 255, 20, 0.18);
+}
+.post-visibility-option-btn[data-visibility="private"].active {
+    background: rgba(251, 191, 36, 0.16);
+    border-color: rgba(251, 191, 36, 0.7);
+    color: #fde68a;
+    box-shadow: 0 0 12px rgba(251, 191, 36, 0.2);
+}
+.post-visibility-hint {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.76rem;
+    color: var(--text-dim, #a1a1aa);
+    line-height: 1.35;
+}
+.post-visibility-hint i,
+.post-visibility-hint svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+}
+.post-visibility-hint.is-private {
+    color: #fcd34d;
+}
+.post-visibility-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+.post-visibility-pill.is-private {
+    background: rgba(251, 191, 36, 0.16);
+    color: #fbbf24;
+    border: 1px solid rgba(251, 191, 36, 0.38);
+}
+.post-visibility-pill i,
+.post-visibility-pill svg {
+    width: 12px;
+    height: 12px;
+}
+.post-visibility-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    font-size: 0.74rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.06);
+    color: #e4e4e7;
+    transition: all 0.2s ease;
+}
+.post-visibility-toggle-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+}
+.post-visibility-toggle-btn.is-private {
+    background: rgba(251, 191, 36, 0.16);
+    border-color: rgba(251, 191, 36, 0.45);
+    color: #fbbf24;
+}
+.post-visibility-toggle-btn.is-public {
+    background: rgba(57, 255, 20, 0.1);
+    border-color: rgba(57, 255, 20, 0.3);
+    color: var(--accent-color, #39ff14);
+}
+.post-visibility-toggle-btn i,
+.post-visibility-toggle-btn svg {
+    width: 13px;
+    height: 13px;
+}
+.channel-ig-tile-private-badge {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    z-index: 4;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: rgba(17, 24, 39, 0.85);
+    border: 1px solid rgba(251, 191, 36, 0.6);
+    color: #fbbf24;
+    font-size: 0.64rem;
+    font-weight: 700;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+.channel-ig-tile-private-badge i,
+.channel-ig-tile-private-badge svg {
+    width: 10px;
+    height: 10px;
+}
+.channel-manage-visibility-select {
+    min-width: 96px;
+}
+.channel-manage-visibility-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    background: rgba(251, 191, 36, 0.15);
+    color: #fbbf24;
+    border: 1px solid rgba(251, 191, 36, 0.32);
+}
+.channel-manage-visibility-pill i,
+.channel-manage-visibility-pill svg {
+    width: 11px;
+    height: 11px;
+}
+
 
 
 

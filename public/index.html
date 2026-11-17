@@ -35,13 +35,13 @@
     <meta itemprop="image" content="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
     <link rel="image_src" type="image/png" href="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
 
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.307">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.307">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.307">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.307">
-    <link rel="stylesheet" href="style.css?v=1.0.307">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.308">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.308">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.308">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.308">
+    <link rel="stylesheet" href="style.css?v=1.0.308">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.307" id="app-manifest-link">
+    <link rel="manifest" href="manifest.json?v=1.0.308" id="app-manifest-link">
     <meta name="theme-color" content="#39ff14" id="app-theme-color-meta">
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#39ff14" id="app-theme-color-meta-dark">
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#39ff14" id="app-theme-color-meta-light">
@@ -50,8 +50,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.307">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.307">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.308">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.308">
     <!-- Sincronização Dinâmica da Barra de Status e Barra de Navegação do Celular -->
     <script>
         (function() {
@@ -3755,6 +3755,29 @@
                     </select>
                 </div>
 
+                <!-- Visibilidade do Post: Público ou Privado (v1.0.308) -->
+                <div class="post-visibility-wrap" id="post-visibility-wrap">
+                    <div class="post-field-header-row">
+                        <span id="post-visibility-label" class="post-caption-label">Visibilidade do Post</span>
+                        <span id="post-visibility-badge" class="post-visibility-badge is-public">Público 🌐</span>
+                    </div>
+                    <input type="hidden" id="post-visibility-input" value="public">
+                    <div class="post-visibility-toggle-group" id="post-visibility-toggle-group" role="group" aria-labelledby="post-visibility-label">
+                        <button type="button" id="post-visibility-public-btn" class="post-visibility-option-btn active" data-visibility="public" aria-pressed="true">
+                            <i data-lucide="globe"></i>
+                            <span>Público</span>
+                        </button>
+                        <button type="button" id="post-visibility-private-btn" class="post-visibility-option-btn" data-visibility="private" aria-pressed="false">
+                            <i data-lucide="lock"></i>
+                            <span>Privado</span>
+                        </button>
+                    </div>
+                    <small id="post-visibility-hint" class="post-visibility-hint">
+                        <i data-lucide="globe"></i>
+                        <span>Público: todos podem ver no Feed e no seu canal.</span>
+                    </small>
+                </div>
+
                 <div class="post-caption-wrap">
                     <div class="post-field-header-row">
                         <label for="post-caption-input" class="post-caption-label">Legenda</label>
@@ -7229,7 +7252,12 @@
         <div id="channel-media-viewer-modal" class="custom-modal-overlay channel-viewer-overlay" style="display:none;" aria-hidden="true">
             <div class="custom-modal-card channel-viewer-card">
                 <div class="panel-top-bar" style="padding:10px 14px;">
-                    <span id="channel-viewer-header-title" style="font-weight:700; font-size:0.92rem;">Reels do Canal</span>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span id="channel-viewer-header-title" style="font-weight:700; font-size:0.92rem;">Reels do Canal</span>
+                        <span id="channel-viewer-visibility-badge" class="post-visibility-pill is-private" style="display:none;" title="Post Privado — somente você pode ver">
+                            <i data-lucide="lock"></i> <span>Privado</span>
+                        </span>
+                    </div>
                     <div class="header-icon-btn" id="close-channel-media-viewer-modal" title="Fechar" aria-label="Fechar"><i data-lucide="x"></i></div>
                 </div>
                 <div id="channel-viewer-media-box" class="channel-viewer-media-box"></div>
@@ -7362,6 +7390,6 @@
         </main>
     </div>
 
-    <script type="module" src="script.js?v=1.0.307" defer></script>
+    <script type="module" src="script.js?v=1.0.308" defer></script>
 </body>
 </html>

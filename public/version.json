@@ -1,6 +1,6 @@
 {
-  "version": "1.0.307",
-  "build": 307,
-  "releaseDate": "2026-11-16",
-  "notes": "Sistema de Níveis e XP (curtir, comentar, favoritar, assistir completo, seguir e se inscrever) com desbloqueios nos níveis 10, 30, 50, 70, 90 (Melhor Criador) e 110 (Estrela do VORTEX giratória) v1.0.307"
+  "version": "1.0.308",
+  "build": 308,
+  "releaseDate": "2026-11-17",
+  "notes": "Opção para escolher se o Post é Privado ou Público no compositor, feed, canal, visualizador e gerenciador de mídias v1.0.308"
 }
