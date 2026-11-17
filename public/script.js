@@ -1069,6 +1069,12 @@ export function attachVortexVideoPlayer(video) {
         updatePlayState(false);
         if (progressFill) progressFill.style.width = '0%';
         if (progressThumb) progressThumb.style.left = '0%';
+        const watchedPostId = video.dataset?.postId ||
+            video.closest?.('[data-post-id]')?.dataset?.postId ||
+            (typeof activeChannelViewerPostId !== 'undefined' && activeChannelViewerPostId && video.closest?.('#channel-viewer-media-box') ? activeChannelViewerPostId : '');
+        if (watchedPostId && typeof awardUserXP === 'function') {
+            awardUserXP('watch_complete', watchedPostId);
+        }
     };
 
     const updateTime = () => {
@@ -23382,7 +23388,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.306';
+export const CURRENT_APP_VERSION = '1.0.307';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -33814,6 +33820,9 @@ export async function submitInlineComment(postId, text) {
         openPostCommentCards.add(postId);
         await updateDoc(postRef, { comments });
         syncPostCommentsStateInDOM(postId, comments);
+        if (typeof awardUserXP === 'function') {
+            await awardUserXP('comment', `${postId}_${commentId}`);
+        }
         // Notificar o dono do post sobre o novo comentário
         if (postData.authorUid && postData.authorUid !== currentUser.uid) {
             sendActivityNotification(postData.authorUid, 'comment_post', {
@@ -34055,6 +34064,10 @@ export async function togglePostLike(postId, options = {}) {
         syncPostLikeButtonsInDOM(postId, post);
         await updateDoc(doc(db, 'posts', postId), { likes: updatedLikes });
 
+        if (!liked && typeof awardUserXP === 'function') {
+            await awardUserXP('like', `post_${postId}`);
+        }
+
         // Notificar o dono do post quando recebe uma curtida (apenas na primeira curtida)
         if (!liked && post.authorUid && post.authorUid !== currentUser.uid) {
             sendActivityNotification(post.authorUid, 'like_post', {
@@ -34126,6 +34139,9 @@ export async function toggleLikePostComment(postId, commentIdOrIdx, options = {}
 
         await updateDoc(postRef, { comments });
         syncPostCommentsStateInDOM(postId, comments);
+        if (!userLiked && typeof awardUserXP === 'function') {
+            await awardUserXP('like', `comm_${postId}_${targetComment.id}`);
+        }
         return true;
     } catch (err) {
         console.error('Erro ao curtir comentário:', err);
@@ -34346,7 +34362,7 @@ export function renderPostMediaTagHTML(post, options = {}) {
         const isCoverChunkPending = Boolean(post.hasVideoCoverChunks && !coverUrl && post.id);
         const autoplayAttr = options.autoplay ? ' autoplay' : '';
         const protectedClass = options.autoplay ? '' : ' class="protected-media"';
-        return `<video src="${videoSrc}" ${coverUrl ? `poster="${coverUrl}"` : ''} ${isCoverChunkPending ? `data-chunk-post-cover="${post.id}"` : ''} ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="video" data-chunk-trimmed="${post.isTrimmed ? 'true' : 'false'}" data-chunk-duration="${post.videoDuration || 120}"` : ''} controls${autoplayAttr} controlsList="nodownload" disablePictureInPicture oncontextmenu="return false;" playsinline${protectedClass}></video>`;
+        return `<video src="${videoSrc}" ${post.id ? `data-post-id="${escapeHTML(String(post.id))}"` : ''} ${coverUrl ? `poster="${coverUrl}"` : ''} ${isCoverChunkPending ? `data-chunk-post-cover="${post.id}"` : ''} ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="video" data-chunk-trimmed="${post.isTrimmed ? 'true' : 'false'}" data-chunk-duration="${post.videoDuration || 120}"` : ''} controls${autoplayAttr} controlsList="nodownload" disablePictureInPicture oncontextmenu="return false;" playsinline${protectedClass}></video>`;
     }
     return renderPostCarouselHTML(post, options);
 }
@@ -34530,6 +34546,9 @@ export async function toggleSaveFeedPost(postId) {
 
     const nowSaved = !alreadySaved;
     if (nowSaved) {
+        if (typeof awardUserXP === 'function') {
+            await awardUserXP('favorite', idStr);
+        }
         showToast('Favoritos ⭐', 'Post salvo nos favoritos!', 'green');
     } else {
         showToast('Favoritos', 'Post removido dos favoritos.', 'white');
@@ -36015,6 +36034,10 @@ export async function toggleFollowUser(targetUid, meta = {}) {
             syncUserChannelFollowerAttribution(targetUid, currentUser.uid, nowFollowing, attributionPayload)
         ]);
 
+        if (nowFollowing && typeof awardUserXP === 'function') {
+            await awardUserXP('follow', targetUid);
+        }
+
         if (nowFollowing && typeof addDoc === 'function' && typeof collection === 'function' && typeof db !== 'undefined') {
             const followerName = [currentProfile.name, currentProfile.surname].filter(Boolean).join(' ').trim() || 'Usuário';
             addDoc(collection(db, 'notifications'), {
@@ -36148,6 +36171,7 @@ function renderPostsFeed(posts = []) {
                         ${scheduledBannerHTML}
                         <div class="post-media">
                             ${mediaTag}
+                            ${typeof renderVortexStarSealHTML === 'function' ? renderVortexStarSealHTML(getPostAuthorUserData(post)) : ''}
                             <div class="feed-media-views-badge" data-action="post-views" data-post-id="${post.id}" title="Ver visualizações da publicação">
                                 <i data-lucide="eye"></i>
                                 <span data-post-views-badge="${post.id}">${formattedViews} visualizaç${viewsCount === 1 ? 'ão' : 'ões'}</span>
@@ -36379,6 +36403,7 @@ function renderPostsFeed(posts = []) {
                 ${scheduledBannerHTML}
                 <div class="feed-media">
                     ${mediaTag}
+                    ${typeof renderVortexStarSealHTML === 'function' ? renderVortexStarSealHTML(getPostAuthorUserData(post)) : ''}
                     <div class="feed-media-views-badge" data-action="post-views" data-post-id="${post.id}" title="Ver visualizações do post">
                         <i data-lucide="eye"></i>
                         <span data-post-views-badge="${post.id}">${formattedViews} visualizaç${viewsCount === 1 ? 'ão' : 'ões'}</span>
@@ -37253,6 +37278,9 @@ export async function submitPostComment() {
         }
         if (input) input.value = '';
         syncPostCommentsStateInDOM(activeCommentPost.id, updated);
+        if (typeof awardUserXP === 'function') {
+            await awardUserXP('comment', `${activeCommentPost.id}_${newComment.id}`);
+        }
         showToast('Comentário publicado', 'Seu comentário foi adicionado!', 'green');
     } catch (err) {
         console.error('Erro ao salvar comentário:', err);
@@ -38262,6 +38290,7 @@ document.getElementById('publish-post-btn')?.addEventListener('click', async () 
                 authorEmail: currentProfile.email || currentUser.email || '',
                 isVip: checkIsVipUser(currentProfile),
                 isVerified: checkIsVipUser(currentProfile),
+                authorLevel: typeof getUserLevelInfo === 'function' ? getUserLevelInfo(currentProfile).level : 1,
                 type: isVideo ? 'video' : 'image',
                 imagesCount: isVideo ? 0 : Math.max(pendingPostImages.length, 1),
                 isCarousel: !isVideo && pendingPostImages.length > 1,
@@ -53759,7 +53788,353 @@ export function collectChannelLinks(userData = {}) {
     return out;
 }
 
-export function getChannelMediaPostsForUser(uid, tab = 'inicio', playlistFilter = 'all', postsSource = cachedFeedPosts) {
+export const VORTEX_XP_PER_LEVEL = 100;
+export const MAX_PINNED_SHORTS = 3;
+export const VORTEX_XP_ACTIONS = Object.freeze({
+    like: 15,
+    comment: 25,
+    favorite: 20,
+    watch_complete: 35,
+    follow: 30,
+    subscribe: 40
+});
+
+export const VORTEX_LEVEL_UNLOCKS = Object.freeze([
+    { key: 'community', level: 10, label: 'Aba Comunidade', icon: 'users', desc: 'Libera a aba Comunidade para avisos e interações.' },
+    { key: 'podcasts', level: 30, label: 'Aba Podcasts', icon: 'mic', desc: 'Libera a aba Podcasts organizada no canal.' },
+    { key: 'playlists', level: 50, label: 'Aba Playlists', icon: 'list-video', desc: 'Libera a aba Playlists no canal.' },
+    { key: 'pin_shorts', level: 70, label: 'Fixar até 3 Vídeos Shorts', icon: 'pin', desc: 'Permite fixar até 3 Shorts no topo da grade do canal.' },
+    { key: 'best_creator', level: 90, label: 'Emblema Melhor Criador', icon: 'trophy', desc: 'Exibe o emblema Melhor Criador no canto da foto do canal.' },
+    { key: 'vortex_star', level: 110, label: 'Selo Estrela do Vortex 🌟', icon: 'sparkles', desc: 'Exibe a Estrela do VORTEX brilhante e giratória em todos os vídeos e fotos do canal.' }
+]);
+
+const VORTEX_FEATURE_LEVEL_MAP = Object.freeze({
+    community: 10,
+    podcasts: 30,
+    playlists: 50,
+    pin_shorts: 70,
+    best_creator: 90,
+    vortex_star: 110
+});
+
+const awardedXpSessionKeys = new Set();
+
+export function calculateLevelFromXP(xp = 0) {
+    const safeXp = Math.max(0, Math.floor(Number(xp) || 0));
+    return Math.max(1, Math.floor(safeXp / VORTEX_XP_PER_LEVEL) + 1);
+}
+
+export function getUserLevelInfo(userData = currentProfile) {
+    const target = (userData && typeof userData === 'object') ? userData : {};
+    const explicitLevel = Math.max(0, Math.floor(Number(target.level || target.userLevel || 0)));
+    const rawXp = Math.max(0, Math.floor(Number(target.xp || target.userXp || 0)));
+    const computedLevel = calculateLevelFromXP(rawXp);
+    const level = Math.max(1, explicitLevel, computedLevel);
+    const minXpForLevel = (level - 1) * VORTEX_XP_PER_LEVEL;
+    const xp = Math.max(rawXp, minXpForLevel);
+    const xpInCurrentLevel = xp - minXpForLevel;
+    const progressPercent = Math.min(100, Math.max(0, Math.round((xpInCurrentLevel / VORTEX_XP_PER_LEVEL) * 100)));
+
+    return {
+        level,
+        xp,
+        rawXp,
+        xpInCurrentLevel,
+        xpNeededForNext: VORTEX_XP_PER_LEVEL,
+        nextLevelXp: level * VORTEX_XP_PER_LEVEL,
+        progressPercent,
+        unlocks: VORTEX_LEVEL_UNLOCKS.map(u => ({ ...u, unlocked: level >= u.level }))
+    };
+}
+
+export function isUserFeatureUnlocked(userData, featureKey) {
+    const reqLevel = VORTEX_FEATURE_LEVEL_MAP[featureKey] || 1;
+    return getUserLevelInfo(userData).level >= reqLevel;
+}
+
+export function isChannelFeatureUnlocked(userData, featureKey) {
+    return isUserFeatureUnlocked(userData, featureKey);
+}
+
+export function getPostAuthorUserData(post) {
+    if (!post) return null;
+    const authorUid = post.authorUid || '';
+    if (authorUid && activeChannelUid && authorUid === activeChannelUid && activeChannelUserData) {
+        return activeChannelUserData;
+    }
+    if (authorUid && currentUser?.uid && authorUid === currentUser.uid && currentProfile) {
+        return currentProfile;
+    }
+    const cached = (authorUid && typeof contactUserDataMap !== 'undefined' && contactUserDataMap?.get?.(authorUid)) || null;
+    if (cached) return cached;
+    return (post.authorLevel || post.authorXp) ? { level: post.authorLevel || 1, xp: post.authorXp || 0 } : null;
+}
+
+export function renderVortexStarSealHTML(userDataOrLevel) {
+    const info = typeof userDataOrLevel === 'number'
+        ? { level: userDataOrLevel }
+        : getUserLevelInfo(userDataOrLevel);
+    if ((Number(info?.level) || 1) < VORTEX_FEATURE_LEVEL_MAP.vortex_star) return '';
+    return `
+        <span class="vortex-star-seal" title="Estrela do VORTEX 🌟 (Nível 110+)" aria-label="Selo Estrela do Vortex">
+            <span class="vortex-star-seal-icon" aria-hidden="true">🌟</span>
+            <span class="vortex-star-seal-label">Estrela VORTEX</span>
+        </span>
+    `;
+}
+
+export async function awardUserXP(actionType, targetId = '', options = {}) {
+    const uid = options.uid || currentUser?.uid || '';
+    if (!uid) return { awarded: false, reason: 'unauthenticated' };
+    const xpGain = Number(options.xpOverride) > 0 ? Math.floor(Number(options.xpOverride)) : (VORTEX_XP_ACTIONS[actionType] || 0);
+    if (xpGain <= 0) return { awarded: false, reason: 'invalid_action' };
+
+    const isSelfProfile = currentUser?.uid === uid;
+    if (!currentProfile && isSelfProfile) currentProfile = {};
+    const targetDoc = isSelfProfile ? currentProfile : (getEffectiveChannelUserData(uid) || {});
+    const oldInfo = getUserLevelInfo(targetDoc);
+
+    const dedupKey = targetId ? `${actionType}:${String(targetId)}` : '';
+    const sessionKey = dedupKey ? `${uid}:${dedupKey}` : '';
+    const existingKeys = Array.isArray(targetDoc.levelActionKeys) ? targetDoc.levelActionKeys : [];
+    if (!options.bypassDedup && dedupKey && (existingKeys.includes(dedupKey) || awardedXpSessionKeys.has(sessionKey))) {
+        return { awarded: false, duplicate: true, level: oldInfo.level, xp: oldInfo.xp, leveledUp: false };
+    }
+    if (sessionKey) awardedXpSessionKeys.add(sessionKey);
+
+    const newXp = oldInfo.xp + xpGain;
+    const newLevel = calculateLevelFromXP(newXp);
+    const nextKeys = dedupKey ? [...existingKeys, dedupKey].slice(-500) : existingKeys;
+    const leveledUp = newLevel > oldInfo.level;
+    const newlyUnlocked = leveledUp
+        ? VORTEX_LEVEL_UNLOCKS.filter(u => oldInfo.level < u.level && newLevel >= u.level)
+        : [];
+
+    targetDoc.xp = newXp;
+    targetDoc.level = newLevel;
+    targetDoc.levelActionKeys = nextKeys;
+    targetDoc.bestCreatorBadgeUnlocked = newLevel >= 90;
+    targetDoc.vortexStarUnlocked = newLevel >= 110;
+
+    if (activeChannelUid === uid && activeChannelUserData) {
+        activeChannelUserData.xp = newXp;
+        activeChannelUserData.level = newLevel;
+        activeChannelUserData.levelActionKeys = nextKeys;
+        activeChannelUserData.bestCreatorBadgeUnlocked = newLevel >= 90;
+        activeChannelUserData.vortexStarUnlocked = newLevel >= 110;
+    }
+    if (typeof contactUserDataMap !== 'undefined' && contactUserDataMap?.has(uid)) {
+        contactUserDataMap.set(uid, {
+            ...contactUserDataMap.get(uid),
+            xp: newXp,
+            level: newLevel,
+            bestCreatorBadgeUnlocked: newLevel >= 90,
+            vortexStarUnlocked: newLevel >= 110
+        });
+    }
+
+    if (typeof setDoc === 'function' && typeof doc === 'function' && typeof db !== 'undefined' && db) {
+        try {
+            await setDoc(doc(db, 'users', uid), {
+                xp: newXp,
+                level: newLevel,
+                levelActionKeys: nextKeys,
+                bestCreatorBadgeUnlocked: newLevel >= 90,
+                vortexStarUnlocked: newLevel >= 110,
+                updatedAt: Date.now()
+            }, { merge: true });
+        } catch (_) {}
+    }
+
+    if (activeChannelUid === uid && document.getElementById('channel-panel')?.classList?.contains('active')) {
+        renderChannelScreen();
+    } else if (isSelfProfile) {
+        const pillText = document.getElementById('channel-level-pill-text');
+        if (pillText && (!activeChannelUid || activeChannelUid === uid)) {
+            pillText.innerText = `Nível ${newLevel} • ${newXp} XP`;
+        }
+    }
+
+    if (leveledUp && typeof showToast === 'function' && !options.silent) {
+        if (newlyUnlocked.length > 0) {
+            showToast(
+                `Nível ${newLevel} Alcançado! 🌟`,
+                `Desbloqueado: ${newlyUnlocked.map(u => u.label).join(', ')}!`,
+                'green'
+            );
+        } else {
+            showToast(`Subiu para o Nível ${newLevel}! ⚡`, `Você ganhou +${xpGain} XP.`, 'green');
+        }
+    }
+
+    return {
+        awarded: true,
+        xpAdded: xpGain,
+        xp: newXp,
+        previousLevel: oldInfo.level,
+        level: newLevel,
+        leveledUp,
+        newlyUnlocked
+    };
+}
+
+export async function setUserLevel(targetLevel, uid = currentUser?.uid) {
+    const safeLevel = Math.max(1, Math.floor(Number(targetLevel) || 1));
+    const targetUid = uid || currentUser?.uid || '';
+    const newXp = (safeLevel - 1) * VORTEX_XP_PER_LEVEL;
+    if (targetUid && currentUser?.uid === targetUid) {
+        if (!currentProfile) currentProfile = {};
+        currentProfile.level = safeLevel;
+        currentProfile.xp = newXp;
+        currentProfile.bestCreatorBadgeUnlocked = safeLevel >= 90;
+        currentProfile.vortexStarUnlocked = safeLevel >= 110;
+    }
+    if (targetUid && activeChannelUid === targetUid && activeChannelUserData) {
+        activeChannelUserData.level = safeLevel;
+        activeChannelUserData.xp = newXp;
+        activeChannelUserData.bestCreatorBadgeUnlocked = safeLevel >= 90;
+        activeChannelUserData.vortexStarUnlocked = safeLevel >= 110;
+    }
+    if (targetUid && typeof contactUserDataMap !== 'undefined' && contactUserDataMap?.has(targetUid)) {
+        contactUserDataMap.set(targetUid, {
+            ...contactUserDataMap.get(targetUid),
+            level: safeLevel,
+            xp: newXp,
+            bestCreatorBadgeUnlocked: safeLevel >= 90,
+            vortexStarUnlocked: safeLevel >= 110
+        });
+    }
+    if (targetUid && typeof setDoc === 'function' && typeof doc === 'function' && typeof db !== 'undefined' && db) {
+        try {
+            await setDoc(doc(db, 'users', targetUid), {
+                level: safeLevel,
+                xp: newXp,
+                bestCreatorBadgeUnlocked: safeLevel >= 90,
+                vortexStarUnlocked: safeLevel >= 110,
+                updatedAt: Date.now()
+            }, { merge: true });
+        } catch (_) {}
+    }
+    if (document.getElementById('channel-panel')?.classList?.contains('active')) {
+        renderChannelScreen();
+    }
+    return getUserLevelInfo({ level: safeLevel, xp: newXp });
+}
+
+export async function togglePinChannelShort(postId) {
+    if (!currentUser?.uid || !postId) return { success: false, reason: 'invalid' };
+    const idStr = String(postId);
+    if (!isChannelFeatureUnlocked(currentProfile, 'pin_shorts')) {
+        showToast('Recurso Nível 70 📌', 'Alcance o Nível 70 para fixar até 3 vídeos Shorts.', 'yellow');
+        return { success: false, reason: 'level_required', requiredLevel: 70 };
+    }
+
+    const post = (Array.isArray(cachedFeedPosts) ? cachedFeedPosts : []).find(p => p && String(p.id) === idStr);
+    if (!post || post.authorUid !== currentUser.uid || classifyChannelPostFormat(post) !== 'shorts') {
+        showToast('Apenas Shorts do Canal', 'Somente vídeos Shorts do seu canal podem ser fixados aqui.', 'yellow');
+        return { success: false, reason: 'not_short' };
+    }
+
+    const currentPinned = Array.isArray(currentProfile?.channelPinnedShorts)
+        ? currentProfile.channelPinnedShorts.map(String).filter(Boolean)
+        : [];
+    const alreadyPinned = currentPinned.includes(idStr);
+
+    if (!alreadyPinned && currentPinned.length >= MAX_PINNED_SHORTS) {
+        showToast('Limite de 3 Shorts Fixados 📌', 'Você já fixou 3 vídeos Shorts. Desafixe um para fixar outro.', 'yellow');
+        return { success: false, reason: 'limit_reached', maxPinned: MAX_PINNED_SHORTS };
+    }
+
+    const nextPinned = alreadyPinned
+        ? currentPinned.filter(id => id !== idStr)
+        : [...currentPinned, idStr];
+
+    if (!currentProfile) currentProfile = {};
+    currentProfile.channelPinnedShorts = nextPinned;
+    if (activeChannelUid === currentUser.uid && activeChannelUserData) {
+        activeChannelUserData.channelPinnedShorts = nextPinned;
+    }
+
+    if (typeof setDoc === 'function' && typeof doc === 'function' && typeof db !== 'undefined' && db) {
+        try {
+            await setDoc(doc(db, 'users', currentUser.uid), {
+                channelPinnedShorts: nextPinned,
+                updatedAt: Date.now()
+            }, { merge: true });
+        } catch (_) {}
+    }
+
+    renderChannelScreen();
+    if (isChannelManageModalOpen()) {
+        openChannelManageModal(activeChannelManageFilter);
+    }
+    showToast(
+        alreadyPinned ? 'Short desafixado' : 'Short fixado no topo! 📌',
+        alreadyPinned ? 'Este Short voltou para a ordem cronológica.' : `${nextPinned.length}/${MAX_PINNED_SHORTS} Shorts fixados no canal.`,
+        alreadyPinned ? 'blue' : 'green'
+    );
+    return { success: true, pinned: !alreadyPinned, pinnedIds: nextPinned };
+}
+
+export function openLevelProgressionModal(targetUid = activeChannelUid || currentUser?.uid) {
+    const modal = document.getElementById('level-progression-modal');
+    const contentEl = document.getElementById('level-progression-content');
+    if (!modal || !contentEl) return;
+
+    const uid = targetUid || currentUser?.uid || '';
+    const userData = getEffectiveChannelUserData(uid, activeChannelUserData);
+    const info = getUserLevelInfo(userData);
+    const actionsList = [
+        { label: 'Curtir post / comentário', xp: VORTEX_XP_ACTIONS.like },
+        { label: 'Comentar em postagens', xp: VORTEX_XP_ACTIONS.comment },
+        { label: 'Favoritar postagens', xp: VORTEX_XP_ACTIONS.favorite },
+        { label: 'Assistir vídeo até o final', xp: VORTEX_XP_ACTIONS.watch_complete },
+        { label: 'Seguir criadores', xp: VORTEX_XP_ACTIONS.follow },
+        { label: 'Inscrever-se no canal', xp: VORTEX_XP_ACTIONS.subscribe }
+    ];
+
+    contentEl.innerHTML = `
+        <div class="channel-membership-hero${info.level >= 10 ? ' unlocked' : ''}">
+            <span class="channel-membership-status-badge">
+                <i data-lucide="zap"></i>
+                <span>Nível ${info.level} • ${info.xp} XP</span>
+            </span>
+            <div style="font-size:0.78rem; color:#d4d4d8;">Progresso para o Nível ${info.level + 1}: ${info.xpInCurrentLevel}/${info.xpNeededForNext} XP</div>
+            <div class="channel-membership-progress-track" aria-hidden="true">
+                <div class="channel-membership-progress-fill" style="width:${info.progressPercent}%;"></div>
+            </div>
+        </div>
+        <div class="channel-level-actions-grid">
+            ${actionsList.map(a => `<div class="channel-level-action-chip"><span>${escapeHTML(a.label)}</span><strong>+${a.xp} XP</strong></div>`).join('')}
+        </div>
+        <div class="channel-membership-list">
+            ${info.unlocks.map(u => {
+                const pct = Math.min(100, Math.round((info.level / u.level) * 100));
+                return `
+                    <div class="channel-membership-row${u.unlocked ? ' met' : ''}" data-unlock-key="${escapeHTML(u.key)}">
+                        <div class="channel-membership-row-top">
+                            <span class="channel-membership-row-title">
+                                <i data-lucide="${escapeHTML(u.icon)}"></i>
+                                <span>Nível ${u.level} • ${escapeHTML(u.label)}</span>
+                            </span>
+                            <span class="channel-membership-row-count">${u.unlocked ? 'Liberado ✓' : `Faltam ${u.level - info.level} nvs`}</span>
+                        </div>
+                        <small style="font-size:0.73rem; color:#a1a1aa;">${escapeHTML(u.desc)}</small>
+                        <div class="channel-membership-progress-track" aria-hidden="true">
+                            <div class="channel-membership-progress-fill" style="width:${pct}%;"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('')}
+        </div>
+    `;
+
+    modal.style.display = 'flex';
+    modal.setAttribute('aria-hidden', 'false');
+    if (window.lucide) lucide.createIcons();
+}
+
+export function getChannelMediaPostsForUser(uid, tab = 'inicio', playlistFilter = 'all', postsSource = cachedFeedPosts, userData = null) {
     const now = Date.now();
     const source = Array.isArray(postsSource) ? postsSource : [];
     const userPosts = source
@@ -53779,8 +54154,24 @@ export function getChannelMediaPostsForUser(uid, tab = 'inicio', playlistFilter 
 
     const channelItems = userPosts.filter(p => p.type === 'video' || ['short', 'video', 'podcast'].includes(String(p.channelFormat || '').toLowerCase()) || classifyChannelPostFormat(p) === 'podcasts');
 
+    const ownerData = userData || getEffectiveChannelUserData(uid);
+    const pinnedIds = (isChannelFeatureUnlocked(ownerData, 'pin_shorts') && Array.isArray(ownerData?.channelPinnedShorts))
+        ? ownerData.channelPinnedShorts.map(String).slice(0, MAX_PINNED_SHORTS)
+        : [];
+    const sortPinnedShortsFirst = (list) => {
+        if (!pinnedIds.length) return list;
+        return [...list].sort((a, b) => {
+            const aIdx = classifyChannelPostFormat(a) === 'shorts' ? pinnedIds.indexOf(String(a.id)) : -1;
+            const bIdx = classifyChannelPostFormat(b) === 'shorts' ? pinnedIds.indexOf(String(b.id)) : -1;
+            if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
+            if (aIdx !== -1) return -1;
+            if (bIdx !== -1) return 1;
+            return 0;
+        });
+    };
+
     if (tab === 'videos') return channelItems.filter(p => classifyChannelPostFormat(p) === 'videos');
-    if (tab === 'shorts') return channelItems.filter(p => classifyChannelPostFormat(p) === 'shorts');
+    if (tab === 'shorts') return sortPinnedShortsFirst(channelItems.filter(p => classifyChannelPostFormat(p) === 'shorts'));
     if (tab === 'podcasts') return channelItems.filter(p => classifyChannelPostFormat(p) === 'podcasts');
     if (tab === 'playlists') {
         const playlistItems = channelItems.filter(p => (p.channelPlaylist || '').trim().length > 0 || (p.personalCategory || '').trim().length > 0);
@@ -53789,7 +54180,7 @@ export function getChannelMediaPostsForUser(uid, tab = 'inicio', playlistFilter 
         }
         return playlistItems;
     }
-    return channelItems;
+    return sortPinnedShortsFirst(channelItems);
 }
 
 export function getChannelFollowerAnalytics(uid, userData = null, postsSource = cachedFeedPosts) {
@@ -54281,23 +54672,55 @@ export function renderChannelScreen() {
         commBadge.style.display = communityPosts.length > 0 ? 'inline-flex' : 'none';
     }
 
+    // Nível, Emblema Melhor Criador (Nível 90) e Bloqueios de Abas (10/30/50)
+    const channelLevelInfo = getUserLevelInfo(userData);
+    const levelPillEl = document.getElementById('channel-level-pill');
+    const levelPillTextEl = document.getElementById('channel-level-pill-text');
+    if (levelPillEl) levelPillEl.dataset.userLevel = String(channelLevelInfo.level);
+    if (levelPillTextEl) {
+        levelPillTextEl.innerText = `Nível ${channelLevelInfo.level} • ${channelLevelInfo.xp} XP`;
+    }
+    const bestCreatorEmblem = document.getElementById('channel-best-creator-emblem');
+    if (bestCreatorEmblem) {
+        const hasBestCreator = isChannelFeatureUnlocked(userData, 'best_creator');
+        bestCreatorEmblem.style.display = hasBestCreator ? 'inline-flex' : 'none';
+    }
+
+    const communityUnlocked = isChannelFeatureUnlocked(userData, 'community');
+    const podcastsUnlocked = isChannelFeatureUnlocked(userData, 'podcasts');
+    const playlistsUnlocked = isChannelFeatureUnlocked(userData, 'playlists');
+
+    if (activeChannelTab === 'podcasts' && !podcastsUnlocked) activeChannelTab = 'inicio';
+    if (activeChannelTab === 'playlists' && !playlistsUnlocked) activeChannelTab = 'inicio';
+
+    const communityBtnEl = document.getElementById('channel-community-btn');
+    if (communityBtnEl) {
+        communityBtnEl.classList.toggle('feature-locked', !communityUnlocked);
+        communityBtnEl.title = communityUnlocked ? 'Abrir Comunidade do canal' : 'Libera no Nível 10';
+    }
+
     // Abas
     document.querySelectorAll('#channel-tabs-bar .channel-tab-btn').forEach(btn => {
-        const isCurrent = btn.dataset.channelTab === activeChannelTab;
+        const tabKey = btn.dataset.channelTab;
+        const isCurrent = tabKey === activeChannelTab;
+        const isLockedTab = (tabKey === 'podcasts' && !podcastsUnlocked) || (tabKey === 'playlists' && !playlistsUnlocked);
         btn.classList.toggle('active', isCurrent);
+        btn.classList.toggle('feature-locked', isLockedTab);
         btn.setAttribute('aria-selected', isCurrent ? 'true' : 'false');
+        if (tabKey === 'podcasts') btn.title = podcastsUnlocked ? 'Podcasts' : 'Libera no Nível 30';
+        if (tabKey === 'playlists') btn.title = playlistsUnlocked ? 'Playlists' : 'Libera no Nível 50';
     });
 
     // Barra de Playlists
     const playlistsBar = document.getElementById('channel-playlists-toolbar');
     if (playlistsBar) {
-        if (activeChannelTab === 'playlists') {
+        if (activeChannelTab === 'playlists' && playlistsUnlocked) {
             const names = Array.from(new Set(
                 allChannelVideos.map(p => (p.channelPlaylist || p.personalCategory || '').trim()).filter(Boolean)
             ));
             playlistsBar.style.display = 'flex';
             playlistsBar.innerHTML = [
-                `<button type="button" class="channel-playlist-chip ${activeChannelPlaylistFilter === 'all' ? 'active' : ''}" data-playlist="all">Todas (${getChannelMediaPostsForUser(uid, 'playlists', 'all').length})</button>`,
+                `<button type="button" class="channel-playlist-chip ${activeChannelPlaylistFilter === 'all' ? 'active' : ''}" data-playlist="all">Todas (${getChannelMediaPostsForUser(uid, 'playlists', 'all', cachedFeedPosts, userData).length})</button>`,
                 ...names.map(name => `<button type="button" class="channel-playlist-chip ${activeChannelPlaylistFilter === name ? 'active' : ''}" data-playlist="${escapeHTML(name)}">${escapeHTML(name)}</button>`)
             ].join('');
             playlistsBar.querySelectorAll('.channel-playlist-chip').forEach(chip => {
@@ -54353,16 +54776,22 @@ export function renderChannelScreen() {
     }
 
     // Grade estilo Instagram de Vídeos e Reels
-    const tabItems = getChannelMediaPostsForUser(uid, activeChannelTab, activeChannelPlaylistFilter);
-    renderChannelMediaGrid(tabItems, activeChannelTab, isOwner, isChannelActive);
+    const tabItems = getChannelMediaPostsForUser(uid, activeChannelTab, activeChannelPlaylistFilter, cachedFeedPosts, userData);
+    renderChannelMediaGrid(tabItems, activeChannelTab, isOwner, isChannelActive, userData);
 }
 
-export function renderChannelMediaGrid(items = [], tab = 'inicio', isOwner = false, isChannelActive = true) {
+export function renderChannelMediaGrid(items = [], tab = 'inicio', isOwner = false, isChannelActive = true, channelUserData = null) {
     const gridEl = document.getElementById('channel-media-grid');
     const emptyEl = document.getElementById('channel-media-empty');
     const emptyTextEl = document.getElementById('channel-media-empty-text');
     const emptyPostBtn = document.getElementById('channel-empty-post-btn');
     if (!gridEl) return;
+
+    const ownerUid = activeChannelUid || currentUser?.uid || '';
+    const ownerData = channelUserData || getEffectiveChannelUserData(ownerUid, activeChannelUserData);
+    const canPinShorts = isChannelFeatureUnlocked(ownerData, 'pin_shorts');
+    const pinnedIdsSet = new Set(Array.isArray(ownerData?.channelPinnedShorts) ? ownerData.channelPinnedShorts.map(String) : []);
+    const starSealHTML = renderVortexStarSealHTML(ownerData);
 
     if (!Array.isArray(items) || items.length === 0) {
         gridEl.innerHTML = '';
@@ -54396,6 +54825,11 @@ export function renderChannelMediaGrid(items = [], tab = 'inicio', isOwner = fal
         const fmt = classifyChannelPostFormat(post);
         const isImageTile = (typeof isImageFeedPost === 'function' ? isImageFeedPost(post) : post.type === 'image') || fmt === 'imagens';
         const isPlayableTile = !isImageTile && (post.type === 'video' || post.type === 'music' || post.type === 'audio' || ['videos', 'shorts', 'podcasts'].includes(fmt));
+        const isShortTile = fmt === 'shorts' && post.type === 'video';
+        const isPinnedShort = canPinShorts && isShortTile && pinnedIdsSet.has(String(post.id));
+        const pinOverlayHTML = (isOwner && canPinShorts && isShortTile)
+            ? `<span role="button" tabindex="0" class="channel-ig-tile-pin-action${isPinnedShort ? ' pinned' : ''}" data-action="toggle-pin-short" data-post-id="${post.id}" title="${isPinnedShort ? 'Desafixar Short' : 'Fixar Short no topo (máx. 3)'}"><i data-lucide="pin"></i><span>${isPinnedShort ? 'Fixado' : 'Fixar'}</span></span>`
+            : (isPinnedShort ? `<span class="channel-ig-tile-pinned-badge" title="Short fixado no topo"><i data-lucide="pin"></i><span>Fixado</span></span>` : '');
         const tileImages = isImageTile && typeof getPostImagesList === 'function' ? getPostImagesList(post) : [];
         const tileImagesCount = isImageTile ? Math.max(Number(post.imagesCount || 0), tileImages.length) : 0;
         const isCarouselTile = isImageTile && tileImagesCount > 1;
@@ -54417,12 +54851,14 @@ export function renderChannelMediaGrid(items = [], tab = 'inicio', isOwner = fal
             : `<img src="${src}" ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="image"` : ''} alt="${escapeHTML(post.title || post.caption || (isImageTile ? 'Imagem do canal' : 'Vídeo do canal'))}" class="channel-ig-tile-media">`;
 
         return `
-            <button type="button" class="channel-ig-tile${isCarouselTile ? ' has-carousel' : ''}" data-post-id="${post.id}" title="${escapeHTML(post.title || post.caption || (isImageTile ? 'Ver imagem' : 'Assistir'))}">
+            <button type="button" class="channel-ig-tile${isCarouselTile ? ' has-carousel' : ''}${isPinnedShort ? ' is-pinned-short' : ''}" data-post-id="${post.id}" title="${escapeHTML(post.title || post.caption || (isImageTile ? 'Ver imagem' : 'Assistir'))}">
                 ${mediaTag}
+                ${pinOverlayHTML}
                 ${isImageTile ? `<span class="channel-ig-tile-image-tag"><i data-lucide="${isCarouselTile ? 'layers' : 'image'}"></i> ${isCarouselTile ? `${tileImagesCount} fotos` : 'Imagem'}</span>` : ''}
                 ${isPlayableTile ? '<span class="channel-ig-tile-play-overlay" aria-hidden="true"><i data-lucide="play" class="channel-ig-tile-play-icon"></i></span>' : ''}
                 ${hasMusic ? `<span class="channel-ig-tile-music-badge" title="${escapeHTML(`Música: ${musicLabel}`)}"><i data-lucide="music"></i></span>` : ''}
                 <span class="channel-ig-tile-top-badge${isCarouselTile ? ' channel-ig-tile-carousel-badge' : ''}" aria-hidden="true"><i data-lucide="${topIcon}"></i>${isCarouselTile ? `<span>${tileImagesCount}</span>` : ''}</span>
+                ${starSealHTML}
                 <span class="channel-ig-tile-bottom-overlay">
                     <span class="channel-ig-tile-meta-left">
                         <span class="channel-ig-tile-views"><i data-lucide="${isImageTile ? 'eye' : 'play'}"></i> ${escapeHTML(String(viewsLabel))}</span>
@@ -54439,7 +54875,14 @@ export function renderChannelMediaGrid(items = [], tab = 'inicio', isOwner = fal
     }
 
     gridEl.querySelectorAll('.channel-ig-tile').forEach(tile => {
-        tile.addEventListener('click', () => {
+        tile.addEventListener('click', (e) => {
+            const pinAction = e?.target?.closest?.('[data-action="toggle-pin-short"]');
+            if (pinAction) {
+                e?.preventDefault?.();
+                e?.stopPropagation?.();
+                togglePinChannelShort(pinAction.dataset.postId || tile.dataset.postId);
+                return;
+            }
             const postId = tile.dataset.postId;
             if (postId) openChannelGridMediaViewer(postId);
         });
@@ -54450,9 +54893,21 @@ export function renderChannelMediaGrid(items = [], tab = 'inicio', isOwner = fal
 
 export function switchChannelTab(tabName) {
     const valid = ['inicio', 'videos', 'shorts', 'imagens', 'podcasts', 'playlists'];
-    activeChannelTab = valid.includes(tabName) ? tabName : 'inicio';
+    const targetTab = valid.includes(tabName) ? tabName : 'inicio';
+    const uid = activeChannelUid || currentUser?.uid || '';
+    const userData = getEffectiveChannelUserData(uid, activeChannelUserData);
+    if (targetTab === 'podcasts' && !isChannelFeatureUnlocked(userData, 'podcasts')) {
+        showToast('Aba Podcasts Bloqueada 🔒', 'Alcance o Nível 30 no canal para liberar a aba Podcasts.', 'yellow');
+        return false;
+    }
+    if (targetTab === 'playlists' && !isChannelFeatureUnlocked(userData, 'playlists')) {
+        showToast('Aba Playlists Bloqueada 🔒', 'Alcance o Nível 50 no canal para liberar a aba Playlists.', 'yellow');
+        return false;
+    }
+    activeChannelTab = targetTab;
     if (activeChannelTab !== 'playlists') activeChannelPlaylistFilter = 'all';
     renderChannelScreen();
+    return true;
 }
 
 export async function openUserChannelScreen(targetUid = null, fallbackData = null) {
@@ -54511,6 +54966,12 @@ export async function openUserChannelScreen(targetUid = null, fallbackData = nul
                     if (liveData.channelDisabled !== undefined) currentProfile.channelDisabled = liveData.channelDisabled;
                     if (liveData.channelMembers !== undefined) currentProfile.channelMembers = liveData.channelMembers;
                     if (liveData.channelSuperFans !== undefined) currentProfile.channelSuperFans = liveData.channelSuperFans;
+                    if (liveData.xp !== undefined) currentProfile.xp = liveData.xp;
+                    if (liveData.level !== undefined) currentProfile.level = liveData.level;
+                    if (liveData.levelActionKeys !== undefined) currentProfile.levelActionKeys = liveData.levelActionKeys;
+                    if (liveData.channelPinnedShorts !== undefined) currentProfile.channelPinnedShorts = liveData.channelPinnedShorts;
+                    if (liveData.bestCreatorBadgeUnlocked !== undefined) currentProfile.bestCreatorBadgeUnlocked = liveData.bestCreatorBadgeUnlocked;
+                    if (liveData.vortexStarUnlocked !== undefined) currentProfile.vortexStarUnlocked = liveData.vortexStarUnlocked;
                     syncChannelEnabledUI();
                 }
                 if (document.getElementById('channel-panel')?.classList.contains('active')) {
@@ -54745,6 +55206,10 @@ export async function toggleChannelSubscription(targetUid = activeChannelUid) {
         ]);
     } catch (_) {}
 
+    if (!alreadySubscribed && typeof awardUserXP === 'function') {
+        await awardUserXP('subscribe', targetUid);
+    }
+
     renderChannelScreen();
     showToast(alreadySubscribed ? 'Inscrição removida' : 'Inscrito no canal! 🔔', alreadySubscribed ? 'Você deixou de seguir este canal.' : 'Agora você acompanha este canal.', alreadySubscribed ? 'blue' : 'green');
 }
@@ -54911,18 +55376,22 @@ export function openChannelAboutModal() {
     if (window.lucide) lucide.createIcons();
 }
 
-export function openChannelCommunityModal() {
+export function openChannelCommunityModal(options = {}) {
     const modal = document.getElementById('channel-community-modal');
     const composer = document.getElementById('channel-community-composer');
     const listEl = document.getElementById('channel-community-list');
-    if (!modal || !listEl) return;
+    if (!modal || !listEl) return false;
 
     const uid = activeChannelUid || currentUser?.uid || '';
     const isOwner = Boolean(uid && currentUser?.uid && uid === currentUser.uid);
     const userData = getEffectiveChannelUserData(uid, activeChannelUserData);
-    if (composer) composer.style.display = isOwner ? 'flex' : 'none';
-
     const posts = Array.isArray(userData.channelCommunityPosts) ? [...userData.channelCommunityPosts].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)) : [];
+    const communityUnlocked = isChannelFeatureUnlocked(userData, 'community');
+    if (!communityUnlocked && (options?.fromClick || isOwner || posts.length === 0)) {
+        showToast('Aba Comunidade Bloqueada 🔒', 'Alcance o Nível 10 no canal para liberar a aba Comunidade.', 'yellow');
+        return false;
+    }
+    if (composer) composer.style.display = (isOwner && communityUnlocked) ? 'flex' : 'none';
     listEl.innerHTML = posts.length
         ? posts.map(item => {
             const commId = String(item.id || item.createdAt || '');
@@ -55023,6 +55492,10 @@ export async function toggleChannelCommunityPostLike(channelUid = activeChannelU
         openChannelCommunityModal();
     }
 
+    if (!alreadyLiked && typeof awardUserXP === 'function') {
+        await awardUserXP('like', `comm_${targetUid}_${postKey}`);
+    }
+
     return { success: true, liked: !alreadyLiked, likesCount: nextLikes.length, postId: currentItem.id };
 }
 
@@ -55031,6 +55504,10 @@ export async function publishChannelCommunityPost() {
     const channelGate = canCurrentUserPublishPosts(currentProfile);
     if (!channelGate.allowed) {
         showToast('Canal Desativado 🔒', channelGate.message, 'red');
+        return false;
+    }
+    if (!isChannelFeatureUnlocked(currentProfile, 'community')) {
+        showToast('Aba Comunidade Bloqueada 🔒', 'Alcance o Nível 10 para liberar e publicar na aba Comunidade.', 'yellow');
         return false;
     }
     const input = document.getElementById('channel-community-input');
@@ -55323,6 +55800,11 @@ function renderChannelManageItemHTML(post) {
     const carouselImages = isImageItem && typeof getPostImagesList === 'function' ? getPostImagesList(post) : [];
     const carouselCount = isImageItem ? Math.max(Number(post.imagesCount || 0), carouselImages.length) : 0;
 
+    const canPinShorts = isChannelFeatureUnlocked(currentProfile, 'pin_shorts');
+    const pinnedShortsArr = Array.isArray(currentProfile?.channelPinnedShorts) ? currentProfile.channelPinnedShorts.map(String) : [];
+    const isShortPost = !isImageItem && fmt === 'shorts';
+    const isPinnedShort = Boolean(isShortPost && pinnedShortsArr.includes(postId));
+
     const formatOptions = isImageItem
         ? `
             <option value="image" ${fmt === 'imagens' ? 'selected' : ''}>Imagem</option>
@@ -55371,6 +55853,7 @@ function renderChannelManageItemHTML(post) {
                         </select>
                         <button type="button" class="channel-pill-btn channel-manage-action-btn" data-action="channel-edit-media" data-post-id="${escapeHTML(postId)}">${isEditing ? 'Fechar' : 'Editar'}</button>
                         <button type="button" class="channel-pill-btn channel-manage-action-btn" data-action="channel-view-media" data-post-id="${escapeHTML(postId)}">Ver</button>
+                        ${isShortPost ? `<button type="button" class="channel-pill-btn channel-manage-action-btn channel-manage-pin-btn${isPinnedShort ? ' pinned' : ''}" data-action="channel-toggle-pin-short" data-post-id="${escapeHTML(postId)}">${canPinShorts ? (isPinnedShort ? 'Fixado 📌' : 'Fixar Short') : 'Fixar (Nv. 70)'}</button>` : ''}
                         <button type="button" class="channel-pill-btn channel-danger-pill channel-manage-action-btn" data-action="channel-delete-media" data-post-id="${escapeHTML(postId)}">Excluir</button>
                     </div>
                 </div>
@@ -55515,8 +55998,10 @@ export function openChannelGridMediaViewer(postId) {
 
     activeChannelViewerPostId = post.id;
     const hasMusic = typeof hasPostMusicTrack === 'function' ? hasPostMusicTrack(post) : false;
+    const postAuthorData = getPostAuthorUserData(post);
+    const vortexStarHTML = typeof renderVortexStarSealHTML === 'function' ? renderVortexStarSealHTML(postAuthorData) : '';
 
-    mediaBox.innerHTML = typeof renderPostMediaTagHTML === 'function'
+    const mediaHTML = typeof renderPostMediaTagHTML === 'function'
         ? renderPostMediaTagHTML(post, {
             autoplay: true,
             imgClass: hasMusic ? 'channel-viewer-music-interactive' : '',
@@ -55528,9 +56013,19 @@ export function openChannelGridMediaViewer(postId) {
                 ? createBlobUrlFromData(String(rawMedia).replace(/#t=[0-9,.]+$/, ''))
                 : (rawMedia || '');
             return post.type === 'video'
-                ? `<video src="${src}" controls autoplay playsinline controlsList="nodownload" disablePictureInPicture></video>`
+                ? `<video src="${src}" data-post-id="${escapeHTML(String(post.id))}" controls autoplay playsinline controlsList="nodownload" disablePictureInPicture></video>`
                 : `<img src="${src}" alt="${escapeHTML(post.title || post.caption || 'Mídia')}" class="${hasMusic ? 'channel-viewer-music-interactive' : ''}">`;
         })();
+    mediaBox.innerHTML = `${mediaHTML}${vortexStarHTML}`;
+
+    if (post.type === 'video') {
+        const viewerVid = mediaBox.querySelector?.('video') || mediaBox.querySelectorAll?.('video')?.[0];
+        viewerVid?.addEventListener?.('ended', () => {
+            if (typeof awardUserXP === 'function') {
+                awardUserXP('watch_complete', post.id);
+            }
+        });
+    }
 
     if (typeof resolvePostChunkedMedia === 'function') {
         resolvePostChunkedMedia(mediaBox, [post]);
@@ -55778,6 +56273,9 @@ function bindChannelScreenListeners() {
         } else if (action === 'channel-view-media') {
             closeChannelSubModal('channel-manage-modal');
             openChannelGridMediaViewer(postId);
+        } else if (action === 'channel-toggle-pin-short') {
+            playSound(clickSound);
+            await togglePinChannelShort(postId);
         } else if (action === 'channel-delete-media' || action === 'channel-delete-video') {
             await deleteChannelManagedPost(postId);
         }
@@ -55815,8 +56313,12 @@ function bindChannelScreenListeners() {
         playSound(clickSound);
         openChannelAnalyticsModal();
     });
-    document.getElementById('channel-community-btn')?.addEventListener('click', openChannelCommunityModal);
+    document.getElementById('channel-community-btn')?.addEventListener('click', () => openChannelCommunityModal({ fromClick: true }));
     document.getElementById('channel-community-publish-btn')?.addEventListener('click', publishChannelCommunityPost);
+    document.getElementById('channel-level-pill')?.addEventListener('click', () => {
+        playSound(clickSound);
+        openLevelProgressionModal(activeChannelUid || currentUser?.uid);
+    });
 
     document.querySelectorAll('#channel-tabs-bar .channel-tab-btn').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -55900,7 +56402,8 @@ function bindChannelScreenListeners() {
         ['close-channel-manage-modal', 'channel-manage-modal'],
         ['close-channel-media-viewer-modal', 'channel-media-viewer-modal'],
         ['close-channel-analytics-modal', 'channel-analytics-modal'],
-        ['close-channel-membership-modal', 'channel-membership-modal']
+        ['close-channel-membership-modal', 'channel-membership-modal'],
+        ['close-level-progression-modal', 'level-progression-modal']
     ].forEach(([btnId, modalId]) => {
         document.getElementById(btnId)?.addEventListener('click', () => closeChannelSubModal(modalId));
     });
@@ -55981,6 +56484,19 @@ if (typeof window !== 'undefined') {
     window.openChannelMembershipModal = openChannelMembershipModal;
     window.toggleChannelMember = toggleChannelMember;
     window.toggleChannelSuperFan = toggleChannelSuperFan;
+    window.VORTEX_XP_PER_LEVEL = VORTEX_XP_PER_LEVEL;
+    window.VORTEX_XP_ACTIONS = VORTEX_XP_ACTIONS;
+    window.VORTEX_LEVEL_UNLOCKS = VORTEX_LEVEL_UNLOCKS;
+    window.MAX_PINNED_SHORTS = MAX_PINNED_SHORTS;
+    window.calculateLevelFromXP = calculateLevelFromXP;
+    window.getUserLevelInfo = getUserLevelInfo;
+    window.isUserFeatureUnlocked = isUserFeatureUnlocked;
+    window.isChannelFeatureUnlocked = isChannelFeatureUnlocked;
+    window.awardUserXP = awardUserXP;
+    window.setUserLevel = setUserLevel;
+    window.renderVortexStarSealHTML = renderVortexStarSealHTML;
+    window.togglePinChannelShort = togglePinChannelShort;
+    window.openLevelProgressionModal = openLevelProgressionModal;
 }
 
 

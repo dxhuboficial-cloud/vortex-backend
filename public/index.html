@@ -35,13 +35,13 @@
     <meta itemprop="image" content="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
     <link rel="image_src" type="image/png" href="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
 
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.306">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.306">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.306">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.306">
-    <link rel="stylesheet" href="style.css?v=1.0.306">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.307">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.307">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.307">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.307">
+    <link rel="stylesheet" href="style.css?v=1.0.307">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.306" id="app-manifest-link">
+    <link rel="manifest" href="manifest.json?v=1.0.307" id="app-manifest-link">
     <meta name="theme-color" content="#39ff14" id="app-theme-color-meta">
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#39ff14" id="app-theme-color-meta-dark">
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#39ff14" id="app-theme-color-meta-light">
@@ -50,8 +50,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.306">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.306">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.307">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.307">
     <!-- Sincronização Dinâmica da Barra de Status e Barra de Navegação do Celular -->
     <script>
         (function() {
@@ -6972,7 +6972,13 @@
 
                     <!-- Identidade do Canal (Foto carregada automaticamente do Perfil) -->
                     <div class="channel-identity-row">
-                        <div id="channel-avatar" class="avatar channel-avatar" title="Foto sincronizada automaticamente com o Perfil"></div>
+                        <div class="channel-avatar-wrapper">
+                            <div id="channel-avatar" class="avatar channel-avatar" title="Foto sincronizada automaticamente com o Perfil"></div>
+                            <span id="channel-best-creator-emblem" class="channel-best-creator-emblem" style="display:none;" title="Melhor Criador (Nível 90+)">
+                                <i data-lucide="trophy"></i>
+                                <span>Melhor Criador</span>
+                            </span>
+                        </div>
                         <div class="channel-identity-meta">
                             <div class="channel-title-row">
                                 <h1 id="channel-title" class="channel-title">Meu Canal</h1>
@@ -6980,6 +6986,10 @@
                             </div>
                             <div id="channel-handle" class="channel-handle">@usuario</div>
                             <div id="channel-stats" class="channel-stats">0 inscritos • 0 seguidores • 0 vídeos</div>
+                            <button type="button" id="channel-level-pill" class="channel-level-pill" title="Ver nível do usuário e recompensas">
+                                <i data-lucide="zap"></i>
+                                <span id="channel-level-pill-text">Nível 1 • 0 XP</span>
+                            </button>
                         </div>
                     </div>
 
@@ -7266,6 +7276,17 @@
             </div>
         </div>
 
+        <!-- Modal: Sistema de Nível, XP e Desbloqueios do Canal (v1.0.307) -->
+        <div id="level-progression-modal" class="custom-modal-overlay" style="display:none;" aria-hidden="true">
+            <div class="custom-modal-card channel-modal-card channel-level-modal-card">
+                <div class="panel-top-bar" style="padding:12px 16px;">
+                    <h3 class="modal-title" style="font-size:1rem;"><i data-lucide="zap"></i> Nível &amp; Desbloqueios VORTEX</h3>
+                    <div class="header-icon-btn" id="close-level-progression-modal" title="Fechar" aria-label="Fechar"><i data-lucide="x"></i></div>
+                </div>
+                <div id="level-progression-content" class="channel-modal-body"></div>
+            </div>
+        </div>
+
     </div> <!-- Fim do app-container -->
 
     <!-- =========================================================
@@ -7341,6 +7362,6 @@
         </main>
     </div>
 
-    <script type="module" src="script.js?v=1.0.306" defer></script>
+    <script type="module" src="script.js?v=1.0.307" defer></script>
 </body>
 </html>
