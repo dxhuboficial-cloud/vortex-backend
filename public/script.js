@@ -23382,7 +23382,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.305';
+export const CURRENT_APP_VERSION = '1.0.306';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -53895,6 +53895,169 @@ export function getChannelFollowerAnalytics(uid, userData = null, postsSource = 
     };
 }
 
+export const CHANNEL_MEMBERSHIP_REQUIREMENTS = Object.freeze({
+    videos: 10,
+    banner: 1,
+    images: 30,
+    followers: 10,
+    subscribers: 15,
+    likes: 10,
+    validComments: 5
+});
+
+export function isValidChannelComment(comment, post = null, seenNormalizedSet = null) {
+    if (!comment || typeof comment !== 'object') return false;
+    if (comment.isDeleted || comment.deleted || comment.hiddenByAi || comment.isSpam) return false;
+    const authorUid = comment.authorUid || comment.uid || '';
+    if (authorUid && isUserAccountDeleted(authorUid)) return false;
+
+    const text = String(comment.text || '').trim();
+    if (!text) return false;
+
+    const norm = typeof normalizeCommentForCompare === 'function'
+        ? normalizeCommentForCompare(text)
+        : text.toLowerCase().replace(/\s+/g, ' ').trim();
+    if (!norm || norm.length < 2) return false;
+    if (seenNormalizedSet && seenNormalizedSet.has(norm)) return false;
+
+    const reportsCount = Math.max(
+        Number(comment.reportsCount) || 0,
+        Array.isArray(comment.reportedBy) ? comment.reportedBy.length : 0,
+        Array.isArray(comment.reports) ? comment.reports.length : 0
+    );
+    if (reportsCount >= 3) return false;
+
+    if (typeof analyzeCommentByAI === 'function') {
+        const evalRes = analyzeCommentByAI({
+            uid: authorUid,
+            postId: post?.id || '',
+            commentId: comment.id || '',
+            text,
+            post: { id: post?.id || '', comments: [] },
+            reportsCount,
+            trackRate: false
+        });
+        if (!evalRes?.isSafe) return false;
+    }
+
+    if (seenNormalizedSet) seenNormalizedSet.add(norm);
+    return true;
+}
+
+export function evaluateChannelMembershipEligibility(uid, userData = null, postsSource = cachedFeedPosts) {
+    const targetUid = uid || activeChannelUid || currentUser?.uid || '';
+    const effectiveUser = (userData && typeof userData === 'object')
+        ? userData
+        : getEffectiveChannelUserData(targetUid, activeChannelUserData);
+
+    const now = Date.now();
+    const source = Array.isArray(postsSource) ? postsSource : [];
+    const userPosts = source.filter(p => {
+        if (!p || p.authorUid !== targetUid) return false;
+        if (p.isDeleted || p.deleted) return false;
+        if (p.published === false) return false;
+        if ((p.scheduled || p.isScheduled) && p.scheduledFor && p.scheduledFor > now) return false;
+        if (p.isTemporary && p.expiresAt && p.expiresAt <= now) return false;
+        return true;
+    });
+
+    const videosCount = userPosts.filter(p =>
+        p.type === 'video' || ['short', 'video'].includes(String(p.channelFormat || '').toLowerCase())
+    ).length;
+
+    const hasBanner = Boolean(typeof effectiveUser?.channelBanner === 'string' && effectiveUser.channelBanner.trim().length > 0);
+    const bannerCount = hasBanner ? 1 : 0;
+
+    const imagesCount = userPosts.reduce((sum, p) => {
+        const isImg = (typeof isImageFeedPost === 'function' ? isImageFeedPost(p) : p.type === 'image') ||
+            String(p.channelFormat || '').toLowerCase() === 'image';
+        if (!isImg) return sum;
+        const perPostCount = Math.max(
+            1,
+            Math.min(
+                MAX_POST_IMAGES || 5,
+                Math.max(Number(p.imagesCount || 0), Array.isArray(p.mediaItems) ? p.mediaItems.length : 0, 1)
+            )
+        );
+        return sum + perPostCount;
+    }, 0);
+
+    const uniqueFollowerUids = new Set(
+        (Array.isArray(effectiveUser?.followers) ? effectiveUser.followers : [])
+            .filter(fid => fid && !isUserAccountDeleted(fid))
+    );
+    const followersCount = uniqueFollowerUids.size;
+
+    const uniqueSubUids = new Set(
+        (Array.isArray(effectiveUser?.channelSubscribers) ? effectiveUser.channelSubscribers : [])
+            .filter(sid => sid && !isUserAccountDeleted(sid))
+    );
+    const subscribersCount = uniqueSubUids.size;
+
+    const likesCount = userPosts.reduce((sum, p) => {
+        if (Array.isArray(p.likes)) {
+            const validLikes = new Set(p.likes.filter(u => u && !isUserAccountDeleted(u)));
+            return sum + validLikes.size;
+        }
+        return sum + Math.max(0, Number(p.likesCount || 0));
+    }, 0);
+
+    let validCommentsCount = 0;
+    userPosts.forEach(p => {
+        const comments = Array.isArray(p.comments) ? p.comments : [];
+        if (!comments.length) return;
+        const seenNorm = new Set();
+        comments.forEach(c => {
+            if (isValidChannelComment(c, p, seenNorm)) {
+                validCommentsCount++;
+            }
+        });
+    });
+
+    const req = CHANNEL_MEMBERSHIP_REQUIREMENTS;
+    const criteria = [
+        { key: 'videos', label: 'Vídeos publicados', icon: 'film', current: videosCount, required: req.videos, met: videosCount >= req.videos },
+        { key: 'banner', label: 'Banner no canal', icon: 'image', current: bannerCount, required: req.banner, met: hasBanner },
+        { key: 'images', label: 'Imagens publicadas', icon: 'images', current: imagesCount, required: req.images, met: imagesCount >= req.images },
+        { key: 'followers', label: 'Seguidores', icon: 'user-plus', current: followersCount, required: req.followers, met: followersCount >= req.followers },
+        { key: 'subscribers', label: 'Inscritos no canal', icon: 'users', current: subscribersCount, required: req.subscribers, met: subscribersCount >= req.subscribers },
+        { key: 'likes', label: 'Likes recebidos', icon: 'heart', current: likesCount, required: req.likes, met: likesCount >= req.likes },
+        { key: 'validComments', label: 'Comentários válidos', icon: 'message-circle', current: validCommentsCount, required: req.validComments, met: validCommentsCount >= req.validComments }
+    ];
+
+    const completedCount = criteria.filter(c => c.met).length;
+    const eligible = completedCount === criteria.length;
+    const membersCount = Array.isArray(effectiveUser?.channelMembers) ? effectiveUser.channelMembers.filter(Boolean).length : 0;
+    const superFansCount = Array.isArray(effectiveUser?.channelSuperFans) ? effectiveUser.channelSuperFans.filter(Boolean).length : 0;
+
+    return {
+        uid: targetUid,
+        eligible,
+        superFanUnlocked: eligible,
+        memberUnlocked: eligible,
+        completedCount,
+        totalRequirements: criteria.length,
+        progressPercent: Math.round((completedCount / criteria.length) * 100),
+        membersCount,
+        superFansCount,
+        metrics: {
+            videosCount,
+            hasBanner,
+            bannerCount,
+            imagesCount,
+            followersCount,
+            subscribersCount,
+            likesCount,
+            validCommentsCount
+        },
+        criteria
+    };
+}
+
+export function isChannelMembershipUnlocked(uid, userData = null, postsSource = cachedFeedPosts) {
+    return evaluateChannelMembershipEligibility(uid, userData, postsSource).eligible;
+}
+
 function getEffectiveChannelUserData(uid, fallbackData = null) {
     if (uid && currentUser?.uid && uid === currentUser.uid) {
         return { ...(fallbackData || {}), ...(currentProfile || {}), uid };
@@ -54052,12 +54215,63 @@ export function renderChannelScreen() {
         }
     }
 
+    const membershipElig = evaluateChannelMembershipEligibility(uid, userData);
+    const ownerMembershipBtn = document.getElementById('channel-membership-status-btn');
+    const ownerMembershipLabel = document.getElementById('channel-membership-status-label');
+    if (isOwner) {
+        if (ownerMembershipBtn) {
+            ownerMembershipBtn.classList.toggle('unlocked', membershipElig.eligible);
+            ownerMembershipBtn.classList.toggle('locked', !membershipElig.eligible);
+        }
+        if (ownerMembershipLabel) {
+            ownerMembershipLabel.innerText = membershipElig.eligible
+                ? 'Super Fã & Membro Liberado'
+                : `Super Fã & Membro (${membershipElig.completedCount}/${membershipElig.totalRequirements})`;
+        }
+        if (
+            typeof db !== 'undefined' && db &&
+            typeof updateDoc === 'function' && typeof doc === 'function' &&
+            (Boolean(userData.channelSuperFanUnlocked) !== membershipElig.eligible ||
+             Boolean(userData.channelMemberUnlocked) !== membershipElig.eligible)
+        ) {
+            if (currentProfile) {
+                currentProfile.channelSuperFanUnlocked = membershipElig.eligible;
+                currentProfile.channelMemberUnlocked = membershipElig.eligible;
+            }
+            updateDoc(doc(db, 'users', uid), {
+                channelSuperFanUnlocked: membershipElig.eligible,
+                channelMemberUnlocked: membershipElig.eligible
+            }).catch(() => {});
+        }
+    }
+
     if (!isOwner) {
         const subBtn = document.getElementById('channel-subscribe-btn');
         const subLabel = document.getElementById('channel-subscribe-label');
         const isSubscribed = Boolean(currentUser?.uid && subscribersArr.includes(currentUser.uid));
         if (subBtn) subBtn.classList.toggle('subscribed', isSubscribed);
         if (subLabel) subLabel.innerText = isSubscribed ? 'Inscrito' : 'Inscrever-se';
+
+        const canShowPaidPerks = Boolean(membershipElig.eligible && isChannelActive);
+        const memberBtn = document.getElementById('channel-become-member-btn');
+        const memberLabel = document.getElementById('channel-become-member-label');
+        const membersArr = Array.isArray(userData.channelMembers) ? userData.channelMembers.filter(Boolean) : [];
+        const isMember = Boolean(currentUser?.uid && membersArr.includes(currentUser.uid));
+        if (memberBtn) {
+            memberBtn.style.display = canShowPaidPerks ? 'inline-flex' : 'none';
+            memberBtn.classList.toggle('active', canShowPaidPerks && isMember);
+        }
+        if (memberLabel) memberLabel.innerText = isMember ? 'Membro ✓' : 'Seja Membro';
+
+        const superFanBtn = document.getElementById('channel-superfan-btn');
+        const superFanLabel = document.getElementById('channel-superfan-label');
+        const superFansArr = Array.isArray(userData.channelSuperFans) ? userData.channelSuperFans.filter(Boolean) : [];
+        const isSuperFan = Boolean(currentUser?.uid && superFansArr.includes(currentUser.uid));
+        if (superFanBtn) {
+            superFanBtn.style.display = canShowPaidPerks ? 'inline-flex' : 'none';
+            superFanBtn.classList.toggle('active', canShowPaidPerks && isSuperFan);
+        }
+        if (superFanLabel) superFanLabel.innerText = isSuperFan ? 'Super Fã ★' : 'Super Fã';
     }
 
     const communityPosts = Array.isArray(userData.channelCommunityPosts) ? userData.channelCommunityPosts : [];
@@ -54295,6 +54509,8 @@ export async function openUserChannelScreen(targetUid = null, fallbackData = nul
                     if (liveData.channelShowFollowers !== undefined) currentProfile.channelShowFollowers = liveData.channelShowFollowers;
                     if (liveData.channelEnabled !== undefined) currentProfile.channelEnabled = liveData.channelEnabled;
                     if (liveData.channelDisabled !== undefined) currentProfile.channelDisabled = liveData.channelDisabled;
+                    if (liveData.channelMembers !== undefined) currentProfile.channelMembers = liveData.channelMembers;
+                    if (liveData.channelSuperFans !== undefined) currentProfile.channelSuperFans = liveData.channelSuperFans;
                     syncChannelEnabledUI();
                 }
                 if (document.getElementById('channel-panel')?.classList.contains('active')) {
@@ -54531,6 +54747,133 @@ export async function toggleChannelSubscription(targetUid = activeChannelUid) {
 
     renderChannelScreen();
     showToast(alreadySubscribed ? 'Inscrição removida' : 'Inscrito no canal! 🔔', alreadySubscribed ? 'Você deixou de seguir este canal.' : 'Agora você acompanha este canal.', alreadySubscribed ? 'blue' : 'green');
+}
+
+const CHANNEL_MEMBERSHIP_TIER_CONFIG = {
+    member: {
+        field: 'channelMembers',
+        joinTitle: 'Bem-vindo aos Membros! 🏅',
+        joinMsg: 'Agora você é membro oficial deste canal.',
+        leaveTitle: 'Assinatura de Membro removida',
+        leaveMsg: 'Você deixou de ser membro deste canal.',
+        blockedMsg: 'Para liberar o Seja Membro, o canal precisa cumprir todos os 7 requisitos.'
+    },
+    superfan: {
+        field: 'channelSuperFans',
+        joinTitle: 'Você agora é Super Fã! ⭐',
+        joinMsg: 'Seu apoio de Super Fã está ativo neste canal.',
+        leaveTitle: 'Status de Super Fã removido',
+        leaveMsg: 'Você deixou a lista de Super Fãs deste canal.',
+        blockedMsg: 'Para liberar o Super Fã, o canal precisa cumprir todos os 7 requisitos.'
+    }
+};
+
+async function toggleChannelMembershipTier(targetUid, tierKey) {
+    const cfg = CHANNEL_MEMBERSHIP_TIER_CONFIG[tierKey];
+    if (!cfg || !currentUser?.uid || !targetUid || targetUid === currentUser.uid) return false;
+
+    const userData = getEffectiveChannelUserData(targetUid, activeChannelUserData);
+    const currentList = Array.isArray(userData[cfg.field]) ? userData[cfg.field].filter(Boolean) : [];
+    const alreadyActive = currentList.includes(currentUser.uid);
+
+    if (!alreadyActive) {
+        const eligibility = evaluateChannelMembershipEligibility(targetUid, userData);
+        if (!eligibility.eligible || !isUserChannelEnabled(userData)) {
+            showToast('Requisitos Pendentes 🔒', cfg.blockedMsg, 'yellow');
+            return false;
+        }
+    }
+
+    const nextList = alreadyActive
+        ? currentList.filter(id => id !== currentUser.uid)
+        : [...new Set([...currentList, currentUser.uid])];
+
+    if (activeChannelUserData && activeChannelUid === targetUid) {
+        activeChannelUserData[cfg.field] = nextList;
+    }
+    if (typeof contactUserDataMap !== 'undefined' && contactUserDataMap?.has(targetUid)) {
+        contactUserDataMap.set(targetUid, { ...contactUserDataMap.get(targetUid), [cfg.field]: nextList });
+    }
+
+    try {
+        await updateDoc(doc(db, 'users', targetUid), {
+            [cfg.field]: alreadyActive ? arrayRemove(currentUser.uid) : arrayUnion(currentUser.uid)
+        });
+    } catch (_) {}
+
+    renderChannelScreen();
+    showToast(
+        alreadyActive ? cfg.leaveTitle : cfg.joinTitle,
+        alreadyActive ? cfg.leaveMsg : cfg.joinMsg,
+        alreadyActive ? 'blue' : 'green'
+    );
+    return !alreadyActive;
+}
+
+export async function toggleChannelMember(targetUid = activeChannelUid) {
+    return toggleChannelMembershipTier(targetUid, 'member');
+}
+
+export async function toggleChannelSuperFan(targetUid = activeChannelUid) {
+    return toggleChannelMembershipTier(targetUid, 'superfan');
+}
+
+export function openChannelMembershipModal(targetUid = activeChannelUid || currentUser?.uid) {
+    const modal = document.getElementById('channel-membership-modal');
+    const contentEl = document.getElementById('channel-membership-content');
+    if (!modal || !contentEl) return;
+
+    const uid = targetUid || currentUser?.uid || '';
+    const userData = getEffectiveChannelUserData(uid, activeChannelUserData);
+    const elig = evaluateChannelMembershipEligibility(uid, userData);
+    const missingCount = elig.totalRequirements - elig.completedCount;
+
+    const rowsHtml = elig.criteria.map(item => {
+        const pct = Math.min(100, Math.round((item.current / Math.max(1, item.required)) * 100));
+        return `
+            <div class="channel-membership-row${item.met ? ' met' : ''}" data-criterion="${escapeHTML(item.key)}">
+                <div class="channel-membership-row-top">
+                    <span class="channel-membership-row-title">
+                        <i data-lucide="${escapeHTML(item.icon)}"></i>
+                        <span>${escapeHTML(item.label)}</span>
+                    </span>
+                    <span class="channel-membership-row-count">${item.current}/${item.required} ${item.met ? '✓' : ''}</span>
+                </div>
+                <div class="channel-membership-progress-track" aria-hidden="true">
+                    <div class="channel-membership-progress-fill" style="width:${pct}%;"></div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    contentEl.innerHTML = `
+        <div class="channel-membership-hero${elig.eligible ? ' unlocked' : ''}">
+            <span class="channel-membership-status-badge">
+                <i data-lucide="${elig.eligible ? 'check-circle-2' : 'lock'}"></i>
+                <span>${elig.eligible ? 'Super Fã & Seja Membro Liberados!' : `Faltam ${missingCount} de ${elig.totalRequirements} requisitos`}</span>
+            </span>
+            <p style="margin:0; font-size:0.82rem; color:#d4d4d8; line-height:1.45;">
+                ${elig.eligible
+                    ? 'Seu canal cumpriu todos os critérios e os botões Super Fã e Seja Membro já estão liberados para os visitantes.'
+                    : 'Conclua todos os 7 requisitos do canal abaixo para liberar automaticamente Super Fã e Seja Membro.'}
+            </p>
+        </div>
+        <div class="channel-membership-stats-row">
+            <div class="channel-membership-mini-card">
+                <strong>${elig.membersCount}</strong>
+                <span>Membros no canal</span>
+            </div>
+            <div class="channel-membership-mini-card">
+                <strong>${elig.superFansCount}</strong>
+                <span>Super Fãs do canal</span>
+            </div>
+        </div>
+        <div class="channel-membership-list">${rowsHtml}</div>
+    `;
+
+    modal.style.display = 'flex';
+    modal.setAttribute('aria-hidden', 'false');
+    if (window.lucide) lucide.createIcons();
 }
 
 export function openChannelAboutModal() {
@@ -55443,6 +55786,18 @@ function bindChannelScreenListeners() {
         playSound(clickSound);
         toggleChannelSubscription(activeChannelUid);
     });
+    document.getElementById('channel-become-member-btn')?.addEventListener('click', () => {
+        playSound(clickSound);
+        toggleChannelMember(activeChannelUid);
+    });
+    document.getElementById('channel-superfan-btn')?.addEventListener('click', () => {
+        playSound(clickSound);
+        toggleChannelSuperFan(activeChannelUid);
+    });
+    document.getElementById('channel-membership-status-btn')?.addEventListener('click', () => {
+        playSound(clickSound);
+        openChannelMembershipModal(activeChannelUid || currentUser?.uid);
+    });
     document.getElementById('channel-message-btn')?.addEventListener('click', () => {
         if (!activeChannelUid || activeChannelUid === currentUser?.uid) return;
         const contactObj = getEffectiveChannelUserData(activeChannelUid, activeChannelUserData);
@@ -55544,7 +55899,8 @@ function bindChannelScreenListeners() {
         ['close-channel-community-modal', 'channel-community-modal'],
         ['close-channel-manage-modal', 'channel-manage-modal'],
         ['close-channel-media-viewer-modal', 'channel-media-viewer-modal'],
-        ['close-channel-analytics-modal', 'channel-analytics-modal']
+        ['close-channel-analytics-modal', 'channel-analytics-modal'],
+        ['close-channel-membership-modal', 'channel-membership-modal']
     ].forEach(([btnId, modalId]) => {
         document.getElementById(btnId)?.addEventListener('click', () => closeChannelSubModal(modalId));
     });
@@ -55618,6 +55974,13 @@ if (typeof window !== 'undefined') {
     window.handlePostVideoCoverSelection = handlePostVideoCoverSelection;
     window.removePendingPostVideoCover = removePendingPostVideoCover;
     window.syncPostVideoCoverUI = syncPostVideoCoverUI;
+    window.CHANNEL_MEMBERSHIP_REQUIREMENTS = CHANNEL_MEMBERSHIP_REQUIREMENTS;
+    window.isValidChannelComment = isValidChannelComment;
+    window.evaluateChannelMembershipEligibility = evaluateChannelMembershipEligibility;
+    window.isChannelMembershipUnlocked = isChannelMembershipUnlocked;
+    window.openChannelMembershipModal = openChannelMembershipModal;
+    window.toggleChannelMember = toggleChannelMember;
+    window.toggleChannelSuperFan = toggleChannelSuperFan;
 }
 
 

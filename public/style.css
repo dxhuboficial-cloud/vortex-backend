@@ -34529,6 +34529,144 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
     height: 12px;
 }
 
+/* ==========================================================================
+   v1.0.306: Super Fã & Seja Membro no Canal (Requisitos & Liberação)
+   ========================================================================== */
+.channel-membership-pill-btn.unlocked {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.22), rgba(57, 255, 20, 0.2));
+    border-color: rgba(255, 215, 0, 0.55);
+    color: #ffe066;
+}
+.channel-membership-pill-btn.locked {
+    border-color: rgba(255, 255, 255, 0.16);
+}
+.channel-member-btn {
+    background: linear-gradient(135deg, #2563eb, #3ea6ff);
+    color: #fff;
+    border-color: rgba(62, 166, 255, 0.65);
+}
+.channel-member-btn.active {
+    background: rgba(62, 166, 255, 0.2);
+    color: #7dd3fc;
+}
+.channel-superfan-btn {
+    background: linear-gradient(135deg, #f59e0b, #fbbf24);
+    color: #111827;
+    font-weight: 800;
+    border-color: rgba(251, 191, 36, 0.7);
+}
+.channel-superfan-btn.active {
+    background: rgba(251, 191, 36, 0.22);
+    color: #fde68a;
+}
+.channel-membership-modal-card {
+    max-width: 480px;
+}
+.channel-membership-hero {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.channel-membership-hero.unlocked {
+    background: linear-gradient(135deg, rgba(57, 255, 20, 0.12), rgba(255, 215, 0, 0.12));
+    border-color: rgba(57, 255, 20, 0.45);
+}
+.channel-membership-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    align-self: flex-start;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.74rem;
+    font-weight: 800;
+    background: rgba(255, 255, 255, 0.1);
+    color: #f4f4f5;
+}
+.channel-membership-hero.unlocked .channel-membership-status-badge {
+    background: rgba(57, 255, 20, 0.2);
+    color: #86efac;
+}
+.channel-membership-stats-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+}
+.channel-membership-mini-card {
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.channel-membership-mini-card strong {
+    font-size: 1.05rem;
+    color: #fff;
+}
+.channel-membership-mini-card span {
+    font-size: 0.74rem;
+    color: #a1a1aa;
+}
+.channel-membership-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.channel-membership-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.channel-membership-row.met {
+    border-color: rgba(57, 255, 20, 0.38);
+    background: rgba(57, 255, 20, 0.07);
+}
+.channel-membership-row-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 0.83rem;
+}
+.channel-membership-row-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 700;
+    color: #f4f4f5;
+}
+.channel-membership-row-count {
+    font-weight: 700;
+    font-size: 0.78rem;
+    color: #d4d4d8;
+}
+.channel-membership-row.met .channel-membership-row-count {
+    color: #86efac;
+}
+.channel-membership-progress-track {
+    width: 100%;
+    height: 6px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.1);
+    overflow: hidden;
+}
+.channel-membership-progress-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #3ea6ff, var(--accent-color, #39ff14));
+    transition: width 0.25s ease;
+}
+
 
 
 
