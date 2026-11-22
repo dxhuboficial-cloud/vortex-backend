@@ -1,6 +1,6 @@
 {
-  "version": "1.0.310",
-  "build": 310,
+  "version": "1.0.311",
+  "build": 311,
   "releaseDate": "2026-11-22",
-  "notes": "Autenticação Google com detecção automática do app Android VortexApp (signInWithRedirect na WebView e signInWithPopup em navegadores comuns) v1.0.310"
+  "notes": "Otimização completa para celular: scripts/fontes não bloqueantes, cache imutável, SW leve (-2MB), Lucide em lote, carregamento lazy de chunks/mídia, listeners escalonados e GPU mobile 60fps v1.0.311"
 }

@@ -35,17 +35,24 @@
     <meta itemprop="image" content="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
     <link rel="image_src" type="image/png" href="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
 
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.310">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.310">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.310">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.310">
-    <!-- Fonte Inter para Tela de Carregamento e UI -->
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.311">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.311">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.311">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.311">
+    <!-- Preconnects de Rede para Reduzir Latência no Celular (v1.0.311) -->
+    <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://unpkg.com" crossorigin>
+    <link rel="dns-prefetch" href="https://www.gstatic.com">
+    <link rel="dns-prefetch" href="https://firestore.googleapis.com">
+    <!-- Fonte Inter Carregada de Forma Não Bloqueante -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=1.0.310">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"></noscript>
+    <link rel="stylesheet" href="style.css?v=1.0.311">
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.310" id="app-manifest-link">
+    <link rel="manifest" href="manifest.json?v=1.0.311" id="app-manifest-link">
     <meta name="theme-color" content="#39ff14" id="app-theme-color-meta">
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#39ff14" id="app-theme-color-meta-dark">
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#39ff14" id="app-theme-color-meta-light">
@@ -54,8 +61,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.310">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.310">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.311">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.311">
     <!-- Sincronização Dinâmica da Barra de Status e Barra de Navegação do Celular -->
     <script>
         (function() {
@@ -90,10 +97,10 @@
             } catch (e) {}
         })();
     </script>
-    <!-- SDK Oficial do Mercado Pago v2 -->
-    <script src="https://sdk.mercadopago.com/js/v2"></script>
-    <!-- Ícones Lucide -->
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- SDK Oficial do Mercado Pago v2 (Deferred para não bloquear First Paint no celular) -->
+    <script src="https://sdk.mercadopago.com/js/v2" defer></script>
+    <!-- Ícones Lucide (Deferred para renderização instantânea no celular) -->
+    <script src="https://unpkg.com/lucide@latest" defer></script>
 </head>
 <body>
 
@@ -2985,7 +2992,7 @@
                 <div class="app-version-card" id="app-version-info-footer">
                     <div class="app-version-header-row">
                         <div class="app-version-brand-wrap">
-                            <img src="icons/vortex-vip-192.png?v=1.0.291" alt="VORTEX VIP" class="app-version-icon-img" width="22" height="22">
+                            <img src="icons/vortex-vip-192.png?v=1.0.291" alt="VORTEX VIP" class="app-version-icon-img" width="22" height="22" loading="lazy" decoding="async">
                             <span class="app-version-brand-name">VORTEX VIP Oficial</span>
                         </div>
                         <span class="app-version-pill-badge" id="app-version-display-badge">v1.0.291 ⚡</span>
@@ -4409,7 +4416,7 @@
             <div class="pwa-banner-glow-line"></div>
             <div class="pwa-banner-content">
                 <div class="pwa-banner-icon-box">
-                    <img src="icons/vortex-vip-192.png?v=1.0.235" alt="VORTEX VIP" class="pwa-banner-logo" width="44" height="44">
+                    <img src="icons/vortex-vip-192.png?v=1.0.235" alt="VORTEX VIP" class="pwa-banner-logo" width="44" height="44" loading="lazy" decoding="async">
                 </div>
                 <div class="pwa-banner-text">
                     <div class="pwa-banner-title">Instalar VORTEX VIP ⚡</div>
@@ -4427,7 +4434,7 @@
             <div class="pwa-ios-content">
                 <div class="pwa-ios-header">
                     <div class="pwa-ios-icon-wrap">
-                        <img src="icons/vortex-vip-192.png?v=1.0.235" alt="VORTEX VIP" width="48" height="48">
+                        <img src="icons/vortex-vip-192.png?v=1.0.235" alt="VORTEX VIP" width="48" height="48" loading="lazy" decoding="async">
                     </div>
                     <h3 class="pwa-ios-title">Instalar no iPhone / iPad 📲</h3>
                     <p class="pwa-ios-subtitle">Siga os 2 passos rápidos abaixo no Safari para ter o VORTEX VIP na sua tela de início:</p>
@@ -5875,7 +5882,7 @@
                     <div class="withdrawal-review-radar-ring ring-2"></div>
                     <div class="withdrawal-review-radar-ring ring-3"></div>
                     <div class="withdrawal-review-radar-center" id="withdrawal-review-radar-center">
-                        <img src="icons/pix-wallet-paid.png?v=1.0.260" alt="Saque Pix Pago" class="withdrawal-review-wallet-img" id="withdrawal-review-icon-img" width="56" height="56">
+                        <img src="icons/pix-wallet-paid.png?v=1.0.260" alt="Saque Pix Pago" class="withdrawal-review-wallet-img" id="withdrawal-review-icon-img" width="56" height="56" loading="lazy" decoding="async">
                         <div class="withdrawal-review-sub-badge" id="withdrawal-review-sub-badge">
                             <i data-lucide="hourglass" class="withdrawal-review-sub-icon"></i>
                         </div>
@@ -6919,7 +6926,7 @@
         <div id="business-blocked-modal" class="custom-modal-overlay business-blocked-overlay" style="display:none;" aria-hidden="true">
             <div class="custom-modal-card business-blocked-card">
                 <div class="business-blocked-icon-wrap">
-                    <img src="icons/blocked-hand.png?v=1.0.291" alt="Acesso Bloqueado" class="business-blocked-hand-icon" width="64" height="64">
+                    <img src="icons/blocked-hand.png?v=1.0.291" alt="Acesso Bloqueado" class="business-blocked-hand-icon" width="64" height="64" loading="lazy" decoding="async">
                 </div>
                 <h3 class="business-blocked-title">Acesso Bloqueado</h3>
                 <p class="business-blocked-msg" id="business-blocked-msg-text">
@@ -6985,7 +6992,7 @@
                 <div class="channel-container">
                     <!-- Banner do Canal (com opção de adicionar/alterar banner) -->
                     <div id="channel-banner-box" class="channel-banner-box">
-                        <img id="channel-banner-img" src="" alt="Banner do canal" class="channel-banner-img" style="display:none;">
+                        <img id="channel-banner-img" src="" alt="Banner do canal" class="channel-banner-img" style="display:none;" loading="lazy" decoding="async">
                         <div id="channel-banner-empty" class="channel-banner-empty">
                             <i data-lucide="image"></i>
                             <span>Banner do Canal</span>
@@ -7424,7 +7431,7 @@
 
         <!-- Rodapé com Controles Discretos -->
         <footer class="vortex-loading-footer">
-            <div class="vortex-loading-footer-version">VORTEX VIP &bull; v1.0.310</div>
+            <div class="vortex-loading-footer-version">VORTEX VIP &bull; v1.0.311</div>
 
             <div class="vortex-loading-footer-actions">
                 <button type="button" id="replay-btn" class="vortex-loading-footer-btn">
@@ -7516,6 +7523,6 @@
         </main>
     </div>
 
-    <script type="module" src="script.js?v=1.0.310" defer></script>
+    <script type="module" src="script.js?v=1.0.311" defer></script>
 </body>
 </html>

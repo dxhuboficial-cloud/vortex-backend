@@ -42,8 +42,126 @@ const rtcServers = {
     ]
 };
 
-if (window.lucide) {
-    lucide.createIcons();
+/* ==========================================================================
+   v1.0.311: MOTOR DE OTIMIZAÇÃO MOBILE (DETECÇÃO, LUCIDE EM LOTE & IDLE BOOT)
+   ========================================================================== */
+export function isMobilePerformanceMode(options = {}) {
+    try {
+        const ua = typeof options.userAgent === 'string'
+            ? options.userAgent
+            : ((typeof navigator !== 'undefined' && navigator?.userAgent) ? String(navigator.userAgent) : '');
+        const width = typeof options.innerWidth === 'number'
+            ? options.innerWidth
+            : ((typeof window !== 'undefined' && typeof window.innerWidth === 'number') ? window.innerWidth : 1280);
+        const saveData = Boolean(
+            typeof options.saveData === 'boolean'
+                ? options.saveData
+                : (typeof navigator !== 'undefined' && navigator?.connection?.saveData)
+        );
+        const isMobileUA = /Android|iPhone|iPad|iPod|Mobile|VortexApp/i.test(ua);
+        return Boolean(isMobileUA || width <= 768 || saveData);
+    } catch (_) {
+        return false;
+    }
+}
+
+export function applyMobilePerformanceMode() {
+    if (typeof document === 'undefined' || !document.body) return false;
+    const isMob = isMobilePerformanceMode();
+    document.body.classList?.toggle('vortex-mobile-opt', isMob);
+    return isMob;
+}
+
+var lucideBatchState = {
+    wrapped: false,
+    pending: false,
+    frameId: null,
+    queuedCalls: 0,
+    executedFlushes: 0,
+    rawCreateIcons: null
+};
+
+export function getLucideBatchStats() {
+    return {
+        wrapped: lucideBatchState.wrapped,
+        pending: lucideBatchState.pending,
+        queuedCalls: lucideBatchState.queuedCalls,
+        executedFlushes: lucideBatchState.executedFlushes
+    };
+}
+
+export function flushBatchedLucideIcons(opts) {
+    if (lucideBatchState.frameId && typeof cancelAnimationFrame === 'function') {
+        cancelAnimationFrame(lucideBatchState.frameId);
+    }
+    lucideBatchState.frameId = null;
+    lucideBatchState.pending = false;
+    if (typeof lucideBatchState.rawCreateIcons === 'function') {
+        lucideBatchState.executedFlushes++;
+        return lucideBatchState.rawCreateIcons(opts);
+    }
+    return undefined;
+}
+
+export function installBatchedLucideCreateIcons() {
+    if (typeof window === 'undefined' || !window.lucide || typeof window.lucide.createIcons !== 'function') {
+        return false;
+    }
+    if (lucideBatchState.wrapped && window.lucide.createIcons?._vortexBatched) {
+        return true;
+    }
+    const originalCreateIcons = window.lucide.createIcons.bind(window.lucide);
+    lucideBatchState.rawCreateIcons = originalCreateIcons;
+    lucideBatchState.wrapped = true;
+    lucideBatchState.queuedCalls = 0;
+    lucideBatchState.executedFlushes = 0;
+
+    const batchedCreateIcons = (opts) => {
+        lucideBatchState.queuedCalls++;
+        if (opts && (opts.immediate === true || opts.root || opts.nameAttr)) {
+            return flushBatchedLucideIcons(opts);
+        }
+        if (typeof requestAnimationFrame !== 'function') {
+            return flushBatchedLucideIcons(opts);
+        }
+        if (lucideBatchState.pending) return;
+        lucideBatchState.pending = true;
+        lucideBatchState.frameId = requestAnimationFrame(() => {
+            flushBatchedLucideIcons(opts);
+        });
+    };
+    batchedCreateIcons._vortexBatched = true;
+    window.lucide.createIcons = batchedCreateIcons;
+    return true;
+}
+
+export function scheduleMobileNonCriticalTask(taskFn, delayMs = 150) {
+    if (typeof taskFn !== 'function') return false;
+    if (!isMobilePerformanceMode()) {
+        taskFn();
+        return false;
+    }
+    const runSafely = () => {
+        try { taskFn(); } catch (err) { console.warn('[VORTEX Mobile Opt] Erro em tarefa secundária:', err); }
+    };
+    if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
+        window.requestIdleCallback(() => {
+            const t = setTimeout(runSafely, Math.max(0, Math.floor(delayMs * 0.5)));
+            try { t?.unref?.(); } catch (_) {}
+        }, { timeout: Math.max(250, delayMs + 200) });
+    } else {
+        const t = setTimeout(runSafely, Math.max(16, delayMs));
+        try { t?.unref?.(); } catch (_) {}
+    }
+    return true;
+}
+
+if (typeof window !== 'undefined') {
+    applyMobilePerformanceMode();
+    if (window.lucide) {
+        installBatchedLucideCreateIcons();
+        window.lucide.createIcons();
+    }
 }
 
 /* ==========================================================================
@@ -1984,16 +2102,24 @@ onAuthStateChanged(auth, async (user) => {
         listenToContacts();
         listenToBlockedContacts();
         listenToMutedContacts();
-        listenToRequests();
-        listenToStories();
         listenToIncomingCalls();
-        registerPushToken();
-        setupPushPermissionAutoPrompt();
-        listenToNotifications();
-        listenToAdminReports();
-        listenToDeletedUsers();
-        loadUserFavoriteTracks();
-        if (typeof checkUserPendingWithdrawal === 'function') checkUserPendingWithdrawal();
+
+        // Tarefas secundárias escalonadas no celular para liberar a UI principal imediatamente (v1.0.311)
+        scheduleMobileNonCriticalTask(() => {
+            listenToRequests();
+            listenToNotifications();
+        }, 120);
+        scheduleMobileNonCriticalTask(() => {
+            listenToStories();
+            listenToDeletedUsers();
+        }, 240);
+        scheduleMobileNonCriticalTask(() => {
+            loadUserFavoriteTracks();
+            if (typeof checkUserPendingWithdrawal === 'function') checkUserPendingWithdrawal();
+            if (isUserAdmin()) listenToAdminReports();
+            registerPushToken();
+            setupPushPermissionAutoPrompt();
+        }, 380);
         showToast("Conectado", `Bem-vindo, ${currentProfile.name}!`, "green");
     } else {
         currentUser = null;
@@ -3140,7 +3266,7 @@ export function startBinaryMatrix() {
 
     const fontSize = 15;
     let lastTime = 0;
-    const fpsInterval = 1000 / 30;
+    const fpsInterval = isMobilePerformanceMode() ? (1000 / 20) : (1000 / 30);
 
     function drawColumns(targetCanvas, targetCtx, columns) {
         if (!targetCanvas || !targetCtx || typeof targetCtx.fillRect !== 'function') return;
@@ -3172,6 +3298,7 @@ export function startBinaryMatrix() {
         if (typeof requestAnimationFrame === 'function') {
             matrixCanvasAnimId = requestAnimationFrame(drawMatrix);
         }
+        if (typeof document !== 'undefined' && document.hidden) return;
 
         const elapsed = time - lastTime;
         if (elapsed < fpsInterval) return;
@@ -3474,8 +3601,11 @@ export function initCyberMeteorsCanvas() {
             desktopCanvas.height = (parent && parent.clientHeight) || winH;
         }
 
-        // Criar pool inicial de meteoros garantindo que todas as 6 cores estejam ativas
-        const targetCount = Math.max(14, Math.min(26, Math.floor(winW / 65)));
+        // Criar pool inicial de meteoros garantindo que todas as 6 cores estejam ativas (reduzido no celular para 60fps)
+        const isMobMeteors = isMobilePerformanceMode();
+        const targetCount = isMobMeteors
+            ? Math.max(7, Math.min(12, Math.floor(winW / 95)))
+            : Math.max(14, Math.min(26, Math.floor(winW / 65)));
         cyberMeteors = [];
         for (let i = 0; i < targetCount; i++) {
             const forcedColor = i % CYBERPARK_METEOR_COLORS.length;
@@ -3630,6 +3760,7 @@ export function startCyberMeteors() {
         }
     }
 
+    let lastMeteorFrameTime = 0;
     function animateMeteors() {
         if (typeof document !== 'undefined' && document.body) {
             const isCyber = document.body.classList.contains('theme-cyberpark') || document.body.classList.contains('theme-cyberpunk');
@@ -3643,8 +3774,15 @@ export function startCyberMeteors() {
             cyberMeteorsAnimId = requestAnimationFrame(animateMeteors);
         }
 
-        // Checar timer de 20 segundos para a Estrela Cadente RGB
+        if (typeof document !== 'undefined' && document.hidden) return;
+
+        // Limita a ~30fps no celular para economizar GPU/bateria
         const now = Date.now();
+        const isMobLoop = isMobilePerformanceMode();
+        if (isMobLoop && (now - lastMeteorFrameTime) < 33) return;
+        lastMeteorFrameTime = now;
+
+        // Checar timer de 20 segundos para a Estrela Cadente RGB
         if (now - lastRgbShootingStarTime >= 20000) {
             lastRgbShootingStarTime = now;
             const w = canvas ? canvas.width : 800;
@@ -3673,8 +3811,8 @@ export function startCyberMeteors() {
             }
         }
 
-        // 3. Desenhar no canvas do Desktop Placeholder se presente e ativo
-        const desktopCanvas = (typeof document !== 'undefined') ? document.getElementById('desktop-meteor-canvas') : null;
+        // 3. Desenhar no canvas do Desktop Placeholder apenas em telas desktop
+        const desktopCanvas = (!isMobLoop && typeof document !== 'undefined') ? document.getElementById('desktop-meteor-canvas') : null;
         if (desktopCanvas && typeof desktopCanvas.getContext === 'function') {
             const parent = desktopCanvas.parentElement;
             if (parent && parent.clientWidth > 0 && parent.clientHeight > 0) {
@@ -4405,7 +4543,10 @@ export function startRgbWeather() {
     rgbGroundSparks = [];
     rgbSnowFlakes = [];
 
-    const initialDropCount = Math.max(35, Math.min(65, Math.floor((canvas ? canvas.width : 800) / 20)));
+    const isMobWeatherInit = isMobilePerformanceMode();
+    const initialDropCount = isMobWeatherInit
+        ? Math.max(16, Math.min(30, Math.floor((canvas ? canvas.width : 800) / 28)))
+        : Math.max(35, Math.min(65, Math.floor((canvas ? canvas.width : 800) / 20)));
     for (let i = 0; i < initialDropCount; i++) {
         rgbRainDrops.push(createRgbRainDrop(canvas ? canvas.width : 800, canvas ? canvas.height : 600, true));
     }
@@ -4579,6 +4720,7 @@ export function startRgbWeather() {
         }
     }
 
+    let lastWeatherFrameTime = 0;
     function animateWeather() {
         if (typeof document !== 'undefined' && document.body) {
             const isRgb = document.body.classList.contains('theme-rgb');
@@ -4592,7 +4734,11 @@ export function startRgbWeather() {
             rgbWeatherAnimId = requestAnimationFrame(animateWeather);
         }
 
+        if (typeof document !== 'undefined' && document.hidden) return;
+
         const now = Date.now();
+        if (isMobilePerformanceMode() && (now - lastWeatherFrameTime) < 33) return;
+        lastWeatherFrameTime = now;
         const cycleElapsed = now - rgbWeatherCycleStart;
         const w = canvas ? canvas.width : 800;
         const h = canvas ? canvas.height : 600;
@@ -23391,7 +23537,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.310';
+export const CURRENT_APP_VERSION = '1.0.311';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -34407,7 +34553,7 @@ export function renderPostCarouselHTML(postOrSlides, options = {}) {
     if (total === 1) {
         const singleSrc = slides[0] || '';
         const isFirstChunk = Boolean(post?.hasChunks && !singleSrc && postId);
-        return `<img src="${singleSrc}" ${isFirstChunk ? `data-chunk-post-id="${escapeHTML(postId)}" data-chunk-type="image"` : ''} alt="${altText}" draggable="false" oncontextmenu="return false;" class="protected-media${imgClass}" />`;
+        return `<img src="${singleSrc}" ${isFirstChunk ? `data-chunk-post-id="${escapeHTML(postId)}" data-chunk-type="image"` : ''} alt="${altText}" loading="lazy" decoding="async" draggable="false" oncontextmenu="return false;" class="protected-media${imgClass}" />`;
     }
 
     const slidesHTML = slides.map((src, idx) => {
@@ -34421,7 +34567,7 @@ export function renderPostCarouselHTML(postOrSlides, options = {}) {
         }
         return `
             <div class="vortex-carousel-slide${idx === 0 ? ' active' : ''}" data-slide-index="${idx}">
-                <img src="${src || ''}" ${chunkAttr} alt="${altText} (${idx + 1}/${total})" draggable="false" oncontextmenu="return false;" class="protected-media${imgClass}" />
+                <img src="${src || ''}" ${chunkAttr} alt="${altText} (${idx + 1}/${total})" loading="lazy" decoding="async" draggable="false" oncontextmenu="return false;" class="protected-media${imgClass}" />
             </div>
         `;
     }).join('');
@@ -34478,7 +34624,7 @@ export function renderPostMediaTagHTML(post, options = {}) {
         const videoSrc = (post.isTrimmed && bUrl && !bUrl.includes('#t=')) ? `${bUrl}#t=0,${post.videoDuration || 120}` : (bUrl || '');
         const coverUrl = getPostVideoCover(post);
         const isCoverChunkPending = Boolean(post.hasVideoCoverChunks && !coverUrl && post.id);
-        const autoplayAttr = options.autoplay ? ' autoplay' : '';
+        const autoplayAttr = options.autoplay ? ' autoplay' : ' preload="metadata"';
         const protectedClass = options.autoplay ? '' : ' class="protected-media"';
         return `<video src="${videoSrc}" ${post.id ? `data-post-id="${escapeHTML(String(post.id))}"` : ''} ${coverUrl ? `poster="${coverUrl}"` : ''} ${isCoverChunkPending ? `data-chunk-post-cover="${post.id}"` : ''} ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="video" data-chunk-trimmed="${post.isTrimmed ? 'true' : 'false'}" data-chunk-duration="${post.videoDuration || 120}"` : ''} controls${autoplayAttr} controlsList="nodownload" disablePictureInPicture oncontextmenu="return false;" playsinline${protectedClass}></video>`;
     }
@@ -35801,24 +35947,54 @@ export function syncFeedAuthorsVipStatus(posts = []) {
     });
 }
 
+let chunkMediaLazyObserver = null;
+const chunkMediaLazyTaskMap = new WeakMap();
+
+function observeChunkMediaElement(el, loadTask) {
+    if (!el || typeof loadTask !== 'function') return;
+    const canLazyObserve = typeof IntersectionObserver === 'function' && typeof el.getBoundingClientRect === 'function';
+    if (!canLazyObserve) {
+        loadTask();
+        return;
+    }
+    if (!chunkMediaLazyObserver) {
+        chunkMediaLazyObserver = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (!entry.isIntersecting) return;
+                const target = entry.target;
+                chunkMediaLazyObserver.unobserve(target);
+                const task = chunkMediaLazyTaskMap.get(target);
+                if (typeof task === 'function') {
+                    chunkMediaLazyTaskMap.delete(target);
+                    task();
+                }
+            });
+        }, { rootMargin: '450px 0px', threshold: 0.01 });
+    }
+    chunkMediaLazyTaskMap.set(el, loadTask);
+    chunkMediaLazyObserver.observe(el);
+}
+
 function resolvePostChunkedMedia(container, postsList) {
     if (!container) return;
     container.querySelectorAll('[data-chunk-post-id]').forEach(el => {
         const pId = el.dataset.chunkPostId;
         if (!pId) return;
-        loadMediaWithChunks('posts', pId).then(fullData => {
-            if (!fullData) return;
-            const postObj = Array.isArray(postsList) ? postsList.find(p => p.id === pId) : null;
-            if (postObj) postObj.mediaData = fullData;
-            let src = fullData;
-            if (el.dataset.chunkType === 'video') {
-                const clean = (typeof fullData === 'string') ? fullData.replace(/#t=[0-9,.]+$/, '') : fullData;
-                const blobUrl = createBlobUrlFromData(clean);
-                src = (el.dataset.chunkTrimmed === 'true' && !blobUrl.includes('#t=')) ? `${blobUrl}#t=0,${el.dataset.chunkDuration || 120}` : blobUrl;
-            }
-            el.src = src;
-            el.removeAttribute('data-chunk-post-id');
-        }).catch(err => console.warn('Erro ao carregar chunks de mídia do post:', err));
+        observeChunkMediaElement(el, () => {
+            loadMediaWithChunks('posts', pId).then(fullData => {
+                if (!fullData) return;
+                const postObj = Array.isArray(postsList) ? postsList.find(p => p.id === pId) : null;
+                if (postObj) postObj.mediaData = fullData;
+                let src = fullData;
+                if (el.dataset.chunkType === 'video') {
+                    const clean = (typeof fullData === 'string') ? fullData.replace(/#t=[0-9,.]+$/, '') : fullData;
+                    const blobUrl = createBlobUrlFromData(clean);
+                    src = (el.dataset.chunkTrimmed === 'true' && !blobUrl.includes('#t=')) ? `${blobUrl}#t=0,${el.dataset.chunkDuration || 120}` : blobUrl;
+                }
+                el.src = src;
+                el.removeAttribute('data-chunk-post-id');
+            }).catch(err => console.warn('Erro ao carregar chunks de mídia do post:', err));
+        });
     });
 
     container.querySelectorAll('[data-chunk-post-slide]').forEach(el => {
@@ -35834,12 +36010,14 @@ function resolvePostChunkedMedia(container, postsList) {
             el.removeAttribute('data-chunk-post-slide');
             return;
         }
-        loadMediaWithChunks('post_slides', slideDocId).then(fullData => {
-            if (!fullData) return;
-            mediaChunkCache.set(cacheKey, fullData);
-            el.src = fullData;
-            el.removeAttribute('data-chunk-post-slide');
-        }).catch(err => console.warn('Erro ao carregar slide do carrossel:', err));
+        observeChunkMediaElement(el, () => {
+            loadMediaWithChunks('post_slides', slideDocId).then(fullData => {
+                if (!fullData) return;
+                mediaChunkCache.set(cacheKey, fullData);
+                el.src = fullData;
+                el.removeAttribute('data-chunk-post-slide');
+            }).catch(err => console.warn('Erro ao carregar slide do carrossel:', err));
+        });
     });
 
     container.querySelectorAll('[data-chunk-post-cover]').forEach(el => {
@@ -35853,17 +36031,20 @@ function resolvePostChunkedMedia(container, postsList) {
             el.removeAttribute('data-chunk-post-cover');
             return;
         }
-        loadMediaWithChunks('post_covers', postId).then(fullData => {
-            if (!fullData) return;
-            mediaChunkCache.set(cacheKey, fullData);
-            el.poster = fullData;
-            el.setAttribute?.('poster', fullData);
-            el.removeAttribute('data-chunk-post-cover');
-        }).catch(err => console.warn('Erro ao carregar capa do vídeo:', err));
+        observeChunkMediaElement(el, () => {
+            loadMediaWithChunks('post_covers', postId).then(fullData => {
+                if (!fullData) return;
+                mediaChunkCache.set(cacheKey, fullData);
+                el.poster = fullData;
+                el.setAttribute?.('poster', fullData);
+                el.removeAttribute('data-chunk-post-cover');
+            }).catch(err => console.warn('Erro ao carregar capa do vídeo:', err));
+        });
     });
 
     if (Array.isArray(postsList) && typeof resolvePostMusicAudio === 'function') {
-        postsList.forEach(postObj => {
+        const audioPreloadList = isMobilePerformanceMode() ? postsList.slice(0, 3) : postsList;
+        audioPreloadList.forEach(postObj => {
             if (postObj && postObj.id && postObj.music && postObj.music.hasAudioChunks && !postObj.music.audioUrl) {
                 resolvePostMusicAudio(postObj).catch(() => {});
             }
@@ -55104,7 +55285,7 @@ export function renderChannelMediaGrid(items = [], tab = 'inicio', isOwner = fal
         const isCoverChunkPending = Boolean(post.type === 'video' && post.hasVideoCoverChunks && !videoCoverSrc && post.id);
         const mediaTag = post.type === 'video'
             ? `<video src="${src}" ${videoCoverSrc ? `poster="${videoCoverSrc}"` : ''} ${isCoverChunkPending ? `data-chunk-post-cover="${post.id}"` : ''} ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="video"` : ''} muted playsinline preload="metadata" class="channel-ig-tile-media"></video>`
-            : `<img src="${src}" ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="image"` : ''} alt="${escapeHTML(post.title || post.caption || (isImageTile ? 'Imagem do canal' : 'Vídeo do canal'))}" class="channel-ig-tile-media">`;
+            : `<img src="${src}" ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="image"` : ''} alt="${escapeHTML(post.title || post.caption || (isImageTile ? 'Imagem do canal' : 'Vídeo do canal'))}" loading="lazy" decoding="async" class="channel-ig-tile-media">`;
 
         return `
             <button type="button" class="channel-ig-tile${isCarouselTile ? ' has-carousel' : ''}${isPinnedShort ? ' is-pinned-short' : ''}${isPrivateTile ? ' is-private-tile' : ''}" data-post-id="${post.id}" title="${escapeHTML(post.title || post.caption || (isImageTile ? 'Ver imagem' : 'Assistir'))}">
@@ -56054,7 +56235,7 @@ function renderChannelManageItemHTML(post) {
     const coverChunkAttr = isCoverChunkPending ? `data-chunk-post-cover="${escapeHTML(postId)}"` : '';
     const mediaThumb = post.type === 'video'
         ? `<video ${thumbSrc ? `src="${thumbSrc}"` : ''} ${videoCoverSrc ? `poster="${videoCoverSrc}"` : ''} ${coverChunkAttr} ${chunkAttrs} muted playsinline preload="metadata" class="channel-manage-thumb"></video>`
-        : `<img ${thumbSrc ? `src="${thumbSrc}"` : ''} ${chunkAttrs} alt="${escapeHTML(post.title || post.caption || 'Imagem')}" class="channel-manage-thumb">`;
+        : `<img ${thumbSrc ? `src="${thumbSrc}"` : ''} ${chunkAttrs} alt="${escapeHTML(post.title || post.caption || 'Imagem')}" loading="lazy" decoding="async" class="channel-manage-thumb">`;
 
     const viewsCount = typeof getPostViewsCount === 'function' ? getPostViewsCount(post) : Number(post.viewsCount || 0);
     const likesCount = Array.isArray(post.likes) ? post.likes.length : 0;
@@ -56931,8 +57112,13 @@ function populateVortexLoadingScene() {
     const w = vortexLoadingState.width || 1280;
     const h = vortexLoadingState.height || 720;
     const area = w * h;
-    const starCount = Math.min(Math.floor(area / 6500), 220);
-    const meteorCount = Math.min(Math.max(Math.floor(w / 85), 10), 24);
+    const isMobScene = isMobilePerformanceMode({ innerWidth: w });
+    const starCount = isMobScene
+        ? Math.min(Math.max(Math.floor(area / 12000), 28), 55)
+        : Math.min(Math.floor(area / 6500), 220);
+    const meteorCount = isMobScene
+        ? Math.min(Math.max(Math.floor(w / 110), 6), 8)
+        : Math.min(Math.max(Math.floor(w / 85), 10), 24);
 
     const nextStars = [];
     for (let i = 0; i < starCount; i++) {
@@ -56962,9 +57148,10 @@ function resizeVortexLoadingCanvas() {
     const canvas = document.getElementById('vortex-canvas');
     if (!canvas) return;
     const ctx = typeof canvas.getContext === 'function' ? canvas.getContext('2d') : null;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const w = window.innerWidth || 1280;
     const h = window.innerHeight || 720;
+    const isMobCanvas = isMobilePerformanceMode({ innerWidth: w });
+    const dpr = isMobCanvas ? 1 : Math.min(window.devicePixelRatio || 1, 2);
     vortexLoadingState.width = w;
     vortexLoadingState.height = h;
     if (ctx) {
@@ -56977,12 +57164,28 @@ function resizeVortexLoadingCanvas() {
     populateVortexLoadingScene();
 }
 
+let vortexLoadingLastFrameTs = 0;
+
 function renderVortexLoadingBackgroundFrame() {
     if (vortexLoadingState.dismissed) {
         vortexLoadingState.animFrameId = null;
         return;
     }
     if (typeof document === 'undefined') return;
+    if (document.hidden) {
+        if (typeof requestAnimationFrame === 'function') {
+            vortexLoadingState.animFrameId = requestAnimationFrame(renderVortexLoadingBackgroundFrame);
+        }
+        return;
+    }
+    const nowTs = Date.now();
+    if (isMobilePerformanceMode() && (nowTs - vortexLoadingLastFrameTs) < 33) {
+        if (typeof requestAnimationFrame === 'function') {
+            vortexLoadingState.animFrameId = requestAnimationFrame(renderVortexLoadingBackgroundFrame);
+        }
+        return;
+    }
+    vortexLoadingLastFrameTs = nowTs;
     const canvas = document.getElementById('vortex-canvas');
     const ctx = (canvas && typeof canvas.getContext === 'function') ? canvas.getContext('2d') : null;
     if (!ctx || typeof ctx.fillRect !== 'function' || typeof ctx.beginPath !== 'function') {
@@ -57174,7 +57377,8 @@ export function updateVortexLoadingUI(value) {
             }, 1800);
             unrefVortexLoadingHandle(vortexLoadingState.loopRestartTimer);
         } else if (!vortexLoadingState.dismissed && !vortexLoadingState.autoDismissTimer) {
-            dismissVortexLoadingScreen({ withWarp: true, showWelcomeToast: false, delayMs: 900 });
+            const autoDelay = (vortexLoadingState.authSettled || isMobilePerformanceMode()) ? 350 : 850;
+            dismissVortexLoadingScreen({ withWarp: true, showWelcomeToast: false, delayMs: autoDelay });
         }
     }
     return rounded;
@@ -57218,12 +57422,15 @@ export function startVortexLoadingScreen({ showScreen = true } = {}) {
             return;
         }
         let increment = 0;
-        if (vortexLoadingState.progress < 30) {
-            increment = Math.random() * 2.4 + 1.1;
+        const isMobProg = isMobilePerformanceMode();
+        if (vortexLoadingState.authSettled && !vortexLoadingState.isLooping) {
+            increment = isMobProg ? (Math.random() * 3.5 + 5.5) : (Math.random() * 2.5 + 4.5);
+        } else if (vortexLoadingState.progress < 30) {
+            increment = isMobProg ? (Math.random() * 3.2 + 2.2) : (Math.random() * 2.4 + 1.1);
         } else if (vortexLoadingState.progress < 75) {
-            increment = Math.random() * 1.6 + 0.5;
+            increment = isMobProg ? (Math.random() * 2.4 + 1.4) : (Math.random() * 1.6 + 0.5);
         } else {
-            increment = Math.random() * 2.2 + 0.9;
+            increment = isMobProg ? (Math.random() * 3.0 + 1.8) : (Math.random() * 2.2 + 0.9);
         }
         const nextVal = Math.min(vortexLoadingState.progress + increment, 100);
         updateVortexLoadingUI(nextVal);
@@ -57306,6 +57513,12 @@ if (typeof window !== 'undefined') {
     window.isVortexAndroidApp = isVortexAndroidApp;
     window.signInWithGoogleAuto = signInWithGoogleAuto;
     window.resolveGoogleRedirectAuthResult = resolveGoogleRedirectAuthResult;
+    window.isMobilePerformanceMode = isMobilePerformanceMode;
+    window.applyMobilePerformanceMode = applyMobilePerformanceMode;
+    window.installBatchedLucideCreateIcons = installBatchedLucideCreateIcons;
+    window.flushBatchedLucideIcons = flushBatchedLucideIcons;
+    window.getLucideBatchStats = getLucideBatchStats;
+    window.scheduleMobileNonCriticalTask = scheduleMobileNonCriticalTask;
 
     initVortexLoadingScreen();
     resolveGoogleRedirectAuthResult();
