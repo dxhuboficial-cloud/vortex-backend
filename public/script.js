@@ -4,7 +4,7 @@
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { 
-    getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged 
+    getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged 
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { 
     getFirestore, collection, doc, setDoc, getDoc, getDocs, updateDoc, 
@@ -23391,7 +23391,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.309';
+export const CURRENT_APP_VERSION = '1.0.310';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -41606,13 +41606,83 @@ document.getElementById('signout-btn')?.addEventListener('click', async () => {
     }
 });
 
+export function isVortexAndroidApp(userAgentOverride = null) {
+    const ua = typeof userAgentOverride === 'string'
+        ? userAgentOverride
+        : ((typeof navigator !== 'undefined' && navigator?.userAgent) ? String(navigator.userAgent) : '');
+    return ua.includes('VortexApp');
+}
+
+export async function signInWithGoogleAuto({ userAgentOverride = null, provider: customProvider = null } = {}) {
+    const provider = customProvider || new GoogleAuthProvider();
+    // Verifica se está rodando no app Android VortexApp
+    const isVortexApp = isVortexAndroidApp(userAgentOverride);
+    if (isVortexApp) {
+        // Usa redirecionamento interno (Perfeito para WebView)
+        await signInWithRedirect(auth, provider);
+        return { redirected: true, user: null };
+    }
+    // Usa popup normal para computadores e navegadores comuns
+    return await signInWithPopup(auth, provider);
+}
+
+export async function resolveGoogleRedirectAuthResult() {
+    try {
+        if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('vortex_pending_reactivation_flow') === 'true') {
+            if (typeof window !== 'undefined') window._vortexPendingReactivationFlow = true;
+            sessionStorage.removeItem('vortex_pending_reactivation_flow');
+        }
+    } catch (_) {}
+
+    if (typeof getRedirectResult !== 'function' || typeof auth === 'undefined') {
+        return null;
+    }
+    try {
+        const result = await getRedirectResult(auth);
+        let pendingMaintAdmin = false;
+        try {
+            if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('vortex_pending_admin_maint_login') === 'true') {
+                pendingMaintAdmin = true;
+                sessionStorage.removeItem('vortex_pending_admin_maint_login');
+            }
+        } catch (_) {}
+
+        if (result?.user) {
+            currentUser = result.user;
+            maintenanceAuthSettled = true;
+            if (pendingMaintAdmin) {
+                if (typeof isUserAdmin === 'function' && isUserAdmin(result.user, currentProfile)) {
+                    if (typeof updateAdminUIVisibility === 'function') updateAdminUIVisibility();
+                    if (typeof applyMaintenanceMode === 'function') applyMaintenanceMode(maintenanceConfig);
+                    showToast('Acesso Administrador Liberado 🛡️', 'Tela de manutenção removida para administrador.', 'green');
+                } else {
+                    const statusEl = document.getElementById('maintenance-admin-status-msg');
+                    if (statusEl) {
+                        statusEl.textContent = 'Conta sem permissão administrativa. Acesso bloqueado durante a manutenção.';
+                        statusEl.style.display = 'block';
+                    }
+                    if (typeof applyMaintenanceMode === 'function') applyMaintenanceMode(maintenanceConfig);
+                    showToast('Acesso Restrito', 'Somente administradores autorizados podem entrar durante a manutenção.', 'red');
+                }
+            }
+        }
+        return result || null;
+    } catch (err) {
+        console.warn('[VORTEX] Erro ao finalizar login por redirecionamento:', err);
+        const authLoader = document.getElementById('auth-loading-msg');
+        if (authLoader) authLoader.style.display = 'none';
+        showToast('Erro', 'Falha ao finalizar autenticação com o Google.', 'red');
+        return null;
+    }
+}
+
 document.getElementById('google-login-main-btn')?.addEventListener('click', async () => {
     if (typeof resetAuthReactivationBoxes === 'function') resetAuthReactivationBoxes({ keepWipedNotice: false });
     const authLoader = document.getElementById('auth-loading-msg');
     if (authLoader) authLoader.style.display = 'block';
     try {
         const provider = new GoogleAuthProvider();
-        await signInWithPopup(auth, provider);
+        await signInWithGoogleAuto({ provider });
     } catch (e) {
         console.error(e);
         showToast("Erro", "Falha ao autenticar com o Google.", "red");
@@ -41622,6 +41692,11 @@ document.getElementById('google-login-main-btn')?.addEventListener('click', asyn
 
 document.getElementById('auth-reactivate-entry-btn')?.addEventListener('click', async () => {
     if (typeof window !== 'undefined') window._vortexPendingReactivationFlow = true;
+    try {
+        if (typeof sessionStorage !== 'undefined' && isVortexAndroidApp()) {
+            sessionStorage.setItem('vortex_pending_reactivation_flow', 'true');
+        }
+    } catch (_) {}
     if (typeof resetAuthReactivationBoxes === 'function') resetAuthReactivationBoxes({ keepWipedNotice: false });
     const authLoader = document.getElementById('auth-loading-msg');
     if (authLoader) {
@@ -41630,10 +41705,13 @@ document.getElementById('auth-reactivate-entry-btn')?.addEventListener('click', 
     }
     try {
         const provider = new GoogleAuthProvider();
-        await signInWithPopup(auth, provider);
+        await signInWithGoogleAuto({ provider });
     } catch (e) {
         console.error(e);
         if (typeof window !== 'undefined') window._vortexPendingReactivationFlow = false;
+        try {
+            if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem('vortex_pending_reactivation_flow');
+        } catch (_) {}
         showToast("Erro", "Não foi possível abrir a autenticação Google.", "red");
         if (authLoader) authLoader.style.display = 'none';
     }
@@ -49841,7 +49919,17 @@ export async function handleMaintenanceAdminLogin() {
     }
     try {
         const provider = new GoogleAuthProvider();
-        const cred = await signInWithPopup(auth, provider);
+        if (isVortexAndroidApp()) {
+            try {
+                if (typeof sessionStorage !== 'undefined') {
+                    sessionStorage.setItem('vortex_pending_admin_maint_login', 'true');
+                }
+            } catch (_) {}
+        }
+        const cred = await signInWithGoogleAuto({ provider });
+        if (cred?.redirected) {
+            return true;
+        }
         const signedUser = cred?.user || auth?.currentUser || null;
         if (signedUser) {
             currentUser = signedUser;
@@ -57215,8 +57303,12 @@ if (typeof window !== 'undefined') {
     window.dismissVortexLoadingScreen = dismissVortexLoadingScreen;
     window.markVortexLoadingAuthSettled = markVortexLoadingAuthSettled;
     window.initVortexLoadingScreen = initVortexLoadingScreen;
+    window.isVortexAndroidApp = isVortexAndroidApp;
+    window.signInWithGoogleAuto = signInWithGoogleAuto;
+    window.resolveGoogleRedirectAuthResult = resolveGoogleRedirectAuthResult;
 
     initVortexLoadingScreen();
+    resolveGoogleRedirectAuthResult();
 }
 
 

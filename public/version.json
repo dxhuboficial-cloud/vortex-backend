@@ -1,6 +1,6 @@
 {
-  "version": "1.0.309",
-  "build": 309,
-  "releaseDate": "2026-11-17",
-  "notes": "Tela de carregamento oficial VORTEX VIP com céu estrelado, meteoros neon diagonais, anéis cósmicos, estágios de progresso, selo quântico e efeito warp v1.0.309"
+  "version": "1.0.310",
+  "build": 310,
+  "releaseDate": "2026-11-22",
+  "notes": "Autenticação Google com detecção automática do app Android VortexApp (signInWithRedirect na WebView e signInWithPopup em navegadores comuns) v1.0.310"
 }
