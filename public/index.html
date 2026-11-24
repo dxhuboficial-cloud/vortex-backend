@@ -35,24 +35,95 @@
     <meta itemprop="image" content="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
     <link rel="image_src" type="image/png" href="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
 
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.316">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.316">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.316">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.316">
-    <!-- Preconnects de Rede para Reduzir Latência no Celular (v1.0.311) -->
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.317">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.317">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.317">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.317">
+    <!-- Preconnects de Rede para Reduzir Latência no Celular (v1.0.317) -->
     <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
-    <link rel="preconnect" href="https://unpkg.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="dns-prefetch" href="https://www.gstatic.com">
     <link rel="dns-prefetch" href="https://firestore.googleapis.com">
+    <link rel="dns-prefetch" href="https://unpkg.com">
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com">
+    <!-- CSS Crítico Above-the-Fold Inline (FCP/LCP instantâneo no celular e zero FOUC/CLS) -->
+    <style id="vortex-critical-css">
+        :root{--bg-color:#050505;--card-bg:#141414;--accent-color:#fff01f;--text-main:#ffffff;--text-dim:#8e8e93;}
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+        html,body{width:100%;height:100%;height:100dvh;margin:0;padding:0;overflow:hidden;background-color:#000000;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;display:flex;justify-content:center;align-items:center;color:var(--text-main);}
+        html:not(.vortex-styles-ready) .app-container > :not(#auth-screen):not(#toast-container),
+        html:not(.vortex-styles-ready) #maintenance-screen-overlay,
+        html:not(.vortex-styles-ready) canvas:not(#vortex-canvas){display:none !important;}
+        .app-container{background-color:var(--bg-color);width:100%;max-width:440px;height:100%;height:100dvh;max-height:920px;position:relative;overflow:hidden;box-shadow:0 0 50px rgba(255,240,31,0.15),0 20px 40px rgba(0,0,0,0.9);border:1px solid rgba(255,255,255,0.08);border-radius:24px;display:flex;flex-direction:column;}
+        @media (max-width:480px){.app-container{width:100vw;height:100dvh;max-width:100vw;max-height:100dvh;border-radius:0;border:none;box-shadow:none;}}
+        .lock-screen{position:absolute;top:0;left:0;width:100%;height:100%;background:var(--bg-color);z-index:3000;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+        .lock-screen.unlocked{transform:translateY(-110%);pointer-events:none !important;display:none !important;}
+        .auth-card{text-align:center;max-width:320px;padding:20px;}
+        .auth-logo-badge{width:90px;height:90px;margin:0 auto;border-radius:50%;background:rgba(255,240,31,0.1);border:2px solid var(--accent-color);box-shadow:0 0 25px var(--accent-color);display:flex;justify-content:center;align-items:center;}
+        .auth-shield-icon{width:48px;height:48px;color:var(--accent-color);}
+        .auth-title{color:var(--accent-color);margin:15px 0 6px;font-size:1.5rem;font-weight:700;letter-spacing:2px;}
+        .auth-subtitle{color:var(--text-dim);margin-bottom:30px;font-size:0.85rem;line-height:1.4;}
+        .danger-btn{background:rgba(255,59,48,0.15);border:1px solid #ff3b30;color:#ff3b30;padding:8px 16px;border-radius:10px;cursor:pointer;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:6px;}
+        .google-login-btn{background:#ffffff;color:#000000;border:none;width:100%;padding:14px 20px;font-weight:700;font-size:0.92rem;display:flex;align-items:center;justify-content:center;gap:12px;border-radius:30px;box-shadow:0 4px 20px rgba(255,240,31,0.25);cursor:pointer;}
+        .auth-loading-msg{display:none;margin-top:15px;font-size:0.8rem;color:var(--accent-color);}
+        .auth-legal-footer{margin-top:18px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.08);font-size:0.76rem;color:#94a3b8;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;width:100%;}
+        .auth-privacy-link{color:#39ff14;text-decoration:none;font-weight:700;display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:8px;background:rgba(57,255,20,0.08);border:1px solid rgba(57,255,20,0.2);}
+        .vortex-loading-screen{position:fixed;inset:0;width:100%;height:100%;overflow:hidden;background-color:#06060A;color:#ffffff;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;user-select:none;-webkit-user-select:none;z-index:999990;opacity:1;transition:opacity 0.32s ease,visibility 0.32s ease;}
+        .vortex-loading-screen.is-hiding{opacity:0;pointer-events:none;}
+        .vortex-loading-screen.is-hidden{display:none;opacity:0;pointer-events:none;}
+        #vortex-canvas{position:fixed;inset:0;width:100%;height:100%;z-index:0;display:block;}
+        .cosmic-vignette{background:radial-gradient(circle at 50% 48%,rgba(88,28,135,0.14) 0%,rgba(24,16,48,0.08) 38%,rgba(6,6,10,0.78) 100%);}
+        .vortex-loading-vignette{position:fixed;inset:0;pointer-events:none;z-index:10;overflow:hidden;}
+        .vortex-ring{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);border-radius:9999px;border:1px solid rgba(255,255,255,0.035);pointer-events:none;}
+        .vortex-ring-1{width:240px;height:240px;}.vortex-ring-2{width:380px;height:380px;}.vortex-ring-3{width:540px;height:540px;}.vortex-ring-4{width:720px;height:720px;}
+        .vortex-loading-header{position:fixed;top:0;left:0;right:0;z-index:30;display:flex;align-items:center;justify-content:space-between;padding:16px 20px;}
+        .vortex-loading-brand{display:flex;align-items:center;gap:10px;}
+        .vortex-loading-brand-dot{width:8px;height:8px;border-radius:9999px;background-color:#FFE600;box-shadow:0 0 10px #FFE600;}
+        .vortex-loading-brand-text{font-size:0.75rem;font-weight:800;letter-spacing:0.05em;text-transform:uppercase;}
+        .vortex-loading-brand-white{color:#ffffff;}.vortex-loading-brand-vip{color:#FFE600;margin-left:2px;}
+        .vortex-loading-ping-pill{display:flex;align-items:center;gap:8px;font-size:11px;color:#8E92A4;background:rgba(14,14,21,0.8);border:1px solid rgba(255,255,255,0.07);padding:6px 12px;border-radius:9999px;}
+        .vortex-loading-ping-dot{width:6px;height:6px;border-radius:9999px;background-color:#34d399;}
+        .vortex-loading-main{position:relative;z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;min-height:100dvh;padding:0 24px;text-align:center;}
+        .vortex-loading-emblem-wrap{position:relative;margin-bottom:28px;}
+        .vortex-loading-halo-outer{position:absolute;inset:-12px;border-radius:9999px;border:1px dashed rgba(255,230,0,0.25);}
+        .vortex-loading-halo-inner{position:absolute;inset:-24px;border-radius:9999px;border:1px solid rgba(168,85,247,0.1);}
+        .vortex-loading-emblem-circle{position:relative;width:80px;height:80px;border-radius:9999px;background:rgba(13,13,20,0.9);border:2px solid #FFE600;display:flex;align-items:center;justify-content:center;}
+        .vortex-emblem-glow{box-shadow:0 0 32px rgba(255,230,0,0.24),0 0 70px rgba(255,230,0,0.08),inset 0 0 22px rgba(255,230,0,0.14);}
+        .vortex-loading-emblem-svg{width:36px;height:36px;color:#FFE600;}
+        .vortex-loading-title{font-size:1.5rem;line-height:2rem;font-weight:800;letter-spacing:-0.025em;margin:0 0 10px 0;}
+        .vortex-loading-title-main{color:#ffffff;}.vortex-loading-title-vip{color:#FFE600;margin-left:6px;}
+        .vortex-loading-subtitle{font-size:0.75rem;line-height:1rem;color:#8E92A4;max-width:28rem;min-height:20px;margin:0 0 28px 0;}
+        .vortex-loading-progress-wrap{width:100%;max-width:20rem;margin-bottom:32px;}
+        .vortex-loading-progress-meta{display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:500;margin-bottom:8px;padding:0 2px;}
+        .vortex-loading-phase-label{color:#a1a1aa;}.vortex-loading-percentage{color:#FFE600;font-weight:700;font-variant-numeric:tabular-nums;}
+        .vortex-loading-progress-track{position:relative;width:100%;height:8px;background-color:#14141F;border-radius:9999px;overflow:hidden;border:1px solid rgba(255,255,255,0.06);padding:1px;}
+        .vortex-loading-progress-fill{position:relative;height:100%;width:0;border-radius:9999px;background:linear-gradient(90deg,#fbbf24 0%,#FFE600 50%,#fef08a 100%);transition:width 0.2s ease-out;}
+        .vortex-loading-steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:12px;}
+        .vortex-loading-step{height:4px;border-radius:9999px;background-color:rgba(255,255,255,0.1);}
+        .vortex-loading-step.is-active{background-color:#FFE600;}
+        .vortex-loading-security-pill{display:inline-flex;align-items:center;gap:10px;padding:8px 16px;border-radius:9999px;background:rgba(16,16,24,0.85);border:1px solid rgba(255,255,255,0.08);}
+        .vortex-loading-lock-svg{width:14px;height:14px;color:#a1a1aa;flex-shrink:0;}
+        .vortex-loading-security-text{font-size:11px;color:#a1a1aa;font-weight:500;}
+        .vortex-loading-complete-actions{margin-top:28px;opacity:0;pointer-events:none;transform:translateY(8px);}
+        .vortex-loading-complete-actions.is-ready{opacity:1;pointer-events:auto;transform:translateY(0);}
+        .vortex-loading-enter-btn{padding:10px 24px;border-radius:9999px;border:none;background-color:#FFE600;color:#000000;font-weight:700;font-size:0.75rem;display:inline-flex;align-items:center;gap:8px;cursor:pointer;}
+        .vortex-loading-enter-arrow{width:16px;height:16px;}
+        .vortex-loading-footer{position:fixed;bottom:16px;left:0;right:0;z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:8px;padding:0 20px;font-size:11px;color:#9ca3af;}
+        .vortex-loading-footer-actions{display:flex;align-items:center;gap:8px;}
+        .vortex-loading-footer-btn{padding:4px 12px;border-radius:9999px;background:rgba(255,255,255,0.04);color:#d4d4d8;border:1px solid rgba(255,255,255,0.08);font-size:11px;cursor:pointer;}
+        .vortex-loading-toast{position:fixed;top:64px;left:50%;transform:translate(-50%,-8px);z-index:50;padding:10px 16px;border-radius:9999px;background:rgba(20,20,31,0.95);border:1px solid rgba(255,230,0,0.5);font-size:0.75rem;color:#ffffff;opacity:0;pointer-events:none;display:flex;align-items:center;gap:8px;}
+        @media (min-width:640px){.vortex-loading-header{padding:24px 32px;}.vortex-loading-brand-text,.vortex-loading-enter-btn{font-size:0.875rem;}.vortex-loading-ping-pill,.vortex-loading-progress-meta,.vortex-loading-security-text{font-size:0.75rem;}.vortex-loading-emblem-circle{width:96px;height:96px;}.vortex-loading-emblem-svg{width:44px;height:44px;}.vortex-loading-title{font-size:2.25rem;line-height:2.5rem;}.vortex-loading-subtitle{font-size:0.875rem;line-height:1.25rem;}.vortex-loading-progress-wrap{max-width:24rem;}.vortex-loading-footer{flex-direction:row;padding:0 32px;}}
+    </style>
     <!-- Fonte Inter Carregada de Forma Não Bloqueante -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" media="print" onload="this.media='all'">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"></noscript>
-    <link rel="stylesheet" href="style.css?v=1.0.316">
+    <!-- Folha de Estilos Principal Carregada de Forma Não Bloqueante (v1.0.317) -->
+    <link rel="preload" href="style.css?v=1.0.317" as="style">
+    <link id="vortex-main-stylesheet" rel="stylesheet" href="style.css?v=1.0.317" media="print" onload="this.media='all';document.documentElement.classList.add('vortex-styles-ready')">
+    <noscript><link rel="stylesheet" href="style.css?v=1.0.317"></noscript>
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.316" id="app-manifest-link">
+    <link rel="manifest" href="manifest.json?v=1.0.317" id="app-manifest-link">
     <meta name="theme-color" content="#39ff14" id="app-theme-color-meta">
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#39ff14" id="app-theme-color-meta-dark">
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#39ff14" id="app-theme-color-meta-light">
@@ -61,9 +132,9 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.316">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.316">
-    <!-- Sincronização Dinâmica da Barra de Status e Barra de Navegação do Celular -->
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.317">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.317">
+    <!-- Sincronização Dinâmica da Barra de Status + Loaders Sob Demanda (Mercado Pago & Lucide) -->
     <script>
         (function() {
             try {
@@ -95,14 +166,188 @@
                     document.documentElement.style.setProperty('--system-theme-color', targetColor);
                 }
             } catch (e) {}
+
+            var link = document.getElementById('vortex-main-stylesheet');
+            var markStylesReady = function() {
+                if (link && link.media !== 'all') link.media = 'all';
+                if (document.documentElement) document.documentElement.classList.add('vortex-styles-ready');
+            };
+            if (link && link.sheet) {
+                try { if (link.sheet.cssRules) markStylesReady(); } catch (e) { markStylesReady(); }
+            }
+            setTimeout(markStylesReady, 3500);
+
+            var mpLoadPromise = null;
+            window.loadMercadoPagoSDK = function() {
+                if (typeof window.MercadoPago !== 'undefined') return Promise.resolve(window.MercadoPago);
+                if (mpLoadPromise) return mpLoadPromise;
+                mpLoadPromise = new Promise(function(resolve, reject) {
+                    var s = document.createElement('script');
+                    s.src = 'https://sdk.mercadopago.com/js/v2';
+                    s.async = true;
+                    s.onload = function() { resolve(window.MercadoPago); };
+                    s.onerror = function(err) { mpLoadPromise = null; reject(err); };
+                    (document.head || document.documentElement).appendChild(s);
+                });
+                return mpLoadPromise;
+            };
+
+            var lucideLoadPromise = null;
+            window.loadLucideIcons = function() {
+                if (window.lucide) {
+                    try { window.lucide.createIcons(); } catch (e) {}
+                    return Promise.resolve(window.lucide);
+                }
+                if (lucideLoadPromise) return lucideLoadPromise;
+                lucideLoadPromise = new Promise(function(resolve) {
+                    var appendLucide = function(url, allowFallback) {
+                        var s = document.createElement('script');
+                        s.src = url;
+                        s.async = true;
+                        s.fetchPriority = 'low';
+                        s.onload = function() {
+                            if (window.lucide && typeof window.lucide.createIcons === 'function') {
+                                try { window.lucide.createIcons(); } catch (e) {}
+                            }
+                            resolve(window.lucide || null);
+                        };
+                        s.onerror = function() {
+                            if (allowFallback) {
+                                appendLucide('https://unpkg.com/lucide@latest', false);
+                            } else {
+                                resolve(null);
+                            }
+                        };
+                        (document.head || document.documentElement).appendChild(s);
+                    };
+                    appendLucide('https://unpkg.com/lucide@1.79.0/dist/umd/lucide.min.js', true);
+                });
+                return lucideLoadPromise;
+            };
+
+            var triggerPostPaintLucide = function() {
+                if (typeof requestAnimationFrame === 'function') {
+                    requestAnimationFrame(function() { setTimeout(window.loadLucideIcons, 0); });
+                } else {
+                    setTimeout(window.loadLucideIcons, 0);
+                }
+            };
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', triggerPostPaintLucide, { once: true });
+            } else {
+                triggerPostPaintLucide();
+            }
         })();
     </script>
-    <!-- SDK Oficial do Mercado Pago v2 (Deferred para não bloquear First Paint no celular) -->
-    <script src="https://sdk.mercadopago.com/js/v2" defer></script>
-    <!-- Ícones Lucide (Deferred para renderização instantânea no celular) -->
-    <script src="https://unpkg.com/lucide@latest" defer></script>
 </head>
 <body>
+
+    <!-- =========================================================
+         TELA DE CARREGAMENTO OFICIAL VORTEX VIP (v1.0.317 - No topo do body para FCP/LCP imediato)
+         ========================================================= -->
+    <div id="vortex-loading-screen" class="vortex-loading-screen" role="status" aria-live="polite" aria-label="Tela de carregamento VORTEX VIP">
+        <canvas id="vortex-canvas" aria-hidden="true"></canvas>
+
+        <div class="cosmic-vignette vortex-loading-vignette" aria-hidden="true">
+            <div class="vortex-ring vortex-ring-1" style="animation-delay: 0s;"></div>
+            <div class="vortex-ring vortex-ring-2" style="animation-delay: 1s;"></div>
+            <div class="vortex-ring vortex-ring-3" style="animation-delay: 2s;"></div>
+            <div class="vortex-ring vortex-ring-4" style="animation-delay: 3s;"></div>
+        </div>
+
+        <div class="vortex-loading-header">
+            <div class="vortex-loading-brand">
+                <span class="vortex-loading-brand-dot"></span>
+                <span class="vortex-loading-brand-text">
+                    <span class="vortex-loading-brand-white">VORTEX</span>
+                    <span class="vortex-loading-brand-vip">VIP</span>
+                </span>
+            </div>
+
+            <div class="vortex-loading-ping-pill">
+                <span class="vortex-loading-ping-dot"></span>
+                <span id="network-ping">Servidor Quântico • 14ms</span>
+            </div>
+        </div>
+
+        <div id="loading-container" class="vortex-loading-main">
+            <div class="vortex-loading-emblem-wrap">
+                <div class="vortex-loading-halo-outer" aria-hidden="true"></div>
+                <div class="vortex-loading-halo-inner" aria-hidden="true"></div>
+
+                <div class="vortex-loading-emblem-circle vortex-emblem-glow">
+                    <svg class="vortex-loading-emblem-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M13 2L4.5 13.5H11.5L10.5 22L19.5 10.5H12.5L13 2Z" />
+                    </svg>
+                </div>
+            </div>
+
+            <h1 class="vortex-loading-title">
+                <span class="vortex-loading-title-main">VORTEX</span>
+                <span class="vortex-loading-title-vip">VIP</span>
+            </h1>
+
+            <p id="loading-status-text" class="vortex-loading-subtitle">
+                Inicializando protocolo de conexão segura...
+            </p>
+
+            <div class="vortex-loading-progress-wrap">
+                <div class="vortex-loading-progress-meta">
+                    <span id="loading-phase-label" class="vortex-loading-phase-label">Sincronizando dados</span>
+                    <span id="loading-percentage" class="vortex-loading-percentage">0%</span>
+                </div>
+
+                <div class="vortex-loading-progress-track">
+                    <div id="progress-bar-fill" class="vortex-loading-progress-fill progress-shimmer" style="width: 0%;"></div>
+                </div>
+
+                <div class="vortex-loading-steps">
+                    <div id="step-1" class="vortex-loading-step is-active"></div>
+                    <div id="step-2" class="vortex-loading-step"></div>
+                    <div id="step-3" class="vortex-loading-step"></div>
+                    <div id="step-4" class="vortex-loading-step"></div>
+                </div>
+            </div>
+
+            <div class="vortex-loading-security-pill">
+                <svg class="vortex-loading-lock-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+                <span class="vortex-loading-security-text">
+                    Criptografia ponta a ponta e rede quântica ativa
+                </span>
+            </div>
+
+            <div id="complete-actions" class="vortex-loading-complete-actions">
+                <button type="button" id="enter-btn" class="vortex-loading-enter-btn">
+                    <span>Acessar VORTEX VIP</span>
+                    <svg class="vortex-loading-enter-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M5 12h14"></path>
+                        <path d="m12 5 7 7-7 7"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="vortex-loading-footer">
+            <div class="vortex-loading-footer-version">VORTEX VIP &bull; v1.0.317</div>
+
+            <div class="vortex-loading-footer-actions">
+                <button type="button" id="replay-btn" class="vortex-loading-footer-btn">
+                    ↻ Reiniciar
+                </button>
+                <button type="button" id="loop-toggle-btn" class="vortex-loading-footer-btn">
+                    Loop: Off
+                </button>
+            </div>
+        </div>
+
+        <div id="vortex-toast" class="vortex-loading-toast">
+            <span class="vortex-loading-toast-dot"></span>
+            <span id="toast-message">Conexão estabelecida com sucesso!</span>
+        </div>
+    </div>
 
     <!-- Canvas de Códigos Binários Animados (Tema Hacker Matrix VIP) -->
     <canvas id="matrix-binary-canvas" class="matrix-binary-canvas" aria-hidden="true"></canvas>
@@ -126,9 +371,13 @@
         <div id="auth-screen" class="lock-screen">
             <div class="auth-card">
                 <div class="auth-logo-badge">
-                    <i data-lucide="shield-alert" class="auth-shield-icon"></i>
+                    <svg class="auth-shield-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path>
+                        <path d="M12 8v4"></path>
+                        <path d="M12 16h.01"></path>
+                    </svg>
                 </div>
-                <h2 class="auth-title">VORTEX <span>VIP</span></h2>
+                <h1 class="auth-title">VORTEX <span>VIP</span></h1>
                 <p class="auth-subtitle">Rede segura de comunicação em tempo real com criptografia quântica.</p>
                 
                 <button id="google-login-main-btn" class="google-login-btn danger-btn" title="Fazer login com o Google" aria-label="Fazer login com o Google">
@@ -163,7 +412,7 @@
                 <div class="auth-legal-footer" id="auth-legal-footer">
                     <span>Ao continuar, você concorda com a nossa</span>
                     <a href="privacy.html" id="auth-privacy-policy-link" class="auth-privacy-link" target="_blank" rel="noopener noreferrer">
-                        <i data-lucide="shield-check"></i> Política de Privacidade
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path><path d="m9 12 2 2 4-4"></path></svg> Política de Privacidade
                     </a>
                 </div>
             </div>
@@ -229,7 +478,7 @@
         <!-- Overlay de Visualização Única -->
         <div id="view-once-overlay" class="lock-screen view-once-screen unlocked" style="display: none;">
             <div class="view-once-security-badge"><i data-lucide="shield-check"></i> Proteção Vortex VIP • Cópia Bloqueada</div>
-            <img id="view-once-img" class="view-once-img-el protected-media" draggable="false" oncontextmenu="return false;" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E" alt="Foto de Visualização Única">
+            <img id="view-once-img" class="view-once-img-el protected-media" draggable="false" oncontextmenu="return false;" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E" alt="Foto de Visualização Única" width="320" height="320" loading="lazy" decoding="async">
             <div class="view-once-hint">Toque em qualquer lugar para fechar</div>
         </div>
 
@@ -354,7 +603,7 @@
                             <i data-lucide="gamepad-2"></i>
                         </div>
                         <div>
-                            <h3 class="games-category-title">Jogos VORTEX VIP 🎮</h3>
+                            <h2 class="games-category-title">Jogos VORTEX VIP 🎮</h2>
                             <p class="games-category-subtitle">Gire a roleta diária, ganhe moedas e resgate no Baú Pix!</p>
                         </div>
                     </div>
@@ -1543,8 +1792,8 @@
                 <!-- Campo de Busca com Ícone -->
                 <div class="music-search-box">
                     <i data-lucide="search" class="music-search-icon"></i>
-                    <input type="text" id="music-search-input" class="music-search-input" placeholder="Buscar músicas, artistas ou estilos..." autocomplete="off">
-                    <button type="button" id="music-clear-search-btn" class="music-clear-btn" style="display: none;" title="Limpar busca">
+                    <input type="text" id="music-search-input" class="music-search-input" placeholder="Buscar músicas, artistas ou estilos..." autocomplete="off" aria-label="Buscar músicas, artistas ou estilos">
+                    <button type="button" id="music-clear-search-btn" class="music-clear-btn" style="display: none;" title="Limpar busca" aria-label="Limpar busca de músicas">
                         <i data-lucide="x"></i>
                     </button>
                 </div>
@@ -2008,7 +2257,7 @@
                     
                     <div id="status-media-preview-box" class="status-media-preview-box" style="display: none;">
                         <div class="status-preview-media-wrapper" id="status-preview-media-trigger" title="Pré-visualizar Story">
-                            <img id="status-preview-img" class="status-preview-media" alt="Prévia da foto" style="display: none;">
+                            <img id="status-preview-img" class="status-preview-media" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E" alt="Prévia da foto" width="320" height="320" loading="lazy" decoding="async" style="display: none;">
                             <video id="status-preview-video" class="status-preview-media protected-media" playsinline muted loop controlsList="nodownload" disablePictureInPicture oncontextmenu="return false;" style="display: none;"></video>
                             <div class="status-preview-play-trigger">
                                 <i data-lucide="eye"></i>
@@ -2054,16 +2303,16 @@
                     </button>
                     <div id="status-selected-music-card" class="composer-selected-music-card" style="display: none;">
                         <div class="composer-music-main-row">
-                            <img id="status-selected-music-cover" src="" alt="Capa" class="music-card-cover">
+                            <img id="status-selected-music-cover" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E" alt="Capa" class="music-card-cover" width="48" height="48" loading="lazy" decoding="async">
                             <div class="music-card-details">
                                 <div id="status-selected-music-title" class="music-card-title">Título</div>
                                 <div id="status-selected-music-artist" class="music-card-artist">Artista</div>
                             </div>
                             <div class="music-card-actions">
-                                <button type="button" id="status-preview-music-btn" class="music-preview-toggle-btn" title="Ouvir prévia do trecho">
+                                <button type="button" id="status-preview-music-btn" class="music-preview-toggle-btn" title="Ouvir prévia do trecho" aria-label="Ouvir prévia da música do status">
                                     <i data-lucide="play" id="status-preview-music-icon"></i>
                                 </button>
-                                <button type="button" id="status-remove-music-btn" class="music-remove-btn" title="Remover música">
+                                <button type="button" id="status-remove-music-btn" class="music-remove-btn" title="Remover música" aria-label="Remover música do status">
                                     <i data-lucide="x"></i>
                                 </button>
                             </div>
@@ -3554,7 +3803,7 @@
                 <h3 class="modal-title danger-text" id="admin-ban-modal-title">Banir Usuário?</h3>
                 <p class="modal-subtitle" id="admin-ban-modal-desc">Este usuário será desconectado e impedido de usar a plataforma VORTEX VIP.</p>
                 <div class="report-details-box">
-                    <input type="text" id="admin-ban-reason-input" placeholder="Motivo do banimento (ex: Violação dos Termos, Spam, etc.)" style="width: 100%; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 10px; color: #fff; box-sizing: border-box; font-size: 0.82rem; outline: none; margin-bottom: 12px;">
+                    <input type="text" id="admin-ban-reason-input" aria-label="Motivo do banimento" placeholder="Motivo do banimento (ex: Violação dos Termos, Spam, etc.)" style="width: 100%; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 10px; color: #fff; box-sizing: border-box; font-size: 0.82rem; outline: none; margin-bottom: 12px;">
                 </div>
                 <div class="modal-actions-col">
                     <button id="admin-confirm-ban-btn" class="danger-btn btn-delete-everyone">Confirmar Banimento</button>
@@ -3572,7 +3821,7 @@
                 <h3 class="modal-title danger-text" id="admin-restrict-modal-title">Restringir Usuário (3 Horas)?</h3>
                 <p class="modal-subtitle" id="admin-restrict-modal-desc">O usuário receberá uma restrição temporal de 3:00 horas: não vai conseguir enviar mensagem, curtir ou comentar. Ainda é possível enviar story e publicar post.</p>
                 <div class="report-details-box">
-                    <input type="text" id="admin-restrict-reason-input" value="Sua conta foi banida temporalmente você não vai conseguir enviar mensagem curtir ou comentar. Ainda é possível enviar story e publicar post além disso nada mais..." placeholder="Motivo da restrição temporal" style="width: 100%; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 10px; color: #fff; box-sizing: border-box; font-size: 0.82rem; outline: none; margin-bottom: 12px;">
+                    <input type="text" id="admin-restrict-reason-input" aria-label="Motivo da restrição temporária" value="Sua conta foi banida temporalmente você não vai conseguir enviar mensagem curtir ou comentar. Ainda é possível enviar story e publicar post além disso nada mais..." placeholder="Motivo da restrição temporal" style="width: 100%; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 10px; color: #fff; box-sizing: border-box; font-size: 0.82rem; outline: none; margin-bottom: 12px;">
                 </div>
                 <div class="modal-actions-col">
                     <button id="admin-confirm-restrict-btn" class="danger-btn btn-delete-everyone">Confirmar Restrição (3 Horas)</button>
@@ -3671,7 +3920,7 @@
                     </label>
 
                     <div id="post-preview-box" class="post-preview-box hidden">
-                        <button id="remove-post-media-btn" class="post-remove-btn" type="button" title="Remover mídia">
+                        <button id="remove-post-media-btn" class="post-remove-btn" type="button" title="Remover mídia" aria-label="Remover mídia do post">
                             <i data-lucide="x"></i>
                         </button>
                         <div id="post-preview" class="post-preview"></div>
@@ -3699,7 +3948,7 @@
                                 <span id="post-video-cover-btn-label">Adicionar capa do vídeo</span>
                             </button>
                             <div id="post-video-cover-preview-wrap" class="post-video-cover-preview-wrap" style="display: none;">
-                                <img id="post-video-cover-thumb" class="post-video-cover-thumb" src="" alt="Capa do vídeo">
+                                <img id="post-video-cover-thumb" class="post-video-cover-thumb" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E" alt="Capa do vídeo" width="96" height="96" loading="lazy" decoding="async">
                                 <span id="post-video-cover-meta" class="post-video-cover-meta">Capa selecionada</span>
                                 <button type="button" id="remove-video-cover-btn" class="post-video-cover-remove-btn" title="Remover capa do vídeo" aria-label="Remover capa do vídeo">
                                     <i data-lucide="x"></i>
@@ -3715,16 +3964,16 @@
                     </button>
                     <div id="post-selected-music-card" class="composer-selected-music-card" style="display: none;">
                         <div class="composer-music-main-row">
-                            <img id="post-selected-music-cover" src="" alt="Capa" class="music-card-cover">
+                            <img id="post-selected-music-cover" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E" alt="Capa" class="music-card-cover" width="48" height="48" loading="lazy" decoding="async">
                             <div class="music-card-details">
                                 <div id="post-selected-music-title" class="music-card-title">Título</div>
                                 <div id="post-selected-music-artist" class="music-card-artist">Artista</div>
                             </div>
                             <div class="music-card-actions">
-                                <button type="button" id="post-preview-music-btn" class="music-preview-toggle-btn" title="Ouvir prévia do trecho">
+                                <button type="button" id="post-preview-music-btn" class="music-preview-toggle-btn" title="Ouvir prévia do trecho" aria-label="Ouvir prévia da música do post">
                                     <i data-lucide="play" id="post-preview-music-icon"></i>
                                 </button>
-                                <button type="button" id="post-remove-music-btn" class="music-remove-btn" title="Remover música">
+                                <button type="button" id="post-remove-music-btn" class="music-remove-btn" title="Remover música" aria-label="Remover música do post">
                                     <i data-lucide="x"></i>
                                 </button>
                             </div>
@@ -4320,7 +4569,7 @@
                     <div id="pix-step-qrcode" class="pix-step-view" style="display: none;">
                         <div class="pix-qr-container">
                             <div class="pix-qr-box">
-                                <img id="pix-qr-image" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E" alt="QR Code Pix" class="pix-qr-img">
+                                <img id="pix-qr-image" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E" alt="QR Code Pix" class="pix-qr-img" width="220" height="220" loading="lazy" decoding="async">
                             </div>
                             <div class="pix-status-badge">
                                 <span class="pix-pulse-dot"></span>
@@ -4875,7 +5124,7 @@
                     </div>
                 </div>
                 <div class="catalog-sheet-footer">
-                    <button type="button" id="cat-prod-delete-btn" class="catalog-danger-btn" style="display:none;"><i data-lucide="trash-2"></i></button>
+                    <button type="button" id="cat-prod-delete-btn" class="catalog-danger-btn" style="display:none;" aria-label="Excluir produto do catálogo"><i data-lucide="trash-2"></i></button>
                     <button type="button" id="cat-prod-save-btn" class="catalog-primary-btn catalog-grow"><i data-lucide="check"></i><span>Salvar produto</span></button>
                 </div>
             </div>
@@ -4922,7 +5171,7 @@
                                 <label class="catalog-field-label" for="catalog-cart-cep">CEP *</label>
                                 <div class="catalog-input-with-action">
                                     <input id="catalog-cart-cep" type="text" inputmode="numeric" maxlength="9" placeholder="00000-000">
-                                    <button type="button" id="catalog-cart-cep-search-btn" class="catalog-inline-btn" title="Buscar CEP"><i data-lucide="search"></i></button>
+                                    <button type="button" id="catalog-cart-cep-search-btn" class="catalog-inline-btn" title="Buscar CEP" aria-label="Buscar endereço pelo CEP"><i data-lucide="search"></i></button>
                                 </div>
                             </div>
                         </div>
@@ -4985,7 +5234,7 @@
                 </div>
                 <div class="catalog-sheet-footer catalog-cart-footer">
                     <div class="catalog-coupon-row" style="display:flex; gap:8px; margin-bottom:10px;">
-                        <input type="text" id="catalog-coupon-input" class="catalog-field-input" placeholder="Cupom de desconto (ex: VORTEX10)" style="flex:1; text-transform:uppercase; font-size:0.85rem;" autocomplete="off">
+                        <input type="text" id="catalog-coupon-input" aria-label="Cupom de desconto" class="catalog-field-input" placeholder="Cupom de desconto (ex: VORTEX10)" style="flex:1; text-transform:uppercase; font-size:0.85rem;" autocomplete="off">
                         <button type="button" id="catalog-apply-coupon-btn" class="catalog-secondary-btn" style="padding:6px 14px; font-size:0.82rem; white-space:nowrap;"><i data-lucide="tag"></i> Aplicar</button>
                     </div>
                     <div id="catalog-coupon-feedback" style="display:none; font-size:0.78rem; margin-bottom:8px;"></div>
@@ -5009,8 +5258,8 @@
                 </div>
                 <div class="catalog-sheet-body">
                     <div class="catalog-category-add">
-                        <input id="catalog-category-input" type="text" maxlength="30" placeholder="Nova categoria">
-                        <button type="button" id="catalog-category-add-btn" class="catalog-primary-btn"><i data-lucide="plus"></i></button>
+                        <input id="catalog-category-input" type="text" maxlength="30" placeholder="Nova categoria" aria-label="Nome da nova categoria">
+                        <button type="button" id="catalog-category-add-btn" class="catalog-primary-btn" aria-label="Adicionar nova categoria"><i data-lucide="plus"></i></button>
                     </div>
                     <div id="catalog-categories-list" class="catalog-categories-list"></div>
                 </div>
@@ -5554,7 +5803,7 @@
 
                     <div class="group-call-search-box">
                         <i data-lucide="search"></i>
-                        <input type="text" id="group-call-invite-search" placeholder="Buscar contato por nome ou @usuario..." autocomplete="off">
+                        <input type="text" id="group-call-invite-search" placeholder="Buscar contato por nome ou @usuario..." autocomplete="off" aria-label="Buscar contato para convidar">
                     </div>
 
                     <div class="group-call-invite-contacts-list" id="group-call-invite-contacts-list">
@@ -5590,7 +5839,7 @@
                 <div class="chat-camera-viewport-wrap">
                     <video id="chat-camera-video-feed" autoplay playsinline muted class="chat-camera-live-video"></video>
                     <canvas id="chat-camera-canvas" style="display:none;"></canvas>
-                    <img id="chat-camera-captured-preview" class="chat-camera-captured-media protected-media" draggable="false" oncontextmenu="return false;" style="display:none;" alt="Prévia da Foto">
+                    <img id="chat-camera-captured-preview" class="chat-camera-captured-media protected-media" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E" width="320" height="320" loading="lazy" decoding="async" draggable="false" oncontextmenu="return false;" style="display:none;" alt="Prévia da Foto">
                     <video id="chat-camera-captured-video-preview" class="chat-camera-captured-media protected-media" playsinline controls controlsList="nodownload" disablePictureInPicture oncontextmenu="return false;" style="display:none;"></video>
                 </div>
 
@@ -5609,11 +5858,11 @@
                         <input type="file" id="chat-camera-fallback-photo" accept="image/*" capture="environment" style="display:none;">
                         <input type="file" id="chat-camera-fallback-video" accept="video/*" capture="environment" style="display:none;">
                         
-                        <button type="button" id="chat-camera-fallback-trigger-btn" class="chat-camera-mini-tool-btn" title="Usar Câmera do Aparelho">
+                        <button type="button" id="chat-camera-fallback-trigger-btn" class="chat-camera-mini-tool-btn" title="Usar Câmera do Aparelho" aria-label="Usar câmera do aparelho">
                             <i data-lucide="smartphone"></i>
                         </button>
 
-                        <button type="button" id="chat-camera-shutter-btn" class="chat-camera-shutter" title="Capturar">
+                        <button type="button" id="chat-camera-shutter-btn" class="chat-camera-shutter" title="Capturar" aria-label="Capturar foto">
                             <span class="chat-camera-shutter-core" id="chat-camera-shutter-core"></span>
                         </button>
 
@@ -5624,7 +5873,7 @@
                 <!-- Painel de Envio da Captura -->
                 <div class="chat-camera-confirm-wrap" id="chat-camera-confirm-box" style="display:none;">
                     <div class="chat-camera-caption-input-box">
-                        <input type="text" id="chat-camera-caption-input" placeholder="Adicionar legenda..." maxlength="250">
+                        <input type="text" id="chat-camera-caption-input" placeholder="Adicionar legenda..." maxlength="250" aria-label="Legenda da foto ou vídeo">
                     </div>
                     <div class="chat-camera-confirm-btns">
                         <button type="button" id="chat-camera-retake-btn" class="chat-camera-confirm-btn cancel">
@@ -5687,7 +5936,7 @@
                         </label>
                         <input type="file" id="company-btn-image-input" accept="image/*" class="hidden-file-input">
                         <div class="company-btn-image-preview-wrapper" id="company-btn-image-preview-box" style="display:none;">
-                            <img id="company-btn-image-preview" src="" alt="Prévia da imagem">
+                            <img id="company-btn-image-preview" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E" alt="Prévia da imagem" width="160" height="160" loading="lazy" decoding="async">
                             <button type="button" id="company-btn-remove-image-btn" class="company-btn-remove-img-btn" title="Remover Imagem" onclick="removeCompanyButtonImage()">
                                 <i data-lucide="trash-2"></i> Remover Imagem
                             </button>
@@ -6853,8 +7102,8 @@
                                             <small>Toque para tirar foto ou selecionar</small>
                                         </div>
                                         <div class="biz-photo-preview-wrap" id="biz-preview-wrap-selfie" style="display:none;">
-                                            <img src="" id="biz-preview-img-selfie" alt="Selfie com documento" class="biz-preview-img">
-                                            <button type="button" class="biz-remove-photo-btn" id="biz-remove-photo-selfie" title="Remover Foto"><i data-lucide="trash-2"></i></button>
+                                            <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E" id="biz-preview-img-selfie" alt="Selfie com documento" class="biz-preview-img" width="240" height="180" loading="lazy" decoding="async">
+                                            <button type="button" class="biz-remove-photo-btn" id="biz-remove-photo-selfie" title="Remover Foto" aria-label="Remover foto da selfie"><i data-lucide="trash-2"></i></button>
                                         </div>
                                     </div>
                                 </div>
@@ -6874,8 +7123,8 @@
                                             <small>Toque para tirar foto ou selecionar</small>
                                         </div>
                                         <div class="biz-photo-preview-wrap" id="biz-preview-wrap-doc" style="display:none;">
-                                            <img src="" id="biz-preview-img-doc" alt="Verso do documento" class="biz-preview-img">
-                                            <button type="button" class="biz-remove-photo-btn" id="biz-remove-photo-doc" title="Remover Foto"><i data-lucide="trash-2"></i></button>
+                                            <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E" id="biz-preview-img-doc" alt="Verso do documento" class="biz-preview-img" width="240" height="180" loading="lazy" decoding="async">
+                                            <button type="button" class="biz-remove-photo-btn" id="biz-remove-photo-doc" title="Remover Foto" aria-label="Remover foto do documento"><i data-lucide="trash-2"></i></button>
                                         </div>
                                     </div>
                                 </div>
@@ -6967,7 +7216,7 @@
                     <div class="header-icon-btn" id="close-photo-zoom-modal" title="Fechar"><i data-lucide="x"></i></div>
                 </div>
                 <div class="photo-zoom-body">
-                    <img id="photo-zoom-img" src="" alt="Documento ampliado" class="photo-zoom-img">
+                    <img id="photo-zoom-img" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E" alt="Documento ampliado" class="photo-zoom-img" width="360" height="360" loading="lazy" decoding="async">
                 </div>
             </div>
         </div>
@@ -6992,7 +7241,7 @@
                 <div class="channel-container">
                     <!-- Banner do Canal (com opção de adicionar/alterar banner) -->
                     <div id="channel-banner-box" class="channel-banner-box">
-                        <img id="channel-banner-img" src="" alt="Banner do canal" class="channel-banner-img" style="display:none;" loading="lazy" decoding="async">
+                        <img id="channel-banner-img" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E" alt="Banner do canal" class="channel-banner-img" width="640" height="220" style="display:none;" loading="lazy" decoding="async">
                         <div id="channel-banner-empty" class="channel-banner-empty">
                             <i data-lucide="image"></i>
                             <span>Banner do Canal</span>
@@ -7036,7 +7285,7 @@
                     <!-- Links do Canal + e mais X links -->
                     <div id="channel-links-row" class="channel-links-row">
                         <i data-lucide="link-2" class="channel-link-icon"></i>
-                        <a id="channel-primary-link" class="channel-primary-link" href="#" target="_blank" rel="noopener noreferrer" style="display:none;"></a>
+                        <a id="channel-primary-link" class="channel-primary-link" href="#" target="_blank" rel="noopener noreferrer" style="display:none;" aria-label="Link principal do canal"></a>
                         <button type="button" id="channel-more-links-btn" class="channel-more-links-btn">Adicionar links</button>
                     </div>
 
@@ -7329,134 +7578,12 @@
     </div> <!-- Fim do app-container -->
 
     <!-- =========================================================
-         TELA DE CARREGAMENTO OFICIAL VORTEX VIP (v1.0.309)
-         Céu estrelado, meteoros neon diagonais, anéis cósmicos, barra de progresso
-         e transição suave com efeito dobra espacial ("warp") ao entrar.
-         ========================================================= -->
-    <div id="vortex-loading-screen" class="vortex-loading-screen" role="status" aria-live="polite" aria-label="Tela de carregamento VORTEX VIP">
-        <!-- Canvas de Fundo: Estrelas cintilantes e meteoros neon diagonais -->
-        <canvas id="vortex-canvas" aria-hidden="true"></canvas>
-
-        <!-- Camada de Atmosfera Cósmica e Anéis Concêntricos -->
-        <div class="cosmic-vignette vortex-loading-vignette" aria-hidden="true">
-            <div class="vortex-ring vortex-ring-1" style="animation-delay: 0s;"></div>
-            <div class="vortex-ring vortex-ring-2" style="animation-delay: 1s;"></div>
-            <div class="vortex-ring vortex-ring-3" style="animation-delay: 2s;"></div>
-            <div class="vortex-ring vortex-ring-4" style="animation-delay: 3s;"></div>
-        </div>
-
-        <!-- Barra Superior Discreta com Marca e Status de Rede -->
-        <header class="vortex-loading-header">
-            <div class="vortex-loading-brand">
-                <span class="vortex-loading-brand-dot"></span>
-                <span class="vortex-loading-brand-text">
-                    <span class="vortex-loading-brand-white">VORTEX</span>
-                    <span class="vortex-loading-brand-vip">VIP</span>
-                </span>
-            </div>
-
-            <div class="vortex-loading-ping-pill">
-                <span class="vortex-loading-ping-dot"></span>
-                <span id="network-ping">Servidor Quântico • 14ms</span>
-            </div>
-        </header>
-
-        <!-- Conteúdo Central da Tela de Carregamento -->
-        <main id="loading-container" class="vortex-loading-main">
-            <!-- Emblema Circular com Raio -->
-            <div class="vortex-loading-emblem-wrap">
-                <div class="vortex-loading-halo-outer" aria-hidden="true"></div>
-                <div class="vortex-loading-halo-inner" aria-hidden="true"></div>
-
-                <div class="vortex-loading-emblem-circle vortex-emblem-glow">
-                    <svg class="vortex-loading-emblem-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <path d="M13 2L4.5 13.5H11.5L10.5 22L19.5 10.5H12.5L13 2Z" />
-                    </svg>
-                </div>
-            </div>
-
-            <!-- Título Principal -->
-            <h1 class="vortex-loading-title">
-                <span class="vortex-loading-title-main">VORTEX</span>
-                <span class="vortex-loading-title-vip">VIP</span>
-            </h1>
-
-            <!-- Subtítulo Dinâmico de Carregamento -->
-            <p id="loading-status-text" class="vortex-loading-subtitle">
-                Inicializando protocolo de conexão segura...
-            </p>
-
-            <!-- Módulo de Barra de Progresso -->
-            <div class="vortex-loading-progress-wrap">
-                <div class="vortex-loading-progress-meta">
-                    <span id="loading-phase-label" class="vortex-loading-phase-label">Sincronizando dados</span>
-                    <span id="loading-percentage" class="vortex-loading-percentage">0%</span>
-                </div>
-
-                <div class="vortex-loading-progress-track">
-                    <div id="progress-bar-fill" class="vortex-loading-progress-fill progress-shimmer" style="width: 0%;"></div>
-                </div>
-
-                <!-- Etapas Visuais (4 pontos de verificação) -->
-                <div class="vortex-loading-steps">
-                    <div id="step-1" class="vortex-loading-step is-active"></div>
-                    <div id="step-2" class="vortex-loading-step"></div>
-                    <div id="step-3" class="vortex-loading-step"></div>
-                    <div id="step-4" class="vortex-loading-step"></div>
-                </div>
-            </div>
-
-            <!-- Selo de Segurança -->
-            <div class="vortex-loading-security-pill">
-                <svg class="vortex-loading-lock-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                </svg>
-                <span class="vortex-loading-security-text">
-                    Criptografia ponta a ponta e rede quântica ativa
-                </span>
-            </div>
-
-            <!-- Botão de Ação ao Concluir 100% -->
-            <div id="complete-actions" class="vortex-loading-complete-actions">
-                <button type="button" id="enter-btn" class="vortex-loading-enter-btn">
-                    <span>Acessar VORTEX VIP</span>
-                    <svg class="vortex-loading-enter-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <path d="M5 12h14"></path>
-                        <path d="m12 5 7 7-7 7"></path>
-                    </svg>
-                </button>
-            </div>
-        </main>
-
-        <!-- Rodapé com Controles Discretos -->
-        <footer class="vortex-loading-footer">
-            <div class="vortex-loading-footer-version">VORTEX VIP &bull; v1.0.316</div>
-
-            <div class="vortex-loading-footer-actions">
-                <button type="button" id="replay-btn" class="vortex-loading-footer-btn">
-                    ↻ Reiniciar
-                </button>
-                <button type="button" id="loop-toggle-btn" class="vortex-loading-footer-btn">
-                    Loop: Off
-                </button>
-            </div>
-        </footer>
-
-        <!-- Notificação Toast Customizada -->
-        <div id="vortex-toast" class="vortex-loading-toast">
-            <span class="vortex-loading-toast-dot"></span>
-            <span id="toast-message">Conexão estabelecida com sucesso!</span>
-        </div>
-    </div>
-
-    <!-- =========================================================
          TELA DE MANUTENÇÃO OFICIAL VORTEX VIP (v1.0.281)
          Ativada via Painel ADM; exibida apenas para usuários comuns e visitantes.
          Administradores possuem bypass total e não visualizam esta tela.
          ========================================================= -->
     <div id="maintenance-screen-overlay" class="vortex-maintenance-overlay" style="display: none;" aria-hidden="true" role="alertdialog">
-        <main class="vortex-maintenance-main">
+        <div class="vortex-maintenance-main">
             <!-- 1. Símbolo do Triângulo de Manutenção (Pulsante) -->
             <div class="vortex-maintenance-symbol-wrap mb-6 sm:mb-8">
                 <svg class="warning-symbol vortex-maintenance-svg" viewBox="0 0 240 220" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Símbolo de Alerta">
@@ -7520,9 +7647,9 @@
                 </button>
                 <p id="maintenance-admin-status-msg" class="vortex-maint-admin-status" style="display: none;"></p>
             </div>
-        </main>
+        </div>
     </div>
 
-    <script type="module" src="script.js?v=1.0.316" defer></script>
+    <script type="module" src="script.js?v=1.0.317" defer></script>
 </body>
 </html>

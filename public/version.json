@@ -1,6 +1,6 @@
 {
-  "version": "1.0.316",
-  "build": 316,
+  "version": "1.0.317",
+  "build": 317,
   "releaseDate": "2026-11-24",
-  "notes": "Motor de otimização de vídeos estilo YouTube: cache binário IndexedDB, perfil adaptativo de rede, prefetch inteligente, auto-thumbnail no upload, duplo toque ±10s, scrubbing por toque, auto-resume e modo qualidade/dados v1.0.316"
+  "notes": "Otimização PageSpeed Mobile & Desktop v1.0.317: CSS crítico inline e style.css não-bloqueante, splash no topo do body, carregamento sob demanda do SDK Mercado Pago e Lucide, headers de segurança HTTP e correções de acessibilidade WCAG AA"
 }

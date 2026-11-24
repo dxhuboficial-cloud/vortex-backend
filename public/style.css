@@ -145,6 +145,7 @@ html, body {
 .auth-title {
     color: var(--accent-color);
     margin: 15px 0 6px;
+    font-size: 1.5rem;
     font-weight: 700;
     letter-spacing: 2px;
 }
@@ -35081,7 +35082,7 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
     -webkit-font-smoothing: antialiased;
     z-index: 999990;
     opacity: 1;
-    transition: opacity 0.55s ease, visibility 0.55s ease;
+    transition: opacity 0.32s ease, visibility 0.32s ease;
 }
 .vortex-loading-screen.is-hiding {
     opacity: 0;
@@ -35522,7 +35523,7 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
     gap: 8px;
     padding: 0 20px;
     font-size: 11px;
-    color: #71717a;
+    color: #9ca3af;
 }
 @media (min-width: 640px) {
     .vortex-loading-footer {

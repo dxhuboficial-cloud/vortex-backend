@@ -24750,7 +24750,8 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.316';
+const TRANSPARENT_IMG_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E";
+export const CURRENT_APP_VERSION = '1.0.317';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -31474,7 +31475,7 @@ export function removeCompanyButtonImage() {
     const uploadLabel = document.getElementById('company-btn-image-upload-label');
     const imgInput = document.getElementById('company-btn-image-input');
     if (imgInput) imgInput.value = '';
-    if (previewImg) previewImg.src = '';
+    if (previewImg) previewImg.src = TRANSPARENT_IMG_PLACEHOLDER;
     if (previewBox) previewBox.style.display = 'none';
     if (uploadLabel) uploadLabel.style.display = 'inline-flex';
 }
@@ -31701,7 +31702,7 @@ document.getElementById('company-btn-remove-image-btn')?.addEventListener('click
     const uploadLabel = document.getElementById('company-btn-image-upload-label');
     const imgInput = document.getElementById('company-btn-image-input');
     if (imgInput) imgInput.value = '';
-    if (previewImg) previewImg.src = '';
+    if (previewImg) previewImg.src = TRANSPARENT_IMG_PLACEHOLDER;
     if (previewBox) previewBox.style.display = 'none';
     if (uploadLabel) uploadLabel.style.display = 'inline-flex';
 });
@@ -42637,7 +42638,10 @@ export function openVipPaymentModal() {
     playSound(clickSound);
     if (window.lucide) lucide.createIcons();
 
-    // Acorda o servidor no Render em segundo plano (evita espera quando o usuário clicar em pagar)
+    // Acorda o servidor no Render e pré-aquece o SDK Mercado Pago sob demanda (sem custo no boot)
+    if (typeof window !== 'undefined' && typeof window.loadMercadoPagoSDK === 'function') {
+        window.loadMercadoPagoSDK().catch(() => {});
+    }
     try {
         fetch(`${VORTEX_API_BASE}/api/config`).catch(() => {});
     } catch (_) {}
@@ -42916,6 +42920,14 @@ export async function submitCardPayment() {
 
     try {
         let cardToken = null;
+
+        if (typeof MercadoPago === 'undefined' && typeof window !== 'undefined' && typeof window.loadMercadoPagoSDK === 'function') {
+            try {
+                await window.loadMercadoPagoSDK();
+            } catch (sdkErr) {
+                console.warn('SDK Mercado Pago indisponível:', sdkErr);
+            }
+        }
 
         if (typeof MercadoPago !== 'undefined' && !currentMercadoPagoInstance) {
             try {
@@ -50665,7 +50677,7 @@ export function removeBusinessPhoto(type) {
         const previewImg = document.getElementById('biz-preview-img-selfie');
         const dropContent = document.getElementById('biz-dropzone-content-selfie');
         if (input) input.value = '';
-        if (previewImg) previewImg.src = '';
+        if (previewImg) previewImg.src = TRANSPARENT_IMG_PLACEHOLDER;
         if (previewWrap) previewWrap.style.display = 'none';
         if (dropContent) dropContent.style.display = 'flex';
     } else if (type === 'doc') {
@@ -50675,7 +50687,7 @@ export function removeBusinessPhoto(type) {
         const previewImg = document.getElementById('biz-preview-img-doc');
         const dropContent = document.getElementById('biz-dropzone-content-doc');
         if (input) input.value = '';
-        if (previewImg) previewImg.src = '';
+        if (previewImg) previewImg.src = TRANSPARENT_IMG_PLACEHOLDER;
         if (previewWrap) previewWrap.style.display = 'none';
         if (dropContent) dropContent.style.display = 'flex';
     }
@@ -58865,6 +58877,7 @@ var vortexLoadingState = {
     initialized: false,
     progress: 0,
     loadingTimer: null,
+    canvasDelayTimer: null,
     animFrameId: null,
     autoDismissTimer: null,
     fadeHideTimer: null,
@@ -58899,7 +58912,7 @@ function unrefVortexLoadingHandle(handle) {
 }
 
 function clearVortexLoadingTimers({ cancelFrame = false } = {}) {
-    ['loadingTimer', 'autoDismissTimer', 'fadeHideTimer', 'loopRestartTimer', 'stageFadeTimer'].forEach(key => {
+    ['loadingTimer', 'canvasDelayTimer', 'autoDismissTimer', 'fadeHideTimer', 'loopRestartTimer', 'stageFadeTimer'].forEach(key => {
         if (vortexLoadingState[key]) {
             clearInterval(vortexLoadingState[key]);
             clearTimeout(vortexLoadingState[key]);
@@ -59135,6 +59148,7 @@ export function dismissVortexLoadingScreen({ withWarp = true, showWelcomeToast =
         vortexLoadingState.warpMultiplier = 1;
         screenEl.classList?.add('is-hiding');
         screenEl.setAttribute?.('aria-hidden', 'true');
+        screenEl.inert = true;
 
         if (vortexLoadingState.fadeHideTimer) {
             clearTimeout(vortexLoadingState.fadeHideTimer);
@@ -59148,7 +59162,7 @@ export function dismissVortexLoadingScreen({ withWarp = true, showWelcomeToast =
             }
         };
         if (delayMs > 0 || (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function')) {
-            vortexLoadingState.fadeHideTimer = setTimeout(finalizeDisplayNone, 520);
+            vortexLoadingState.fadeHideTimer = setTimeout(finalizeDisplayNone, 320);
             unrefVortexLoadingHandle(vortexLoadingState.fadeHideTimer);
         } else {
             finalizeDisplayNone();
@@ -59234,7 +59248,7 @@ export function updateVortexLoadingUI(value) {
             }, 1800);
             unrefVortexLoadingHandle(vortexLoadingState.loopRestartTimer);
         } else if (!vortexLoadingState.dismissed && !vortexLoadingState.autoDismissTimer) {
-            const autoDelay = (vortexLoadingState.authSettled || isMobilePerformanceMode()) ? 350 : 850;
+            const autoDelay = (vortexLoadingState.authSettled || isMobilePerformanceMode()) ? 120 : 450;
             dismissVortexLoadingScreen({ withWarp: true, showWelcomeToast: false, delayMs: autoDelay });
         }
     }
@@ -59254,6 +59268,7 @@ export function startVortexLoadingScreen({ showScreen = true } = {}) {
             screenEl.classList?.remove('is-hiding', 'is-hidden');
             screenEl.style.display = '';
             screenEl.setAttribute?.('aria-hidden', 'false');
+            screenEl.inert = false;
         }
         const completeEl = document.getElementById('complete-actions');
         if (completeEl) completeEl.classList?.remove('is-ready');
@@ -59262,11 +59277,17 @@ export function startVortexLoadingScreen({ showScreen = true } = {}) {
     updateVortexLoadingUI(0);
 
     if (!vortexLoadingState.animFrameId && typeof requestAnimationFrame === 'function') {
-        const canvas = typeof document !== 'undefined' ? document.getElementById('vortex-canvas') : null;
-        const ctx = (canvas && typeof canvas.getContext === 'function') ? canvas.getContext('2d') : null;
-        if (ctx && typeof ctx.fillRect === 'function') {
-            renderVortexLoadingBackgroundFrame();
-        }
+        const startCanvasLoop = () => {
+            vortexLoadingState.canvasDelayTimer = null;
+            if (vortexLoadingState.dismissed || vortexLoadingState.animFrameId) return;
+            const canvas = typeof document !== 'undefined' ? document.getElementById('vortex-canvas') : null;
+            const ctx = (canvas && typeof canvas.getContext === 'function') ? canvas.getContext('2d') : null;
+            if (ctx && typeof ctx.fillRect === 'function') {
+                renderVortexLoadingBackgroundFrame();
+            }
+        };
+        vortexLoadingState.canvasDelayTimer = setTimeout(startCanvasLoop, 120);
+        unrefVortexLoadingHandle(vortexLoadingState.canvasDelayTimer);
     }
 
     vortexLoadingState.loadingTimer = setInterval(() => {
@@ -59281,7 +59302,7 @@ export function startVortexLoadingScreen({ showScreen = true } = {}) {
         let increment = 0;
         const isMobProg = isMobilePerformanceMode();
         if (vortexLoadingState.authSettled && !vortexLoadingState.isLooping) {
-            increment = isMobProg ? (Math.random() * 3.5 + 5.5) : (Math.random() * 2.5 + 4.5);
+            increment = isMobProg ? (Math.random() * 8 + 12) : (Math.random() * 7 + 11);
         } else if (vortexLoadingState.progress < 30) {
             increment = isMobProg ? (Math.random() * 3.2 + 2.2) : (Math.random() * 2.4 + 1.1);
         } else if (vortexLoadingState.progress < 75) {
