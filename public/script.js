@@ -226,7 +226,11 @@ export function releaseMobileLazyVideo(videoEl) {
         if (typeof videoEl.removeAttribute === 'function') videoEl.removeAttribute('src');
         videoEl.src = '';
         try { videoEl.load?.(); } catch (_) {}
-        if (videoEl.dataset) videoEl.dataset.mobileVideoHydrated = 'false';
+        if (videoEl.dataset) {
+            videoEl.dataset.mobileVideoHydrated = 'false';
+            delete videoEl.dataset.userRequestedPlay;
+        }
+        setVideoLoadingState(videoEl, false);
         const idx = activeMobileHydratedVideos.indexOf(videoEl);
         if (idx !== -1) activeMobileHydratedVideos.splice(idx, 1);
         return true;
@@ -238,7 +242,10 @@ export function releaseMobileLazyVideo(videoEl) {
 export function hydrateMobileLazyVideo(videoEl) {
     if (!videoEl) return false;
     const curSrc = (typeof videoEl.getAttribute === 'function' ? videoEl.getAttribute('src') : '') || videoEl.src || '';
+    const desiredPreload = videoEl.dataset?.userRequestedPlay === 'true' ? 'auto' : 'metadata';
     if (videoEl.dataset?.mobileVideoHydrated === 'true' && curSrc) {
+        videoEl.preload = desiredPreload;
+        videoEl.setAttribute?.('preload', desiredPreload);
         const existingIdx = activeMobileHydratedVideos.indexOf(videoEl);
         if (existingIdx !== -1) {
             activeMobileHydratedVideos.splice(existingIdx, 1);
@@ -249,9 +256,9 @@ export function hydrateMobileLazyVideo(videoEl) {
     const pendingSrc = videoEl.dataset?.lazyVideoSrc || '';
     if (!pendingSrc) return false;
 
-    videoEl.preload = 'metadata';
+    videoEl.preload = desiredPreload;
     if (typeof videoEl.setAttribute === 'function') {
-        videoEl.setAttribute('preload', 'metadata');
+        videoEl.setAttribute('preload', desiredPreload);
         videoEl.setAttribute('src', pendingSrc);
     }
     videoEl.src = pendingSrc;
@@ -1095,6 +1102,28 @@ export function formatVideoTime(seconds) {
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
 }
 
+export function setVideoLoadingState(videoEl, isLoading, title = 'Carregando...') {
+    if (!videoEl) return false;
+    const nextLoading = Boolean(isLoading);
+    const nextTitle = (typeof title === 'string' && title.trim()) ? title.trim() : 'Carregando...';
+    if (videoEl.dataset) {
+        videoEl.dataset.vortexVideoLoading = nextLoading ? 'true' : 'false';
+        videoEl.dataset.vortexVideoLoadingTitle = nextTitle;
+    }
+    const wrapper = videoEl.closest?.('.vortex-video-player') ||
+        (videoEl.parentElement?.classList?.contains('vortex-video-player') ? videoEl.parentElement : null);
+    if (wrapper) {
+        wrapper.classList?.toggle('is-loading', nextLoading);
+        const overlay = wrapper.querySelector?.('.vortex-video-loading-overlay');
+        if (overlay) {
+            overlay.setAttribute?.('aria-hidden', nextLoading ? 'false' : 'true');
+            const titleEl = overlay.querySelector?.('.vortex-video-loading-title');
+            if (titleEl) titleEl.innerText = nextTitle;
+        }
+    }
+    return nextLoading;
+}
+
 export function attachVortexVideoPlayer(video) {
     if (!video || typeof document === 'undefined') return;
     if (video._hasVortexPlayer) return;
@@ -1293,6 +1322,27 @@ export function attachVortexVideoPlayer(video) {
         }
     }
 
+    let loadingOverlay = wrapper.querySelector?.('.vortex-video-loading-overlay');
+    if (!loadingOverlay) {
+        loadingOverlay = document.createElement('div');
+        loadingOverlay.className = 'vortex-video-loading-overlay';
+        loadingOverlay.setAttribute('role', 'status');
+        loadingOverlay.setAttribute('aria-live', 'polite');
+        loadingOverlay.setAttribute('aria-hidden', 'true');
+
+        const spinnerEl = document.createElement('div');
+        spinnerEl.className = 'vortex-video-spinner';
+        spinnerEl.setAttribute('aria-hidden', 'true');
+
+        const loadingTitleEl = document.createElement('span');
+        loadingTitleEl.className = 'vortex-video-loading-title';
+        loadingTitleEl.innerText = 'Carregando...';
+
+        loadingOverlay.appendChild(spinnerEl);
+        loadingOverlay.appendChild(loadingTitleEl);
+        wrapper.appendChild(loadingOverlay);
+    }
+
     // Elementos internos
     const playBtn = controls.querySelector('.vortex-video-play-btn');
     const playIcon = controls.querySelector('.vortex-video-btn-icon-play');
@@ -1324,14 +1374,35 @@ export function attachVortexVideoPlayer(video) {
         }
     };
 
-    const togglePlay = () => {
+    const togglePlay = async () => {
         if (video.paused || video.ended) {
-            if (video.dataset?.lazyVideoSrc && (!video.getAttribute?.('src') || !video.src)) {
+            if (video.dataset) video.dataset.userRequestedPlay = 'true';
+            if (video.dataset?.chunkPostId) {
+                setVideoLoadingState(video, true, 'Carregando...');
+                await loadVideoChunkOnDemand(video);
+            } else if (video.dataset?.lazyVideoSrc && (!video.getAttribute?.('src') || !video.src)) {
+                setVideoLoadingState(video, true, 'Carregando...');
                 hydrateMobileLazyVideo(video);
             }
+            if ((Number(video.readyState) || 0) < 3) {
+                setVideoLoadingState(video, true, 'Carregando...');
+            }
             pauseOtherFeedVideos(video);
-            video.play().catch(() => {});
+            const playPromise = video.play?.();
+            if (playPromise && typeof playPromise.then === 'function') {
+                playPromise.then(() => {
+                    if ((Number(video.readyState) || 0) >= 3 && video.dataset?.chunkLoading !== 'true') {
+                        setVideoLoadingState(video, false);
+                    }
+                }).catch(() => {
+                    if (video.dataset) delete video.dataset.userRequestedPlay;
+                    if (video.dataset?.chunkLoading !== 'true') {
+                        setVideoLoadingState(video, false);
+                    }
+                });
+            }
         } else {
+            if (video.dataset) delete video.dataset.userRequestedPlay;
             video.pause();
         }
     };
@@ -1340,13 +1411,78 @@ export function attachVortexVideoPlayer(video) {
     if (centerBtn) centerBtn.onclick = (e) => { e.stopPropagation(); togglePlay(); };
     video.onclick = (e) => { e.stopPropagation(); togglePlay(); };
 
+    const bindLoadingEvent = (evtName, handler) => {
+        if (typeof video.addEventListener === 'function') {
+            video.addEventListener(evtName, handler);
+        }
+        const propName = `on${evtName}`;
+        const prevHandler = video[propName];
+        video[propName] = (...args) => {
+            if (typeof prevHandler === 'function') prevHandler.apply(video, args);
+            return handler.apply(video, args);
+        };
+    };
+
+    const showSpinnerHandler = () => setVideoLoadingState(video, true, 'Carregando...');
+    const hideSpinnerHandler = () => {
+        if (video.dataset?.chunkLoading !== 'true') {
+            setVideoLoadingState(video, false);
+        }
+    };
+
+    ['waiting', 'stalled', 'seeking'].forEach(evt => bindLoadingEvent(evt, showSpinnerHandler));
+    bindLoadingEvent('loadstart', () => {
+        const hasSrc = Boolean((video.getAttribute?.('src') || video.src || '').trim());
+        const shouldShow = hasSrc && (
+            !video.paused ||
+            Boolean(video.autoplay) ||
+            video.dataset?.userRequestedPlay === 'true' ||
+            video.preload !== 'none'
+        );
+        if (shouldShow && (Number(video.readyState) || 0) < 3) {
+            setVideoLoadingState(video, true, 'Carregando...');
+        }
+    });
+    ['loadeddata', 'canplay', 'canplaythrough', 'seeked'].forEach(evt => bindLoadingEvent(evt, hideSpinnerHandler));
+    ['playing', 'error', 'abort'].forEach(evt => bindLoadingEvent(evt, () => {
+        if (video.dataset) delete video.dataset.userRequestedPlay;
+        if (evt !== 'playing' || video.dataset?.chunkLoading !== 'true') {
+            setVideoLoadingState(video, false);
+        }
+    }));
+
+    const initReadyState = Number(video.readyState) || 0;
+    const isAutoplayInit = Boolean(video.autoplay || video.getAttribute?.('autoplay') !== null);
+    if (
+        video.dataset?.vortexVideoLoading === 'true' ||
+        video.dataset?.chunkLoading === 'true' ||
+        (isAutoplayInit && initReadyState < 3 && (video.getAttribute?.('src') || video.src || video.dataset?.chunkPostId))
+    ) {
+        setVideoLoadingState(video, true, video.dataset?.vortexVideoLoadingTitle || 'Carregando...');
+    } else {
+        setVideoLoadingState(video, false);
+    }
+
     video.onplay = () => {
         pauseOtherFeedVideos(video);
         updatePlayState(true);
+        if ((Number(video.readyState) || 0) >= 3 && video.dataset?.chunkLoading !== 'true') {
+            setVideoLoadingState(video, false);
+        } else {
+            setVideoLoadingState(video, true, 'Carregando...');
+        }
     };
-    video.onpause = () => updatePlayState(false);
+    video.onpause = () => {
+        updatePlayState(false);
+        if (video.dataset?.chunkLoading !== 'true') {
+            if (video.dataset) delete video.dataset.userRequestedPlay;
+            setVideoLoadingState(video, false);
+        }
+    };
     video.onended = () => {
         updatePlayState(false);
+        if (video.dataset) delete video.dataset.userRequestedPlay;
+        setVideoLoadingState(video, false);
         if (progressFill) progressFill.style.width = '0%';
         if (progressThumb) progressThumb.style.left = '0%';
         const watchedPostId = video.dataset?.postId ||
@@ -1375,6 +1511,9 @@ export function attachVortexVideoPlayer(video) {
             timeTotal.innerText = formatVideoTime(video.duration);
         }
         updateTime();
+        if (video.paused && video.dataset?.userRequestedPlay !== 'true' && video.dataset?.chunkLoading !== 'true') {
+            setVideoLoadingState(video, false);
+        }
     };
 
     video.onprogress = () => {
@@ -13965,8 +14104,37 @@ let isStoryPreviewMode = false;
    Mídias > 700KB são divididas em chunks de 500KB salvos em subcoleção "chunks"
    ========================================================================== */
 export const mediaChunkCache = new Map();
+export const MAX_MEDIA_CHUNK_CACHE_ITEMS = 12;
 export const MAX_DIRECT_PAYLOAD_CHARS = 700000;
 export const MEDIA_CHUNK_SIZE = 500000;
+const inFlightMediaChunkLoads = new Map();
+let asyncMp4BlobDecodes = 0;
+let dedupedChunkLoadHits = 0;
+
+function setMediaChunkCacheEntry(key, val) {
+    if (!key || !val) return;
+    const limit = isMobilePerformanceMode() ? MAX_MEDIA_CHUNK_CACHE_ITEMS : MAX_MEDIA_CHUNK_CACHE_ITEMS * 2;
+    if (mediaChunkCache.has(key)) {
+        mediaChunkCache.delete(key);
+    }
+    mediaChunkCache.set(key, val);
+    while (mediaChunkCache.size > limit) {
+        const oldestKey = mediaChunkCache.keys().next().value;
+        if (!oldestKey) break;
+        mediaChunkCache.delete(oldestKey);
+    }
+}
+
+export function getMp4OptimizationStats() {
+    return {
+        mediaChunkCacheSize: mediaChunkCache.size,
+        maxMediaChunkCacheItems: isMobilePerformanceMode() ? MAX_MEDIA_CHUNK_CACHE_ITEMS : MAX_MEDIA_CHUNK_CACHE_ITEMS * 2,
+        inFlightChunkLoads: inFlightMediaChunkLoads.size,
+        blobUrlCacheSize: blobUrlDataCache.size,
+        asyncMp4BlobDecodes,
+        dedupedChunkLoadHits
+    };
+}
 
 export function getPathSegments(collectionPath) {
     if (Array.isArray(collectionPath)) return collectionPath;
@@ -13994,7 +14162,7 @@ export async function saveMediaWithChunks(collectionName, docData, mediaFieldNam
             docRef = await addDoc(colRef, fullDoc);
         }
         if (mediaPayload && docRef && docRef.id) {
-            mediaChunkCache.set(`${collectionName}_${docRef.id}`, mediaPayload);
+            setMediaChunkCacheEntry(`${collectionName}_${docRef.id}`, mediaPayload);
         }
         return docRef;
     }
@@ -14040,7 +14208,7 @@ export async function saveMediaWithChunks(collectionName, docData, mediaFieldNam
         await batch.commit();
     }
 
-    mediaChunkCache.set(`${collectionName}_${docRef.id}`, cleanPayload);
+    setMediaChunkCacheEntry(`${collectionName}_${docRef.id}`, cleanPayload);
     return docRef;
 }
 
@@ -14058,7 +14226,7 @@ export async function updateMessageMediaWithChunks(chatId, msgId, updateFields, 
             hasChunks: false
         });
         if (cleanPayload) {
-            mediaChunkCache.set(cacheKey, cleanPayload);
+            setMediaChunkCacheEntry(cacheKey, cleanPayload);
         }
         return;
     }
@@ -14094,54 +14262,68 @@ export async function updateMessageMediaWithChunks(chatId, msgId, updateFields, 
         await batch.commit();
     }
 
-    mediaChunkCache.set(cacheKey, cleanPayload);
+    setMediaChunkCacheEntry(cacheKey, cleanPayload);
 }
 
 export async function loadMediaWithChunks(collectionName, docId, fallbackSrc = '') {
     if (!docId) return fallbackSrc || '';
     const cacheKey = `${collectionName}_${docId}`;
     if (mediaChunkCache.has(cacheKey)) {
-        return mediaChunkCache.get(cacheKey);
+        const cached = mediaChunkCache.get(cacheKey);
+        mediaChunkCache.delete(cacheKey);
+        mediaChunkCache.set(cacheKey, cached);
+        return cached;
     }
     if (fallbackSrc && typeof fallbackSrc === 'string' && fallbackSrc.length > 50 && !fallbackSrc.startsWith('blob:mock')) {
         return fallbackSrc;
     }
-
-    try {
-        const pathSegments = getPathSegments(collectionName);
-        const chunksSnap = await getDocs(collection(db, ...pathSegments, docId, 'chunks'));
-        if (chunksSnap && !chunksSnap.empty) {
-            const list = [];
-            chunksSnap.forEach(d => {
-                const data = typeof d.data === 'function' ? d.data() : (d || {});
-                list.push({
-                    index: typeof data.index === 'number' ? data.index : 0,
-                    part: data.part || ''
-                });
-            });
-            list.sort((a, b) => a.index - b.index);
-            const fullPayload = list.map(item => item.part).join('');
-            if (fullPayload) {
-                const sanitizedPayload = (typeof fullPayload === 'string') ? fullPayload.replace(/#t=[0-9,.]+$/, '') : fullPayload;
-                mediaChunkCache.set(cacheKey, sanitizedPayload);
-                return sanitizedPayload;
-            }
-        }
-        const mainDocSnap = await getDoc(doc(db, ...pathSegments, docId));
-        if (mainDocSnap && mainDocSnap.exists()) {
-            const mainData = mainDocSnap.data() || {};
-            const inlinePayload = mainData.audioData || mainData.mediaData || mainData.fileData || '';
-            if (inlinePayload && typeof inlinePayload === 'string') {
-                const sanitizedInline = inlinePayload.replace(/#t=[0-9,.]+$/, '');
-                mediaChunkCache.set(cacheKey, sanitizedInline);
-                return sanitizedInline;
-            }
-        }
-    } catch (err) {
-        console.warn(`[loadMediaWithChunks] Erro ao carregar chunks para ${collectionName}/${docId}:`, err);
+    if (inFlightMediaChunkLoads.has(cacheKey)) {
+        dedupedChunkLoadHits++;
+        return inFlightMediaChunkLoads.get(cacheKey);
     }
 
-    return fallbackSrc || '';
+    const loadPromise = (async () => {
+        try {
+            const pathSegments = getPathSegments(collectionName);
+            const chunksSnap = await getDocs(collection(db, ...pathSegments, docId, 'chunks'));
+            if (chunksSnap && !chunksSnap.empty) {
+                const list = [];
+                chunksSnap.forEach(d => {
+                    const data = typeof d.data === 'function' ? d.data() : (d || {});
+                    list.push({
+                        index: typeof data.index === 'number' ? data.index : 0,
+                        part: data.part || ''
+                    });
+                });
+                list.sort((a, b) => a.index - b.index);
+                const fullPayload = list.map(item => item.part).join('');
+                if (fullPayload) {
+                    const sanitizedPayload = (typeof fullPayload === 'string') ? fullPayload.replace(/#t=[0-9,.]+$/, '') : fullPayload;
+                    setMediaChunkCacheEntry(cacheKey, sanitizedPayload);
+                    return sanitizedPayload;
+                }
+            }
+            const mainDocSnap = await getDoc(doc(db, ...pathSegments, docId));
+            if (mainDocSnap && mainDocSnap.exists()) {
+                const mainData = mainDocSnap.data() || {};
+                const inlinePayload = mainData.audioData || mainData.mediaData || mainData.fileData || '';
+                if (inlinePayload && typeof inlinePayload === 'string') {
+                    const sanitizedInline = inlinePayload.replace(/#t=[0-9,.]+$/, '');
+                    setMediaChunkCacheEntry(cacheKey, sanitizedInline);
+                    return sanitizedInline;
+                }
+            }
+        } catch (err) {
+            console.warn(`[loadMediaWithChunks] Erro ao carregar chunks para ${collectionName}/${docId}:`, err);
+        }
+
+        return fallbackSrc || '';
+    })().finally(() => {
+        inFlightMediaChunkLoads.delete(cacheKey);
+    });
+
+    inFlightMediaChunkLoads.set(cacheKey, loadPromise);
+    return loadPromise;
 }
 
 export function dataUrlToBlob(dataUrl) {
@@ -14153,28 +14335,106 @@ export function dataUrlToBlob(dataUrl) {
     if (commaIndex === -1) return null;
 
     const header = cleanUrl.slice(0, commaIndex);
-    const base64Data = cleanUrl.slice(commaIndex + 1);
+    const base64Data = cleanUrl.slice(commaIndex + 1).replace(/\s+/g, '');
 
     const mimeMatch = header.match(/:(.*?);/);
     const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
 
     try {
-        const atobFn = (typeof window !== 'undefined' && typeof window.atob === 'function') 
-            ? window.atob 
+        const atobFn = (typeof window !== 'undefined' && typeof window.atob === 'function')
+            ? window.atob
             : (typeof atob === 'function' ? atob : null);
         if (!atobFn) return null;
 
-        const byteCharacters = atobFn(base64Data);
-        const byteLength = byteCharacters.length;
-        const u8arr = new Uint8Array(byteLength);
-        for (let i = 0; i < byteLength; i++) {
-            u8arr[i] = byteCharacters.charCodeAt(i);
-        }
         const BlobClass = (typeof window !== 'undefined' && window.Blob) ? window.Blob : (typeof Blob !== 'undefined' ? Blob : null);
         if (!BlobClass) return null;
-        return new BlobClass([u8arr], { type: mime });
+
+        const SLICE_CHARS = 65536;
+        const byteArrays = [];
+        if (base64Data.length <= SLICE_CHARS) {
+            const byteCharacters = atobFn(base64Data);
+            const byteLength = byteCharacters.length;
+            const u8arr = new Uint8Array(byteLength);
+            for (let i = 0; i < byteLength; i++) {
+                u8arr[i] = byteCharacters.charCodeAt(i);
+            }
+            byteArrays.push(u8arr);
+        } else {
+            for (let offset = 0; offset < base64Data.length; offset += SLICE_CHARS) {
+                const slice = base64Data.slice(offset, offset + SLICE_CHARS);
+                const byteCharacters = atobFn(slice);
+                const byteLength = byteCharacters.length;
+                const u8arr = new Uint8Array(byteLength);
+                for (let i = 0; i < byteLength; i++) {
+                    u8arr[i] = byteCharacters.charCodeAt(i);
+                }
+                byteArrays.push(u8arr);
+            }
+        }
+        return new BlobClass(byteArrays, { type: mime });
     } catch (e) {
         console.warn('Erro ao converter dataUrl para Blob:', e);
+        return null;
+    }
+}
+
+export async function dataUrlToBlobAsync(dataUrl) {
+    if (!dataUrl || typeof dataUrl !== 'string') return null;
+    if (dataUrl.startsWith('blob:')) return null;
+
+    const cleanUrl = dataUrl.replace(/#t=[0-9,.]+$/, '');
+    const commaIndex = cleanUrl.indexOf(',');
+    if (commaIndex === -1) return null;
+
+    asyncMp4BlobDecodes++;
+
+    const fetchFn = (typeof window !== 'undefined' && typeof window.fetch === 'function')
+        ? window.fetch
+        : (typeof fetch === 'function' ? fetch : null);
+    if (fetchFn && cleanUrl.startsWith('data:')) {
+        try {
+            const resp = await fetchFn(cleanUrl);
+            if (resp && resp.ok && typeof resp.blob === 'function') {
+                const nativeBlob = await resp.blob();
+                if (nativeBlob && typeof nativeBlob.size === 'number' && nativeBlob.size > 0) {
+                    return nativeBlob;
+                }
+            }
+        } catch (_) {}
+    }
+
+    const header = cleanUrl.slice(0, commaIndex);
+    const base64Data = cleanUrl.slice(commaIndex + 1).replace(/\s+/g, '');
+    const mimeMatch = header.match(/:(.*?);/);
+    const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+
+    try {
+        const atobFn = (typeof window !== 'undefined' && typeof window.atob === 'function')
+            ? window.atob
+            : (typeof atob === 'function' ? atob : null);
+        const BlobClass = (typeof window !== 'undefined' && window.Blob) ? window.Blob : (typeof Blob !== 'undefined' ? Blob : null);
+        if (!atobFn || !BlobClass) return null;
+
+        const SLICE_CHARS = 65536;
+        const byteArrays = [];
+        let sliceIdx = 0;
+        for (let offset = 0; offset < base64Data.length; offset += SLICE_CHARS) {
+            const slice = base64Data.slice(offset, offset + SLICE_CHARS);
+            const byteCharacters = atobFn(slice);
+            const byteLength = byteCharacters.length;
+            const u8arr = new Uint8Array(byteLength);
+            for (let i = 0; i < byteLength; i++) {
+                u8arr[i] = byteCharacters.charCodeAt(i);
+            }
+            byteArrays.push(u8arr);
+            sliceIdx++;
+            if (sliceIdx % 8 === 0 && offset + SLICE_CHARS < base64Data.length) {
+                await new Promise(resolve => setTimeout(resolve, 0));
+            }
+        }
+        return new BlobClass(byteArrays, { type: mime });
+    } catch (e) {
+        console.warn('Erro ao converter dataUrl assíncrono para Blob:', e);
         return null;
     }
 }
@@ -14199,6 +14459,38 @@ export function createBlobUrlFromData(data) {
         return cachedUrl;
     }
     const blob = dataUrlToBlob(data);
+    const UrlClass = (typeof window !== 'undefined' && window.URL) ? window.URL : (typeof URL !== 'undefined' ? URL : null);
+    if (blob && UrlClass && typeof UrlClass.createObjectURL === 'function') {
+        try {
+            const objUrl = UrlClass.createObjectURL(blob);
+            if (blobUrlDataCache.size >= MAX_BLOB_URL_CACHE) {
+                const oldestKey = blobUrlDataCache.keys().next().value;
+                const oldestUrl = blobUrlDataCache.get(oldestKey);
+                blobUrlDataCache.delete(oldestKey);
+                if (oldestUrl && typeof UrlClass.revokeObjectURL === 'function') {
+                    try { UrlClass.revokeObjectURL(oldestUrl); } catch (_) {}
+                }
+            }
+            blobUrlDataCache.set(cacheKey, objUrl);
+            return objUrl;
+        } catch (_) {}
+    }
+    return data;
+}
+
+export async function createBlobUrlFromDataAsync(data) {
+    if (!data || typeof data !== 'string') return data || '';
+    if (data.startsWith('blob:') || data.startsWith('http://') || data.startsWith('https://')) {
+        return data;
+    }
+    const cacheKey = `${data.length}:${data.slice(0, 48)}:${data.slice(-48)}`;
+    if (blobUrlDataCache.has(cacheKey)) {
+        const cachedUrl = blobUrlDataCache.get(cacheKey);
+        blobUrlDataCache.delete(cacheKey);
+        blobUrlDataCache.set(cacheKey, cachedUrl);
+        return cachedUrl;
+    }
+    const blob = await dataUrlToBlobAsync(data);
     const UrlClass = (typeof window !== 'undefined' && window.URL) ? window.URL : (typeof URL !== 'undefined' ? URL : null);
     if (blob && UrlClass && typeof UrlClass.createObjectURL === 'function') {
         try {
@@ -23725,7 +24017,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.314';
+export const CURRENT_APP_VERSION = '1.0.315';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -34891,11 +35183,12 @@ export function renderPostMediaTagHTML(post, options = {}) {
         const coverUrl = getPostVideoCover(post);
         const isCoverChunkPending = Boolean(post.hasVideoCoverChunks && !coverUrl && post.id);
         const useMobileLazyVideo = !options.autoplay && isMobilePerformanceMode();
+        const deferChunkedMp4 = Boolean(useMobileLazyVideo && isChunkPending && (coverUrl || isCoverChunkPending));
         const protectedClass = options.autoplay ? '' : ' class="protected-media"';
         const srcAttrs = useMobileLazyVideo
             ? `data-mobile-lazy-video="true" ${videoSrc ? `data-lazy-video-src="${videoSrc}"` : ''} preload="none"`
             : `src="${videoSrc}"${options.autoplay ? ' autoplay' : ' preload="metadata"'}`;
-        return `<video ${srcAttrs} ${post.id ? `data-post-id="${escapeHTML(String(post.id))}"` : ''} ${coverUrl ? `poster="${coverUrl}"` : ''} ${isCoverChunkPending ? `data-chunk-post-cover="${post.id}"` : ''} ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="video" data-chunk-trimmed="${post.isTrimmed ? 'true' : 'false'}" data-chunk-duration="${post.videoDuration || 120}"` : ''} controls controlsList="nodownload" disablePictureInPicture oncontextmenu="return false;" playsinline${protectedClass}></video>`;
+        return `<video ${srcAttrs} ${post.id ? `data-post-id="${escapeHTML(String(post.id))}"` : ''} ${coverUrl ? `poster="${coverUrl}"` : ''} ${isCoverChunkPending ? `data-chunk-post-cover="${post.id}"` : ''} ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="video" ${deferChunkedMp4 ? 'data-chunk-deferred-mp4="true"' : ''} data-chunk-trimmed="${post.isTrimmed ? 'true' : 'false'}" data-chunk-duration="${post.videoDuration || 120}"` : ''} controls controlsList="nodownload" disablePictureInPicture oncontextmenu="return false;" playsinline${protectedClass}></video>`;
     }
     return renderPostCarouselHTML(post, options);
 }
@@ -36252,28 +36545,82 @@ function observeChunkMediaElement(el, loadTask) {
     chunkMediaLazyObserver.observe(el);
 }
 
+export function loadVideoChunkOnDemand(videoEl, postsList = cachedFeedPosts) {
+    if (!videoEl) return Promise.resolve('');
+    const pId = videoEl.dataset?.chunkPostId;
+    if (!pId) {
+        return Promise.resolve(videoEl.dataset?.lazyVideoSrc || videoEl.src || '');
+    }
+    if (videoEl._vortexChunkPromise) {
+        return videoEl._vortexChunkPromise;
+    }
+
+    const promise = (async () => {
+        if (videoEl.dataset) videoEl.dataset.chunkLoading = 'true';
+        setVideoLoadingState(videoEl, true, 'Carregando...');
+        let fullData = '';
+        try {
+            fullData = await loadMediaWithChunks('posts', pId);
+            if (!fullData) return '';
+            const sourceList = (Array.isArray(postsList) && postsList.length) ? postsList : cachedFeedPosts;
+            const postObj = Array.isArray(sourceList) ? sourceList.find(p => p && String(p.id) === String(pId)) : null;
+            if (postObj) postObj.mediaData = fullData;
+            let src = fullData;
+            if (videoEl.dataset?.chunkType === 'video' || (videoEl.tagName || '').toUpperCase() === 'VIDEO') {
+                const clean = (typeof fullData === 'string') ? fullData.replace(/#t=[0-9,.]+$/, '') : fullData;
+                const blobUrl = await createBlobUrlFromDataAsync(clean);
+                src = (videoEl.dataset?.chunkTrimmed === 'true' && blobUrl && !blobUrl.includes('#t='))
+                    ? `${blobUrl}#t=0,${videoEl.dataset.chunkDuration || 120}`
+                    : blobUrl;
+            }
+            if (videoEl.dataset?.mobileLazyVideo === 'true') {
+                videoEl.dataset.lazyVideoSrc = src;
+                hydrateMobileLazyVideo(videoEl);
+            } else {
+                videoEl.src = src;
+                videoEl.setAttribute?.('src', src);
+            }
+            videoEl.removeAttribute?.('data-chunk-post-id');
+            videoEl.removeAttribute?.('data-chunk-deferred-mp4');
+            if (videoEl.dataset) {
+                delete videoEl.dataset.chunkPostId;
+                delete videoEl.dataset.chunkDeferredMp4;
+            }
+            return src;
+        } catch (err) {
+            console.warn('Erro ao carregar chunks de vídeo MP4 sob demanda:', err);
+            return '';
+        } finally {
+            delete videoEl._vortexChunkPromise;
+            if (videoEl.dataset) delete videoEl.dataset.chunkLoading;
+            if (!fullData || videoEl.dataset?.userRequestedPlay !== 'true' || (Number(videoEl.readyState) || 0) >= 3) {
+                setVideoLoadingState(videoEl, false);
+            }
+        }
+    })();
+
+    videoEl._vortexChunkPromise = promise;
+    return promise;
+}
+
 function resolvePostChunkedMedia(container, postsList) {
     if (!container) return;
     container.querySelectorAll('[data-chunk-post-id]').forEach(el => {
         const pId = el.dataset.chunkPostId;
         if (!pId) return;
+        const isVideoChunk = el.dataset.chunkType === 'video';
+        if (isVideoChunk && el.dataset.chunkDeferredMp4 === 'true') {
+            return;
+        }
         observeChunkMediaElement(el, () => {
+            if (isVideoChunk) {
+                return loadVideoChunkOnDemand(el, postsList);
+            }
             return loadMediaWithChunks('posts', pId).then(fullData => {
                 if (!fullData) return;
                 const postObj = Array.isArray(postsList) ? postsList.find(p => p.id === pId) : null;
                 if (postObj) postObj.mediaData = fullData;
-                let src = fullData;
-                if (el.dataset.chunkType === 'video') {
-                    const clean = (typeof fullData === 'string') ? fullData.replace(/#t=[0-9,.]+$/, '') : fullData;
-                    const blobUrl = createBlobUrlFromData(clean);
-                    src = (el.dataset.chunkTrimmed === 'true' && !blobUrl.includes('#t=')) ? `${blobUrl}#t=0,${el.dataset.chunkDuration || 120}` : blobUrl;
-                }
-                if (el.dataset.chunkType === 'video' && el.dataset.mobileLazyVideo === 'true') {
-                    el.dataset.lazyVideoSrc = src;
-                    hydrateMobileLazyVideo(el);
-                } else {
-                    el.src = src;
-                }
+                el.src = fullData;
                 el.removeAttribute('data-chunk-post-id');
             }).catch(err => console.warn('Erro ao carregar chunks de mídia do post:', err));
         });
@@ -37078,6 +37425,7 @@ function bindFeedInteractions(feedList, posts = []) {
     resolvePostChunkedMedia(feedList, posts);
     bindPostCarousels(feedList);
     setupMobileVideoStreamObserver(feedList);
+    initVortexVideoPlayers(feedList);
 
     feedList.querySelectorAll('video').forEach(videoEl => {
         if (!markFeedNodeBound(videoEl)) return;
@@ -37742,6 +38090,7 @@ function renderPostsFeed(posts = []) {
             resolvePostChunkedMedia(previewFeed, previewPosts);
             bindPostCarousels(previewFeed);
             setupMobileVideoStreamObserver(previewFeed);
+            initVortexVideoPlayers(previewFeed);
 
             previewFeed.querySelectorAll('[data-action="like-preview-post"]').forEach(btn => {
                 btn.addEventListener('click', async () => {
@@ -57237,6 +57586,7 @@ export function openChannelGridMediaViewer(postId) {
     if (typeof resolvePostChunkedMedia === 'function') {
         resolvePostChunkedMedia(mediaBox, [post]);
     }
+    initVortexVideoPlayers(mediaBox);
     if (typeof bindPostCarousels === 'function') {
         bindPostCarousels(mediaBox);
     }
@@ -58286,6 +58636,12 @@ if (typeof window !== 'undefined') {
     window.syncPostCommentLikeButtonsInDOM = syncPostCommentLikeButtonsInDOM;
     window.getFeedRenderStats = getFeedRenderStats;
     window.resetFeedRenderCache = resetFeedRenderCache;
+    window.setVideoLoadingState = setVideoLoadingState;
+    window.dataUrlToBlobAsync = dataUrlToBlobAsync;
+    window.createBlobUrlFromDataAsync = createBlobUrlFromDataAsync;
+    window.loadVideoChunkOnDemand = loadVideoChunkOnDemand;
+    window.getMp4OptimizationStats = getMp4OptimizationStats;
+    window.MAX_MEDIA_CHUNK_CACHE_ITEMS = MAX_MEDIA_CHUNK_CACHE_ITEMS;
 
     initVortexLoadingScreen();
     resolveGoogleRedirectAuthResult();

@@ -2,7 +2,7 @@
    VORTEX VIP ⚡ - Service Worker Oficial PWA
    ========================================================================== */
 
-const CACHE_NAME = 'vortex-vip-v1.0.314';
+const CACHE_NAME = 'vortex-vip-v1.0.315';
 
 // App Shell enxuto para instalação/atualização rápida em redes móveis (~2MB mais leve);
 // ícones extras e sons são armazenados sob demanda pelo cache-first local.
@@ -10,8 +10,8 @@ const PRECACHE_ASSETS = [
   '/',
   '/index.html',
   '/privacy.html',
-  '/style.css?v=1.0.314',
-  '/script.js?v=1.0.314',
+  '/style.css?v=1.0.315',
+  '/script.js?v=1.0.315',
   '/manifest.json',
   '/icons/vortex-vip-192.png',
   '/favicon.ico'

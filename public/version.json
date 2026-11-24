@@ -1,6 +1,6 @@
 {
-  "version": "1.0.314",
-  "build": 314,
+  "version": "1.0.315",
+  "build": 315,
   "releaseDate": "2026-11-24",
-  "notes": "Correção de recarregamento dos posts no Feed e grade do Canal ao curtir/visualizar vídeos e fotos (sincronização cirúrgica de curtidas e reconciliação estrutural in-place) v1.0.314"
+  "notes": "Bolinha rotativa Carregando... nos vídeos e otimização de carregamento e decodificação assíncrona MP4 v1.0.315"
 }

@@ -35746,6 +35746,67 @@ body.vortex-mobile-opt .channel-panel {
     background: radial-gradient(circle at 50% 45%, rgba(30, 34, 52, 0.9), rgba(10, 12, 18, 0.98));
 }
 
+/* ==========================================================================
+   v1.0.315: Bolinha Rotativa "Carregando..." nos Vídeos & Otimização MP4
+   ========================================================================== */
+@keyframes vortexVideoSpin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.vortex-video-loading-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background: rgba(6, 8, 18, 0.58);
+    z-index: 6;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.18s ease, visibility 0.18s ease;
+    border-radius: inherit;
+}
+
+.vortex-video-player.is-loading .vortex-video-loading-overlay {
+    opacity: 1;
+    visibility: visible;
+}
+
+.vortex-video-player.is-loading .vortex-video-center-btn {
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, -50%) scale(0.85);
+}
+
+.vortex-video-spinner {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    border: 3.5px solid rgba(255, 255, 255, 0.16);
+    border-top-color: var(--accent-color, #fff01f);
+    border-right-color: #00f0ff;
+    box-shadow: 0 0 16px rgba(0, 240, 255, 0.35);
+    animation: vortexVideoSpin 0.8s linear infinite;
+    will-change: transform;
+}
+
+.vortex-video-loading-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: 0.03em;
+    color: #ffffff;
+    background: rgba(10, 12, 24, 0.78);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    padding: 4px 12px;
+    border-radius: 999px;
+    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.85);
+}
+
 
 
 
