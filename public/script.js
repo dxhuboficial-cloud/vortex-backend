@@ -156,6 +156,161 @@ export function scheduleMobileNonCriticalTask(taskFn, delayMs = 150) {
     return true;
 }
 
+export const MOBILE_FEED_INITIAL_COUNT = 2;
+export const MOBILE_FEED_STEP_COUNT = 1;
+export const MAX_MOBILE_ACTIVE_VIDEOS = 2;
+
+const mobileMediaTaskQueue = [];
+let mobileMediaQueueRunning = false;
+const activeMobileHydratedVideos = [];
+let mobileVideoStreamObserver = null;
+
+async function drainMobileMediaQueue() {
+    if (mobileMediaQueueRunning) return;
+    mobileMediaQueueRunning = true;
+    try {
+        while (mobileMediaTaskQueue.length > 0) {
+            const task = mobileMediaTaskQueue.shift();
+            if (typeof task !== 'function') continue;
+            try {
+                await task();
+            } catch (err) {
+                console.warn('[VORTEX Mobile Video] Erro em tarefa serial de mídia:', err);
+            }
+        }
+    } finally {
+        mobileMediaQueueRunning = false;
+    }
+}
+
+export function enqueueMobileMediaTask(taskFn) {
+    if (typeof taskFn !== 'function') return Promise.resolve(null);
+    if (!isMobilePerformanceMode()) {
+        return Promise.resolve().then(() => taskFn());
+    }
+    return new Promise((resolve, reject) => {
+        mobileMediaTaskQueue.push(async () => {
+            try {
+                const res = await taskFn();
+                resolve(res);
+            } catch (err) {
+                reject(err);
+            }
+        });
+        drainMobileMediaQueue();
+    });
+}
+
+export function pauseOtherFeedVideos(activeVideo) {
+    if (typeof document === 'undefined' || typeof document.querySelectorAll !== 'function') return 0;
+    let pausedCount = 0;
+    document.querySelectorAll('video').forEach((v) => {
+        if (v && v !== activeVideo && v.paused === false) {
+            try {
+                v.pause?.();
+                pausedCount++;
+            } catch (_) {}
+        }
+    });
+    return pausedCount;
+}
+
+export function releaseMobileLazyVideo(videoEl) {
+    if (!videoEl) return false;
+    try {
+        const curSrc = (typeof videoEl.getAttribute === 'function' ? videoEl.getAttribute('src') : '') || videoEl.src || '';
+        if (videoEl.dataset && !videoEl.dataset.lazyVideoSrc && curSrc) {
+            videoEl.dataset.lazyVideoSrc = curSrc;
+        }
+        try { videoEl.pause?.(); } catch (_) {}
+        if (typeof videoEl.removeAttribute === 'function') videoEl.removeAttribute('src');
+        videoEl.src = '';
+        try { videoEl.load?.(); } catch (_) {}
+        if (videoEl.dataset) videoEl.dataset.mobileVideoHydrated = 'false';
+        const idx = activeMobileHydratedVideos.indexOf(videoEl);
+        if (idx !== -1) activeMobileHydratedVideos.splice(idx, 1);
+        return true;
+    } catch (_) {
+        return false;
+    }
+}
+
+export function hydrateMobileLazyVideo(videoEl) {
+    if (!videoEl) return false;
+    const curSrc = (typeof videoEl.getAttribute === 'function' ? videoEl.getAttribute('src') : '') || videoEl.src || '';
+    if (videoEl.dataset?.mobileVideoHydrated === 'true' && curSrc) {
+        const existingIdx = activeMobileHydratedVideos.indexOf(videoEl);
+        if (existingIdx !== -1) {
+            activeMobileHydratedVideos.splice(existingIdx, 1);
+            activeMobileHydratedVideos.push(videoEl);
+        }
+        return true;
+    }
+    const pendingSrc = videoEl.dataset?.lazyVideoSrc || '';
+    if (!pendingSrc) return false;
+
+    videoEl.preload = 'metadata';
+    if (typeof videoEl.setAttribute === 'function') {
+        videoEl.setAttribute('preload', 'metadata');
+        videoEl.setAttribute('src', pendingSrc);
+    }
+    videoEl.src = pendingSrc;
+    if (videoEl.dataset) videoEl.dataset.mobileVideoHydrated = 'true';
+
+    const existingIdx = activeMobileHydratedVideos.indexOf(videoEl);
+    if (existingIdx !== -1) activeMobileHydratedVideos.splice(existingIdx, 1);
+    activeMobileHydratedVideos.push(videoEl);
+
+    while (activeMobileHydratedVideos.length > MAX_MOBILE_ACTIVE_VIDEOS) {
+        const candidate = activeMobileHydratedVideos.find((v) => v && v !== videoEl && (v.paused !== false || v.ended));
+        if (!candidate) break;
+        releaseMobileLazyVideo(candidate);
+    }
+    return true;
+}
+
+export function setupMobileVideoStreamObserver(container) {
+    if (!container || typeof container.querySelectorAll !== 'function') return;
+    const lazyVideos = Array.from(container.querySelectorAll('video[data-mobile-lazy-video="true"]') || []);
+    if (!lazyVideos.length) return;
+
+    const canObserve = typeof IntersectionObserver === 'function' && typeof container.getBoundingClientRect === 'function';
+    if (!canObserve) {
+        lazyVideos.slice(0, MAX_MOBILE_ACTIVE_VIDEOS).forEach((v) => {
+            hydrateMobileLazyVideo(v);
+        });
+        return;
+    }
+
+    if (!mobileVideoStreamObserver) {
+        mobileVideoStreamObserver = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                const vid = entry.target;
+                if (!vid) return;
+                if (entry.isIntersecting) {
+                    enqueueMobileMediaTask(() => hydrateMobileLazyVideo(vid));
+                } else if (vid.paused === false) {
+                    try { vid.pause?.(); } catch (_) {}
+                }
+            });
+        }, { rootMargin: '140px 0px', threshold: 0.05 });
+    }
+
+    lazyVideos.forEach((vid) => {
+        if (!vid || (vid.dataset && vid.dataset.mobileStreamObserved === 'true')) return;
+        if (vid.dataset) vid.dataset.mobileStreamObserved = 'true';
+        mobileVideoStreamObserver.observe(vid);
+    });
+}
+
+export function getMobileVideoStreamStats() {
+    return {
+        activeHydratedCount: activeMobileHydratedVideos.length,
+        maxActive: MAX_MOBILE_ACTIVE_VIDEOS,
+        queueLength: mobileMediaTaskQueue.length
+    };
+}
+
 if (typeof window !== 'undefined') {
     applyMobilePerformanceMode();
     if (window.lucide) {
@@ -1171,6 +1326,10 @@ export function attachVortexVideoPlayer(video) {
 
     const togglePlay = () => {
         if (video.paused || video.ended) {
+            if (video.dataset?.lazyVideoSrc && (!video.getAttribute?.('src') || !video.src)) {
+                hydrateMobileLazyVideo(video);
+            }
+            pauseOtherFeedVideos(video);
             video.play().catch(() => {});
         } else {
             video.pause();
@@ -1181,7 +1340,10 @@ export function attachVortexVideoPlayer(video) {
     if (centerBtn) centerBtn.onclick = (e) => { e.stopPropagation(); togglePlay(); };
     video.onclick = (e) => { e.stopPropagation(); togglePlay(); };
 
-    video.onplay = () => updatePlayState(true);
+    video.onplay = () => {
+        pauseOtherFeedVideos(video);
+        updatePlayState(true);
+    };
     video.onpause = () => updatePlayState(false);
     video.onended = () => {
         updatePlayState(false);
@@ -14017,16 +14179,40 @@ export function dataUrlToBlob(dataUrl) {
     }
 }
 
+const blobUrlDataCache = new Map();
+const MAX_BLOB_URL_CACHE = 45;
+
+export function getBlobUrlCacheSize() {
+    return blobUrlDataCache.size;
+}
+
 export function createBlobUrlFromData(data) {
     if (!data || typeof data !== 'string') return data || '';
     if (data.startsWith('blob:') || data.startsWith('http://') || data.startsWith('https://')) {
         return data;
     }
+    const cacheKey = `${data.length}:${data.slice(0, 48)}:${data.slice(-48)}`;
+    if (blobUrlDataCache.has(cacheKey)) {
+        const cachedUrl = blobUrlDataCache.get(cacheKey);
+        blobUrlDataCache.delete(cacheKey);
+        blobUrlDataCache.set(cacheKey, cachedUrl);
+        return cachedUrl;
+    }
     const blob = dataUrlToBlob(data);
     const UrlClass = (typeof window !== 'undefined' && window.URL) ? window.URL : (typeof URL !== 'undefined' ? URL : null);
     if (blob && UrlClass && typeof UrlClass.createObjectURL === 'function') {
         try {
-            return UrlClass.createObjectURL(blob);
+            const objUrl = UrlClass.createObjectURL(blob);
+            if (blobUrlDataCache.size >= MAX_BLOB_URL_CACHE) {
+                const oldestKey = blobUrlDataCache.keys().next().value;
+                const oldestUrl = blobUrlDataCache.get(oldestKey);
+                blobUrlDataCache.delete(oldestKey);
+                if (oldestUrl && typeof UrlClass.revokeObjectURL === 'function') {
+                    try { UrlClass.revokeObjectURL(oldestUrl); } catch (_) {}
+                }
+            }
+            blobUrlDataCache.set(cacheKey, objUrl);
+            return objUrl;
         } catch (_) {}
     }
     return data;
@@ -23539,7 +23725,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.312';
+export const CURRENT_APP_VERSION = '1.0.313';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -34626,9 +34812,12 @@ export function renderPostMediaTagHTML(post, options = {}) {
         const videoSrc = (post.isTrimmed && bUrl && !bUrl.includes('#t=')) ? `${bUrl}#t=0,${post.videoDuration || 120}` : (bUrl || '');
         const coverUrl = getPostVideoCover(post);
         const isCoverChunkPending = Boolean(post.hasVideoCoverChunks && !coverUrl && post.id);
-        const autoplayAttr = options.autoplay ? ' autoplay' : ' preload="metadata"';
+        const useMobileLazyVideo = !options.autoplay && isMobilePerformanceMode();
         const protectedClass = options.autoplay ? '' : ' class="protected-media"';
-        return `<video src="${videoSrc}" ${post.id ? `data-post-id="${escapeHTML(String(post.id))}"` : ''} ${coverUrl ? `poster="${coverUrl}"` : ''} ${isCoverChunkPending ? `data-chunk-post-cover="${post.id}"` : ''} ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="video" data-chunk-trimmed="${post.isTrimmed ? 'true' : 'false'}" data-chunk-duration="${post.videoDuration || 120}"` : ''} controls${autoplayAttr} controlsList="nodownload" disablePictureInPicture oncontextmenu="return false;" playsinline${protectedClass}></video>`;
+        const srcAttrs = useMobileLazyVideo
+            ? `data-mobile-lazy-video="true" ${videoSrc ? `data-lazy-video-src="${videoSrc}"` : ''} preload="none"`
+            : `src="${videoSrc}"${options.autoplay ? ' autoplay' : ' preload="metadata"'}`;
+        return `<video ${srcAttrs} ${post.id ? `data-post-id="${escapeHTML(String(post.id))}"` : ''} ${coverUrl ? `poster="${coverUrl}"` : ''} ${isCoverChunkPending ? `data-chunk-post-cover="${post.id}"` : ''} ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="video" data-chunk-trimmed="${post.isTrimmed ? 'true' : 'false'}" data-chunk-duration="${post.videoDuration || 120}"` : ''} controls controlsList="nodownload" disablePictureInPicture oncontextmenu="return false;" playsinline${protectedClass}></video>`;
     }
     return renderPostCarouselHTML(post, options);
 }
@@ -35950,16 +36139,24 @@ export function syncFeedAuthorsVipStatus(posts = []) {
 }
 
 let chunkMediaLazyObserver = null;
+let chunkMediaLazyRootMargin = '';
 const chunkMediaLazyTaskMap = new WeakMap();
 
 function observeChunkMediaElement(el, loadTask) {
     if (!el || typeof loadTask !== 'function') return;
+    if (el.dataset?.chunkObserved === 'true') return;
+    if (el.dataset) el.dataset.chunkObserved = 'true';
+    const isMobChunk = isMobilePerformanceMode();
+    const runTask = isMobChunk ? () => enqueueMobileMediaTask(loadTask) : loadTask;
     const canLazyObserve = typeof IntersectionObserver === 'function' && typeof el.getBoundingClientRect === 'function';
     if (!canLazyObserve) {
-        loadTask();
+        runTask();
         return;
     }
-    if (!chunkMediaLazyObserver) {
+    const desiredMargin = isMobChunk ? '180px 0px' : '450px 0px';
+    if (!chunkMediaLazyObserver || chunkMediaLazyRootMargin !== desiredMargin) {
+        chunkMediaLazyObserver?.disconnect?.();
+        chunkMediaLazyRootMargin = desiredMargin;
         chunkMediaLazyObserver = new IntersectionObserver((entries) => {
             entries.forEach((entry) => {
                 if (!entry.isIntersecting) return;
@@ -35971,9 +36168,9 @@ function observeChunkMediaElement(el, loadTask) {
                     task();
                 }
             });
-        }, { rootMargin: '450px 0px', threshold: 0.01 });
+        }, { rootMargin: desiredMargin, threshold: 0.01 });
     }
-    chunkMediaLazyTaskMap.set(el, loadTask);
+    chunkMediaLazyTaskMap.set(el, runTask);
     chunkMediaLazyObserver.observe(el);
 }
 
@@ -35983,7 +36180,7 @@ function resolvePostChunkedMedia(container, postsList) {
         const pId = el.dataset.chunkPostId;
         if (!pId) return;
         observeChunkMediaElement(el, () => {
-            loadMediaWithChunks('posts', pId).then(fullData => {
+            return loadMediaWithChunks('posts', pId).then(fullData => {
                 if (!fullData) return;
                 const postObj = Array.isArray(postsList) ? postsList.find(p => p.id === pId) : null;
                 if (postObj) postObj.mediaData = fullData;
@@ -35993,7 +36190,12 @@ function resolvePostChunkedMedia(container, postsList) {
                     const blobUrl = createBlobUrlFromData(clean);
                     src = (el.dataset.chunkTrimmed === 'true' && !blobUrl.includes('#t=')) ? `${blobUrl}#t=0,${el.dataset.chunkDuration || 120}` : blobUrl;
                 }
-                el.src = src;
+                if (el.dataset.chunkType === 'video' && el.dataset.mobileLazyVideo === 'true') {
+                    el.dataset.lazyVideoSrc = src;
+                    hydrateMobileLazyVideo(el);
+                } else {
+                    el.src = src;
+                }
                 el.removeAttribute('data-chunk-post-id');
             }).catch(err => console.warn('Erro ao carregar chunks de mídia do post:', err));
         });
@@ -36013,7 +36215,7 @@ function resolvePostChunkedMedia(container, postsList) {
             return;
         }
         observeChunkMediaElement(el, () => {
-            loadMediaWithChunks('post_slides', slideDocId).then(fullData => {
+            return loadMediaWithChunks('post_slides', slideDocId).then(fullData => {
                 if (!fullData) return;
                 mediaChunkCache.set(cacheKey, fullData);
                 el.src = fullData;
@@ -36034,7 +36236,7 @@ function resolvePostChunkedMedia(container, postsList) {
             return;
         }
         observeChunkMediaElement(el, () => {
-            loadMediaWithChunks('post_covers', postId).then(fullData => {
+            return loadMediaWithChunks('post_covers', postId).then(fullData => {
                 if (!fullData) return;
                 mediaChunkCache.set(cacheKey, fullData);
                 el.poster = fullData;
@@ -36382,6 +36584,730 @@ export async function toggleFollowUser(targetUid, meta = {}) {
     }
 }
 
+let mobileFeedFilteredPosts = [];
+let mobileFeedAllPostsSource = [];
+let mobileFeedRenderedCount = 0;
+let mobileFeedFilterSig = '';
+let mobileFeedSentinelObserver = null;
+
+export function getMobileFeedPaginationState() {
+    return {
+        renderedCount: mobileFeedRenderedCount,
+        totalCount: mobileFeedFilteredPosts.length,
+        remaining: Math.max(0, mobileFeedFilteredPosts.length - mobileFeedRenderedCount)
+    };
+}
+
+function buildMobileFeedSentinelHTML(renderedCount, totalCount) {
+    if (renderedCount >= totalCount) return '';
+    return `
+        <div id="feed-mobile-load-sentinel" class="feed-mobile-load-sentinel" data-rendered="${renderedCount}" data-total="${totalCount}">
+            <button type="button" id="feed-load-next-btn" class="feed-load-next-btn">
+                <i data-lucide="chevrons-down"></i>
+                <span>Carregar próxima postagem (${renderedCount}/${totalCount})</span>
+            </button>
+        </div>
+    `;
+}
+
+function renderFeedCardHTML(post) {
+    const authorName = post.authorName || 'Usuário';
+    const isPostAuthorVip = isAuthorVipUser(post.authorUid, post);
+    const isPostAuthorAdmin = checkIsAdminUser({ uid: post.authorUid, name: authorName, email: post.authorEmail, username: post.authorUsername });
+    const isPostAuthorCompany = !isPostAuthorAdmin && checkIsCompanyUser(post);
+    const resolvedAvatar = getLiveAuthorAvatar(post.authorUid, post.authorAvatar);
+    const avatar = resolvedAvatar ? `style="background-image: url('${resolvedAvatar}')"` : '';
+    const likes = Array.isArray(post.likes) ? post.likes.length : 0;
+    if (typeof moderatePostCommentsByAI === 'function' && Array.isArray(post.comments) && post.comments.length) {
+        moderatePostCommentsByAI(post, { persist: true });
+    }
+    const rawComments = (Array.isArray(post.comments) ? post.comments : []).filter(c => !isUserAccountDeleted(c.authorUid) && !c.isDeleted && !c.deleted);
+    const sortedComments = getSortedPostComments(rawComments);
+    const caption = post.caption || '';
+    const mediaTag = renderPostMediaTagHTML(post);
+    const createdAt = new Date(post.createdAt || Date.now());
+    const timeLabel = createdAt.toLocaleString([], { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    const liked = currentUser && Array.isArray(post.likes) && post.likes.includes(currentUser.uid);
+    const canDeletePost = isPostOwner(post, currentUser, currentProfile);
+    const isPostAd = !!(post.isAd || post.contentType === 'ad');
+    const isCommentsOpen = openPostCommentCards.has(post.id);
+    const isThisMusicPlaying = currentFeedMusicAudio && !currentFeedMusicAudio.paused && currentFeedMusicPostId === post.id;
+    const viewsCount = getPostViewsCount(post);
+    const formattedViews = formatPostViewsCount(viewsCount);
+    const userViewed = hasUserViewedPost(post);
+
+    const isPostScheduled = Boolean((post.scheduled || post.isScheduled) && post.scheduledFor && post.scheduledFor > Date.now());
+    const scheduledBannerHTML = isPostScheduled ? `
+        <div class="post-scheduled-banner">
+            <div class="post-scheduled-info">
+                <i data-lucide="calendar-clock"></i>
+                <span>Programado para <strong>${getFormattedScheduleDate(post.scheduledFor)}</strong></span>
+            </div>
+            <button type="button" class="post-publish-now-btn" data-action="publish-scheduled-post-now" data-post-id="${post.id}" title="Publicar agora no Feed">
+                <i data-lucide="send"></i>
+                <span>Publicar Agora</span>
+            </button>
+        </div>
+    ` : '';
+
+    return `
+        <article class="feed-card" id="post-card-${post.id}" data-post-id="${post.id}">
+            <div class="feed-header">
+                <div class="feed-author" data-author-uid="${post.authorUid || ''}" role="button" tabindex="0" title="Ver canal de ${escapeHTML(authorName)}" style="cursor:pointer;">
+                    <div class="feed-avatar" data-author-uid="${post.authorUid || ''}" ${avatar}></div>
+                    <div>
+                        <div class="feed-username">
+                            <span>${escapeHTML(authorName)}</span>
+                            <i data-lucide="badge-check" class="verified-badge post-author-verified-badge${isPostAuthorAdmin ? ' verified-badge-admin' : (isPostAuthorCompany ? ' verified-badge-company' : '')}" data-author-uid="${post.authorUid || ''}" ${isPostAuthorAdmin ? 'data-admin-badge="true" title="💥Admin⚡"' : (isPostAuthorCompany ? 'data-company-badge="true" title="⚔️ Empresa Verificada ⚡"' : 'title="Verificado VIP"')} style="display:${(isPostAuthorVip || isPostAuthorCompany) ? 'inline-flex' : 'none'};"></i>
+                        </div>
+                        <div class="feed-time">
+                            ${timeLabel}
+                            ${isPostAd ? `<span class="post-time-ad-sep">•</span><span class="post-ad-badge"><i data-lucide="megaphone"></i> Anúncio</span>` : ''}
+                        </div>
+                    </div>
+                </div>
+                ${renderPostHeaderRightActionsHTML(post, canDeletePost, { compact: false })}
+            </div>
+            ${scheduledBannerHTML}
+            <div class="feed-media">
+                ${mediaTag}
+                ${typeof renderVortexStarSealHTML === 'function' ? renderVortexStarSealHTML(getPostAuthorUserData(post)) : ''}
+                <div class="feed-media-views-badge" data-action="post-views" data-post-id="${post.id}" title="Ver visualizações do post">
+                    <i data-lucide="eye"></i>
+                    <span data-post-views-badge="${post.id}">${formattedViews} visualizaç${viewsCount === 1 ? 'ão' : 'ões'}</span>
+                </div>
+            </div>
+            ${renderPostMusicBadgeHTML(post, { prefix: 'feed', isPlaying: isThisMusicPlaying })}
+            <div class="feed-body">
+                ${(isPostAd || isImageFeedPost(post) || (post.businessCategory || post.personalCategory || post.category) || isPostPrivate(post)) ? `
+                    <div class="feed-tags-row">
+                        ${getPostMediaTypeTagHTML(post)}
+                        ${getPostAdBadgeHTML(post)}
+                        ${getPostCategoryBadgeHTML(post)}
+                        ${getPostVisibilityBadgeHTML(post)}
+                    </div>
+                ` : ''}
+                ${post.title ? `<h4 class="feed-post-title">${escapeHTML(post.title)}</h4>` : ''}
+                ${caption ? `<p class="feed-caption">${escapeHTML(caption)}</p>` : ''}
+                ${Array.isArray(post.hashtags) && post.hashtags.length ? `
+                    <div class="feed-hashtags-row">
+                        ${post.hashtags.slice(0, 3).map(tag => `<span class="feed-hashtag-pill" data-action="filter-hashtag" data-hashtag="${escapeHTML(tag)}">${escapeHTML(tag)}</span>`).join('')}
+                    </div>
+                ` : ''}
+                ${post.actionButton && post.actionButton.url ? `
+                    <div class="feed-cta-wrapper">
+                        <a href="${escapeHTML(post.actionButton.url)}" target="_blank" rel="noopener noreferrer" class="feed-cta-btn" onclick="event.stopPropagation();">
+                            <i data-lucide="external-link"></i>
+                            <span>${escapeHTML(post.actionButton.text || 'Saiba Mais')}</span>
+                        </a>
+                    </div>
+                ` : ''}
+                <div class="feed-actions">
+                    <button class="feed-action-btn ${liked ? 'liked' : ''}" type="button" data-post-id="${post.id}" data-action="like" title="Curtir">
+                        <i data-lucide="heart"></i>
+                        <span>${likes}</span>
+                    </button>
+                    <button class="feed-action-btn ${isCommentsOpen ? 'active' : ''}" type="button" data-post-id="${post.id}" data-action="comment" title="Comentários">
+                        <i data-lucide="message-circle"></i>
+                        <span>${rawComments.length}</span>
+                    </button>
+                    <button class="feed-action-btn feed-views-btn ${userViewed ? 'viewed' : ''}" type="button" data-post-id="${post.id}" data-action="post-views" title="Visualizações da publicação" aria-label="Visualizações da publicação">
+                        <i data-lucide="eye"></i>
+                        <span data-post-views-count="${post.id}">${formattedViews}</span>
+                    </button>
+                    <button class="feed-action-btn share-action-btn" type="button" data-post-id="${post.id}" data-action="share-post" title="Compartilhar" aria-label="Compartilhar">
+                        <i data-lucide="share-2"></i>
+                    </button>
+                    <button class="feed-action-btn save-post-btn ${isPostSaved(post.id) ? 'saved' : ''}" type="button" data-post-id="${post.id}" data-action="save-post" title="${isPostSaved(post.id) ? 'Remover dos favoritos' : 'Salvar nos favoritos'}">
+                        <i data-lucide="bookmark"></i>
+                        <span>${isPostSaved(post.id) ? 'Salvo' : 'Favoritar'}</span>
+                    </button>
+                </div>
+
+                <!-- Comentários Integrados Diretamente Dentro do Post -->
+                <div class="feed-comments-section ${isCommentsOpen ? 'open' : ''}" id="feed-comments-${post.id}">
+                    <div class="feed-comments-box">
+                        ${sortedComments.length ? sortedComments.map((comment) => {
+                            const commentId = comment.id;
+                            const cIdx = comment._originalIndex !== undefined ? comment._originalIndex : sortedComments.indexOf(comment);
+                            const isPinned = !!comment.isPinned;
+                            const isEdited = !!comment.isEdited;
+                            const commentLikes = Array.isArray(comment.likes) ? comment.likes : [];
+                            const commentLikesCount = commentLikes.length;
+                            const userLikedComment = currentUser && commentLikes.includes(currentUser.uid);
+
+                            const isOwner = isPostOwner(post, currentUser, currentProfile);
+                            const isAuthor = isCommentAuthor(comment, currentUser, currentProfile);
+                            const canDeleteComment = isOwner || isAuthor;
+
+                            const isEditingThisComment = activeEditingComment && activeEditingComment.postId === post.id && activeEditingComment.commentId === commentId;
+
+                            return `
+                                <div class="feed-comment ${isPinned ? 'is-pinned' : ''}" id="feed-comment-${post.id}-${commentId}" data-comment-id="${commentId}">
+                                    ${isPinned ? `
+                                        <div class="comment-pinned-indicator">
+                                            <i data-lucide="pin"></i> <span>Fixado</span>
+                                        </div>
+                                    ` : ''}
+                                    <div class="feed-comment-text-wrap">
+                                        <div class="feed-comment-author-line">
+                                            <strong>${escapeHTML(comment.author || 'Usuário')}</strong>
+                                            <i data-lucide="badge-check" class="verified-badge comment-verified-badge${checkIsAdminUser({ uid: comment.authorUid, name: comment.author, email: comment.authorEmail, username: comment.authorUsername }) ? ' verified-badge-admin' : (checkIsCompanyUser(comment) ? ' verified-badge-company' : '')}" data-author-uid="${comment.authorUid || ''}" ${checkIsAdminUser({ uid: comment.authorUid, name: comment.author, email: comment.authorEmail, username: comment.authorUsername }) ? 'data-admin-badge="true" title="💥Admin⚡"' : (checkIsCompanyUser(comment) ? 'data-company-badge="true" title="⚔️ Empresa Verificada ⚡"' : 'title="Verificado VIP"')} style="display:${(isAuthorVipUser(comment.authorUid, comment) || checkIsCompanyUser(comment)) ? 'inline-flex' : 'none'};"></i>
+                                            <span>:</span>
+                                            ${isEdited ? `<span class="comment-edited-badge">(editado)</span>` : ''}
+                                        </div>
+                                        ${isEditingThisComment ? `
+                                            <div class="comment-inline-edit-box">
+                                                <input type="text" class="comment-inline-edit-input" data-post-id="${post.id}" data-comment-id="${commentId}" value="${escapeHTML(comment.text || '')}" maxlength="220" />
+                                                <div class="comment-inline-edit-actions">
+                                                    <button type="button" class="comment-inline-save-btn" data-action="save-comment-edit" data-post-id="${post.id}" data-comment-id="${commentId}">Salvar</button>
+                                                    <button type="button" class="comment-inline-cancel-btn" data-action="cancel-comment-edit" data-post-id="${post.id}" data-comment-id="${commentId}">Cancelar</button>
+                                                </div>
+                                            </div>
+                                        ` : `
+                                            <span>${escapeHTML(comment.text || '')}</span>
+                                        `}
+                                    </div>
+                                    <div class="feed-comment-actions-bar">
+                                        <button class="feed-comment-action-btn comment-like-btn ${userLikedComment ? 'liked' : ''}" type="button" data-action="like-comment" data-post-id="${post.id}" data-comment-id="${commentId}" data-comment-idx="${cIdx}" title="${userLikedComment ? 'Descurtir' : 'Curtir'}">
+                                            <i data-lucide="heart"></i>
+                                            <span class="comment-like-count">${commentLikesCount > 0 ? commentLikesCount : ''}</span>
+                                        </button>
+                                        ${isOwner ? `
+                                            <button class="feed-comment-action-btn comment-pin-btn ${isPinned ? 'pinned' : ''}" type="button" data-action="pin-comment" data-post-id="${post.id}" data-comment-id="${commentId}" data-comment-idx="${cIdx}" title="${isPinned ? 'Desafixar comentário' : 'Fixar comentário'}">
+                                                <i data-lucide="pin"></i>
+                                                <span>${isPinned ? 'Desafixar' : 'Fixar'}</span>
+                                            </button>
+                                        ` : ''}
+                                        ${isAuthor ? `
+                                            <button class="feed-comment-action-btn comment-edit-btn" type="button" data-action="edit-comment" data-post-id="${post.id}" data-comment-id="${commentId}" data-comment-idx="${cIdx}" title="Editar comentário">
+                                                <i data-lucide="edit-2"></i>
+                                                <span>Editar</span>
+                                            </button>
+                                        ` : ''}
+                                        ${!isAuthor ? `
+                                            <button class="feed-comment-action-btn comment-report-btn" type="button" data-action="report-comment" data-post-id="${post.id}" data-comment-id="${commentId}" data-comment-idx="${cIdx}" title="Denunciar comentário">
+                                                <i data-lucide="flag"></i>
+                                                <span>Denunciar</span>
+                                            </button>
+                                        ` : ''}
+                                        ${canDeleteComment ? `
+                                            <button class="feed-comment-delete-btn" type="button" data-action="delete-comment" data-post-id="${post.id}" data-comment-idx="${cIdx}" data-comment-id="${commentId}" title="Excluir comentário">
+                                                <i data-lucide="trash-2"></i> <span>Excluir</span>
+                                            </button>
+                                        ` : ''}
+                                    </div>
+                                </div>
+                            `;
+                        }).join('') : '<div class="feed-no-comments">Nenhum comentário ainda. Escreva o primeiro abaixo!</div>'}
+                    </div>
+
+                    <div class="feed-comment-form">
+                        <input type="text" class="feed-comment-input" data-post-id="${post.id}" maxlength="220" placeholder="Escreva um comentário..." aria-label="Escreva um comentário">
+                        <button class="feed-comment-send-btn" type="button" data-action="send-inline-comment" data-post-id="${post.id}" title="Enviar comentário">
+                            <i data-lucide="send"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </article>
+    `;
+}
+
+function markFeedNodeBound(el) {
+    if (!el) return false;
+    if (el.dataset?.vortexFeedBound === 'true') return false;
+    if (el.dataset) el.dataset.vortexFeedBound = 'true';
+    return true;
+}
+
+function bindFeedInteractions(feedList, posts = []) {
+    if (!feedList) return;
+    const previewFeed = document.getElementById('posts-feed-list');
+
+    resolvePostChunkedMedia(feedList, posts);
+    bindPostCarousels(feedList);
+    setupMobileVideoStreamObserver(feedList);
+
+    feedList.querySelectorAll('video').forEach(videoEl => {
+        if (!markFeedNodeBound(videoEl)) return;
+        videoEl.addEventListener('timeupdate', () => {
+            const maxD = Number(videoEl.dataset.chunkDuration) || 120;
+            if (videoEl.dataset.chunkTrimmed === 'true' && videoEl.currentTime >= maxD) {
+                videoEl.pause();
+            }
+        });
+    });
+
+    if (window.lucide) lucide.createIcons();
+    if (typeof syncCommentInputLockUI === 'function') syncCommentInputLockUI();
+    if (typeof syncLikeButtonsLockUI === 'function') syncLikeButtonsLockUI();
+
+    feedList.querySelectorAll('.feed-author[data-author-uid]').forEach(authorEl => {
+        if (!markFeedNodeBound(authorEl)) return;
+        authorEl.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const authorUid = authorEl.dataset.authorUid;
+            if (!authorUid) return;
+            const authorPost = (Array.isArray(posts) ? posts : []).find(p => p && p.authorUid === authorUid) || null;
+            openUserChannelScreen(authorUid, authorPost ? {
+                uid: authorUid,
+                name: authorPost.authorName,
+                avatar: authorPost.authorAvatar,
+                username: authorPost.authorUsername,
+                email: authorPost.authorEmail
+            } : null);
+        });
+    });
+
+    feedList.querySelectorAll('[data-action="like"]').forEach(button => {
+        if (!markFeedNodeBound(button)) return;
+        button.addEventListener('click', async () => {
+            const postId = button.dataset.postId;
+            if (postId) {
+                await togglePostLike(postId);
+            }
+        });
+    });
+
+    feedList.querySelectorAll('[data-action="comment"]').forEach(button => {
+        if (!markFeedNodeBound(button)) return;
+        button.addEventListener('click', () => {
+            const postId = button.dataset.postId;
+            const commentsSection = document.getElementById(`feed-comments-${postId}`);
+            if (!commentsSection) return;
+
+            const isOpen = commentsSection.classList.toggle('open');
+            button.classList.toggle('active', isOpen);
+            if (isOpen) {
+                openPostCommentCards.add(postId);
+                const input = commentsSection.querySelector('.feed-comment-input');
+                if (input) setTimeout(() => input.focus(), 80);
+            } else {
+                openPostCommentCards.delete(postId);
+            }
+        });
+    });
+
+    feedList.querySelectorAll('[data-action="like-comment"]').forEach(btn => {
+        if (!markFeedNodeBound(btn)) return;
+        btn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const postId = btn.dataset.postId;
+            const commentId = btn.dataset.commentId || parseInt(btn.dataset.commentIdx, 10);
+            if (postId && commentId !== undefined) {
+                await toggleLikePostComment(postId, commentId);
+            }
+        });
+    });
+
+    feedList.querySelectorAll('[data-action="pin-comment"]').forEach(btn => {
+        if (!markFeedNodeBound(btn)) return;
+        btn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const postId = btn.dataset.postId;
+            const commentId = btn.dataset.commentId || parseInt(btn.dataset.commentIdx, 10);
+            if (postId && commentId !== undefined) {
+                await togglePinPostComment(postId, commentId);
+            }
+        });
+    });
+
+    feedList.querySelectorAll('[data-action="edit-comment"]').forEach(btn => {
+        if (!markFeedNodeBound(btn)) return;
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const postId = btn.dataset.postId;
+            const commentId = btn.dataset.commentId;
+            if (postId && commentId) {
+                activeEditingComment = { postId, commentId };
+                renderPostsFeed(posts);
+                const editInput = feedList.querySelector(`.comment-inline-edit-input[data-comment-id="${commentId}"]`);
+                if (editInput) {
+                    editInput.focus();
+                    if (editInput.setSelectionRange) editInput.setSelectionRange(editInput.value.length, editInput.value.length);
+                }
+            }
+        });
+    });
+
+    feedList.querySelectorAll('[data-action="cancel-comment-edit"]').forEach(btn => {
+        if (!markFeedNodeBound(btn)) return;
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            activeEditingComment = null;
+            renderPostsFeed(posts);
+        });
+    });
+
+    feedList.querySelectorAll('[data-action="save-comment-edit"]').forEach(btn => {
+        if (!markFeedNodeBound(btn)) return;
+        btn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const postId = btn.dataset.postId;
+            const commentId = btn.dataset.commentId;
+            const editInput = feedList.querySelector(`.comment-inline-edit-input[data-comment-id="${commentId}"]`);
+            if (postId && commentId && editInput) {
+                const ok = await editPostComment(postId, commentId, editInput.value);
+                if (ok) {
+                    activeEditingComment = null;
+                }
+            }
+        });
+    });
+
+    feedList.querySelectorAll('.comment-inline-edit-input').forEach(input => {
+        if (!markFeedNodeBound(input)) return;
+        input.addEventListener('keydown', async (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const postId = input.dataset.postId;
+                const commentId = input.dataset.commentId;
+                if (postId && commentId) {
+                    const ok = await editPostComment(postId, commentId, input.value);
+                    if (ok) {
+                        activeEditingComment = null;
+                    }
+                }
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                activeEditingComment = null;
+                renderPostsFeed(posts);
+            }
+        });
+    });
+
+    feedList.querySelectorAll('[data-action="send-inline-comment"]').forEach(btn => {
+        if (!markFeedNodeBound(btn)) return;
+        btn.addEventListener('click', () => {
+            const postId = btn.dataset.postId;
+            const input = feedList.querySelector(`.feed-comment-input[data-post-id="${postId}"]`);
+            if (input && input.value.trim()) {
+                submitInlineComment(postId, input.value);
+                input.value = '';
+            }
+        });
+    });
+
+    feedList.querySelectorAll('.feed-comment-input').forEach(input => {
+        if (!markFeedNodeBound(input)) return;
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const postId = input.dataset.postId;
+                if (postId && input.value.trim()) {
+                    submitInlineComment(postId, input.value);
+                    input.value = '';
+                }
+            }
+        });
+    });
+
+    feedList.querySelectorAll('[data-action="delete-comment"]').forEach(btn => {
+        if (!markFeedNodeBound(btn)) return;
+        btn.addEventListener('click', () => {
+            const postId = btn.dataset.postId;
+            const commentIdx = parseInt(btn.dataset.commentIdx, 10);
+            const commentId = btn.dataset.commentId;
+            if (postId) {
+                deletePostComment(postId, commentId || commentIdx);
+            }
+        });
+    });
+
+    document.querySelectorAll('[data-action="toggle-post-visibility"]').forEach(btn => {
+        if (!markFeedNodeBound(btn)) return;
+        btn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const postId = btn.dataset.postId;
+            if (postId) {
+                await togglePostVisibility(postId);
+            }
+        });
+    });
+
+    document.querySelectorAll('[data-action="delete-post"]').forEach(btn => {
+        if (!markFeedNodeBound(btn)) return;
+        btn.addEventListener('click', () => {
+            const postId = btn.dataset.postId;
+            if (postId) {
+                deletePost(postId);
+            }
+        });
+    });
+
+    document.querySelectorAll('[data-action="publish-scheduled-post-now"]').forEach(btn => {
+        if (!markFeedNodeBound(btn)) return;
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const postId = btn.dataset.postId;
+            if (postId) {
+                publishScheduledPostNow(postId);
+            }
+        });
+    });
+
+    document.querySelectorAll('[data-action="report-post"]').forEach(btn => {
+        if (!markFeedNodeBound(btn)) return;
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const postId = btn.dataset.postId;
+            const post = posts.find(p => p.id === postId);
+            if (!post) return;
+            openReportModal({
+                type: 'post',
+                postId: post.id,
+                targetUid: post.authorUid || post.uid || '',
+                targetName: post.authorName || 'Autor da publicação',
+                contentSnippet: post.caption || (post.type === 'video' ? 'Vídeo na publicação' : 'Foto na publicação')
+            });
+        });
+    });
+
+    feedList.querySelectorAll('[data-action="report-comment"]').forEach(btn => {
+        if (!markFeedNodeBound(btn)) return;
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const postId = btn.dataset.postId;
+            const commentId = btn.dataset.commentId;
+            const post = posts.find(p => p.id === postId);
+            if (!post) return;
+            const rawComments = Array.isArray(post.comments) ? post.comments : [];
+            const comment = rawComments.find(c => (c.id && c.id === commentId) || (c.createdAt && String(c.createdAt) === String(commentId)))
+                || rawComments[parseInt(btn.dataset.commentIdx, 10)];
+            if (!comment) return;
+
+            openReportModal({
+                type: 'comment',
+                commentId: comment.id || comment.createdAt || commentId,
+                postId: post.id,
+                targetUid: comment.authorUid || comment.uid || '',
+                targetName: comment.author || 'Autor do comentário',
+                contentSnippet: comment.text || ''
+            });
+        });
+    });
+
+    document.querySelectorAll('.feed-music-badge').forEach(badge => {
+        if (!markFeedNodeBound(badge)) return;
+        badge.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            togglePostMusicFromBadge(badge);
+        });
+    });
+
+    document.querySelectorAll('.feed-card .feed-media img, .post-card .post-media img').forEach(imgEl => {
+        if (!markFeedNodeBound(imgEl)) return;
+        const postCard = imgEl.closest('.feed-card, .post-card');
+        const badge = postCard?.querySelector('.feed-music-badge');
+        if (badge) {
+            imgEl.style.cursor = 'pointer';
+            imgEl.addEventListener('click', (e) => {
+                if (e.target && e.target.closest?.('.feed-media-views-badge, .vortex-carousel-arrow, .vortex-carousel-dot, .vortex-carousel-counter')) return;
+                if (imgEl.closest?.('.vortex-carousel')?.dataset?.swiped === 'true') return;
+                togglePostMusicFromBadge(badge);
+            });
+        }
+    });
+
+    document.querySelectorAll('.feed-card video, .post-card video').forEach(videoEl => {
+        if (videoEl.dataset?.vortexMusicViewBound === 'true') return;
+        if (videoEl.dataset) videoEl.dataset.vortexMusicViewBound = 'true';
+
+        videoEl.addEventListener('play', () => {
+            pauseOtherFeedVideos(videoEl);
+            const card = videoEl.closest('[data-post-id]');
+            const postId = card?.dataset?.postId;
+            if (postId && currentUser) {
+                registerPostView(postId);
+            }
+        });
+
+        const postCard = videoEl.closest('.feed-card, .post-card');
+        const badge = postCard?.querySelector('.feed-music-badge');
+        if (badge) {
+            const postId = badge.dataset?.postId;
+            const hasAudio = Boolean(badge.dataset?.audioUrl || badge.dataset?.hasAudioChunks === 'true');
+            if (postId && hasAudio) {
+                videoEl.addEventListener('play', () => {
+                    if (!currentFeedMusicAudio || currentFeedMusicPostId !== postId || currentFeedMusicAudio.paused) {
+                        togglePostMusicFromBadge(badge, { autoPlay: true });
+                    }
+                });
+                videoEl.addEventListener('pause', () => {
+                    if (currentFeedMusicAudio && currentFeedMusicPostId === postId && !currentFeedMusicAudio.paused) {
+                        togglePostMusicFromBadge(badge);
+                    }
+                });
+            }
+        }
+    });
+
+    document.querySelectorAll('[data-action="filter-media-type"]').forEach(pill => {
+        if (!markFeedNodeBound(pill)) return;
+        pill.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (pill.dataset.mediaType === 'image') {
+                setFeedFilterMode(currentFeedFilterMode === 'images' ? 'all' : 'images');
+            }
+        });
+    });
+
+    document.querySelectorAll('[data-action="filter-hashtag"], [data-action="filter-category"]').forEach(pill => {
+        if (!markFeedNodeBound(pill)) return;
+        pill.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const filterVal = pill.dataset.hashtag || pill.dataset.category;
+            if (filterVal) {
+                currentFeedSearchQuery = filterVal;
+                const searchInp = document.getElementById('feed-search-input');
+                if (searchInp) searchInp.value = filterVal;
+                renderPostsFeed(cachedFeedPosts);
+            }
+        });
+    });
+
+    feedList.querySelectorAll('[data-action="save-post"]').forEach(btn => {
+        if (!markFeedNodeBound(btn)) return;
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const postId = btn.dataset.postId;
+            if (postId) {
+                toggleSaveFeedPost(postId);
+            }
+        });
+    });
+
+    document.querySelectorAll('[data-action="share-post"]').forEach(btn => {
+        if (!markFeedNodeBound(btn)) return;
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const postId = btn.dataset.postId;
+            const post = posts.find(p => p.id === postId);
+            if (post) {
+                openPostShareModal(post);
+            }
+        });
+    });
+
+    document.querySelectorAll('[data-action="post-views"]').forEach(btn => {
+        if (!markFeedNodeBound(btn)) return;
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const postId = btn.dataset.postId;
+            const post = posts.find(p => String(p.id) === String(postId));
+            if (post) {
+                openPostViewsModal(post);
+            }
+        });
+    });
+
+    document.querySelectorAll('.feed-card [data-action="follow-author"], .post-card [data-action="follow-author"]').forEach(btn => {
+        if (!markFeedNodeBound(btn)) return;
+        btn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const authorUid = btn.dataset.authorUid;
+            const postId = btn.dataset.postId || '';
+            if (!authorUid) return;
+            const targetPost = postId ? posts.find(p => p && p.id === postId) : null;
+            await toggleFollowUser(authorUid, {
+                authorName: btn.dataset.authorName || '',
+                postId,
+                mediaType: targetPost?.type || '',
+                source: targetPost?.type === 'video' ? 'video' : (targetPost ? 'post_image' : 'feed')
+            });
+        });
+    });
+
+    setupFeedPostViewsObserver(feedList);
+    if (previewFeed) setupFeedPostViewsObserver(previewFeed);
+}
+
+export function loadNextMobileFeedPost(step = MOBILE_FEED_STEP_COUNT) {
+    if (typeof document === 'undefined') return 0;
+    const feedList = document.getElementById('feed-list');
+    if (!feedList) return 0;
+
+    const total = mobileFeedFilteredPosts.length;
+    if (mobileFeedRenderedCount >= total) {
+        const leftoverSentinel = document.getElementById('feed-mobile-load-sentinel');
+        leftoverSentinel?.remove?.();
+        return 0;
+    }
+
+    const increment = Math.max(1, Number(step) || MOBILE_FEED_STEP_COUNT);
+    const nextSlice = mobileFeedFilteredPosts.slice(mobileFeedRenderedCount, mobileFeedRenderedCount + increment);
+    if (!nextSlice.length) return 0;
+
+    mobileFeedRenderedCount += nextSlice.length;
+    const batchHTML = nextSlice.map(renderFeedCardHTML).join('');
+    const sentinel = document.getElementById('feed-mobile-load-sentinel');
+
+    if (sentinel && typeof sentinel.insertAdjacentHTML === 'function') {
+        sentinel.insertAdjacentHTML('beforebegin', batchHTML);
+        if (mobileFeedRenderedCount >= total) {
+            mobileFeedSentinelObserver?.disconnect?.();
+            sentinel.remove?.();
+        } else {
+            if (sentinel.dataset) sentinel.dataset.rendered = String(mobileFeedRenderedCount);
+            const btn = document.getElementById('feed-load-next-btn');
+            if (btn) {
+                btn.innerHTML = `<i data-lucide="chevrons-down"></i><span>Carregar próxima postagem (${mobileFeedRenderedCount}/${total})</span>`;
+            }
+        }
+        bindFeedInteractions(feedList, mobileFeedAllPostsSource);
+    } else {
+        const visibleSlice = mobileFeedFilteredPosts.slice(0, mobileFeedRenderedCount);
+        feedList.innerHTML = visibleSlice.map(renderFeedCardHTML).join('') + buildMobileFeedSentinelHTML(mobileFeedRenderedCount, total);
+        bindFeedInteractions(feedList, mobileFeedAllPostsSource);
+        bindMobileFeedSentinel(feedList);
+    }
+
+    return nextSlice.length;
+}
+
+function bindMobileFeedSentinel(feedList) {
+    mobileFeedSentinelObserver?.disconnect?.();
+    if (!feedList) return;
+    const sentinel = document.getElementById('feed-mobile-load-sentinel');
+    const loadNextBtn = document.getElementById('feed-load-next-btn');
+    if (loadNextBtn) {
+        loadNextBtn._vortexBound = true;
+        loadNextBtn.onclick = (e) => {
+            e?.preventDefault?.();
+            e?.stopPropagation?.();
+            loadNextMobileFeedPost(MOBILE_FEED_STEP_COUNT);
+        };
+    }
+    if (!sentinel) return;
+
+    if (typeof IntersectionObserver === 'function' && typeof sentinel.getBoundingClientRect === 'function') {
+        mobileFeedSentinelObserver = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting && mobileFeedRenderedCount < mobileFeedFilteredPosts.length) {
+                    loadNextMobileFeedPost(MOBILE_FEED_STEP_COUNT);
+                }
+            });
+        }, { rootMargin: '220px 0px', threshold: 0.01 });
+        mobileFeedSentinelObserver.observe(sentinel);
+    }
+}
+
 function renderPostsFeed(posts = []) {
     cachedFeedPosts = posts;
     const feedList = document.getElementById('feed-list');
@@ -36530,6 +37456,7 @@ function renderPostsFeed(posts = []) {
 
             resolvePostChunkedMedia(previewFeed, posts);
             bindPostCarousels(previewFeed);
+            setupMobileVideoStreamObserver(previewFeed);
 
             previewFeed.querySelectorAll('[data-action="like-preview-post"]').forEach(btn => {
                 btn.addEventListener('click', async () => {
@@ -36596,13 +37523,21 @@ function renderPostsFeed(posts = []) {
         }
     }
 
+    const filterSig = `${currentFeedFilterMode}|${query.trim()}`;
+    mobileFeedFilteredPosts = filtered;
+    mobileFeedAllPostsSource = posts;
+
     if (!sorted.length) {
+        mobileFeedRenderedCount = 0;
+        mobileFeedFilterSig = filterSig;
         feedList.innerHTML = '<div class="post-empty">Nenhuma postagem ainda. Seja o primeiro a publicar.</div>';
         if (window.lucide) lucide.createIcons();
         return;
     }
 
     if (currentFeedFilterMode === 'images' && !basePosts.length) {
+        mobileFeedRenderedCount = 0;
+        mobileFeedFilterSig = filterSig;
         feedList.innerHTML = `
             <div class="post-empty feed-favorites-empty">
                 <i data-lucide="image" class="feed-empty-search-icon"></i>
@@ -36619,6 +37554,8 @@ function renderPostsFeed(posts = []) {
     }
 
     if (currentFeedFilterMode === 'favorites' && !basePosts.length) {
+        mobileFeedRenderedCount = 0;
+        mobileFeedFilterSig = filterSig;
         feedList.innerHTML = `
             <div class="post-empty feed-favorites-empty">
                 <i data-lucide="bookmark" class="feed-empty-search-icon"></i>
@@ -36635,6 +37572,8 @@ function renderPostsFeed(posts = []) {
     }
 
     if (!filtered.length && query.trim()) {
+        mobileFeedRenderedCount = 0;
+        mobileFeedFilterSig = filterSig;
         feedList.innerHTML = `
             <div class="post-empty feed-search-empty">
                 <i data-lucide="search-x" class="feed-empty-search-icon"></i>
@@ -36653,619 +37592,24 @@ function renderPostsFeed(posts = []) {
         return;
     }
 
-    feedList.innerHTML = filtered.map((post) => {
-        const authorName = post.authorName || 'Usuário';
-        const isPostAuthorVip = isAuthorVipUser(post.authorUid, post);
-        const isPostAuthorAdmin = checkIsAdminUser({ uid: post.authorUid, name: authorName, email: post.authorEmail, username: post.authorUsername });
-        const isPostAuthorCompany = !isPostAuthorAdmin && checkIsCompanyUser(post);
-        const resolvedAvatar = getLiveAuthorAvatar(post.authorUid, post.authorAvatar);
-        const avatar = resolvedAvatar ? `style="background-image: url('${resolvedAvatar}')"` : '';
-        const likes = Array.isArray(post.likes) ? post.likes.length : 0;
-        if (typeof moderatePostCommentsByAI === 'function' && Array.isArray(post.comments) && post.comments.length) {
-            moderatePostCommentsByAI(post, { persist: true });
+    const isMobFeed = isMobilePerformanceMode();
+    if (isMobFeed) {
+        if (filterSig !== mobileFeedFilterSig || mobileFeedRenderedCount < MOBILE_FEED_INITIAL_COUNT) {
+            mobileFeedRenderedCount = Math.min(filtered.length, MOBILE_FEED_INITIAL_COUNT);
+        } else {
+            mobileFeedRenderedCount = Math.min(filtered.length, Math.max(MOBILE_FEED_INITIAL_COUNT, mobileFeedRenderedCount));
         }
-        const rawComments = (Array.isArray(post.comments) ? post.comments : []).filter(c => !isUserAccountDeleted(c.authorUid) && !c.isDeleted && !c.deleted);
-        const sortedComments = getSortedPostComments(rawComments);
-        const caption = post.caption || '';
-        const mediaTag = renderPostMediaTagHTML(post);
-        const createdAt = new Date(post.createdAt || Date.now());
-        const timeLabel = createdAt.toLocaleString([], { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-        const liked = currentUser && Array.isArray(post.likes) && post.likes.includes(currentUser.uid);
-        const canDeletePost = isPostOwner(post, currentUser, currentProfile);
-        const isPostAd = !!(post.isAd || post.contentType === 'ad');
-        const isCommentsOpen = openPostCommentCards.has(post.id);
-        const isThisMusicPlaying = currentFeedMusicAudio && !currentFeedMusicAudio.paused && currentFeedMusicPostId === post.id;
-        const viewsCount = getPostViewsCount(post);
-        const formattedViews = formatPostViewsCount(viewsCount);
-        const userViewed = hasUserViewedPost(post);
-
-        const isPostScheduled = Boolean((post.scheduled || post.isScheduled) && post.scheduledFor && post.scheduledFor > Date.now());
-        const scheduledBannerHTML = isPostScheduled ? `
-            <div class="post-scheduled-banner">
-                <div class="post-scheduled-info">
-                    <i data-lucide="calendar-clock"></i>
-                    <span>Programado para <strong>${getFormattedScheduleDate(post.scheduledFor)}</strong></span>
-                </div>
-                <button type="button" class="post-publish-now-btn" data-action="publish-scheduled-post-now" data-post-id="${post.id}" title="Publicar agora no Feed">
-                    <i data-lucide="send"></i>
-                    <span>Publicar Agora</span>
-                </button>
-            </div>
-        ` : '';
-
-        return `
-            <article class="feed-card" id="post-card-${post.id}" data-post-id="${post.id}">
-                <div class="feed-header">
-                    <div class="feed-author" data-author-uid="${post.authorUid || ''}" role="button" tabindex="0" title="Ver canal de ${escapeHTML(authorName)}" style="cursor:pointer;">
-                        <div class="feed-avatar" data-author-uid="${post.authorUid || ''}" ${avatar}></div>
-                        <div>
-                            <div class="feed-username">
-                                <span>${escapeHTML(authorName)}</span>
-                                <i data-lucide="badge-check" class="verified-badge post-author-verified-badge${isPostAuthorAdmin ? ' verified-badge-admin' : (isPostAuthorCompany ? ' verified-badge-company' : '')}" data-author-uid="${post.authorUid || ''}" ${isPostAuthorAdmin ? 'data-admin-badge="true" title="💥Admin⚡"' : (isPostAuthorCompany ? 'data-company-badge="true" title="⚔️ Empresa Verificada ⚡"' : 'title="Verificado VIP"')} style="display:${(isPostAuthorVip || isPostAuthorCompany) ? 'inline-flex' : 'none'};"></i>
-                            </div>
-                            <div class="feed-time">
-                                ${timeLabel}
-                                ${isPostAd ? `<span class="post-time-ad-sep">•</span><span class="post-ad-badge"><i data-lucide="megaphone"></i> Anúncio</span>` : ''}
-                            </div>
-                        </div>
-                    </div>
-                    ${renderPostHeaderRightActionsHTML(post, canDeletePost, { compact: false })}
-                </div>
-                ${scheduledBannerHTML}
-                <div class="feed-media">
-                    ${mediaTag}
-                    ${typeof renderVortexStarSealHTML === 'function' ? renderVortexStarSealHTML(getPostAuthorUserData(post)) : ''}
-                    <div class="feed-media-views-badge" data-action="post-views" data-post-id="${post.id}" title="Ver visualizações do post">
-                        <i data-lucide="eye"></i>
-                        <span data-post-views-badge="${post.id}">${formattedViews} visualizaç${viewsCount === 1 ? 'ão' : 'ões'}</span>
-                    </div>
-                </div>
-                ${renderPostMusicBadgeHTML(post, { prefix: 'feed', isPlaying: isThisMusicPlaying })}
-                <div class="feed-body">
-                    ${(isPostAd || isImageFeedPost(post) || (post.businessCategory || post.personalCategory || post.category) || isPostPrivate(post)) ? `
-                        <div class="feed-tags-row">
-                            ${getPostMediaTypeTagHTML(post)}
-                            ${getPostAdBadgeHTML(post)}
-                            ${getPostCategoryBadgeHTML(post)}
-                            ${getPostVisibilityBadgeHTML(post)}
-                        </div>
-                    ` : ''}
-                    ${post.title ? `<h4 class="feed-post-title">${escapeHTML(post.title)}</h4>` : ''}
-                    ${caption ? `<p class="feed-caption">${escapeHTML(caption)}</p>` : ''}
-                    ${Array.isArray(post.hashtags) && post.hashtags.length ? `
-                        <div class="feed-hashtags-row">
-                            ${post.hashtags.slice(0, 3).map(tag => `<span class="feed-hashtag-pill" data-action="filter-hashtag" data-hashtag="${escapeHTML(tag)}">${escapeHTML(tag)}</span>`).join('')}
-                        </div>
-                    ` : ''}
-                    ${post.actionButton && post.actionButton.url ? `
-                        <div class="feed-cta-wrapper">
-                            <a href="${escapeHTML(post.actionButton.url)}" target="_blank" rel="noopener noreferrer" class="feed-cta-btn" onclick="event.stopPropagation();">
-                                <i data-lucide="external-link"></i>
-                                <span>${escapeHTML(post.actionButton.text || 'Saiba Mais')}</span>
-                            </a>
-                        </div>
-                    ` : ''}
-                    <div class="feed-actions">
-                        <button class="feed-action-btn ${liked ? 'liked' : ''}" type="button" data-post-id="${post.id}" data-action="like" title="Curtir">
-                            <i data-lucide="heart"></i>
-                            <span>${likes}</span>
-                        </button>
-                        <button class="feed-action-btn ${isCommentsOpen ? 'active' : ''}" type="button" data-post-id="${post.id}" data-action="comment" title="Comentários">
-                            <i data-lucide="message-circle"></i>
-                            <span>${rawComments.length}</span>
-                        </button>
-                        <button class="feed-action-btn feed-views-btn ${userViewed ? 'viewed' : ''}" type="button" data-post-id="${post.id}" data-action="post-views" title="Visualizações da publicação" aria-label="Visualizações da publicação">
-                            <i data-lucide="eye"></i>
-                            <span data-post-views-count="${post.id}">${formattedViews}</span>
-                        </button>
-                        <button class="feed-action-btn share-action-btn" type="button" data-post-id="${post.id}" data-action="share-post" title="Compartilhar" aria-label="Compartilhar">
-                            <i data-lucide="share-2"></i>
-                        </button>
-                        <button class="feed-action-btn save-post-btn ${isPostSaved(post.id) ? 'saved' : ''}" type="button" data-post-id="${post.id}" data-action="save-post" title="${isPostSaved(post.id) ? 'Remover dos favoritos' : 'Salvar nos favoritos'}">
-                            <i data-lucide="bookmark"></i>
-                            <span>${isPostSaved(post.id) ? 'Salvo' : 'Favoritar'}</span>
-                        </button>
-                    </div>
-
-                    <!-- Comentários Integrados Diretamente Dentro do Post -->
-                    <div class="feed-comments-section ${isCommentsOpen ? 'open' : ''}" id="feed-comments-${post.id}">
-                        <div class="feed-comments-box">
-                            ${sortedComments.length ? sortedComments.map((comment) => {
-                                const commentId = comment.id;
-                                const cIdx = comment._originalIndex !== undefined ? comment._originalIndex : sortedComments.indexOf(comment);
-                                const isPinned = !!comment.isPinned;
-                                const isEdited = !!comment.isEdited;
-                                const commentLikes = Array.isArray(comment.likes) ? comment.likes : [];
-                                const commentLikesCount = commentLikes.length;
-                                const userLikedComment = currentUser && commentLikes.includes(currentUser.uid);
-
-                                const isOwner = isPostOwner(post, currentUser, currentProfile);
-                                const isAuthor = isCommentAuthor(comment, currentUser, currentProfile);
-                                const canDeleteComment = isOwner || isAuthor;
-
-                                const isEditingThisComment = activeEditingComment && activeEditingComment.postId === post.id && activeEditingComment.commentId === commentId;
-
-                                return `
-                                    <div class="feed-comment ${isPinned ? 'is-pinned' : ''}" id="feed-comment-${post.id}-${commentId}" data-comment-id="${commentId}">
-                                        ${isPinned ? `
-                                            <div class="comment-pinned-indicator">
-                                                <i data-lucide="pin"></i> <span>Fixado</span>
-                                            </div>
-                                        ` : ''}
-                                        <div class="feed-comment-text-wrap">
-                                            <div class="feed-comment-author-line">
-                                                <strong>${escapeHTML(comment.author || 'Usuário')}</strong>
-                                                <i data-lucide="badge-check" class="verified-badge comment-verified-badge${checkIsAdminUser({ uid: comment.authorUid, name: comment.author, email: comment.authorEmail, username: comment.authorUsername }) ? ' verified-badge-admin' : (checkIsCompanyUser(comment) ? ' verified-badge-company' : '')}" data-author-uid="${comment.authorUid || ''}" ${checkIsAdminUser({ uid: comment.authorUid, name: comment.author, email: comment.authorEmail, username: comment.authorUsername }) ? 'data-admin-badge="true" title="💥Admin⚡"' : (checkIsCompanyUser(comment) ? 'data-company-badge="true" title="⚔️ Empresa Verificada ⚡"' : 'title="Verificado VIP"')} style="display:${(isAuthorVipUser(comment.authorUid, comment) || checkIsCompanyUser(comment)) ? 'inline-flex' : 'none'};"></i>
-                                                <span>:</span>
-                                                ${isEdited ? `<span class="comment-edited-badge">(editado)</span>` : ''}
-                                            </div>
-                                            ${isEditingThisComment ? `
-                                                <div class="comment-inline-edit-box">
-                                                    <input type="text" class="comment-inline-edit-input" data-post-id="${post.id}" data-comment-id="${commentId}" value="${escapeHTML(comment.text || '')}" maxlength="220" />
-                                                    <div class="comment-inline-edit-actions">
-                                                        <button type="button" class="comment-inline-save-btn" data-action="save-comment-edit" data-post-id="${post.id}" data-comment-id="${commentId}">Salvar</button>
-                                                        <button type="button" class="comment-inline-cancel-btn" data-action="cancel-comment-edit" data-post-id="${post.id}" data-comment-id="${commentId}">Cancelar</button>
-                                                    </div>
-                                                </div>
-                                            ` : `
-                                                <span>${escapeHTML(comment.text || '')}</span>
-                                            `}
-                                        </div>
-                                        <div class="feed-comment-actions-bar">
-                                            <button class="feed-comment-action-btn comment-like-btn ${userLikedComment ? 'liked' : ''}" type="button" data-action="like-comment" data-post-id="${post.id}" data-comment-id="${commentId}" data-comment-idx="${cIdx}" title="${userLikedComment ? 'Descurtir' : 'Curtir'}">
-                                                <i data-lucide="heart"></i>
-                                                <span class="comment-like-count">${commentLikesCount > 0 ? commentLikesCount : ''}</span>
-                                            </button>
-                                            ${isOwner ? `
-                                                <button class="feed-comment-action-btn comment-pin-btn ${isPinned ? 'pinned' : ''}" type="button" data-action="pin-comment" data-post-id="${post.id}" data-comment-id="${commentId}" data-comment-idx="${cIdx}" title="${isPinned ? 'Desafixar comentário' : 'Fixar comentário'}">
-                                                    <i data-lucide="pin"></i>
-                                                    <span>${isPinned ? 'Desafixar' : 'Fixar'}</span>
-                                                </button>
-                                            ` : ''}
-                                            ${isAuthor ? `
-                                                <button class="feed-comment-action-btn comment-edit-btn" type="button" data-action="edit-comment" data-post-id="${post.id}" data-comment-id="${commentId}" data-comment-idx="${cIdx}" title="Editar comentário">
-                                                    <i data-lucide="edit-2"></i>
-                                                    <span>Editar</span>
-                                                </button>
-                                            ` : ''}
-                                            ${!isAuthor ? `
-                                                <button class="feed-comment-action-btn comment-report-btn" type="button" data-action="report-comment" data-post-id="${post.id}" data-comment-id="${commentId}" data-comment-idx="${cIdx}" title="Denunciar comentário">
-                                                    <i data-lucide="flag"></i>
-                                                    <span>Denunciar</span>
-                                                </button>
-                                            ` : ''}
-                                            ${canDeleteComment ? `
-                                                <button class="feed-comment-delete-btn" type="button" data-action="delete-comment" data-post-id="${post.id}" data-comment-idx="${cIdx}" data-comment-id="${commentId}" title="Excluir comentário">
-                                                    <i data-lucide="trash-2"></i> <span>Excluir</span>
-                                                </button>
-                                            ` : ''}
-                                        </div>
-                                    </div>
-                                `;
-                            }).join('') : '<div class="feed-no-comments">Nenhum comentário ainda. Escreva o primeiro abaixo!</div>'}
-                        </div>
-
-                        <div class="feed-comment-form">
-                            <input type="text" class="feed-comment-input" data-post-id="${post.id}" maxlength="220" placeholder="Escreva um comentário..." aria-label="Escreva um comentário">
-                            <button class="feed-comment-send-btn" type="button" data-action="send-inline-comment" data-post-id="${post.id}" title="Enviar comentário">
-                                <i data-lucide="send"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </article>
-        `;
-    }).join('');
-
-    resolvePostChunkedMedia(feedList, posts);
-    bindPostCarousels(feedList);
-
-    feedList.querySelectorAll('video').forEach(videoEl => {
-        videoEl.addEventListener('timeupdate', () => {
-            const maxD = Number(videoEl.dataset.chunkDuration) || 120;
-            if (videoEl.dataset.chunkTrimmed === 'true' && videoEl.currentTime >= maxD) {
-                videoEl.pause();
-            }
-        });
-    });
-
-    if (window.lucide) lucide.createIcons();
-    if (typeof syncCommentInputLockUI === 'function') syncCommentInputLockUI();
-    if (typeof syncLikeButtonsLockUI === 'function') syncLikeButtonsLockUI();
-
-    // Abrir canal do autor ao clicar no autor do post no Feed
-    feedList.querySelectorAll('.feed-author[data-author-uid]').forEach(authorEl => {
-        authorEl.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const authorUid = authorEl.dataset.authorUid;
-            if (!authorUid) return;
-            const authorPost = (Array.isArray(posts) ? posts : []).find(p => p && p.authorUid === authorUid) || null;
-            openUserChannelScreen(authorUid, authorPost ? {
-                uid: authorUid,
-                name: authorPost.authorName,
-                avatar: authorPost.authorAvatar,
-                username: authorPost.authorUsername,
-                email: authorPost.authorEmail
-            } : null);
-        });
-    });
-
-    // Curtir postagem (com proteção VORTEX AI Anti-Spam / Auto-Click 24h)
-    feedList.querySelectorAll('[data-action="like"]').forEach(button => {
-        button.addEventListener('click', async () => {
-            const postId = button.dataset.postId;
-            if (postId) {
-                await togglePostLike(postId);
-            }
-        });
-    });
-
-    // Abrir/Fechar seção de comentários dentro do post
-    feedList.querySelectorAll('[data-action="comment"]').forEach(button => {
-        button.addEventListener('click', () => {
-            const postId = button.dataset.postId;
-            const commentsSection = document.getElementById(`feed-comments-${postId}`);
-            if (!commentsSection) return;
-
-            const isOpen = commentsSection.classList.toggle('open');
-            button.classList.toggle('active', isOpen);
-            if (isOpen) {
-                openPostCommentCards.add(postId);
-                const input = commentsSection.querySelector('.feed-comment-input');
-                if (input) setTimeout(() => input.focus(), 80);
-            } else {
-                openPostCommentCards.delete(postId);
-            }
-        });
-    });
-
-    // Curtir comentário inline
-    feedList.querySelectorAll('[data-action="like-comment"]').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const postId = btn.dataset.postId;
-            const commentId = btn.dataset.commentId || parseInt(btn.dataset.commentIdx, 10);
-            if (postId && commentId !== undefined) {
-                await toggleLikePostComment(postId, commentId);
-            }
-        });
-    });
-
-    // Fixar/Desafixar comentário inline
-    feedList.querySelectorAll('[data-action="pin-comment"]').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const postId = btn.dataset.postId;
-            const commentId = btn.dataset.commentId || parseInt(btn.dataset.commentIdx, 10);
-            if (postId && commentId !== undefined) {
-                await togglePinPostComment(postId, commentId);
-            }
-        });
-    });
-
-    // Iniciar edição inline de comentário
-    feedList.querySelectorAll('[data-action="edit-comment"]').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const postId = btn.dataset.postId;
-            const commentId = btn.dataset.commentId;
-            if (postId && commentId) {
-                activeEditingComment = { postId, commentId };
-                renderPostsFeed(posts);
-                const editInput = feedList.querySelector(`.comment-inline-edit-input[data-comment-id="${commentId}"]`);
-                if (editInput) {
-                    editInput.focus();
-                    if (editInput.setSelectionRange) editInput.setSelectionRange(editInput.value.length, editInput.value.length);
-                }
-            }
-        });
-    });
-
-    // Cancelar edição inline
-    feedList.querySelectorAll('[data-action="cancel-comment-edit"]').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            activeEditingComment = null;
-            renderPostsFeed(posts);
-        });
-    });
-
-    // Salvar edição inline
-    feedList.querySelectorAll('[data-action="save-comment-edit"]').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const postId = btn.dataset.postId;
-            const commentId = btn.dataset.commentId;
-            const editInput = feedList.querySelector(`.comment-inline-edit-input[data-comment-id="${commentId}"]`);
-            if (postId && commentId && editInput) {
-                const ok = await editPostComment(postId, commentId, editInput.value);
-                if (ok) {
-                    activeEditingComment = null;
-                }
-            }
-        });
-    });
-
-    // Salvar edição inline com tecla Enter
-    feedList.querySelectorAll('.comment-inline-edit-input').forEach(input => {
-        input.addEventListener('keydown', async (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                const postId = input.dataset.postId;
-                const commentId = input.dataset.commentId;
-                if (postId && commentId) {
-                    const ok = await editPostComment(postId, commentId, input.value);
-                    if (ok) {
-                        activeEditingComment = null;
-                    }
-                }
-            } else if (e.key === 'Escape') {
-                e.preventDefault();
-                activeEditingComment = null;
-                renderPostsFeed(posts);
-            }
-        });
-    });
-
-    // Enviar comentário inline pelo botão
-    feedList.querySelectorAll('[data-action="send-inline-comment"]').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const postId = btn.dataset.postId;
-            const input = feedList.querySelector(`.feed-comment-input[data-post-id="${postId}"]`);
-            if (input && input.value.trim()) {
-                submitInlineComment(postId, input.value);
-                input.value = '';
-            }
-        });
-    });
-
-    // Enviar comentário inline ao pressionar Enter
-    feedList.querySelectorAll('.feed-comment-input').forEach(input => {
-        input.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                const postId = input.dataset.postId;
-                if (postId && input.value.trim()) {
-                    submitInlineComment(postId, input.value);
-                    input.value = '';
-                }
-            }
-        });
-    });
-
-    // Excluir comentário
-    feedList.querySelectorAll('[data-action="delete-comment"]').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const postId = btn.dataset.postId;
-            const commentIdx = parseInt(btn.dataset.commentIdx, 10);
-            const commentId = btn.dataset.commentId;
-            if (postId) {
-                deletePostComment(postId, commentId || commentIdx);
-            }
-        });
-    });
-
-    // Alternar visibilidade do post (Público <-> Privado) pelo autor
-    document.querySelectorAll('[data-action="toggle-post-visibility"]').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const postId = btn.dataset.postId;
-            if (postId) {
-                await togglePostVisibility(postId);
-            }
-        });
-    });
-
-    // Excluir post (tanto no feed quanto em Publicações Recentes)
-    document.querySelectorAll('[data-action="delete-post"]').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const postId = btn.dataset.postId;
-            if (postId) {
-                deletePost(postId);
-            }
-        });
-    });
-
-    // Publicar post agendado imediatamente
-    document.querySelectorAll('[data-action="publish-scheduled-post-now"]').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const postId = btn.dataset.postId;
-            if (postId) {
-                publishScheduledPostNow(postId);
-            }
-        });
-    });
-
-    // Denunciar post (tanto no feed quanto em Publicações Recentes)
-    document.querySelectorAll('[data-action="report-post"]').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const postId = btn.dataset.postId;
-            const post = posts.find(p => p.id === postId);
-            if (!post) return;
-            openReportModal({
-                type: 'post',
-                postId: post.id,
-                targetUid: post.authorUid || post.uid || '',
-                targetName: post.authorName || 'Autor da publicação',
-                contentSnippet: post.caption || (post.type === 'video' ? 'Vídeo na publicação' : 'Foto na publicação')
-            });
-        });
-    });
-
-    // Denunciar comentário inline
-    feedList.querySelectorAll('[data-action="report-comment"]').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const postId = btn.dataset.postId;
-            const commentId = btn.dataset.commentId;
-            const post = posts.find(p => p.id === postId);
-            if (!post) return;
-            const rawComments = Array.isArray(post.comments) ? post.comments : [];
-            const comment = rawComments.find(c => (c.id && c.id === commentId) || (c.createdAt && String(c.createdAt) === String(commentId)))
-                || rawComments[parseInt(btn.dataset.commentIdx, 10)];
-            if (!comment) return;
-
-            openReportModal({
-                type: 'comment',
-                commentId: comment.id || comment.createdAt || commentId,
-                postId: post.id,
-                targetUid: comment.authorUid || comment.uid || '',
-                targetName: comment.author || 'Autor do comentário',
-                contentSnippet: comment.text || ''
-            });
-        });
-    });
-
-    // Tocar/Pausar música do post (tanto no feed quanto em Publicações Recentes, inclusive áudio em chunks)
-    document.querySelectorAll('.feed-music-badge').forEach(badge => {
-        badge.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            togglePostMusicFromBadge(badge);
-        });
-    });
-
-    // Permitir tocar/pausar a música diretamente ao tocar na imagem do post no feed/preview
-    document.querySelectorAll('.feed-card .feed-media img, .post-card .post-media img').forEach(imgEl => {
-        const postCard = imgEl.closest('.feed-card, .post-card');
-        const badge = postCard?.querySelector('.feed-music-badge');
-        if (badge) {
-            imgEl.style.cursor = 'pointer';
-            imgEl.addEventListener('click', (e) => {
-                if (e.target && e.target.closest?.('.feed-media-views-badge, .vortex-carousel-arrow, .vortex-carousel-dot, .vortex-carousel-counter')) return;
-                if (imgEl.closest?.('.vortex-carousel')?.dataset?.swiped === 'true') return;
-                togglePostMusicFromBadge(badge);
-            });
-        }
-    });
-
-    // Sincronizar reprodução de vídeos que possuem música anexada
-    document.querySelectorAll('.feed-card video, .post-card video').forEach(videoEl => {
-        const postCard = videoEl.closest('.feed-card, .post-card');
-        const badge = postCard?.querySelector('.feed-music-badge');
-        if (badge) {
-            const postId = badge.dataset?.postId;
-            const hasAudio = Boolean(badge.dataset?.audioUrl || badge.dataset?.hasAudioChunks === 'true');
-            if (postId && hasAudio) {
-                videoEl.addEventListener('play', () => {
-                    if (!currentFeedMusicAudio || currentFeedMusicPostId !== postId || currentFeedMusicAudio.paused) {
-                        togglePostMusicFromBadge(badge, { autoPlay: true });
-                    }
-                });
-                videoEl.addEventListener('pause', () => {
-                    if (currentFeedMusicAudio && currentFeedMusicPostId === postId && !currentFeedMusicAudio.paused) {
-                        togglePostMusicFromBadge(badge);
-                    }
-                });
-            }
-        }
-    });
-
-    // Filtrar por tag Imagem ao clicar na tag do post
-    document.querySelectorAll('[data-action="filter-media-type"]').forEach(pill => {
-        pill.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            if (pill.dataset.mediaType === 'image') {
-                setFeedFilterMode(currentFeedFilterMode === 'images' ? 'all' : 'images');
-            }
-        });
-    });
-
-    // Filtrar por hashtag ou categoria ao clicar na pílula (v1.0.192 / v1.0.193)
-    document.querySelectorAll('[data-action="filter-hashtag"], [data-action="filter-category"]').forEach(pill => {
-        pill.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const filterVal = pill.dataset.hashtag || pill.dataset.category;
-            if (filterVal) {
-                currentFeedSearchQuery = filterVal;
-                const searchInp = document.getElementById('feed-search-input');
-                if (searchInp) searchInp.value = filterVal;
-                renderPostsFeed(cachedFeedPosts);
-            }
-        });
-    });
-
-    // Salvar / Favoritar postagem no Feed Reels (v1.0.190)
-    feedList.querySelectorAll('[data-action="save-post"]').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const postId = btn.dataset.postId;
-            if (postId) {
-                toggleSaveFeedPost(postId);
-            }
-        });
-    });
-
-    // Compartilhar postagem (Feed e Publicações Recentes)
-    document.querySelectorAll('[data-action="share-post"]').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const postId = btn.dataset.postId;
-            const post = posts.find(p => p.id === postId);
-            if (post) {
-                openPostShareModal(post);
-            }
-        });
-    });
-
-    // Abrir modal de visualizações do post (Feed e Publicações Recentes) - v1.0.194
-    document.querySelectorAll('[data-action="post-views"]').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const postId = btn.dataset.postId;
-            const post = posts.find(p => String(p.id) === String(postId));
-            if (post) {
-                openPostViewsModal(post);
-            }
-        });
-    });
-
-    // Seguir / Deixar de seguir autor diretamente nos posts (Feed e Publicações Recentes)
-    document.querySelectorAll('.feed-card [data-action="follow-author"], .post-card [data-action="follow-author"]').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const authorUid = btn.dataset.authorUid;
-            const postId = btn.dataset.postId || '';
-            if (!authorUid) return;
-            const targetPost = postId ? posts.find(p => p && p.id === postId) : null;
-            await toggleFollowUser(authorUid, {
-                authorName: btn.dataset.authorName || '',
-                postId,
-                mediaType: targetPost?.type || '',
-                source: targetPost?.type === 'video' ? 'video' : (targetPost ? 'post_image' : 'feed')
-            });
-        });
-    });
-
-    // Registrar visualização ao dar play no vídeo ou clicar na mídia do post - v1.0.194
-    document.querySelectorAll('.feed-card video, .post-card video').forEach(videoEl => {
-        videoEl.addEventListener('play', () => {
-            const card = videoEl.closest('[data-post-id]');
-            const postId = card?.dataset?.postId;
-            if (postId && currentUser) {
-                registerPostView(postId);
-            }
-        });
-    });
-
-    setupFeedPostViewsObserver(feedList);
-    if (previewFeed) setupFeedPostViewsObserver(previewFeed);
+        mobileFeedFilterSig = filterSig;
+        const visiblePosts = filtered.slice(0, mobileFeedRenderedCount);
+        feedList.innerHTML = visiblePosts.map(renderFeedCardHTML).join('') + buildMobileFeedSentinelHTML(visiblePosts.length, filtered.length);
+        bindFeedInteractions(feedList, posts);
+        bindMobileFeedSentinel(feedList);
+    } else {
+        mobileFeedRenderedCount = filtered.length;
+        mobileFeedFilterSig = filterSig;
+        feedList.innerHTML = filtered.map(renderFeedCardHTML).join('');
+        bindFeedInteractions(feedList, posts);
+    }
 
     if (activeChannelViewerPostId && Array.isArray(posts)) {
         const activeViewerPost = posts.find(p => p && String(p.id) === String(activeChannelViewerPostId));
@@ -55251,6 +55595,7 @@ export function renderChannelMediaGrid(items = [], tab = 'inicio', isOwner = fal
     }
 
     if (emptyEl) emptyEl.style.display = 'none';
+    const isMobGrid = isMobilePerformanceMode();
     gridEl.innerHTML = items.map(post => {
         const rawMedia = post.mediaData || (post.hasChunks && post.id && mediaChunkCache.get(`posts_${post.id}`)) || '';
         const isChunkPending = post.hasChunks && !rawMedia && post.id;
@@ -55285,9 +55630,18 @@ export function renderChannelMediaGrid(items = [], tab = 'inicio', isOwner = fal
         const musicLabel = hasMusic ? `${post.music.title || 'Música'}${post.music.artist ? ` - ${post.music.artist}` : ''}` : '';
         const videoCoverSrc = (post.type === 'video' && typeof getPostVideoCover === 'function') ? getPostVideoCover(post) : '';
         const isCoverChunkPending = Boolean(post.type === 'video' && post.hasVideoCoverChunks && !videoCoverSrc && post.id);
-        const mediaTag = post.type === 'video'
-            ? `<video src="${src}" ${videoCoverSrc ? `poster="${videoCoverSrc}"` : ''} ${isCoverChunkPending ? `data-chunk-post-cover="${post.id}"` : ''} ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="video"` : ''} muted playsinline preload="metadata" class="channel-ig-tile-media"></video>`
-            : `<img src="${src}" ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="image"` : ''} alt="${escapeHTML(post.title || post.caption || (isImageTile ? 'Imagem do canal' : 'Vídeo do canal'))}" loading="lazy" decoding="async" class="channel-ig-tile-media">`;
+        let mediaTag = '';
+        if (post.type === 'video') {
+            if (isMobGrid && videoCoverSrc) {
+                mediaTag = `<img src="${videoCoverSrc}" alt="${escapeHTML(post.title || post.caption || 'Vídeo do canal')}" loading="lazy" decoding="async" class="channel-ig-tile-media">`;
+            } else if (isMobGrid) {
+                mediaTag = `<video data-mobile-lazy-video="true" ${src ? `data-lazy-video-src="${src}"` : ''} ${videoCoverSrc ? `poster="${videoCoverSrc}"` : ''} ${isCoverChunkPending ? `data-chunk-post-cover="${post.id}"` : ''} ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="video"` : ''} muted playsinline preload="none" class="channel-ig-tile-media"></video>`;
+            } else {
+                mediaTag = `<video src="${src}" ${videoCoverSrc ? `poster="${videoCoverSrc}"` : ''} ${isCoverChunkPending ? `data-chunk-post-cover="${post.id}"` : ''} ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="video"` : ''} muted playsinline preload="metadata" class="channel-ig-tile-media"></video>`;
+            }
+        } else {
+            mediaTag = `<img src="${src}" ${isChunkPending ? `data-chunk-post-id="${post.id}" data-chunk-type="image"` : ''} alt="${escapeHTML(post.title || post.caption || (isImageTile ? 'Imagem do canal' : 'Vídeo do canal'))}" loading="lazy" decoding="async" class="channel-ig-tile-media">`;
+        }
 
         return `
             <button type="button" class="channel-ig-tile${isCarouselTile ? ' has-carousel' : ''}${isPinnedShort ? ' is-pinned-short' : ''}${isPrivateTile ? ' is-private-tile' : ''}" data-post-id="${post.id}" title="${escapeHTML(post.title || post.caption || (isImageTile ? 'Ver imagem' : 'Assistir'))}">
@@ -55313,6 +55667,7 @@ export function renderChannelMediaGrid(items = [], tab = 'inicio', isOwner = fal
     if (typeof resolvePostChunkedMedia === 'function') {
         resolvePostChunkedMedia(gridEl, items);
     }
+    setupMobileVideoStreamObserver(gridEl);
 
     gridEl.querySelectorAll('.channel-ig-tile').forEach(tile => {
         tile.addEventListener('click', (e) => {
@@ -57521,6 +57876,18 @@ if (typeof window !== 'undefined') {
     window.flushBatchedLucideIcons = flushBatchedLucideIcons;
     window.getLucideBatchStats = getLucideBatchStats;
     window.scheduleMobileNonCriticalTask = scheduleMobileNonCriticalTask;
+    window.MOBILE_FEED_INITIAL_COUNT = MOBILE_FEED_INITIAL_COUNT;
+    window.MOBILE_FEED_STEP_COUNT = MOBILE_FEED_STEP_COUNT;
+    window.MAX_MOBILE_ACTIVE_VIDEOS = MAX_MOBILE_ACTIVE_VIDEOS;
+    window.enqueueMobileMediaTask = enqueueMobileMediaTask;
+    window.pauseOtherFeedVideos = pauseOtherFeedVideos;
+    window.releaseMobileLazyVideo = releaseMobileLazyVideo;
+    window.hydrateMobileLazyVideo = hydrateMobileLazyVideo;
+    window.setupMobileVideoStreamObserver = setupMobileVideoStreamObserver;
+    window.getMobileVideoStreamStats = getMobileVideoStreamStats;
+    window.getBlobUrlCacheSize = getBlobUrlCacheSize;
+    window.loadNextMobileFeedPost = loadNextMobileFeedPost;
+    window.getMobileFeedPaginationState = getMobileFeedPaginationState;
 
     initVortexLoadingScreen();
     resolveGoogleRedirectAuthResult();

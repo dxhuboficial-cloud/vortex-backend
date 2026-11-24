@@ -1,6 +1,6 @@
 {
-  "version": "1.0.312",
-  "build": 312,
+  "version": "1.0.313",
+  "build": 313,
   "releaseDate": "2026-11-24",
-  "notes": "Correção das curtidas/reações amassadas e cortadas nas conversas (remoção de content-visibility/paint clipping em .message, alinhamento centralizado e espaçamento de .reactions-wrapper) v1.0.312"
+  "notes": "Carregamento progressivo um por um de vídeos e posts no Feed/Canal no celular (fila serial 1 a 1, lazy video por viewport, liberação automática de RAM/decoders fora da tela e cache de Blob URLs) v1.0.313"
 }

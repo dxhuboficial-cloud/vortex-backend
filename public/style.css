@@ -35702,6 +35702,50 @@ body.vortex-mobile-opt .channel-panel {
     }
 }
 
+/* ==========================================================================
+   v1.0.313: Carregamento Progressivo 1 por 1 de Vídeos e Feed no Celular
+   ========================================================================== */
+.feed-mobile-load-sentinel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px 12px 26px;
+    width: 100%;
+}
+
+.feed-load-next-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: 999px;
+    border: 1px solid rgba(57, 255, 20, 0.35);
+    background: rgba(16, 18, 26, 0.92);
+    color: var(--accent-color, #39ff14);
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+    transition: transform 0.15s ease, background-color 0.2s ease;
+}
+
+.feed-load-next-btn:active {
+    transform: scale(0.96);
+}
+
+.feed-load-next-btn i,
+.feed-load-next-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+.feed-media video[data-mobile-lazy-video="true"],
+.post-media video[data-mobile-lazy-video="true"] {
+    min-height: 220px;
+    background: radial-gradient(circle at 50% 45%, rgba(30, 34, 52, 0.9), rgba(10, 12, 18, 0.98));
+}
+
 
 
 
