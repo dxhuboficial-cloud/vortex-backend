@@ -1,6 +1,6 @@
 {
-  "version": "1.0.313",
-  "build": 313,
+  "version": "1.0.314",
+  "build": 314,
   "releaseDate": "2026-11-24",
-  "notes": "Carregamento progressivo um por um de vídeos e posts no Feed/Canal no celular (fila serial 1 a 1, lazy video por viewport, liberação automática de RAM/decoders fora da tela e cache de Blob URLs) v1.0.313"
+  "notes": "Correção de recarregamento dos posts no Feed e grade do Canal ao curtir/visualizar vídeos e fotos (sincronização cirúrgica de curtidas e reconciliação estrutural in-place) v1.0.314"
 }
