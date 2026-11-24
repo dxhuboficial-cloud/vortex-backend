@@ -2181,14 +2181,35 @@ header h1 span {
 
 .reactions-wrapper {
     position: absolute;
-    bottom: -10px; right: 8px;
-    display: flex; gap: 3px;
-    background: rgba(18, 18, 18, 0.95);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 12px;
-    padding: 2px 6px; font-size: 0.75rem;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.6);
+    bottom: -12px;
+    right: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-height: 22px;
+    min-width: 24px;
+    background: rgba(18, 18, 22, 0.96);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 999px;
+    padding: 2px 7px;
+    font-size: 0.82rem;
+    line-height: 1.15;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.65);
     z-index: 5;
+    pointer-events: auto;
+}
+.reactions-wrapper .reaction-emojis {
+    display: inline-flex;
+    align-items: center;
+    line-height: 1;
+}
+.reactions-wrapper .reaction-count {
+    font-size: 0.68rem;
+    font-weight: 700;
+    line-height: 1;
+    color: #ffffff;
 }
 
 /* Barra Flutuante Exclusiva de Emojis (Ativada via Duplo Clique na Mensagem) */
@@ -35615,9 +35636,13 @@ textarea,
     contain-intrinsic-size: auto 130px;
 }
 
+/* v1.0.312: Mensagens de chat não usam content-visibility: auto (contain: paint corta .reactions-wrapper) */
 .message {
-    content-visibility: auto;
-    contain-intrinsic-size: auto 56px;
+    overflow: visible;
+}
+.message.has-reactions,
+.message:has(.reactions-wrapper) {
+    margin-bottom: 12px;
 }
 
 /* Otimizações dedicadas para smartphones e WebView Android */

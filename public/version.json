@@ -1,6 +1,6 @@
 {
-  "version": "1.0.311",
-  "build": 311,
-  "releaseDate": "2026-11-22",
-  "notes": "Otimização completa para celular: scripts/fontes não bloqueantes, cache imutável, SW leve (-2MB), Lucide em lote, carregamento lazy de chunks/mídia, listeners escalonados e GPU mobile 60fps v1.0.311"
+  "version": "1.0.312",
+  "build": 312,
+  "releaseDate": "2026-11-24",
+  "notes": "Correção das curtidas/reações amassadas e cortadas nas conversas (remoção de content-visibility/paint clipping em .message, alinhamento centralizado e espaçamento de .reactions-wrapper) v1.0.312"
 }

@@ -18276,7 +18276,9 @@ function loadRealtimeMessages() {
             if (msg.reactions && Object.keys(msg.reactions).length > 0 && !msg.deletedForEveryone) {
                 const emojis = Object.values(msg.reactions);
                 const uniqueEmojis = [...new Set(emojis.map(r => typeof r === 'object' ? r.emoji : r))].join('');
-                reactionsHTML = `<div class="reactions-wrapper">${uniqueEmojis} <span style="font-size: 0.65rem; color: #fff;">${emojis.length > 1 ? emojis.length : ''}</span></div>`;
+                const countHTML = emojis.length > 1 ? `<span class="reaction-count">${emojis.length}</span>` : '';
+                reactionsHTML = `<div class="reactions-wrapper"><span class="reaction-emojis">${uniqueEmojis}</span>${countHTML}</div>`;
+                msgDiv.classList.add('has-reactions');
             }
 
             let groupSenderHTML = '';
@@ -23537,7 +23539,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.311';
+export const CURRENT_APP_VERSION = '1.0.312';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
