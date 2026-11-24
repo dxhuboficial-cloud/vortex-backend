@@ -218,6 +218,10 @@ export function pauseOtherFeedVideos(activeVideo) {
 export function releaseMobileLazyVideo(videoEl) {
     if (!videoEl) return false;
     try {
+        const vidKey = typeof getVideoResumeKeyFromElement === 'function' ? getVideoResumeKeyFromElement(videoEl) : '';
+        if (vidKey && typeof saveVideoResumeTime === 'function') {
+            saveVideoResumeTime(vidKey, videoEl.currentTime, videoEl.duration);
+        }
         const curSrc = (typeof videoEl.getAttribute === 'function' ? videoEl.getAttribute('src') : '') || videoEl.src || '';
         if (videoEl.dataset && !videoEl.dataset.lazyVideoSrc && curSrc) {
             videoEl.dataset.lazyVideoSrc = curSrc;
@@ -268,7 +272,9 @@ export function hydrateMobileLazyVideo(videoEl) {
     if (existingIdx !== -1) activeMobileHydratedVideos.splice(existingIdx, 1);
     activeMobileHydratedVideos.push(videoEl);
 
-    while (activeMobileHydratedVideos.length > MAX_MOBILE_ACTIVE_VIDEOS) {
+    const ytProfile = typeof getYouTubeVideoQualityProfile === 'function' ? getYouTubeVideoQualityProfile() : null;
+    const decoderLimit = Math.max(1, Number(ytProfile?.maxActiveDecoders) || MAX_MOBILE_ACTIVE_VIDEOS);
+    while (activeMobileHydratedVideos.length > decoderLimit) {
         const candidate = activeMobileHydratedVideos.find((v) => v && v !== videoEl && (v.paused !== false || v.ended));
         if (!candidate) break;
         releaseMobileLazyVideo(candidate);
@@ -316,6 +322,439 @@ export function getMobileVideoStreamStats() {
         maxActive: MAX_MOBILE_ACTIVE_VIDEOS,
         queueLength: mobileMediaTaskQueue.length
     };
+}
+
+/* ==========================================================================
+   v1.0.316: MOTOR DE OTIMIZAÇÃO DE VÍDEOS ESTILO YOUTUBE
+   (Perfil Adaptativo de Rede, Cache Binário IndexedDB, Prefetch & Auto-Resume)
+   ========================================================================== */
+export const VORTEX_VIDEO_QUALITY_STORAGE_KEY = 'vortex_video_quality_mode';
+export const VORTEX_VIDEO_RESUME_STORAGE_KEY = 'vortex_video_resume_v1';
+export const VIDEO_DISK_CACHE_DB_NAME = 'vortex_video_cache_v1';
+export const VIDEO_DISK_CACHE_STORE = 'videos';
+const YOUTUBE_QUALITY_VALID_MODES = ['auto', 'eco', 'balanced', 'hd'];
+const YOUTUBE_QUALITY_LABEL_MAP = {
+    auto: 'Auto',
+    eco: 'Economia',
+    balanced: 'Fluido',
+    hd: 'HD'
+};
+const MAX_VIDEO_RESUME_ENTRIES = 80;
+const videoResumeTimeMap = new Map();
+let videoResumeLoaded = false;
+
+const videoDiskFallbackMap = new Map();
+const videoBlobKeyUrlCache = new Map();
+const prefetchedVideoPostIds = new Set();
+let videoDiskDbPromise = null;
+let videoDiskCacheHits = 0;
+let videoDiskCacheWrites = 0;
+
+export function getYouTubeVideoQualityMode() {
+    try {
+        const store = typeof localStorage !== 'undefined' ? localStorage : (typeof window !== 'undefined' ? window.localStorage : null);
+        const saved = store ? String(store.getItem(VORTEX_VIDEO_QUALITY_STORAGE_KEY) || 'auto').trim().toLowerCase() : 'auto';
+        return YOUTUBE_QUALITY_VALID_MODES.includes(saved) ? saved : 'auto';
+    } catch (_) {
+        return 'auto';
+    }
+}
+
+export function getYouTubeVideoQualityProfile(options = {}) {
+    const requestedMode = options.mode && YOUTUBE_QUALITY_VALID_MODES.includes(options.mode)
+        ? options.mode
+        : getYouTubeVideoQualityMode();
+    const isMob = isMobilePerformanceMode(options);
+    const conn = options.connection || (typeof navigator !== 'undefined' ? navigator?.connection : null) || {};
+    const saveData = Boolean(typeof options.saveData === 'boolean' ? options.saveData : conn?.saveData);
+    const effectiveType = String(options.effectiveType || conn?.effectiveType || '').toLowerCase();
+    const downlink = Number(options.downlink ?? conn?.downlink ?? 0);
+
+    let effectiveTier = 'hd';
+    if (requestedMode === 'eco' || requestedMode === 'balanced' || requestedMode === 'hd') {
+        effectiveTier = requestedMode;
+    } else if (saveData || effectiveType === 'slow-2g' || effectiveType === '2g' || (downlink > 0 && downlink < 1.2)) {
+        effectiveTier = 'eco';
+    } else if (isMob || effectiveType === '3g' || (downlink > 0 && downlink < 4.5)) {
+        effectiveTier = 'balanced';
+    } else {
+        effectiveTier = 'hd';
+    }
+
+    if (effectiveTier === 'eco') {
+        return {
+            mode: requestedMode,
+            effectiveTier: 'eco',
+            label: requestedMode === 'auto' ? 'Auto (Eco)' : 'Economia',
+            maxActiveDecoders: 1,
+            prefetchNextCount: 0,
+            deferChunkedMp4: true,
+            preloadIdle: 'none',
+            targetBitrateKbps: 550
+        };
+    }
+    if (effectiveTier === 'balanced') {
+        return {
+            mode: requestedMode,
+            effectiveTier: 'balanced',
+            label: requestedMode === 'auto' ? 'Auto' : 'Fluido',
+            maxActiveDecoders: isMob ? 2 : 3,
+            prefetchNextCount: 1,
+            deferChunkedMp4: isMob,
+            preloadIdle: isMob ? 'none' : 'metadata',
+            targetBitrateKbps: 1400
+        };
+    }
+    return {
+        mode: requestedMode,
+        effectiveTier: 'hd',
+        label: requestedMode === 'auto' ? 'Auto (HD)' : 'HD',
+        maxActiveDecoders: isMob ? 3 : 4,
+        prefetchNextCount: 2,
+        deferChunkedMp4: false,
+        preloadIdle: 'metadata',
+        targetBitrateKbps: 3200
+    };
+}
+
+export function setYouTubeVideoQualityMode(mode = 'auto') {
+    const nextMode = YOUTUBE_QUALITY_VALID_MODES.includes(String(mode || '').toLowerCase())
+        ? String(mode).toLowerCase()
+        : 'auto';
+    try {
+        const store = typeof localStorage !== 'undefined' ? localStorage : (typeof window !== 'undefined' ? window.localStorage : null);
+        if (store) store.setItem(VORTEX_VIDEO_QUALITY_STORAGE_KEY, nextMode);
+    } catch (_) {}
+
+    const profile = getYouTubeVideoQualityProfile({ mode: nextMode });
+    if (typeof document !== 'undefined' && typeof document.querySelectorAll === 'function') {
+        document.querySelectorAll('.vortex-video-quality-label').forEach(lbl => {
+            lbl.innerText = YOUTUBE_QUALITY_LABEL_MAP[nextMode] || profile.label;
+        });
+        document.querySelectorAll('.vortex-video-quality-opt').forEach(opt => {
+            const isActive = opt.dataset?.quality === nextMode;
+            opt.classList?.toggle('active', isActive);
+            const check = opt.querySelector?.('.vortex-quality-check');
+            if (check) check.style.display = isActive ? 'inline-block' : 'none';
+        });
+    }
+
+    while (activeMobileHydratedVideos.length > profile.maxActiveDecoders) {
+        const candidate = activeMobileHydratedVideos.find((v) => v && (v.paused !== false || v.ended));
+        if (!candidate) break;
+        releaseMobileLazyVideo(candidate);
+    }
+
+    return profile;
+}
+
+function ensureVideoResumeLoaded() {
+    if (videoResumeLoaded) return;
+    videoResumeLoaded = true;
+    try {
+        const store = typeof sessionStorage !== 'undefined' ? sessionStorage : (typeof window !== 'undefined' ? window.sessionStorage : null);
+        const raw = store ? store.getItem(VORTEX_VIDEO_RESUME_STORAGE_KEY) : '';
+        if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed && typeof parsed === 'object') {
+                Object.entries(parsed).forEach(([k, v]) => {
+                    const num = Number(v);
+                    if (k && isFinite(num) && num > 0) videoResumeTimeMap.set(k, num);
+                });
+            }
+        }
+    } catch (_) {}
+}
+
+function persistVideoResumeStore() {
+    try {
+        const store = typeof sessionStorage !== 'undefined' ? sessionStorage : (typeof window !== 'undefined' ? window.sessionStorage : null);
+        if (!store) return;
+        const obj = {};
+        videoResumeTimeMap.forEach((v, k) => { obj[k] = v; });
+        store.setItem(VORTEX_VIDEO_RESUME_STORAGE_KEY, JSON.stringify(obj));
+    } catch (_) {}
+}
+
+export function getVideoResumeKeyFromElement(videoEl) {
+    if (!videoEl) return '';
+    const postId = videoEl.dataset?.postId || videoEl.closest?.('[data-post-id]')?.dataset?.postId || '';
+    if (postId) return `post_${postId}`;
+    const rawSrc = videoEl.dataset?.lazyVideoSrc || videoEl.getAttribute?.('src') || videoEl.src || '';
+    if (!rawSrc || rawSrc.startsWith('data:')) return '';
+    return rawSrc.slice(0, 120);
+}
+
+export function saveVideoResumeTime(videoKey, currentTime, duration) {
+    if (!videoKey) return false;
+    ensureVideoResumeLoaded();
+    const cur = Number(currentTime) || 0;
+    const dur = Number(duration) || 0;
+    if (dur < 12 || cur < 3 || cur / dur >= 0.92) {
+        videoResumeTimeMap.delete(String(videoKey));
+        persistVideoResumeStore();
+        return false;
+    }
+    const safeCur = Math.floor(cur * 10) / 10;
+    if (videoResumeTimeMap.has(String(videoKey))) {
+        videoResumeTimeMap.delete(String(videoKey));
+    }
+    videoResumeTimeMap.set(String(videoKey), safeCur);
+    while (videoResumeTimeMap.size > MAX_VIDEO_RESUME_ENTRIES) {
+        const oldest = videoResumeTimeMap.keys().next().value;
+        if (!oldest) break;
+        videoResumeTimeMap.delete(oldest);
+    }
+    persistVideoResumeStore();
+    return true;
+}
+
+export function getVideoResumeTime(videoKey) {
+    if (!videoKey) return 0;
+    ensureVideoResumeLoaded();
+    return Number(videoResumeTimeMap.get(String(videoKey)) || 0);
+}
+
+function openVideoDiskCacheDB() {
+    const idb = (typeof window !== 'undefined' && window.indexedDB) ? window.indexedDB : (typeof indexedDB !== 'undefined' ? indexedDB : null);
+    if (!idb || typeof idb.open !== 'function') return Promise.resolve(null);
+    if (videoDiskDbPromise) return videoDiskDbPromise;
+    videoDiskDbPromise = new Promise((resolve) => {
+        try {
+            const req = idb.open(VIDEO_DISK_CACHE_DB_NAME, 1);
+            req.onupgradeneeded = (ev) => {
+                const dbInst = ev.target.result;
+                if (dbInst && !dbInst.objectStoreNames.contains(VIDEO_DISK_CACHE_STORE)) {
+                    dbInst.createObjectStore(VIDEO_DISK_CACHE_STORE, { keyPath: 'key' });
+                }
+            };
+            req.onsuccess = () => resolve(req.result || null);
+            req.onerror = () => resolve(null);
+        } catch (_) {
+            resolve(null);
+        }
+    });
+    return videoDiskDbPromise;
+}
+
+export async function getVideoBlobFromDiskCache(cacheKey) {
+    if (!cacheKey) return null;
+    const k = String(cacheKey);
+    const dbInst = await openVideoDiskCacheDB();
+    if (!dbInst) {
+        const entry = videoDiskFallbackMap.get(k);
+        if (!entry || !entry.blob) return null;
+        entry.lastAccessedAt = Date.now();
+        videoDiskFallbackMap.delete(k);
+        videoDiskFallbackMap.set(k, entry);
+        videoDiskCacheHits++;
+        return entry.blob;
+    }
+
+    return new Promise((resolve) => {
+        try {
+            const tx = dbInst.transaction([VIDEO_DISK_CACHE_STORE], 'readwrite');
+            const store = tx.objectStore(VIDEO_DISK_CACHE_STORE);
+            const req = store.get(k);
+            req.onsuccess = () => {
+                const record = req.result;
+                if (record && record.blob) {
+                    videoDiskCacheHits++;
+                    try {
+                        record.lastAccessedAt = Date.now();
+                        store.put(record);
+                    } catch (_) {}
+                    resolve(record.blob);
+                } else {
+                    resolve(null);
+                }
+            };
+            req.onerror = () => resolve(null);
+        } catch (_) {
+            resolve(null);
+        }
+    });
+}
+
+export async function saveVideoBlobToDiskCache(cacheKey, blob) {
+    if (!cacheKey || !blob) return false;
+    const k = String(cacheKey);
+    const sizeBytes = Number(blob.size) || 0;
+    const isMob = isMobilePerformanceMode();
+    const maxItems = isMob ? 30 : 60;
+    const maxBytes = isMob ? (60 * 1024 * 1024) : (150 * 1024 * 1024);
+
+    const dbInst = await openVideoDiskCacheDB();
+    if (!dbInst) {
+        if (videoDiskFallbackMap.has(k)) videoDiskFallbackMap.delete(k);
+        videoDiskFallbackMap.set(k, { key: k, blob, sizeBytes, lastAccessedAt: Date.now() });
+        videoDiskCacheWrites++;
+        let totalBytes = 0;
+        videoDiskFallbackMap.forEach(e => { totalBytes += (e.sizeBytes || 0); });
+        while (videoDiskFallbackMap.size > maxItems || (videoDiskFallbackMap.size > 1 && totalBytes > maxBytes)) {
+            const oldestKey = videoDiskFallbackMap.keys().next().value;
+            const oldestEntry = videoDiskFallbackMap.get(oldestKey);
+            videoDiskFallbackMap.delete(oldestKey);
+            totalBytes -= (oldestEntry?.sizeBytes || 0);
+        }
+        return true;
+    }
+
+    return new Promise((resolve) => {
+        try {
+            const tx = dbInst.transaction([VIDEO_DISK_CACHE_STORE], 'readwrite');
+            const store = tx.objectStore(VIDEO_DISK_CACHE_STORE);
+            store.put({ key: k, blob, sizeBytes, lastAccessedAt: Date.now() });
+            videoDiskCacheWrites++;
+            const allReq = store.getAll();
+            allReq.onsuccess = () => {
+                const records = Array.isArray(allReq.result) ? allReq.result : [];
+                let totalBytes = records.reduce((s, r) => s + (Number(r.sizeBytes) || 0), 0);
+                if (records.length > maxItems || (records.length > 1 && totalBytes > maxBytes)) {
+                    records.sort((a, b) => (a.lastAccessedAt || 0) - (b.lastAccessedAt || 0));
+                    let remaining = records.length;
+                    for (const rec of records) {
+                        if (remaining <= maxItems && totalBytes <= maxBytes) break;
+                        if (rec.key === k) continue;
+                        store.delete(rec.key);
+                        totalBytes -= (Number(rec.sizeBytes) || 0);
+                        remaining--;
+                    }
+                }
+            };
+            tx.oncomplete = () => resolve(true);
+            tx.onerror = () => resolve(false);
+        } catch (_) {
+            resolve(false);
+        }
+    });
+}
+
+export async function clearVideoDiskCache() {
+    videoDiskFallbackMap.clear();
+    videoBlobKeyUrlCache.clear();
+    prefetchedVideoPostIds.clear();
+    const dbInst = await openVideoDiskCacheDB();
+    if (!dbInst) return true;
+    return new Promise((resolve) => {
+        try {
+            const tx = dbInst.transaction([VIDEO_DISK_CACHE_STORE], 'readwrite');
+            tx.objectStore(VIDEO_DISK_CACHE_STORE).clear();
+            tx.oncomplete = () => resolve(true);
+            tx.onerror = () => resolve(false);
+        } catch (_) {
+            resolve(false);
+        }
+    });
+}
+
+export async function loadVideoBlobUrlOptimized(collectionName, docId, fallbackSrc = '') {
+    if (!docId) return fallbackSrc || '';
+    const cacheKey = `${collectionName}_${docId}`;
+    const UrlClass = (typeof window !== 'undefined' && window.URL) ? window.URL : (typeof URL !== 'undefined' ? URL : null);
+
+    if (videoBlobKeyUrlCache.has(cacheKey)) {
+        const memUrl = videoBlobKeyUrlCache.get(cacheKey);
+        videoBlobKeyUrlCache.delete(cacheKey);
+        videoBlobKeyUrlCache.set(cacheKey, memUrl);
+        return memUrl;
+    }
+
+    const diskBlob = await getVideoBlobFromDiskCache(cacheKey);
+    if (diskBlob && UrlClass && typeof UrlClass.createObjectURL === 'function') {
+        try {
+            const objUrl = UrlClass.createObjectURL(diskBlob);
+            videoBlobKeyUrlCache.set(cacheKey, objUrl);
+            return objUrl;
+        } catch (_) {}
+    }
+
+    const fullData = await loadMediaWithChunks(collectionName, docId, fallbackSrc);
+    if (!fullData || typeof fullData !== 'string') return fallbackSrc || '';
+    const clean = fullData.replace(/#t=[0-9,.]+$/, '');
+    if (clean.startsWith('blob:') || clean.startsWith('http://') || clean.startsWith('https://')) {
+        return clean;
+    }
+
+    const blob = await dataUrlToBlobAsync(clean);
+    if (blob) {
+        saveVideoBlobToDiskCache(cacheKey, blob).catch(() => {});
+        if (UrlClass && typeof UrlClass.createObjectURL === 'function') {
+            try {
+                const objUrl = UrlClass.createObjectURL(blob);
+                videoBlobKeyUrlCache.set(cacheKey, objUrl);
+                return objUrl;
+            } catch (_) {}
+        }
+    }
+    return createBlobUrlFromDataAsync(clean);
+}
+
+export function prefetchNextFeedVideo(currentPostId, postsList = null) {
+    const profile = getYouTubeVideoQualityProfile();
+    if (!currentPostId || profile.prefetchNextCount <= 0) {
+        return { prefetched: 0, reason: 'eco_mode', targetIds: [] };
+    }
+    const source = (Array.isArray(postsList) && postsList.length)
+        ? postsList
+        : ((typeof mobileFeedFilteredPosts !== 'undefined' && Array.isArray(mobileFeedFilteredPosts) && mobileFeedFilteredPosts.length)
+            ? mobileFeedFilteredPosts
+            : (typeof cachedFeedPosts !== 'undefined' && Array.isArray(cachedFeedPosts) ? cachedFeedPosts : []));
+    if (!source.length) return { prefetched: 0, reason: 'empty', targetIds: [] };
+
+    const curIdx = source.findIndex(p => p && String(p.id) === String(currentPostId));
+    if (curIdx === -1) return { prefetched: 0, reason: 'not_found', targetIds: [] };
+
+    const targets = [];
+    for (let i = curIdx + 1; i < source.length && targets.length < profile.prefetchNextCount; i++) {
+        const candidate = source[i];
+        if (!candidate || candidate.type !== 'video' || !candidate.id) continue;
+        const pidStr = String(candidate.id);
+        if (prefetchedVideoPostIds.has(pidStr)) continue;
+        prefetchedVideoPostIds.add(pidStr);
+        targets.push(candidate);
+    }
+
+    targets.forEach((nextPost) => {
+        scheduleMobileNonCriticalTask(() => {
+            enqueueMobileMediaTask(async () => {
+                if (nextPost.hasChunks && !nextPost.mediaData) {
+                    await loadVideoBlobUrlOptimized('posts', nextPost.id);
+                } else if (nextPost.mediaData) {
+                    const blob = await dataUrlToBlobAsync(nextPost.mediaData);
+                    if (blob) await saveVideoBlobToDiskCache(`posts_${nextPost.id}`, blob);
+                    await createBlobUrlFromDataAsync(nextPost.mediaData);
+                }
+            });
+        }, 120);
+    });
+
+    return { prefetched: targets.length, targetIds: targets.map(t => t.id) };
+}
+
+export function getYouTubeVideoEngineStats() {
+    const profile = getYouTubeVideoQualityProfile();
+    const mp4Stats = typeof getMp4OptimizationStats === 'function' ? getMp4OptimizationStats() : {};
+    return {
+        qualityMode: profile.mode,
+        effectiveTier: profile.effectiveTier,
+        maxActiveDecoders: profile.maxActiveDecoders,
+        prefetchNextCount: profile.prefetchNextCount,
+        diskCacheHits: videoDiskCacheHits,
+        diskCacheWrites: videoDiskCacheWrites,
+        prefetchedCount: prefetchedVideoPostIds.size,
+        resumeEntriesCount: videoResumeTimeMap.size,
+        ...mp4Stats
+    };
+}
+
+if (typeof document !== 'undefined' && typeof document.addEventListener === 'function' && !document._vortexVideoVisibilityBound) {
+    document._vortexVideoVisibilityBound = true;
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            pauseOtherFeedVideos(null);
+        }
+    });
 }
 
 if (typeof window !== 'undefined') {
@@ -1124,6 +1563,32 @@ export function setVideoLoadingState(videoEl, isLoading, title = 'Carregando...'
     return nextLoading;
 }
 
+export function seekVideoByDelta(video, deltaSeconds = 10) {
+    if (!video) return 0;
+    const cur = Number(video.currentTime) || 0;
+    const dur = Number(video.duration);
+    const maxBound = (isFinite(dur) && dur > 0) ? dur : Infinity;
+    const nextTime = Math.max(0, Math.min(maxBound, cur + Number(deltaSeconds || 0)));
+    try { video.currentTime = nextTime; } catch (_) {}
+
+    const wrapper = video.closest?.('.vortex-video-player') || video.parentElement;
+    if (wrapper) {
+        const isBack = Number(deltaSeconds) < 0;
+        const ind = wrapper.querySelector?.(isBack ? '.vortex-video-seek-indicator.seek-left' : '.vortex-video-seek-indicator.seek-right');
+        if (ind) {
+            const absSec = Math.round(Math.abs(Number(deltaSeconds) || 10));
+            ind.innerText = isBack ? `-${absSec}s` : `+${absSec}s`;
+            ind.classList?.remove('visible');
+            ind.classList?.add('visible');
+            clearTimeout(ind._hideSeekTimer);
+            ind._hideSeekTimer = setTimeout(() => {
+                ind.classList?.remove('visible');
+            }, 680);
+        }
+    }
+    return nextTime;
+}
+
 export function attachVortexVideoPlayer(video) {
     if (!video || typeof document === 'undefined') return;
     if (video._hasVortexPlayer) return;
@@ -1244,6 +1709,65 @@ export function attachVortexVideoPlayer(video) {
         `;
         controlsRow.appendChild(volGroup);
 
+        // Quality / Data Saver Selector Group (YouTube-style adaptive profile v1.0.316)
+        const curQualityMode = getYouTubeVideoQualityMode();
+        const curQualityProfile = getYouTubeVideoQualityProfile({ mode: curQualityMode });
+        const qualityGroup = document.createElement('div');
+        qualityGroup.className = 'vortex-video-quality-group';
+
+        const qualityBtn = document.createElement('button');
+        qualityBtn.type = 'button';
+        qualityBtn.className = 'vortex-video-ctrl-btn vortex-video-quality-btn';
+        qualityBtn.title = 'Qualidade e economia de dados';
+        qualityBtn.setAttribute('aria-label', 'Qualidade do vídeo');
+        const qualityLabel = document.createElement('span');
+        qualityLabel.className = 'vortex-video-quality-label';
+        qualityLabel.innerText = YOUTUBE_QUALITY_LABEL_MAP[curQualityMode] || curQualityProfile.label || 'Auto';
+        qualityBtn.appendChild(qualityLabel);
+        qualityGroup.appendChild(qualityBtn);
+
+        const qualityMenu = document.createElement('div');
+        qualityMenu.className = 'vortex-video-quality-menu';
+        qualityMenu.style.display = 'none';
+        qualityMenu.setAttribute('role', 'menu');
+
+        const qualityMenuHeader = document.createElement('div');
+        qualityMenuHeader.className = 'vortex-video-quality-menu-header';
+        qualityMenuHeader.innerHTML = '<i data-lucide="sliders"></i><span>Qualidade</span>';
+        qualityMenu.appendChild(qualityMenuHeader);
+
+        const qualityList = document.createElement('div');
+        qualityList.className = 'vortex-video-quality-options-list';
+
+        const qualityOptions = [
+            { mode: 'auto', label: 'Auto (Adaptativo)' },
+            { mode: 'eco', label: 'Economia (Dados)' },
+            { mode: 'balanced', label: 'Fluido (Padrão)' },
+            { mode: 'hd', label: 'HD (Alta Qualidade)' }
+        ];
+
+        qualityOptions.forEach(opt => {
+            const qBtn = document.createElement('button');
+            qBtn.type = 'button';
+            const isActive = opt.mode === curQualityMode;
+            qBtn.className = `vortex-video-quality-opt${isActive ? ' active' : ''}`;
+            qBtn.dataset.quality = opt.mode;
+            const qSpan = document.createElement('span');
+            qSpan.className = 'vortex-quality-val';
+            qSpan.innerText = opt.label;
+            qBtn.appendChild(qSpan);
+            const qCheck = document.createElement('i');
+            qCheck.className = 'vortex-quality-check';
+            qCheck.setAttribute('data-lucide', 'check');
+            if (!isActive) qCheck.style.display = 'none';
+            qBtn.appendChild(qCheck);
+            qualityList.appendChild(qBtn);
+        });
+
+        qualityMenu.appendChild(qualityList);
+        qualityGroup.appendChild(qualityMenu);
+        controlsRow.appendChild(qualityGroup);
+
         // Speed Group (Replacing Image 1 & Image 2 with Vortex VIP theme)
         const speedGroup = document.createElement('div');
         speedGroup.className = 'vortex-video-speed-group';
@@ -1343,6 +1867,24 @@ export function attachVortexVideoPlayer(video) {
         wrapper.appendChild(loadingOverlay);
     }
 
+    if (!wrapper.querySelector?.('.vortex-video-seek-indicator.seek-left')) {
+        const leftInd = document.createElement('div');
+        leftInd.className = 'vortex-video-seek-indicator seek-left';
+        leftInd.setAttribute('aria-hidden', 'true');
+        leftInd.innerText = '-10s';
+        wrapper.appendChild(leftInd);
+    }
+    if (!wrapper.querySelector?.('.vortex-video-seek-indicator.seek-right')) {
+        const rightInd = document.createElement('div');
+        rightInd.className = 'vortex-video-seek-indicator seek-right';
+        rightInd.setAttribute('aria-hidden', 'true');
+        rightInd.innerText = '+10s';
+        wrapper.appendChild(rightInd);
+    }
+    if (wrapper.tabIndex === undefined || wrapper.tabIndex < 0) {
+        wrapper.tabIndex = 0;
+    }
+
     // Elementos internos
     const playBtn = controls.querySelector('.vortex-video-play-btn');
     const playIcon = controls.querySelector('.vortex-video-btn-icon-play');
@@ -1361,6 +1903,9 @@ export function attachVortexVideoPlayer(video) {
     const speedLabel = controls.querySelector('.vortex-video-speed-label');
     const speedMenu = controls.querySelector('.vortex-video-speed-menu');
     const speedOpts = controls.querySelectorAll('.vortex-video-speed-opt');
+    const qualityBtn = controls.querySelector('.vortex-video-quality-btn');
+    const qualityMenu = controls.querySelector('.vortex-video-quality-menu');
+    const qualityOpts = controls.querySelectorAll('.vortex-video-quality-opt');
     const fsBtn = controls.querySelector('.vortex-video-fullscreen-btn');
     const fsEnterIcon = controls.querySelector('.vortex-video-icon-fs-enter');
     const fsExitIcon = controls.querySelector('.vortex-video-icon-fs-exit');
@@ -1410,6 +1955,40 @@ export function attachVortexVideoPlayer(video) {
     if (playBtn) playBtn.onclick = (e) => { e.stopPropagation(); togglePlay(); };
     if (centerBtn) centerBtn.onclick = (e) => { e.stopPropagation(); togglePlay(); };
     video.onclick = (e) => { e.stopPropagation(); togglePlay(); };
+
+    let lastTapTs = 0;
+    let lastTapSide = '';
+    video.addEventListener?.('touchend', (e) => {
+        const touch = e?.changedTouches?.[0];
+        const rect = wrapper.getBoundingClientRect?.();
+        if (!touch || !rect || !rect.width) return;
+        const relX = (touch.clientX - rect.left) / rect.width;
+        const side = relX <= 0.35 ? 'left' : (relX >= 0.65 ? 'right' : '');
+        const nowTap = Date.now();
+        if (side && side === lastTapSide && (nowTap - lastTapTs) < 300) {
+            e?.preventDefault?.();
+            e?.stopPropagation?.();
+            seekVideoByDelta(video, side === 'left' ? -10 : 10);
+            lastTapTs = 0;
+            lastTapSide = '';
+        } else {
+            lastTapTs = nowTap;
+            lastTapSide = side;
+        }
+    });
+
+    video.addEventListener?.('dblclick', (e) => {
+        const rect = wrapper.getBoundingClientRect?.();
+        if (!rect || !rect.width || typeof e?.clientX !== 'number') return;
+        const relX = (e.clientX - rect.left) / rect.width;
+        if (relX <= 0.35) {
+            e?.stopPropagation?.();
+            seekVideoByDelta(video, -10);
+        } else if (relX >= 0.65) {
+            e?.stopPropagation?.();
+            seekVideoByDelta(video, 10);
+        }
+    });
 
     const bindLoadingEvent = (evtName, handler) => {
         if (typeof video.addEventListener === 'function') {
@@ -1471,9 +2050,15 @@ export function attachVortexVideoPlayer(video) {
         } else {
             setVideoLoadingState(video, true, 'Carregando...');
         }
+        const playingPostId = video.dataset?.postId || video.closest?.('[data-post-id]')?.dataset?.postId || '';
+        if (playingPostId && typeof prefetchNextFeedVideo === 'function') {
+            prefetchNextFeedVideo(playingPostId);
+        }
     };
     video.onpause = () => {
         updatePlayState(false);
+        const rKey = getVideoResumeKeyFromElement(video);
+        if (rKey) saveVideoResumeTime(rKey, video.currentTime, video.duration);
         if (video.dataset?.chunkLoading !== 'true') {
             if (video.dataset) delete video.dataset.userRequestedPlay;
             setVideoLoadingState(video, false);
@@ -1483,6 +2068,8 @@ export function attachVortexVideoPlayer(video) {
         updatePlayState(false);
         if (video.dataset) delete video.dataset.userRequestedPlay;
         setVideoLoadingState(video, false);
+        const rKey = getVideoResumeKeyFromElement(video);
+        if (rKey) saveVideoResumeTime(rKey, 0, video.duration);
         if (progressFill) progressFill.style.width = '0%';
         if (progressThumb) progressThumb.style.left = '0%';
         const watchedPostId = video.dataset?.postId ||
@@ -1493,6 +2080,7 @@ export function attachVortexVideoPlayer(video) {
         }
     };
 
+    let lastResumeSaveTime = 0;
     const updateTime = () => {
         const cur = video.currentTime || 0;
         const dur = video.duration || 0;
@@ -1503,12 +2091,22 @@ export function attachVortexVideoPlayer(video) {
             if (progressFill) progressFill.style.width = `${pct}%`;
             if (progressThumb) progressThumb.style.left = `${pct}%`;
         }
+        if (dur >= 12 && Math.abs(cur - lastResumeSaveTime) >= 2) {
+            lastResumeSaveTime = cur;
+            const rKey = getVideoResumeKeyFromElement(video);
+            if (rKey) saveVideoResumeTime(rKey, cur, dur);
+        }
     };
 
     video.ontimeupdate = updateTime;
     video.onloadedmetadata = () => {
         if (video.duration && timeTotal) {
             timeTotal.innerText = formatVideoTime(video.duration);
+        }
+        const rKey = getVideoResumeKeyFromElement(video);
+        const savedResume = rKey ? getVideoResumeTime(rKey) : 0;
+        if (savedResume >= 3 && (Number(video.currentTime) || 0) < 1 && (!video.duration || savedResume < video.duration * 0.92)) {
+            try { video.currentTime = savedResume; } catch (_) {}
         }
         updateTime();
         if (video.paused && video.dataset?.userRequestedPlay !== 'true' && video.dataset?.chunkLoading !== 'true') {
@@ -1528,7 +2126,8 @@ export function attachVortexVideoPlayer(video) {
         const handleSeek = (e) => {
             const rect = timeline.getBoundingClientRect();
             if (!rect.width) return;
-            const clickX = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
+            const clientX = (e?.touches?.[0]?.clientX ?? e?.changedTouches?.[0]?.clientX ?? e?.clientX ?? 0);
+            const clickX = Math.max(0, Math.min(rect.width, clientX - rect.left));
             const pct = clickX / rect.width;
             if (video.duration && !isNaN(video.duration)) {
                 video.currentTime = pct * video.duration;
@@ -1551,6 +2150,20 @@ export function attachVortexVideoPlayer(video) {
             };
             window.addEventListener('mousemove', onMouseMove);
             window.addEventListener('mouseup', onMouseUp);
+        };
+        timeline.ontouchstart = (e) => {
+            e?.stopPropagation?.();
+            isScrubbing = true;
+            handleSeek(e);
+        };
+        timeline.ontouchmove = (e) => {
+            if (!isScrubbing) return;
+            e?.preventDefault?.();
+            e?.stopPropagation?.();
+            handleSeek(e);
+        };
+        timeline.ontouchend = () => {
+            isScrubbing = false;
         };
     }
 
@@ -1575,12 +2188,31 @@ export function attachVortexVideoPlayer(video) {
         };
     }
 
-    // Configuração do Menu de Velocidade VIP (Substituindo Image 2 pelo Tema Vortex VIP)
+    // Seletor de Qualidade / Dados (YouTube-style v1.0.316)
+    if (qualityBtn && qualityMenu) {
+        qualityBtn.onclick = (e) => {
+            e.stopPropagation();
+            const isShown = qualityMenu.style.display === 'block';
+            document.querySelectorAll('.vortex-video-quality-menu, .vortex-video-speed-menu').forEach(m => { m.style.display = 'none'; });
+            qualityMenu.style.display = isShown ? 'none' : 'block';
+        };
+
+        qualityOpts.forEach(opt => {
+            opt.onclick = (e) => {
+                e.stopPropagation();
+                const chosen = opt.dataset?.quality || 'auto';
+                setYouTubeVideoQualityMode(chosen);
+                qualityMenu.style.display = 'none';
+            };
+        });
+    }
+
+    // Configuração do Menu de Velocidade VIP (Substituindo Image 1 & Image 2 pelo Tema Vortex VIP)
     if (speedBtn && speedMenu) {
         speedBtn.onclick = (e) => {
             e.stopPropagation();
             const isShown = speedMenu.style.display === 'block';
-            document.querySelectorAll('.vortex-video-speed-menu').forEach(m => { m.style.display = 'none'; });
+            document.querySelectorAll('.vortex-video-speed-menu, .vortex-video-quality-menu').forEach(m => { m.style.display = 'none'; });
             speedMenu.style.display = isShown ? 'none' : 'block';
         };
 
@@ -1643,6 +2275,27 @@ export function attachVortexVideoPlayer(video) {
 
     wrapper.onmousemove = resetHideTimer;
     wrapper.ontouchstart = resetHideTimer;
+    wrapper.onkeydown = (e) => {
+        const key = String(e?.key || '').toLowerCase();
+        if (key === ' ' || key === 'k') {
+            e?.preventDefault?.();
+            togglePlay();
+        } else if (key === 'arrowleft' || key === 'j') {
+            e?.preventDefault?.();
+            seekVideoByDelta(video, -10);
+            updateTime();
+        } else if (key === 'arrowright' || key === 'l') {
+            e?.preventDefault?.();
+            seekVideoByDelta(video, 10);
+            updateTime();
+        } else if (key === 'm') {
+            e?.preventDefault?.();
+            muteBtn?.click?.();
+        } else if (key === 'f') {
+            e?.preventDefault?.();
+            fsBtn?.click?.();
+        }
+    };
     controls.onmouseenter = () => {
         clearTimeout(hideTimer);
         wrapper.classList.remove('controls-hidden');
@@ -14523,6 +15176,86 @@ export function formatDurationSeconds(seconds) {
     return `${m}:${s < 10 ? '0' : ''}${s}`;
 }
 
+export async function captureVideoAutoThumbnail(videoSrc, options = {}) {
+    if (!videoSrc || typeof document === 'undefined' || typeof document.createElement !== 'function') {
+        return null;
+    }
+    const maxDimension = Number(options.maxDimension) || 640;
+    const quality = Number(options.quality) || 0.72;
+    const timeoutMs = Number(options.timeoutMs) || 1200;
+
+    return new Promise((resolve) => {
+        let settled = false;
+        let timer = null;
+        let probeVideo = null;
+        const finish = (result) => {
+            if (settled) return;
+            settled = true;
+            if (timer) clearTimeout(timer);
+            try {
+                if (probeVideo) {
+                    probeVideo.onloadeddata = null;
+                    probeVideo.onseeked = null;
+                    probeVideo.onerror = null;
+                    probeVideo.src = '';
+                }
+            } catch (_) {}
+            resolve(result || null);
+        };
+
+        try {
+            probeVideo = document.createElement('video');
+            if (!probeVideo || typeof probeVideo.addEventListener !== 'function') {
+                return finish(null);
+            }
+            const canvas = document.createElement('canvas');
+            const ctx = canvas?.getContext?.('2d');
+            if (!ctx || typeof canvas.toDataURL !== 'function') {
+                return finish(null);
+            }
+
+            timer = setTimeout(() => finish(null), timeoutMs);
+            probeVideo.muted = true;
+            probeVideo.playsInline = true;
+            probeVideo.preload = 'auto';
+
+            const drawFrame = () => {
+                try {
+                    const vw = Number(probeVideo.videoWidth) || 0;
+                    const vh = Number(probeVideo.videoHeight) || 0;
+                    if (!vw || !vh) return finish(null);
+                    const scale = Math.min(1, maxDimension / Math.max(vw, vh));
+                    canvas.width = Math.max(1, Math.round(vw * scale));
+                    canvas.height = Math.max(1, Math.round(vh * scale));
+                    ctx.drawImage(probeVideo, 0, 0, canvas.width, canvas.height);
+                    const thumbDataUrl = canvas.toDataURL('image/jpeg', quality);
+                    finish((thumbDataUrl && thumbDataUrl.startsWith('data:image/')) ? thumbDataUrl : null);
+                } catch (_) {
+                    finish(null);
+                }
+            };
+
+            probeVideo.onloadeddata = () => {
+                try {
+                    const dur = Number(probeVideo.duration) || 0;
+                    if (dur > 0.4) {
+                        probeVideo.onseeked = drawFrame;
+                        probeVideo.currentTime = Math.min(0.25, dur * 0.1);
+                    } else {
+                        drawFrame();
+                    }
+                } catch (_) {
+                    drawFrame();
+                }
+            };
+            probeVideo.onerror = () => finish(null);
+            probeVideo.src = videoSrc;
+        } catch (_) {
+            finish(null);
+        }
+    });
+}
+
 export async function compressImageFileToKB(file, options = {}) {
     if (!file) return null;
     const maxDimension = options.maxDimension || 1280;
@@ -24017,7 +24750,7 @@ export function getAdminReports() {
 
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
-export const CURRENT_APP_VERSION = '1.0.315';
+export const CURRENT_APP_VERSION = '1.0.316';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -34091,6 +34824,7 @@ let pendingPostImages = [];
 let postImageSelectionSeq = 0;
 let pendingPostVideoCoverData = null;
 let pendingPostVideoCoverInfo = null;
+let pendingPostAutoThumbnailData = null;
 let postVideoCoverSeq = 0;
 
 export function getPendingPostFile() {
@@ -34176,6 +34910,7 @@ function resetPostComposer() {
     postImageSelectionSeq++;
     pendingPostVideoCoverData = null;
     pendingPostVideoCoverInfo = null;
+    pendingPostAutoThumbnailData = null;
     postVideoCoverSeq++;
     const addImgInput = document.getElementById('post-add-image-input');
     if (addImgInput) addImgInput.value = '';
@@ -35183,7 +35918,8 @@ export function renderPostMediaTagHTML(post, options = {}) {
         const coverUrl = getPostVideoCover(post);
         const isCoverChunkPending = Boolean(post.hasVideoCoverChunks && !coverUrl && post.id);
         const useMobileLazyVideo = !options.autoplay && isMobilePerformanceMode();
-        const deferChunkedMp4 = Boolean(useMobileLazyVideo && isChunkPending && (coverUrl || isCoverChunkPending));
+        const ytProfile = getYouTubeVideoQualityProfile();
+        const deferChunkedMp4 = Boolean(useMobileLazyVideo && isChunkPending && (coverUrl || isCoverChunkPending || ytProfile.deferChunkedMp4));
         const protectedClass = options.autoplay ? '' : ' class="protected-media"';
         const srcAttrs = useMobileLazyVideo
             ? `data-mobile-lazy-video="true" ${videoSrc ? `data-lazy-video-src="${videoSrc}"` : ''} preload="none"`
@@ -36560,18 +37296,23 @@ export function loadVideoChunkOnDemand(videoEl, postsList = cachedFeedPosts) {
         setVideoLoadingState(videoEl, true, 'Carregando...');
         let fullData = '';
         try {
-            fullData = await loadMediaWithChunks('posts', pId);
-            if (!fullData) return '';
             const sourceList = (Array.isArray(postsList) && postsList.length) ? postsList : cachedFeedPosts;
             const postObj = Array.isArray(sourceList) ? sourceList.find(p => p && String(p.id) === String(pId)) : null;
-            if (postObj) postObj.mediaData = fullData;
-            let src = fullData;
+            let src = '';
             if (videoEl.dataset?.chunkType === 'video' || (videoEl.tagName || '').toUpperCase() === 'VIDEO') {
-                const clean = (typeof fullData === 'string') ? fullData.replace(/#t=[0-9,.]+$/, '') : fullData;
-                const blobUrl = await createBlobUrlFromDataAsync(clean);
-                src = (videoEl.dataset?.chunkTrimmed === 'true' && blobUrl && !blobUrl.includes('#t='))
+                const blobUrl = await loadVideoBlobUrlOptimized('posts', pId);
+                if (!blobUrl) return '';
+                const cachedRaw = mediaChunkCache.get(`posts_${pId}`);
+                fullData = cachedRaw || blobUrl;
+                if (postObj && cachedRaw) postObj.mediaData = cachedRaw;
+                src = (videoEl.dataset?.chunkTrimmed === 'true' && !blobUrl.includes('#t='))
                     ? `${blobUrl}#t=0,${videoEl.dataset.chunkDuration || 120}`
                     : blobUrl;
+            } else {
+                fullData = await loadMediaWithChunks('posts', pId);
+                if (!fullData) return '';
+                if (postObj) postObj.mediaData = fullData;
+                src = fullData;
             }
             if (videoEl.dataset?.mobileLazyVideo === 'true') {
                 videoEl.dataset.lazyVideoSrc = src;
@@ -38919,6 +39660,7 @@ export function handlePostMediaSelection(file) {
     const isVideo = (file.type && file.type.startsWith('video'));
     pendingPostVideoCoverData = null;
     pendingPostVideoCoverInfo = null;
+    pendingPostAutoThumbnailData = null;
     postVideoCoverSeq++;
     const videoCoverInp = document.getElementById('post-video-cover-input');
     if (videoCoverInp) {
@@ -39026,6 +39768,14 @@ export function handlePostMediaSelection(file) {
 
     // Otimização e corte assíncrono para KB
     if (isVideo) {
+        const thumbSeq = postVideoCoverSeq;
+        if (objectUrl && !pendingPostVideoCoverData) {
+            captureVideoAutoThumbnail(objectUrl).then(thumbUrl => {
+                if (thumbSeq === postVideoCoverSeq && thumbUrl && !pendingPostVideoCoverData) {
+                    pendingPostAutoThumbnailData = thumbUrl;
+                }
+            }).catch(() => {});
+        }
         trimAndCompressVideoToKB(file, { maxDuration: 120, cutThreshold: 180 }).then(result => {
             if (result) {
                 pendingPostMediaInfo = result;
@@ -39225,6 +39975,7 @@ export async function handlePostImagesSelection(fileList, { append = false } = {
 
     pendingPostVideoCoverData = null;
     pendingPostVideoCoverInfo = null;
+    pendingPostAutoThumbnailData = null;
     postVideoCoverSeq++;
     syncPostVideoCoverUI(false);
 
@@ -39426,6 +40177,7 @@ export function syncPostVideoCoverUI(showOption) {
 export function removePendingPostVideoCover() {
     pendingPostVideoCoverData = null;
     pendingPostVideoCoverInfo = null;
+    pendingPostAutoThumbnailData = null;
     postVideoCoverSeq++;
     const coverInputEl = document.getElementById('post-video-cover-input');
     if (coverInputEl) {
@@ -39670,6 +40422,9 @@ document.getElementById('publish-post-btn')?.addEventListener('click', async () 
                     const inlineOk = vLen <= MAX_DIRECT_PAYLOAD_CHARS ? (vLen + coverLen <= 450000) : (coverLen <= 350000);
                     return inlineOk ? pendingPostVideoCoverData : null;
                 })(),
+                thumbnailData: (!isVideo || pendingPostVideoCoverData)
+                    ? null
+                    : (pendingPostAutoThumbnailData && pendingPostAutoThumbnailData.length <= 120000 ? pendingPostAutoThumbnailData : null),
                 hasVideoCoverChunks: (() => {
                     if (!isVideo || !pendingPostVideoCoverData) return false;
                     const vLen = typeof mediaPayload === 'string' ? mediaPayload.length : 0;
@@ -58642,6 +59397,19 @@ if (typeof window !== 'undefined') {
     window.loadVideoChunkOnDemand = loadVideoChunkOnDemand;
     window.getMp4OptimizationStats = getMp4OptimizationStats;
     window.MAX_MEDIA_CHUNK_CACHE_ITEMS = MAX_MEDIA_CHUNK_CACHE_ITEMS;
+    window.getYouTubeVideoQualityMode = getYouTubeVideoQualityMode;
+    window.setYouTubeVideoQualityMode = setYouTubeVideoQualityMode;
+    window.getYouTubeVideoQualityProfile = getYouTubeVideoQualityProfile;
+    window.saveVideoResumeTime = saveVideoResumeTime;
+    window.getVideoResumeTime = getVideoResumeTime;
+    window.getVideoBlobFromDiskCache = getVideoBlobFromDiskCache;
+    window.saveVideoBlobToDiskCache = saveVideoBlobToDiskCache;
+    window.clearVideoDiskCache = clearVideoDiskCache;
+    window.loadVideoBlobUrlOptimized = loadVideoBlobUrlOptimized;
+    window.prefetchNextFeedVideo = prefetchNextFeedVideo;
+    window.captureVideoAutoThumbnail = captureVideoAutoThumbnail;
+    window.seekVideoByDelta = seekVideoByDelta;
+    window.getYouTubeVideoEngineStats = getYouTubeVideoEngineStats;
 
     initVortexLoadingScreen();
     resolveGoogleRedirectAuthResult();

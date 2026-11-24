@@ -35807,6 +35807,167 @@ body.vortex-mobile-opt .channel-panel {
     text-shadow: 0 1px 6px rgba(0, 0, 0, 0.85);
 }
 
+/* ==========================================================================
+   v1.0.316: Motor de Vídeos Estilo YouTube (Duplo Toque, Qualidade/Dados & GPU)
+   ========================================================================== */
+.vortex-video-player video {
+    transform: translateZ(0);
+}
+
+.vortex-video-timeline {
+    touch-action: none;
+}
+
+.vortex-video-progress-buffered {
+    background: rgba(255, 255, 255, 0.36);
+}
+
+@keyframes vortexSeekPulse {
+    0% {
+        opacity: 0;
+        transform: translateY(-50%) scale(0.8);
+    }
+    25% {
+        opacity: 1;
+        transform: translateY(-50%) scale(1.05);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-50%) scale(0.95);
+    }
+}
+
+.vortex-video-seek-indicator {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    min-width: 74px;
+    height: 74px;
+    border-radius: 50%;
+    background: rgba(8, 12, 24, 0.76);
+    border: 1px solid rgba(0, 240, 255, 0.35);
+    color: #ffffff;
+    font-size: 0.82rem;
+    font-weight: 800;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    z-index: 6;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    box-shadow: 0 0 18px rgba(0, 240, 255, 0.28);
+}
+
+.vortex-video-seek-indicator.seek-left {
+    left: 14%;
+}
+
+.vortex-video-seek-indicator.seek-right {
+    right: 14%;
+}
+
+.vortex-video-seek-indicator.visible {
+    visibility: visible;
+    animation: vortexSeekPulse 0.65s ease forwards;
+}
+
+.vortex-video-quality-group {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.vortex-video-quality-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(0, 240, 255, 0.35);
+    border-radius: 12px;
+    padding: 3px 9px;
+    font-size: 0.73rem;
+    font-weight: 700;
+    color: #ffffff;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.vortex-video-quality-btn:hover,
+.vortex-video-quality-group.active .vortex-video-quality-btn {
+    background: rgba(0, 240, 255, 0.16);
+    border-color: #00f0ff;
+    color: #00f0ff;
+    box-shadow: 0 0 10px rgba(0, 240, 255, 0.35);
+}
+
+.vortex-video-quality-menu {
+    position: absolute;
+    bottom: 36px;
+    right: 0;
+    min-width: 162px;
+    background: #141414;
+    border: 1px solid rgba(0, 240, 255, 0.35);
+    border-radius: 14px;
+    padding: 6px;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.9), 0 0 15px rgba(0, 240, 255, 0.2);
+    z-index: 100;
+    animation: vortexSpeedMenuIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.vortex-video-quality-menu-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    margin-bottom: 4px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: #00f0ff;
+}
+
+.vortex-video-quality-menu-header i {
+    width: 13px;
+    height: 13px;
+}
+
+.vortex-video-quality-options-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.vortex-video-quality-opt {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: var(--text-main, #ffffff);
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: left;
+}
+
+.vortex-video-quality-opt:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.vortex-video-quality-opt.active {
+    background: rgba(0, 240, 255, 0.16);
+    color: #00f0ff;
+    font-weight: 700;
+}
+
 
 
 

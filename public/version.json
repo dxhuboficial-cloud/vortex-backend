@@ -1,6 +1,6 @@
 {
-  "version": "1.0.315",
-  "build": 315,
+  "version": "1.0.316",
+  "build": 316,
   "releaseDate": "2026-11-24",
-  "notes": "Bolinha rotativa Carregando... nos vídeos e otimização de carregamento e decodificação assíncrona MP4 v1.0.315"
+  "notes": "Motor de otimização de vídeos estilo YouTube: cache binário IndexedDB, perfil adaptativo de rede, prefetch inteligente, auto-thumbnail no upload, duplo toque ±10s, scrubbing por toque, auto-resume e modo qualidade/dados v1.0.316"
 }
