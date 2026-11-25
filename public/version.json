@@ -1,6 +1,6 @@
 {
-  "version": "1.0.317",
-  "build": 317,
+  "version": "1.0.318",
+  "build": 318,
   "releaseDate": "2026-11-24",
-  "notes": "Otimização PageSpeed Mobile & Desktop v1.0.317: CSS crítico inline e style.css não-bloqueante, splash no topo do body, carregamento sob demanda do SDK Mercado Pago e Lucide, headers de segurança HTTP e correções de acessibilidade WCAG AA"
+  "notes": "Otimização PageSpeed 95-100 v1.0.318: elimina CLS Desktop (0.343->0.000), reduz LCP Mobile ocultando sidebar atrás do login, corrige aria-prohibited-attr e label-content-name-mismatch (Acessibilidade 100), libera paste nativo no catálogo (Práticas Recomendadas 100) e ativa BFCache"
 }

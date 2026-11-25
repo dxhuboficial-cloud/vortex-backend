@@ -35,11 +35,11 @@
     <meta itemprop="image" content="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
     <link rel="image_src" type="image/png" href="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
 
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.317">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.317">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.317">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.317">
-    <!-- Preconnects de Rede para Reduzir Latência no Celular (v1.0.317) -->
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.318">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.318">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.318">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.318">
+    <!-- Preconnects de Rede para Reduzir Latência no Celular (v1.0.318) -->
     <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -54,9 +54,12 @@
         html,body{width:100%;height:100%;height:100dvh;margin:0;padding:0;overflow:hidden;background-color:#000000;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;display:flex;justify-content:center;align-items:center;color:var(--text-main);}
         html:not(.vortex-styles-ready) .app-container > :not(#auth-screen):not(#toast-container),
         html:not(.vortex-styles-ready) #maintenance-screen-overlay,
-        html:not(.vortex-styles-ready) canvas:not(#vortex-canvas){display:none !important;}
+        html:not(.vortex-styles-ready) canvas:not(#vortex-canvas),
+        #auth-screen:not(.unlocked) ~ #main-sidebar,
+        #auth-screen:not(.unlocked) ~ #desktop-chat-placeholder{display:none !important;}
         .app-container{background-color:var(--bg-color);width:100%;max-width:440px;height:100%;height:100dvh;max-height:920px;position:relative;overflow:hidden;box-shadow:0 0 50px rgba(255,240,31,0.15),0 20px 40px rgba(0,0,0,0.9);border:1px solid rgba(255,255,255,0.08);border-radius:24px;display:flex;flex-direction:column;}
         @media (max-width:480px){.app-container{width:100vw;height:100dvh;max-width:100vw;max-height:100dvh;border-radius:0;border:none;box-shadow:none;}}
+        @media (min-width:900px){body{background-color:#000000;padding:0;margin:0;}.app-container{width:100vw !important;max-width:100vw !important;height:100vh !important;height:100dvh !important;max-height:100vh !important;border-radius:0 !important;border:none !important;box-shadow:none !important;display:flex !important;flex-direction:row !important;position:relative !important;overflow:hidden !important;}}
         .lock-screen{position:absolute;top:0;left:0;width:100%;height:100%;background:var(--bg-color);z-index:3000;display:flex;flex-direction:column;align-items:center;justify-content:center;}
         .lock-screen.unlocked{transform:translateY(-110%);pointer-events:none !important;display:none !important;}
         .auth-card{text-align:center;max-width:320px;padding:20px;}
@@ -64,8 +67,8 @@
         .auth-shield-icon{width:48px;height:48px;color:var(--accent-color);}
         .auth-title{color:var(--accent-color);margin:15px 0 6px;font-size:1.5rem;font-weight:700;letter-spacing:2px;}
         .auth-subtitle{color:var(--text-dim);margin-bottom:30px;font-size:0.85rem;line-height:1.4;}
-        .danger-btn{background:rgba(255,59,48,0.15);border:1px solid #ff3b30;color:#ff3b30;padding:8px 16px;border-radius:10px;cursor:pointer;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:6px;}
         .google-login-btn{background:#ffffff;color:#000000;border:none;width:100%;padding:14px 20px;font-weight:700;font-size:0.92rem;display:flex;align-items:center;justify-content:center;gap:12px;border-radius:30px;box-shadow:0 4px 20px rgba(255,240,31,0.25);cursor:pointer;}
+        .danger-btn{background:rgba(255,59,48,0.15);border:1px solid #ff3b30;color:#ff3b30;padding:8px 16px;border-radius:10px;cursor:pointer;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:6px;}
         .auth-loading-msg{display:none;margin-top:15px;font-size:0.8rem;color:var(--accent-color);}
         .auth-legal-footer{margin-top:18px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.08);font-size:0.76rem;color:#94a3b8;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;width:100%;}
         .auth-privacy-link{color:#39ff14;text-decoration:none;font-weight:700;display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:8px;background:rgba(57,255,20,0.08);border:1px solid rgba(57,255,20,0.2);}
@@ -118,12 +121,12 @@
     <!-- Fonte Inter Carregada de Forma Não Bloqueante -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" media="print" onload="this.media='all'">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"></noscript>
-    <!-- Folha de Estilos Principal Carregada de Forma Não Bloqueante (v1.0.317) -->
-    <link rel="preload" href="style.css?v=1.0.317" as="style">
-    <link id="vortex-main-stylesheet" rel="stylesheet" href="style.css?v=1.0.317" media="print" onload="this.media='all';document.documentElement.classList.add('vortex-styles-ready')">
-    <noscript><link rel="stylesheet" href="style.css?v=1.0.317"></noscript>
+    <!-- Folha de Estilos Principal Carregada de Forma Não Bloqueante (v1.0.318) -->
+    <link rel="preload" href="style.css?v=1.0.318" as="style">
+    <link id="vortex-main-stylesheet" rel="stylesheet" href="style.css?v=1.0.318" media="print" onload="this.media='all';document.documentElement.classList.add('vortex-styles-ready')">
+    <noscript><link rel="stylesheet" href="style.css?v=1.0.318"></noscript>
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.317" id="app-manifest-link">
+    <link rel="manifest" href="manifest.json?v=1.0.318" id="app-manifest-link">
     <meta name="theme-color" content="#39ff14" id="app-theme-color-meta">
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#39ff14" id="app-theme-color-meta-dark">
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#39ff14" id="app-theme-color-meta-light">
@@ -132,8 +135,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.317">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.317">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.318">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.318">
     <!-- Sincronização Dinâmica da Barra de Status + Loaders Sob Demanda (Mercado Pago & Lucide) -->
     <script>
         (function() {
@@ -226,10 +229,10 @@
             };
 
             var triggerPostPaintLucide = function() {
-                if (typeof requestAnimationFrame === 'function') {
-                    requestAnimationFrame(function() { setTimeout(window.loadLucideIcons, 0); });
+                if (typeof requestIdleCallback === 'function') {
+                    requestIdleCallback(function() { window.loadLucideIcons(); }, { timeout: 2500 });
                 } else {
-                    setTimeout(window.loadLucideIcons, 0);
+                    setTimeout(window.loadLucideIcons, 1200);
                 }
             };
             if (document.readyState === 'loading') {
@@ -243,7 +246,7 @@
 <body>
 
     <!-- =========================================================
-         TELA DE CARREGAMENTO OFICIAL VORTEX VIP (v1.0.317 - No topo do body para FCP/LCP imediato)
+         TELA DE CARREGAMENTO OFICIAL VORTEX VIP (v1.0.318 - No topo do body para FCP/LCP imediato)
          ========================================================= -->
     <div id="vortex-loading-screen" class="vortex-loading-screen" role="status" aria-live="polite" aria-label="Tela de carregamento VORTEX VIP">
         <canvas id="vortex-canvas" aria-hidden="true"></canvas>
@@ -331,7 +334,7 @@
         </div>
 
         <div class="vortex-loading-footer">
-            <div class="vortex-loading-footer-version">VORTEX VIP &bull; v1.0.317</div>
+            <div class="vortex-loading-footer-version">VORTEX VIP &bull; v1.0.318</div>
 
             <div class="vortex-loading-footer-actions">
                 <button type="button" id="replay-btn" class="vortex-loading-footer-btn">
@@ -380,7 +383,7 @@
                 <h1 class="auth-title">VORTEX <span>VIP</span></h1>
                 <p class="auth-subtitle">Rede segura de comunicação em tempo real com criptografia quântica.</p>
                 
-                <button id="google-login-main-btn" class="google-login-btn danger-btn" title="Fazer login com o Google" aria-label="Fazer login com o Google">
+                <button id="google-login-main-btn" class="google-login-btn danger-btn" title="Entrar com o Google" aria-label="Entrar com o Google">
                     <svg width="20" height="20" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2045c0-.6382-.0573-1.2518-.1636-1.8409H9.18v3.4818h4.7918c-.2045 1.125-.8227 2.0782-1.7955 2.7218v2.2582h2.9091c1.7018-1.5664 2.6845-3.8736 2.6845-6.6218z"></path><path fill="#34A853" d="M9.18 18c2.43 0 4.4673-.8045 5.9564-2.1818l-2.9091-2.2582c-.8045.5455-1.8364.8727-2.9927.8727-2.3 0-4.2545-1.5664-4.95-3.6682H1.27v2.3318C2.7255 15.6 5.67 18 9.18 18z"></path><path fill="#FBBC05" d="M4.23 10.7318c-.1636-.4882-.2591-1.0018-.2591-1.5318s.0955-1.0436.2591-1.5318V5.3364H1.27C.4636 6.9318 0 8.4909 0 10.2c0 1.7091.4636 3.2682 1.27 4.8636l2.96-2.3318z"></path><path fill="#EA4335" d="M9.18 3.9818c1.3227 0 2.5091.4545 3.4409 1.3455l2.5818-2.5818C13.6473 1.1 11.61.0001 9.18.0001 5.67.0001 2.7255 2.4 1.27 5.3364L4.23 7.6682c.6955-2.1018 2.65-3.6864 4.95-3.6864z"></path></svg>
                     <span>Entrar com o Google</span>
                 </button>
@@ -440,9 +443,9 @@
                 <div class="key" data-key="7">7</div>
                 <div class="key" data-key="8">8</div>
                 <div class="key" data-key="9">9</div>
-                <div class="key" id="biometric-btn" title="Desbloquear com Biometria" aria-label="Desbloquear com Biometria"><i data-lucide="fingerprint"></i></div>
+                <div class="key" id="biometric-btn" title="Desbloquear com Biometria" aria-label="Desbloquear com Biometria" role="button" tabindex="0"><i data-lucide="fingerprint"></i></div>
                 <div class="key" data-key="0">0</div>
-                <div class="key" data-key="clear" title="Apagar dígito" aria-label="Apagar dígito"><i data-lucide="delete"></i></div>
+                <div class="key" data-key="clear" title="Apagar dígito" aria-label="Apagar dígito" role="button" tabindex="0"><i data-lucide="delete"></i></div>
             </div>
         </div>
 
@@ -470,7 +473,7 @@
                 <div class="key" data-key="9">9</div>
                 <div class="key dummy-key"></div>
                 <div class="key" data-key="0">0</div>
-                <div class="key" data-key="clear" title="Apagar" aria-label="Apagar"><i data-lucide="delete"></i></div>
+                <div class="key" data-key="clear" title="Apagar" aria-label="Apagar" role="button" tabindex="0"><i data-lucide="delete"></i></div>
             </div>
             <button id="close-set-pin-btn" class="close-btn set-pin-cancel-btn" title="Cancelar" aria-label="Cancelar" onclick="window.closeSetPin()">Cancelar</button>
         </div>
@@ -493,32 +496,32 @@
             <header>
                 <h1>VORTEX <span>VIP</span></h1>
                 <div class="header-icons">
-                    <div class="header-icon-btn" id="search-trigger" title="Buscar Usuários por @" aria-label="Buscar Usuários por @">
+                    <div class="header-icon-btn" id="search-trigger" title="Buscar Usuários por @" aria-label="Buscar Usuários por @" role="button" tabindex="0">
                         <i data-lucide="search"></i>
                     </div>
-                    <div class="header-icon-btn requests-icon-wrapper" id="requests-btn" title="Solicitações de Amizade" aria-label="Solicitações">
+                    <div class="header-icon-btn requests-icon-wrapper" id="requests-btn" title="Solicitações de Amizade" aria-label="Solicitações" role="button" tabindex="0">
                         <i data-lucide="users"></i>
                         <span id="requests-badge" class="requests-badge">0</span>
                     </div>
-                    <div class="header-icon-btn requests-icon-wrapper" id="notifications-bell-btn" title="Notificações, Avisos e Alertas" aria-label="Notificações">
+                    <div class="header-icon-btn requests-icon-wrapper" id="notifications-bell-btn" title="Notificações, Avisos e Alertas" aria-label="Notificações" role="button" tabindex="0">
                         <i data-lucide="bell"></i>
                         <span id="notifications-bell-badge" class="requests-badge" style="display: none;">0</span>
                     </div>
-                    <div class="header-icon-btn" id="profile-btn" title="Meu Perfil" aria-label="Meu Perfil">
+                    <div class="header-icon-btn" id="profile-btn" title="Meu Perfil" aria-label="Meu Perfil" role="button" tabindex="0">
                         <i data-lucide="user"></i>
                     </div>
-                    <div class="header-icon-btn admin-badge-btn" id="admin-panel-btn" title="Painel de Moderação ADM" aria-label="Painel ADM" style="display: none;">
+                    <div class="header-icon-btn admin-badge-btn" id="admin-panel-btn" title="Painel de Moderação ADM" aria-label="Painel ADM" style="display: none;" role="button" tabindex="0">
                         <i data-lucide="shield-alert"></i>
                         <span id="admin-pending-badge" class="admin-pending-badge" style="display:none;">0</span>
                     </div>
-                    <div class="header-icon-btn install-header-btn" id="install-app-header-btn" title="Instalar VORTEX VIP no Dispositivo" aria-label="Instalar Aplicativo" style="display: none;">
+                    <div class="header-icon-btn install-header-btn" id="install-app-header-btn" title="Instalar VORTEX VIP no Dispositivo" aria-label="Instalar Aplicativo" style="display: none;" role="button" tabindex="0">
                         <i data-lucide="download"></i>
                     </div>
-                    <div class="header-icon-btn daily-chest-header-btn" id="daily-chest-header-btn" title="Baú Diário de Moedas 🎁" aria-label="Baú Diário">
+                    <div class="header-icon-btn daily-chest-header-btn" id="daily-chest-header-btn" title="Baú Diário de Moedas 🎁" aria-label="Baú Diário" role="button" tabindex="0">
                         <i data-lucide="gift"></i>
                         <span id="daily-chest-ready-dot" class="daily-chest-ready-dot" style="display: none;"></span>
                     </div>
-                    <div class="header-icon-btn" id="settings-btn" title="Configurações VIP" aria-label="Configurações VIP">
+                    <div class="header-icon-btn" id="settings-btn" title="Configurações VIP" aria-label="Configurações VIP" role="button" tabindex="0">
                         <i data-lucide="settings"></i>
                     </div>
                 </div>
@@ -567,7 +570,7 @@
                 <div id="user-story-card" class="story-item" data-name="Seu Status" data-status="Online" title="Criar ou ver meu status">
                     <div class="story-ring">
                         <div id="user-avatar-display" class="avatar" role="img" aria-label="Sua foto de perfil"></div>
-                        <div class="add-story-btn" id="open-post-status" title="Novo Status (24h)" aria-label="Novo Status"><i data-lucide="plus"></i></div>
+                        <div class="add-story-btn" id="open-post-status" title="Novo Status (24h)" aria-label="Novo Status" role="button" tabindex="0"><i data-lucide="plus"></i></div>
                     </div>
                     <div class="story-author-tag">
                         <span id="user-display-name">Seu Status</span>
@@ -1065,16 +1068,16 @@
                     </div>
                 </div>
                 <div class="story-header-actions">
-                    <div class="story-action-btn" id="download-story-btn" title="Baixar Mídia do Status" aria-label="Baixar Mídia">
+                    <div class="story-action-btn" id="download-story-btn" title="Baixar Mídia do Status" aria-label="Baixar Mídia" role="button" tabindex="0">
                         <i data-lucide="download"></i>
                     </div>
-                    <div class="story-action-btn warning" id="report-story-btn" title="Denunciar Story" aria-label="Denunciar Story" style="display: none;">
+                    <div class="story-action-btn warning" id="report-story-btn" title="Denunciar Story" aria-label="Denunciar Story" style="display: none;" role="button" tabindex="0">
                         <i data-lucide="flag"></i>
                     </div>
-                    <div class="story-action-btn danger story-delete-btn-hide" id="delete-story-btn" title="Apagar Status" aria-label="Apagar Status">
+                    <div class="story-action-btn danger story-delete-btn-hide" id="delete-story-btn" title="Apagar Status" aria-label="Apagar Status" role="button" tabindex="0">
                         <i data-lucide="trash-2"></i>
                     </div>
-                    <div class="story-action-btn" id="close-story" title="Fechar Story" aria-label="Fechar Story">
+                    <div class="story-action-btn" id="close-story" title="Fechar Story" aria-label="Fechar Story" role="button" tabindex="0">
                         <i data-lucide="x"></i>
                     </div>
                 </div>
@@ -1123,8 +1126,8 @@
             </div>
 
             <div class="story-nav">
-                <div id="story-prev" class="nav-area" title="Anterior" aria-label="Story Anterior"></div>
-                <div id="story-next" class="nav-area" title="Próximo" aria-label="Próximo Story"></div>
+                <div id="story-prev" class="nav-area" title="Anterior" aria-label="Story Anterior" role="button" tabindex="0"></div>
+                <div id="story-next" class="nav-area" title="Próximo" aria-label="Próximo Story" role="button" tabindex="0"></div>
             </div>
 
             <!-- Rodapé do Story -->
@@ -1237,7 +1240,7 @@
         <div id="chat-window" class="chat-window">
             <header class="chat-window-header" id="chat-normal-header">
                 <div class="chat-header-left">
-                    <div class="header-icon-btn" id="close-chat" title="Voltar" aria-label="Voltar">
+                    <div class="header-icon-btn" id="close-chat" title="Voltar" aria-label="Voltar" role="button" tabindex="0">
                         <i data-lucide="arrow-left"></i>
                     </div>
                     <div class="chat-header-user-info" id="chat-header-user-info" role="button" tabindex="0" title="Toque para ver os dados do contato" aria-label="Ver dados do contato">
@@ -1266,10 +1269,10 @@
                     </div>
                 </div>
                 <div class="header-icons">
-                    <div class="header-icon-btn" id="chat-audio-call-btn" title="Iniciar Chamada (Vídeo ou Áudio)" aria-label="Iniciar Chamada">
+                    <div class="header-icon-btn" id="chat-audio-call-btn" title="Iniciar Chamada (Vídeo ou Áudio)" aria-label="Iniciar Chamada" role="button" tabindex="0">
                         <i data-lucide="video"></i>
                     </div>
-                    <div class="header-icon-btn" id="chat-options-menu-btn" title="Opções da Conversa" aria-label="Opções">
+                    <div class="header-icon-btn" id="chat-options-menu-btn" title="Opções da Conversa" aria-label="Opções" role="button" tabindex="0">
                         <i data-lucide="more-vertical"></i>
                     </div>
                 </div>
@@ -1345,16 +1348,16 @@
 
             <header class="chat-window-header chat-selection-header" id="chat-selection-header">
                 <div class="chat-header-left">
-                    <div class="header-icon-btn" id="cancel-selection-btn" title="Cancelar Seleção" aria-label="Cancelar Seleção">
+                    <div class="header-icon-btn" id="cancel-selection-btn" title="Cancelar Seleção" aria-label="Cancelar Seleção" role="button" tabindex="0">
                         <i data-lucide="x"></i>
                     </div>
                     <span id="selection-count-text" class="selection-count-title">0 selecionada(s)</span>
                 </div>
                 <div class="header-icons">
-                    <div class="header-icon-btn" id="forward-selected-btn" title="Encaminhar Selecionadas" aria-label="Encaminhar Selecionadas">
+                    <div class="header-icon-btn" id="forward-selected-btn" title="Encaminhar Selecionadas" aria-label="Encaminhar Selecionadas" role="button" tabindex="0">
                         <i data-lucide="forward"></i>
                     </div>
-                    <div class="header-icon-btn danger" id="delete-selected-btn" title="Apagar Selecionadas" aria-label="Apagar Selecionadas">
+                    <div class="header-icon-btn danger" id="delete-selected-btn" title="Apagar Selecionadas" aria-label="Apagar Selecionadas" role="button" tabindex="0">
                         <i data-lucide="trash-2"></i>
                     </div>
                 </div>
@@ -1394,7 +1397,7 @@
                     <span id="reply-to-author" class="reply-author">Respondendo...</span>
                     <p id="reply-to-text" class="reply-snippet">Texto da mensagem...</p>
                 </div>
-                <div class="header-icon-btn" id="cancel-reply-btn" title="Cancelar Resposta" aria-label="Cancelar Resposta">
+                <div class="header-icon-btn" id="cancel-reply-btn" title="Cancelar Resposta" aria-label="Cancelar Resposta" role="button" tabindex="0">
                     <i data-lucide="x" class="reply-close-icon"></i>
                 </div>
             </div>
@@ -1407,7 +1410,7 @@
                     </span>
                     <p id="edit-preview-text" class="reply-snippet">Texto da mensagem...</p>
                 </div>
-                <div class="header-icon-btn" id="cancel-edit-btn" title="Cancelar Edição" aria-label="Cancelar Edição">
+                <div class="header-icon-btn" id="cancel-edit-btn" title="Cancelar Edição" aria-label="Cancelar Edição" role="button" tabindex="0">
                     <i data-lucide="x" class="reply-close-icon"></i>
                 </div>
             </div>
@@ -1432,21 +1435,21 @@
             </div>
 
             <footer class="chat-window-footer">
-                <div class="header-icon-btn" id="attach-btn" title="Anexar Fotos, Vídeos, Músicas ou Arquivos" aria-label="Anexar Arquivo">
+                <div class="header-icon-btn" id="attach-btn" title="Anexar Fotos, Vídeos, Músicas ou Arquivos" aria-label="Anexar Arquivo" role="button" tabindex="0">
                     <i data-lucide="paperclip"></i>
                 </div>
                 <div class="input-wrapper">
                     <div id="recording-ui-main" class="recording-ui">
                         <div class="recording-dot"></div>
                         <span id="recording-timer-main">00:00</span>
-                        <div id="recording-slide-cancel" class="recording-slide-cancel" title="Arraste para a esquerda para cancelar" aria-label="Deslize para cancelar gravação">
+                        <div id="recording-slide-cancel" class="recording-slide-cancel" title="Arraste para a esquerda para cancelar" aria-label="Deslize para cancelar gravação" role="button" tabindex="0">
                             <i data-lucide="chevron-left" class="slide-cancel-arrow"></i>
                             <span>Deslize para cancelar</span>
                         </div>
                     </div>
                     <label for="chat-input-main" class="sr-only">Digite uma mensagem</label>
                     <input type="text" id="chat-input-main" placeholder="Digite uma mensagem..." title="Digite uma mensagem" aria-label="Digite uma mensagem">
-                    <div class="header-icon-btn chat-input-emoji-btn" id="chat-emoji-btn" title="Inserir Emoji" aria-label="Inserir Emoji">
+                    <div class="header-icon-btn chat-input-emoji-btn" id="chat-emoji-btn" title="Inserir Emoji" aria-label="Inserir Emoji" role="button" tabindex="0">
                         <i data-lucide="smile"></i>
                     </div>
                 </div>
@@ -1477,19 +1480,19 @@
             </span>
             <div id="msg-action-divider" class="msg-action-divider" style="display: none;"></div>
             <div class="msg-action-icons">
-                <div class="msg-action-item" id="action-select-btn" title="Selecionar" aria-label="Selecionar">
+                <div class="msg-action-item" id="action-select-btn" title="Selecionar" aria-label="Selecionar" role="button" tabindex="0">
                     <i data-lucide="check-square"></i>
                 </div>
-                <div class="msg-action-item" id="action-star-btn" title="Favoritar Mensagem" aria-label="Favoritar">
+                <div class="msg-action-item" id="action-star-btn" title="Favoritar Mensagem" aria-label="Favoritar" role="button" tabindex="0">
                     <i data-lucide="star"></i>
                 </div>
-                <div class="msg-action-item" id="action-copy-btn" title="Copiar Mensagem" aria-label="Copiar" style="display: none;">
+                <div class="msg-action-item" id="action-copy-btn" title="Copiar Mensagem" aria-label="Copiar" style="display: none;" role="button" tabindex="0">
                     <i data-lucide="copy"></i>
                 </div>
-                <div class="msg-action-item" id="action-edit-btn" title="Editar Mensagem" aria-label="Editar" style="display: none;">
+                <div class="msg-action-item" id="action-edit-btn" title="Editar Mensagem" aria-label="Editar" style="display: none;" role="button" tabindex="0">
                     <i data-lucide="pencil"></i>
                 </div>
-                <div class="msg-action-item" id="action-info-btn" title="Dados da Mensagem" aria-label="Dados">
+                <div class="msg-action-item" id="action-info-btn" title="Dados da Mensagem" aria-label="Dados" role="button" tabindex="0">
                     <i data-lucide="info"></i>
                 </div>
                 <div class="msg-action-item" id="action-reply-btn" title="Responder">
@@ -1509,7 +1512,7 @@
             <div class="custom-modal-card">
                 <div class="panel-top-bar">
                     <h2 id="forward-modal-title">Encaminhar Mensagem</h2>
-                    <div class="header-icon-btn" id="close-forward-modal" title="Fechar" aria-label="Fechar">
+                    <div class="header-icon-btn" id="close-forward-modal" title="Fechar" aria-label="Fechar" role="button" tabindex="0">
                         <i data-lucide="x"></i>
                     </div>
                 </div>
@@ -1548,7 +1551,7 @@
             <div class="custom-modal-card ephemeral-modal-card">
                 <div class="custom-modal-header">
                     <h3 class="custom-modal-title"><i data-lucide="clock" class="ephemeral-header-icon"></i> Mensagens Temporárias</h3>
-                    <div class="header-icon-btn" id="close-ephemeral-modal" title="Fechar" aria-label="Fechar">
+                    <div class="header-icon-btn" id="close-ephemeral-modal" title="Fechar" aria-label="Fechar" role="button" tabindex="0">
                         <i data-lucide="x"></i>
                     </div>
                 </div>
@@ -1598,7 +1601,7 @@
                         <i data-lucide="info" class="msg-info-icon"></i>
                         <h2>Dados da Mensagem</h2>
                     </div>
-                    <div class="header-icon-btn" id="close-message-info-modal" title="Fechar" aria-label="Fechar">
+                    <div class="header-icon-btn" id="close-message-info-modal" title="Fechar" aria-label="Fechar" role="button" tabindex="0">
                         <i data-lucide="x"></i>
                     </div>
                 </div>
@@ -1645,7 +1648,7 @@
             <div class="custom-modal-card">
                 <div class="custom-modal-header">
                     <h3 class="custom-modal-title"><i data-lucide="flag" class="report-header-flag"></i> <span id="report-modal-header-title">Denunciar Contato</span></h3>
-                    <div class="header-icon-btn" id="close-report-modal" title="Fechar" aria-label="Fechar">
+                    <div class="header-icon-btn" id="close-report-modal" title="Fechar" aria-label="Fechar" role="button" tabindex="0">
                         <i data-lucide="x"></i>
                     </div>
                 </div>
@@ -1696,7 +1699,7 @@
                         <i data-lucide="image" style="width: 20px; height: 20px; color: var(--accent-color);"></i>
                         <h2>Plano de Fundo da Conversa</h2>
                     </div>
-                    <div class="header-icon-btn" id="close-wallpaper-modal" title="Fechar" aria-label="Fechar">
+                    <div class="header-icon-btn" id="close-wallpaper-modal" title="Fechar" aria-label="Fechar" role="button" tabindex="0">
                         <i data-lucide="x"></i>
                     </div>
                 </div>
@@ -1761,7 +1764,7 @@
             <div class="custom-modal-card music-picker-card">
                 <div class="custom-modal-header">
                     <h3 class="custom-modal-title"><i data-lucide="music" style="color: var(--accent-color);"></i> <span>Escolher Música</span></h3>
-                    <div class="header-icon-btn" id="close-music-picker-btn" title="Fechar" aria-label="Fechar">
+                    <div class="header-icon-btn" id="close-music-picker-btn" title="Fechar" aria-label="Fechar" role="button" tabindex="0">
                         <i data-lucide="x"></i>
                     </div>
                 </div>
@@ -1854,14 +1857,14 @@
             </div>
 
             <div class="call-footer">
-                <div class="call-action-btn" id="mute-mic-btn" title="Silenciar Microfone" aria-label="Silenciar Microfone"><i data-lucide="mic"></i></div>
-                <div class="call-action-btn" id="toggle-camera-btn" title="Desligar Câmera" aria-label="Desligar Câmera"><i data-lucide="video"></i></div>
-                <div class="call-action-btn" id="switch-camera-btn" title="Alternar Câmera" aria-label="Alternar Câmera"><i data-lucide="refresh-cw"></i></div>
-                <div class="call-action-btn group-invite-btn" id="invite-group-call-btn" title="Convidar para Ligação em Grupo (até 4 pessoas)" aria-label="Convidar para Ligação em Grupo">
+                <div class="call-action-btn" id="mute-mic-btn" title="Silenciar Microfone" aria-label="Silenciar Microfone" role="button" tabindex="0"><i data-lucide="mic"></i></div>
+                <div class="call-action-btn" id="toggle-camera-btn" title="Desligar Câmera" aria-label="Desligar Câmera" role="button" tabindex="0"><i data-lucide="video"></i></div>
+                <div class="call-action-btn" id="switch-camera-btn" title="Alternar Câmera" aria-label="Alternar Câmera" role="button" tabindex="0"><i data-lucide="refresh-cw"></i></div>
+                <div class="call-action-btn group-invite-btn" id="invite-group-call-btn" title="Convidar para Ligação em Grupo (até 4 pessoas)" aria-label="Convidar para Ligação em Grupo" role="button" tabindex="0">
                     <i data-lucide="user-plus"></i>
                     <span id="group-call-invite-btn-badge" class="group-call-invite-btn-badge" style="display:none;">0/4</span>
                 </div>
-                <div class="call-action-btn end-call" id="end-call-btn" title="Desligar Chamada" aria-label="Desligar Chamada"><i data-lucide="phone-off"></i></div>
+                <div class="call-action-btn end-call" id="end-call-btn" title="Desligar Chamada" aria-label="Desligar Chamada" role="button" tabindex="0"><i data-lucide="phone-off"></i></div>
             </div>
         </div>
 
@@ -1951,7 +1954,7 @@
         <!-- Painel de Busca de Usuários com @username -->
         <div id="search-user-panel" class="settings-panel">
             <div class="panel-top-bar">
-                <div class="header-icon-btn" id="close-search-panel" title="Voltar" aria-label="Voltar">
+                <div class="header-icon-btn" id="close-search-panel" title="Voltar" aria-label="Voltar" role="button" tabindex="0">
                     <i data-lucide="arrow-left"></i>
                 </div>
                 <h2>Buscar no VORTEX</h2>
@@ -1968,7 +1971,7 @@
         <!-- Painel de Solicitações de Amizade em Tempo Real -->
         <div id="requests-panel" class="settings-panel">
             <div class="panel-top-bar">
-                <div class="header-icon-btn" id="close-requests-panel" title="Voltar" aria-label="Voltar">
+                <div class="header-icon-btn" id="close-requests-panel" title="Voltar" aria-label="Voltar" role="button" tabindex="0">
                     <i data-lucide="arrow-left"></i>
                 </div>
                 <h2>Solicitações de Contato</h2>
@@ -1981,7 +1984,7 @@
         <!-- Painel de Edição de Perfil Completo -->
         <div id="profile-edit-panel" class="settings-panel">
             <div class="panel-top-bar">
-                <div class="header-icon-btn" id="close-profile-edit" title="Voltar" aria-label="Voltar">
+                <div class="header-icon-btn" id="close-profile-edit" title="Voltar" aria-label="Voltar" role="button" tabindex="0">
                     <i data-lucide="arrow-left"></i>
                 </div>
                 <h2>Editar Perfil VIP</h2>
@@ -2237,7 +2240,7 @@
         <!-- Painel de Postar Status (24h) -->
         <div id="post-status-overlay" class="settings-panel">
             <div class="panel-top-bar">
-                <div class="header-icon-btn" id="close-post-status" title="Voltar" aria-label="Voltar">
+                <div class="header-icon-btn" id="close-post-status" title="Voltar" aria-label="Voltar" role="button" tabindex="0">
                     <i data-lucide="arrow-left"></i>
                 </div>
                 <h2>Postar Status VIP (24h)</h2>
@@ -2515,7 +2518,7 @@
         <!-- Painel de Criar Grupo -->
         <div id="create-group-panel" class="settings-panel">
             <div class="panel-top-bar">
-                <div class="header-icon-btn" id="close-create-group" title="Voltar" aria-label="Voltar">
+                <div class="header-icon-btn" id="close-create-group" title="Voltar" aria-label="Voltar" role="button" tabindex="0">
                     <i data-lucide="arrow-left"></i>
                 </div>
                 <h2>Criar Novo Grupo</h2>
@@ -2539,7 +2542,7 @@
 
         <div id="group-profile-panel" class="settings-panel">
             <div class="panel-top-bar">
-                <div class="header-icon-btn" id="close-group-profile" title="Voltar" aria-label="Voltar">
+                <div class="header-icon-btn" id="close-group-profile" title="Voltar" aria-label="Voltar" role="button" tabindex="0">
                     <i data-lucide="arrow-left"></i>
                 </div>
                 <h2>Perfil do Grupo</h2>
@@ -2725,7 +2728,7 @@
         <!-- Painel de Dados do Contato / Perfil do Usuário com Recado / Bio -->
         <div id="contact-profile-panel" class="settings-panel contact-profile-panel">
             <div class="panel-top-bar">
-                <div class="header-icon-btn" id="close-contact-profile" title="Voltar" aria-label="Voltar">
+                <div class="header-icon-btn" id="close-contact-profile" title="Voltar" aria-label="Voltar" role="button" tabindex="0">
                     <i data-lucide="arrow-left"></i>
                 </div>
                 <h2>Dados do Contato</h2>
@@ -4260,16 +4263,16 @@
 
             <!-- Abas de Filtro do Feed Reels (Todos / Favoritos / Imagens) -->
             <div class="feed-filter-bar" id="feed-filter-bar">
-                <button type="button" class="feed-filter-tab active" id="feed-filter-all-btn" data-filter="all" aria-label="Ver todas as publicações">
+                <button type="button" class="feed-filter-tab active" id="feed-filter-all-btn" data-filter="all" aria-label="Todos - Ver todas as publicações">
                     <i data-lucide="layout-grid"></i>
                     <span>Todos</span>
                 </button>
-                <button type="button" class="feed-filter-tab" id="feed-filter-images-btn" data-filter="images" aria-label="Ver publicações com tag Imagem">
+                <button type="button" class="feed-filter-tab" id="feed-filter-images-btn" data-filter="images" aria-label="Imagens - Ver publicações com tag Imagem">
                     <i data-lucide="image"></i>
                     <span>Imagens</span>
                     <span class="feed-fav-count-badge" id="feed-images-count">0</span>
                 </button>
-                <button type="button" class="feed-filter-tab" id="feed-filter-favorites-btn" data-filter="favorites" aria-label="Ver publicações salvas nos favoritos">
+                <button type="button" class="feed-filter-tab" id="feed-filter-favorites-btn" data-filter="favorites" aria-label="Favoritos - Ver publicações salvas nos favoritos">
                     <i data-lucide="bookmark"></i>
                     <span>Favoritos</span>
                     <span class="feed-fav-count-badge" id="feed-favorites-count">0</span>
@@ -4315,7 +4318,7 @@
                         <i data-lucide="share-2" class="neon-icon"></i>
                         <h2>Compartilhar Publicação</h2>
                     </div>
-                    <div class="header-icon-btn" id="close-post-share-modal" title="Fechar" aria-label="Fechar">
+                    <div class="header-icon-btn" id="close-post-share-modal" title="Fechar" aria-label="Fechar" role="button" tabindex="0">
                         <i data-lucide="x"></i>
                     </div>
                 </div>
@@ -4410,7 +4413,7 @@
                         <i data-lucide="eye" class="neon-icon"></i>
                         <h2>Visualizações do Post</h2>
                     </div>
-                    <div class="header-icon-btn" id="close-post-views-modal" title="Fechar" aria-label="Fechar">
+                    <div class="header-icon-btn" id="close-post-views-modal" title="Fechar" aria-label="Fechar" role="button" tabindex="0">
                         <i data-lucide="x"></i>
                     </div>
                 </div>
@@ -4440,7 +4443,7 @@
                         <i data-lucide="bar-chart-2" class="neon-icon"></i>
                         <h2>Criar Enquete</h2>
                     </div>
-                    <div class="header-icon-btn" id="close-poll-creator-btn" title="Fechar" aria-label="Fechar">
+                    <div class="header-icon-btn" id="close-poll-creator-btn" title="Fechar" aria-label="Fechar" role="button" tabindex="0">
                         <i data-lucide="x"></i>
                     </div>
                 </div>
@@ -4488,7 +4491,7 @@
                         <i data-lucide="list-checks" class="neon-icon"></i>
                         <h2>Dados da Enquete</h2>
                     </div>
-                    <div class="header-icon-btn" id="close-poll-votes-btn" title="Fechar" aria-label="Fechar">
+                    <div class="header-icon-btn" id="close-poll-votes-btn" title="Fechar" aria-label="Fechar" role="button" tabindex="0">
                         <i data-lucide="x"></i>
                     </div>
                 </div>
@@ -4509,7 +4512,7 @@
         <!-- Modal de Pagamento Mercado Pago (Selo VIP R$ 30,00) -->
         <div id="vip-payment-modal" class="settings-panel vip-payment-modal" style="display: none;">
             <div class="panel-top-bar">
-                <div class="header-icon-btn" id="close-vip-payment-modal" title="Voltar" aria-label="Voltar">
+                <div class="header-icon-btn" id="close-vip-payment-modal" title="Voltar" aria-label="Voltar" role="button" tabindex="0">
                     <i data-lucide="arrow-left"></i>
                 </div>
                 <h2>Assinatura VIP • Mercado Pago</h2>
@@ -4711,7 +4714,7 @@
             <div class="custom-modal-card admin-post-preview-card">
                 <div class="panel-top-bar" style="padding:12px 16px;">
                     <h3 class="modal-title" style="font-size:1rem;"><i data-lucide="eye"></i> Preview do Post</h3>
-                    <div class="header-icon-btn" id="close-admin-post-preview-modal" title="Fechar" aria-label="Fechar">
+                    <div class="header-icon-btn" id="close-admin-post-preview-modal" title="Fechar" aria-label="Fechar" role="button" tabindex="0">
                         <i data-lucide="x"></i>
                     </div>
                 </div>
@@ -4726,7 +4729,7 @@
             <div class="custom-modal-card admin-analyze-card">
                 <div class="panel-top-bar" style="padding:12px 16px;">
                     <h3 class="modal-title" id="admin-analyze-modal-title" style="font-size:1rem;"><i data-lucide="search"></i> Analisando Denúncia</h3>
-                    <div class="header-icon-btn" id="close-admin-analyze-modal" title="Fechar" aria-label="Fechar">
+                    <div class="header-icon-btn" id="close-admin-analyze-modal" title="Fechar" aria-label="Fechar" role="button" tabindex="0">
                         <i data-lucide="x"></i>
                     </div>
                 </div>
@@ -5328,7 +5331,7 @@
                         </div>
                         <h2>Enviar Chave Pix</h2>
                     </div>
-                    <div class="header-icon-btn" id="close-pix-send-modal-btn" title="Fechar" aria-label="Fechar">
+                    <div class="header-icon-btn" id="close-pix-send-modal-btn" title="Fechar" aria-label="Fechar" role="button" tabindex="0">
                         <i data-lucide="x"></i>
                     </div>
                 </div>
@@ -5380,7 +5383,7 @@
                             <span class="company-form-modal-subtitle">Exclusivo Conta Empresa</span>
                         </div>
                     </div>
-                    <div class="header-icon-btn" id="close-company-form-modal-btn" title="Fechar" aria-label="Fechar">
+                    <div class="header-icon-btn" id="close-company-form-modal-btn" title="Fechar" aria-label="Fechar" role="button" tabindex="0">
                         <i data-lucide="x"></i>
                     </div>
                 </div>
@@ -5453,7 +5456,7 @@
                             <span id="company-form-fill-modal-subtitle" class="company-form-modal-subtitle">Enviado pela empresa</span>
                         </div>
                     </div>
-                    <div class="header-icon-btn" id="close-company-form-fill-btn" title="Fechar" aria-label="Fechar">
+                    <div class="header-icon-btn" id="close-company-form-fill-btn" title="Fechar" aria-label="Fechar" role="button" tabindex="0">
                         <i data-lucide="x"></i>
                     </div>
                 </div>
@@ -5492,7 +5495,7 @@
                             <span id="company-form-responses-modal-subtitle" class="company-form-modal-subtitle">Respostas recebidas</span>
                         </div>
                     </div>
-                    <div class="header-icon-btn" id="close-company-form-responses-btn" title="Fechar" aria-label="Fechar">
+                    <div class="header-icon-btn" id="close-company-form-responses-btn" title="Fechar" aria-label="Fechar" role="button" tabindex="0">
                         <i data-lucide="x"></i>
                     </div>
                 </div>
@@ -5539,7 +5542,7 @@
             <div class="custom-modal-card starred-messages-card">
                 <div class="panel-top-bar" style="padding:12px 16px;">
                     <h3 class="modal-title" style="font-size:1rem; color:#fff01f; white-space:nowrap; display:flex; align-items:center; gap:8px;"><i data-lucide="star"></i> Mensagens Favoritas</h3>
-                    <div class="header-icon-btn" id="close-starred-messages-modal" title="Fechar" aria-label="Fechar">
+                    <div class="header-icon-btn" id="close-starred-messages-modal" title="Fechar" aria-label="Fechar" role="button" tabindex="0">
                         <i data-lucide="x"></i>
                     </div>
                 </div>
@@ -5554,7 +5557,7 @@
             <div class="custom-modal-card catalog-coupons-card">
                 <div class="panel-top-bar">
                     <h3 class="modal-title"><i data-lucide="tag"></i> Cupons de Desconto da Loja</h3>
-                    <div class="header-icon-btn" id="close-catalog-coupons-modal" title="Fechar" aria-label="Fechar">
+                    <div class="header-icon-btn" id="close-catalog-coupons-modal" title="Fechar" aria-label="Fechar" role="button" tabindex="0">
                         <i data-lucide="x"></i>
                     </div>
                 </div>
@@ -5610,7 +5613,7 @@
             <div class="custom-modal-card catalog-shipping-card">
                 <div class="panel-top-bar">
                     <h3 class="modal-title"><i data-lucide="truck"></i> Configuração de Frete da Loja</h3>
-                    <div class="header-icon-btn" id="close-catalog-shipping-modal" title="Fechar" aria-label="Fechar">
+                    <div class="header-icon-btn" id="close-catalog-shipping-modal" title="Fechar" aria-label="Fechar" role="button" tabindex="0">
                         <i data-lucide="x"></i>
                     </div>
                 </div>
@@ -5670,7 +5673,7 @@
                         <h3 class="modal-title" style="font-size:1rem; color:#00d26a;"><i data-lucide="phone-call"></i> Histórico de Ligações</h3>
                         <span id="call-history-contact-name" class="call-history-contact-name" style="display:none; font-size:0.75rem; color:var(--text-dim, #888); font-weight:600; margin-left:28px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></span>
                     </div>
-                    <div class="header-icon-btn" id="close-call-history-modal" title="Fechar" aria-label="Fechar">
+                    <div class="header-icon-btn" id="close-call-history-modal" title="Fechar" aria-label="Fechar" role="button" tabindex="0">
                         <i data-lucide="x"></i>
                     </div>
                 </div>
@@ -5710,7 +5713,7 @@
                     <h3 class="modal-title" style="font-size: 1.05rem; display: flex; align-items: center; gap: 8px; margin: 0; color: #fff;">
                         <i data-lucide="phone-call" style="color: var(--accent-color, #00d26a);"></i> Iniciar Chamada
                     </h3>
-                    <div class="header-icon-btn" id="close-call-type-modal" title="Fechar" aria-label="Fechar">
+                    <div class="header-icon-btn" id="close-call-type-modal" title="Fechar" aria-label="Fechar" role="button" tabindex="0">
                         <i data-lucide="x"></i>
                     </div>
                 </div>
@@ -5772,7 +5775,7 @@
                         <i data-lucide="users" style="color:#00f5ff; width:20px; height:20px;"></i>
                         <h3 class="modal-title" id="group-call-invite-modal-title" style="font-size:1.02rem; margin:0; color:#fff;">Ligação em Grupo</h3>
                     </div>
-                    <div class="header-icon-btn" id="close-group-call-invite-modal" title="Fechar" aria-label="Fechar">
+                    <div class="header-icon-btn" id="close-group-call-invite-modal" title="Fechar" aria-label="Fechar" role="button" tabindex="0">
                         <i data-lucide="x"></i>
                     </div>
                 </div>
@@ -5903,7 +5906,7 @@
                             <span class="company-btn-header-subtitle">Envie um botão com link ao cliente</span>
                         </div>
                     </div>
-                    <div class="header-icon-btn" id="close-company-button-modal" title="Fechar" aria-label="Fechar" onclick="closeCompanyButtonModal()">
+                    <div class="header-icon-btn" id="close-company-button-modal" title="Fechar" aria-label="Fechar" onclick="closeCompanyButtonModal()" role="button" tabindex="0">
                         <i data-lucide="x"></i>
                     </div>
                 </div>
@@ -5972,7 +5975,7 @@
             <div class="custom-modal-card daily-chest-modal-card">
                 <div class="panel-top-bar daily-chest-top-bar">
                     <h3 class="modal-title"><i data-lucide="gift"></i> Baú Diário VORTEX VIP</h3>
-                    <div class="header-icon-btn" id="close-daily-chest-modal" title="Fechar" aria-label="Fechar">
+                    <div class="header-icon-btn" id="close-daily-chest-modal" title="Fechar" aria-label="Fechar" role="button" tabindex="0">
                         <i data-lucide="x"></i>
                     </div>
                 </div>
@@ -6048,7 +6051,7 @@
             <div class="custom-modal-card daily-chest-withdraw-card">
                 <div class="panel-top-bar daily-chest-top-bar">
                     <h3 class="modal-title"><i data-lucide="banknote"></i> Saque Pix - Baú Diário</h3>
-                    <div class="header-icon-btn" id="close-daily-chest-withdraw-modal" title="Fechar" aria-label="Fechar">
+                    <div class="header-icon-btn" id="close-daily-chest-withdraw-modal" title="Fechar" aria-label="Fechar" role="button" tabindex="0">
                         <i data-lucide="x"></i>
                     </div>
                 </div>
@@ -6212,7 +6215,7 @@
                             <span class="company-chatbot-subtitle">Responda seus clientes automaticamente</span>
                         </div>
                     </div>
-                    <div class="header-icon-btn" id="close-company-chatbot-modal" title="Fechar" aria-label="Fechar">
+                    <div class="header-icon-btn" id="close-company-chatbot-modal" title="Fechar" aria-label="Fechar" role="button" tabindex="0">
                         <i data-lucide="x"></i>
                     </div>
                 </div>
@@ -6325,7 +6328,7 @@
                             <span class="app-permissions-subtitle">Acesso aos recursos essenciais do seu dispositivo</span>
                         </div>
                     </div>
-                    <div class="header-icon-btn" id="close-app-permissions-modal" title="Fechar" aria-label="Fechar">
+                    <div class="header-icon-btn" id="close-app-permissions-modal" title="Fechar" aria-label="Fechar" role="button" tabindex="0">
                         <i data-lucide="x"></i>
                     </div>
                 </div>
@@ -6565,7 +6568,7 @@
                         <i data-lucide="shield-alert" style="color:var(--accent, #39ff14); width:20px; height:20px;"></i>
                         <h3 class="modal-title" style="font-size:1.05rem;">Segurança & Prevenção a Golpes</h3>
                     </div>
-                    <div class="header-icon-btn" id="close-global-security-tips-modal" title="Fechar" aria-label="Fechar">
+                    <div class="header-icon-btn" id="close-global-security-tips-modal" title="Fechar" aria-label="Fechar" role="button" tabindex="0">
                         <i data-lucide="x"></i>
                     </div>
                 </div>
@@ -6632,7 +6635,7 @@
                             <small style="color:var(--text-dim, #888); font-size:0.75rem;">Segurança Global VORTEX VIP 🛡️</small>
                         </div>
                     </div>
-                    <div class="header-icon-btn" id="close-link-justification-modal" title="Fechar" aria-label="Fechar">
+                    <div class="header-icon-btn" id="close-link-justification-modal" title="Fechar" aria-label="Fechar" role="button" tabindex="0">
                         <i data-lucide="x"></i>
                     </div>
                 </div>
@@ -6706,7 +6709,7 @@
                         <a href="privacy.html" target="_blank" rel="noopener noreferrer" class="header-icon-btn" id="open-privacy-policy-page-btn" title="Abrir página completa em nova guia" aria-label="Abrir em nova guia">
                             <i data-lucide="external-link"></i>
                         </a>
-                        <div class="header-icon-btn" id="close-privacy-policy-modal" title="Fechar" aria-label="Fechar">
+                        <div class="header-icon-btn" id="close-privacy-policy-modal" title="Fechar" aria-label="Fechar" role="button" tabindex="0">
                             <i data-lucide="x"></i>
                         </div>
                     </div>
@@ -6800,7 +6803,7 @@
                         <i data-lucide="flask-conical" style="color:#c084fc; width:22px; height:22px;"></i>
                         <h3 class="modal-title" style="font-size:1.05rem;">Tester Beta VORTEX VIP ⚡</h3>
                     </div>
-                    <div class="header-icon-btn" id="close-beta-tester-modal" title="Fechar" aria-label="Fechar">
+                    <div class="header-icon-btn" id="close-beta-tester-modal" title="Fechar" aria-label="Fechar" role="button" tabindex="0">
                         <i data-lucide="x"></i>
                     </div>
                 </div>
@@ -6880,7 +6883,7 @@
                             <span class="lucky-wheel-modal-sub">Gire e ganhe moedas para o seu Baú Pix!</span>
                         </div>
                     </div>
-                    <div class="header-icon-btn" id="close-lucky-wheel-modal" title="Fechar" aria-label="Fechar">
+                    <div class="header-icon-btn" id="close-lucky-wheel-modal" title="Fechar" aria-label="Fechar" role="button" tabindex="0">
                         <i data-lucide="x"></i>
                     </div>
                 </div>
@@ -6958,7 +6961,7 @@
                             <p class="modal-subtitle">Obrigatório para segurança dos clientes e prevenção contra golpes e fraudes</p>
                         </div>
                     </div>
-                    <div class="header-icon-btn" id="close-business-verification-modal" title="Fechar" aria-label="Fechar">
+                    <div class="header-icon-btn" id="close-business-verification-modal" title="Fechar" aria-label="Fechar" role="button" tabindex="0">
                         <i data-lucide="x"></i>
                     </div>
                 </div>
@@ -7198,7 +7201,7 @@
                         <i data-lucide="building-2" style="color:#00e5ff;"></i>
                         <h3 class="modal-title" id="admin-biz-preview-title">Análise de Conta Empresa</h3>
                     </div>
-                    <div class="header-icon-btn" id="close-admin-biz-preview-modal" title="Fechar" aria-label="Fechar">
+                    <div class="header-icon-btn" id="close-admin-biz-preview-modal" title="Fechar" aria-label="Fechar" role="button" tabindex="0">
                         <i data-lucide="x"></i>
                     </div>
                 </div>
@@ -7396,7 +7399,7 @@
             <div class="custom-modal-card channel-modal-card">
                 <div class="panel-top-bar" style="padding:12px 16px;">
                     <h3 class="modal-title" style="font-size:1rem;"><i data-lucide="sliders-horizontal"></i> Personalizar o canal</h3>
-                    <div class="header-icon-btn" id="close-channel-customize-modal" title="Fechar" aria-label="Fechar"><i data-lucide="x"></i></div>
+                    <div class="header-icon-btn" id="close-channel-customize-modal" title="Fechar" aria-label="Fechar" role="button" tabindex="0"><i data-lucide="x"></i></div>
                 </div>
                 <div class="channel-modal-body">
                     <div class="channel-customize-section">
@@ -7466,7 +7469,7 @@
             <div class="custom-modal-card channel-modal-card">
                 <div class="panel-top-bar" style="padding:12px 16px;">
                     <h3 class="modal-title" style="font-size:1rem;"><i data-lucide="info"></i> Sobre o canal</h3>
-                    <div class="header-icon-btn" id="close-channel-about-modal" title="Fechar" aria-label="Fechar"><i data-lucide="x"></i></div>
+                    <div class="header-icon-btn" id="close-channel-about-modal" title="Fechar" aria-label="Fechar" role="button" tabindex="0"><i data-lucide="x"></i></div>
                 </div>
                 <div id="channel-about-content" class="channel-modal-body"></div>
             </div>
@@ -7477,7 +7480,7 @@
             <div class="custom-modal-card channel-modal-card">
                 <div class="panel-top-bar" style="padding:12px 16px;">
                     <h3 class="modal-title" style="font-size:1rem;"><i data-lucide="users"></i> Comunidade</h3>
-                    <div class="header-icon-btn" id="close-channel-community-modal" title="Fechar" aria-label="Fechar"><i data-lucide="x"></i></div>
+                    <div class="header-icon-btn" id="close-channel-community-modal" title="Fechar" aria-label="Fechar" role="button" tabindex="0"><i data-lucide="x"></i></div>
                 </div>
                 <div class="channel-modal-body">
                     <div id="channel-community-composer" class="channel-community-composer" style="display:none;">
@@ -7494,7 +7497,7 @@
             <div class="custom-modal-card channel-modal-card">
                 <div class="panel-top-bar" style="padding:12px 16px;">
                     <h3 id="channel-manage-modal-title" class="modal-title" style="font-size:1rem;"><i data-lucide="film"></i> Gerenciar vídeos</h3>
-                    <div class="header-icon-btn" id="close-channel-manage-modal" title="Fechar" aria-label="Fechar"><i data-lucide="x"></i></div>
+                    <div class="header-icon-btn" id="close-channel-manage-modal" title="Fechar" aria-label="Fechar" role="button" tabindex="0"><i data-lucide="x"></i></div>
                 </div>
                 <div class="channel-modal-body">
                     <div id="channel-manage-filter-tabs" class="channel-manage-filter-tabs" role="tablist" aria-label="Filtrar mídias do canal">
@@ -7518,7 +7521,7 @@
                             <i data-lucide="lock"></i> <span>Privado</span>
                         </span>
                     </div>
-                    <div class="header-icon-btn" id="close-channel-media-viewer-modal" title="Fechar" aria-label="Fechar"><i data-lucide="x"></i></div>
+                    <div class="header-icon-btn" id="close-channel-media-viewer-modal" title="Fechar" aria-label="Fechar" role="button" tabindex="0"><i data-lucide="x"></i></div>
                 </div>
                 <div id="channel-viewer-media-box" class="channel-viewer-media-box"></div>
                 <div class="channel-viewer-info">
@@ -7547,7 +7550,7 @@
             <div class="custom-modal-card channel-modal-card channel-analytics-modal-card">
                 <div class="panel-top-bar" style="padding:12px 16px;">
                     <h3 class="modal-title" style="font-size:1rem;"><i data-lucide="bar-chart-3"></i> Seguidores &amp; Interação do Canal</h3>
-                    <div class="header-icon-btn" id="close-channel-analytics-modal" title="Fechar" aria-label="Fechar"><i data-lucide="x"></i></div>
+                    <div class="header-icon-btn" id="close-channel-analytics-modal" title="Fechar" aria-label="Fechar" role="button" tabindex="0"><i data-lucide="x"></i></div>
                 </div>
                 <div id="channel-analytics-content" class="channel-modal-body"></div>
             </div>
@@ -7558,7 +7561,7 @@
             <div class="custom-modal-card channel-modal-card channel-membership-modal-card">
                 <div class="panel-top-bar" style="padding:12px 16px;">
                     <h3 class="modal-title" style="font-size:1rem;"><i data-lucide="crown"></i> Super Fã &amp; Seja Membro</h3>
-                    <div class="header-icon-btn" id="close-channel-membership-modal" title="Fechar" aria-label="Fechar"><i data-lucide="x"></i></div>
+                    <div class="header-icon-btn" id="close-channel-membership-modal" title="Fechar" aria-label="Fechar" role="button" tabindex="0"><i data-lucide="x"></i></div>
                 </div>
                 <div id="channel-membership-content" class="channel-modal-body"></div>
             </div>
@@ -7569,7 +7572,7 @@
             <div class="custom-modal-card channel-modal-card channel-level-modal-card">
                 <div class="panel-top-bar" style="padding:12px 16px;">
                     <h3 class="modal-title" style="font-size:1rem;"><i data-lucide="zap"></i> Nível &amp; Desbloqueios VORTEX</h3>
-                    <div class="header-icon-btn" id="close-level-progression-modal" title="Fechar" aria-label="Fechar"><i data-lucide="x"></i></div>
+                    <div class="header-icon-btn" id="close-level-progression-modal" title="Fechar" aria-label="Fechar" role="button" tabindex="0"><i data-lucide="x"></i></div>
                 </div>
                 <div id="level-progression-content" class="channel-modal-body"></div>
             </div>
@@ -7650,6 +7653,6 @@
         </div>
     </div>
 
-    <script type="module" src="script.js?v=1.0.317" defer></script>
+    <script type="module" src="script.js?v=1.0.318" defer></script>
 </body>
 </html>

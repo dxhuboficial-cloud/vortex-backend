@@ -3343,6 +3343,8 @@ input.input-invalid:focus {
 
 .lock-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-color); z-index: 3000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .lock-screen.unlocked { transform: translateY(-110%); pointer-events: none !important; display: none !important; }
+#auth-screen:not(.unlocked) ~ #main-sidebar,
+#auth-screen:not(.unlocked) ~ #desktop-chat-placeholder { display: none !important; }
 
 body.privacy-mode .message,
 body.privacy-mode .message *,

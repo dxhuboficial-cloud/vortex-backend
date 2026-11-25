@@ -3006,7 +3006,10 @@ onAuthStateChanged(auth, async (user) => {
                 return;
             }
         }
-        if (authScreen) authScreen.classList.add('unlocked');
+        if (authScreen) {
+            authScreen.classList.add('unlocked');
+            if (typeof window !== 'undefined' && typeof window.loadLucideIcons === 'function') window.loadLucideIcons();
+        }
 
         pinnedChats = Array.isArray(currentProfile.pinnedChats) ? currentProfile.pinnedChats : [];
         applyUserTheme();
@@ -7143,15 +7146,14 @@ export function attachCatalogNumericGuards() {
             }
         });
 
-        inp.addEventListener('paste', (e) => {
-            const pasteData = (e.clipboardData || window.clipboardData)?.getData('text') || '';
-            const clean = sanitizeCatalogDecimalInput(pasteData);
-            e.preventDefault();
-            const start = inp.selectionStart ?? inp.value.length;
-            const end = inp.selectionEnd ?? inp.value.length;
-            const nextVal = inp.value.slice(0, start) + clean + inp.value.slice(end);
-            inp.value = sanitizeCatalogDecimalInput(nextVal);
-            inp.dispatchEvent(new Event('input', { bubbles: true }));
+        inp.addEventListener('paste', () => {
+            setTimeout(() => {
+                const sanitized = sanitizeCatalogDecimalInput(inp.value);
+                if (inp.value !== sanitized) {
+                    inp.value = sanitized;
+                }
+                inp.dispatchEvent(new Event('input', { bubbles: true }));
+            }, 0);
         });
     });
 
@@ -7183,15 +7185,14 @@ export function attachCatalogNumericGuards() {
             syncCatalogPricing('discount');
         });
 
-        discountInp.addEventListener('paste', (e) => {
-            const pasteData = (e.clipboardData || window.clipboardData)?.getData('text') || '';
-            const clean = sanitizeCatalogDiscountInput(pasteData);
-            e.preventDefault();
-            const start = discountInp.selectionStart ?? discountInp.value.length;
-            const end = discountInp.selectionEnd ?? discountInp.value.length;
-            const nextVal = discountInp.value.slice(0, start) + clean + discountInp.value.slice(end);
-            discountInp.value = sanitizeCatalogDiscountInput(nextVal);
-            discountInp.dispatchEvent(new Event('input', { bubbles: true }));
+        discountInp.addEventListener('paste', () => {
+            setTimeout(() => {
+                const sanitized = sanitizeCatalogDiscountInput(discountInp.value);
+                if (discountInp.value !== sanitized) {
+                    discountInp.value = sanitized;
+                }
+                discountInp.dispatchEvent(new Event('input', { bubbles: true }));
+            }, 0);
         });
     }
 
@@ -7219,15 +7220,14 @@ export function attachCatalogNumericGuards() {
             }
         });
 
-        stockInp.addEventListener('paste', (e) => {
-            const pasteData = (e.clipboardData || window.clipboardData)?.getData('text') || '';
-            const clean = sanitizeCatalogIntegerInput(pasteData);
-            e.preventDefault();
-            const start = stockInp.selectionStart ?? stockInp.value.length;
-            const end = stockInp.selectionEnd ?? stockInp.value.length;
-            const nextVal = stockInp.value.slice(0, start) + clean + stockInp.value.slice(end);
-            stockInp.value = sanitizeCatalogIntegerInput(nextVal);
-            stockInp.dispatchEvent(new Event('input', { bubbles: true }));
+        stockInp.addEventListener('paste', () => {
+            setTimeout(() => {
+                const sanitized = sanitizeCatalogIntegerInput(stockInp.value);
+                if (stockInp.value !== sanitized) {
+                    stockInp.value = sanitized;
+                }
+                stockInp.dispatchEvent(new Event('input', { bubbles: true }));
+            }, 0);
         });
     }
 }
@@ -24751,7 +24751,7 @@ export function getAdminReports() {
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
 const TRANSPARENT_IMG_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E";
-export const CURRENT_APP_VERSION = '1.0.317';
+export const CURRENT_APP_VERSION = '1.0.318';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -55032,7 +55032,10 @@ export async function reactivateDeactivatedAccountByAI(targetUid, options = {}) 
     clearAIDeactivatedAccountHint();
     resetAuthReactivationBoxes({ clearHint: true });
     const authScreen = document.getElementById('auth-screen');
-    if (authScreen) authScreen.classList.add('unlocked');
+    if (authScreen) {
+        authScreen.classList.add('unlocked');
+        if (typeof window !== 'undefined' && typeof window.loadLucideIcons === 'function') window.loadLucideIcons();
+    }
     syncProfilePhotoRequirementLifecycle(currentProfile || profileData, { now, skipWrite: true });
     if (typeof showToast === 'function') {
         showToast('Conta Ativada! ⚡', 'Você tem 1 semana (7 dias) para colocar uma foto de perfil válida. Caso não envie no prazo, a conta e tudo nela serão apagados (sem banimento permanente).', 'blue');
@@ -55186,7 +55189,10 @@ export async function handleAuthPhotoLifecycleOnLogin(user, profile, options = {
     clearAIDeactivatedAccountHint();
     resetAuthReactivationBoxes({ clearHint: true });
     if (typeof window !== 'undefined') window._vortexPendingReactivationFlow = false;
-    if (authScreen) authScreen.classList.add('unlocked');
+    if (authScreen) {
+        authScreen.classList.add('unlocked');
+        if (typeof window !== 'undefined' && typeof window.loadLucideIcons === 'function') window.loadLucideIcons();
+    }
     return { allowAccess: true, action: 'allowed', evaluation };
 }
 
