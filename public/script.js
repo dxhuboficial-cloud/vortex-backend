@@ -24751,7 +24751,7 @@ export function getAdminReports() {
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
 const TRANSPARENT_IMG_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E";
-export const CURRENT_APP_VERSION = '1.0.318';
+export const CURRENT_APP_VERSION = '1.0.319';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -51739,21 +51739,27 @@ export function applyMaintenanceMode(cfg = maintenanceConfig) {
     if (statusPill && statusLabel) {
         if (isActive) {
             statusPill.className = 'admin-maint-status-pill maintenance';
-            statusLabel.textContent = 'Manutenção Ativa 🔴';
+            statusLabel.textContent = 'Manutenção Ativa';
         } else {
             statusPill.className = 'admin-maint-status-pill online';
-            statusLabel.textContent = 'Online 🟢';
+            statusLabel.textContent = 'Online';
         }
     }
     if (toggleBtn) {
         if (isActive) {
             toggleBtn.className = 'admin-maint-toggle-btn btn-deactivate';
-            if (toggleLabel) toggleLabel.textContent = 'Desativar Manutenção';
-            toggleBtn.textContent = 'Desativar Manutenção';
+            if (toggleLabel) {
+                toggleLabel.textContent = 'Desativar Manutenção';
+            } else {
+                toggleBtn.textContent = 'Desativar Manutenção';
+            }
         } else {
             toggleBtn.className = 'admin-maint-toggle-btn btn-activate';
-            if (toggleLabel) toggleLabel.textContent = 'Ativar Manutenção';
-            toggleBtn.textContent = 'Ativar Manutenção';
+            if (toggleLabel) {
+                toggleLabel.textContent = 'Ativar Manutenção';
+            } else {
+                toggleBtn.textContent = 'Ativar Manutenção';
+            }
         }
     }
 

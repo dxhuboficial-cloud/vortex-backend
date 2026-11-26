@@ -35,11 +35,11 @@
     <meta itemprop="image" content="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
     <link rel="image_src" type="image/png" href="https://menssagem-dx.web.app/icons/vortex-vip-512.png">
 
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.318">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.318">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.318">
-    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.318">
-    <!-- Preconnects de Rede para Reduzir Latência no Celular (v1.0.318) -->
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1.0.319">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/vortex-vip-192.png?v=1.0.319">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.319">
+    <link rel="shortcut icon" href="icons/vortex-vip-192.png?v=1.0.319">
+    <!-- Preconnects de Rede para Reduzir Latência no Celular (v1.0.319) -->
     <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -121,12 +121,12 @@
     <!-- Fonte Inter Carregada de Forma Não Bloqueante -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" media="print" onload="this.media='all'">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"></noscript>
-    <!-- Folha de Estilos Principal Carregada de Forma Não Bloqueante (v1.0.318) -->
-    <link rel="preload" href="style.css?v=1.0.318" as="style">
-    <link id="vortex-main-stylesheet" rel="stylesheet" href="style.css?v=1.0.318" media="print" onload="this.media='all';document.documentElement.classList.add('vortex-styles-ready')">
-    <noscript><link rel="stylesheet" href="style.css?v=1.0.318"></noscript>
+    <!-- Folha de Estilos Principal Carregada de Forma Não Bloqueante (v1.0.319) -->
+    <link rel="preload" href="style.css?v=1.0.319" as="style">
+    <link id="vortex-main-stylesheet" rel="stylesheet" href="style.css?v=1.0.319" media="print" onload="this.media='all';document.documentElement.classList.add('vortex-styles-ready')">
+    <noscript><link rel="stylesheet" href="style.css?v=1.0.319"></noscript>
     <!-- PWA Web App Manifest & Metadados de Instalação -->
-    <link rel="manifest" href="manifest.json?v=1.0.318" id="app-manifest-link">
+    <link rel="manifest" href="manifest.json?v=1.0.319" id="app-manifest-link">
     <meta name="theme-color" content="#39ff14" id="app-theme-color-meta">
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#39ff14" id="app-theme-color-meta-dark">
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#39ff14" id="app-theme-color-meta-light">
@@ -135,8 +135,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VORTEX VIP">
-    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.318">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.318">
+    <link rel="apple-touch-icon" href="icons/vortex-vip-192.png?v=1.0.319">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/vortex-vip-512.png?v=1.0.319">
     <!-- Sincronização Dinâmica da Barra de Status + Loaders Sob Demanda (Mercado Pago & Lucide) -->
     <script>
         (function() {
@@ -334,7 +334,7 @@
         </div>
 
         <div class="vortex-loading-footer">
-            <div class="vortex-loading-footer-version">VORTEX VIP &bull; v1.0.318</div>
+            <div class="vortex-loading-footer-version">VORTEX VIP &bull; v1.0.319</div>
 
             <div class="vortex-loading-footer-actions">
                 <button type="button" id="replay-btn" class="vortex-loading-footer-btn">
@@ -3310,21 +3310,24 @@
                 </button>
             </div>
 
-            <!-- Banner de Controle de Manutenção Geral VORTEX VIP (v1.0.263) -->
+            <!-- Banner de Controle de Manutenção Geral VORTEX VIP (v1.0.319) -->
             <div class="admin-maintenance-banner" id="admin-maintenance-banner">
                 <div class="admin-maint-banner-left">
-                    <div class="admin-maint-icon-badge" id="admin-maint-icon-badge">
-                        <i data-lucide="wrench"></i>
-                    </div>
-                    <div class="admin-maint-text-box">
+                    <div class="admin-maint-header-row">
+                        <div class="admin-maint-icon-badge" id="admin-maint-icon-badge">
+                            <i data-lucide="wrench"></i>
+                        </div>
                         <div class="admin-maint-title-row">
                             <span class="admin-maint-title">Modo de Manutenção do VORTEX VIP</span>
                             <span class="admin-maint-status-pill online" id="admin-maint-status-pill">
-                                <span class="maint-pulse-dot"></span> <span id="admin-maint-status-label">Online 🟢</span>
+                                <span class="maint-pulse-dot"></span>
+                                <span id="admin-maint-status-label">Online</span>
                             </span>
                         </div>
+                    </div>
+                    <div class="admin-maint-text-box">
                         <p class="admin-maint-description">
-                            Quando ativado, a tela amarela bloqueia todos os usuários comuns e visitantes. 
+                            Quando ativado, a tela amarela bloqueia todos os usuários comuns e visitantes.
                             <strong>Administradores possuem bypass total e não são bloqueados.</strong>
                         </p>
                     </div>
@@ -7653,6 +7656,6 @@
         </div>
     </div>
 
-    <script type="module" src="script.js?v=1.0.318" defer></script>
+    <script type="module" src="script.js?v=1.0.319" defer></script>
 </body>
 </html>

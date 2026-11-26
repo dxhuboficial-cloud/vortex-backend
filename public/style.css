@@ -30977,11 +30977,11 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
    ========================================================= */
 .admin-maintenance-banner {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 14px 18px;
-    margin: 12px 16px 6px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 14px 16px;
+    margin: 10px 14px 6px;
     border-radius: 14px;
     background: linear-gradient(135deg, rgba(255, 224, 82, 0.08), rgba(255, 26, 34, 0.05));
     border: 1px solid rgba(255, 224, 82, 0.25);
@@ -30996,23 +30996,32 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
 
 .admin-maint-banner-left {
     display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    width: 100%;
+    min-width: 0;
+}
+
+.admin-maint-header-row {
+    display: flex;
     align-items: center;
-    gap: 14px;
-    flex: 1;
+    gap: 12px;
+    width: 100%;
     min-width: 0;
 }
 
 .admin-maint-icon-badge {
-    width: 44px;
-    height: 44px;
-    border-radius: 12px;
+    width: 40px;
+    height: 40px;
+    border-radius: 11px;
     background: rgba(255, 224, 82, 0.15);
     border: 1px solid rgba(255, 224, 82, 0.35);
     color: #FFE052;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.25rem;
+    font-size: 1.15rem;
     flex-shrink: 0;
     transition: all 0.3s ease;
 }
@@ -31028,33 +31037,41 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
     display: flex;
     flex-direction: column;
     gap: 4px;
+    width: 100%;
     min-width: 0;
 }
 
 .admin-maint-title-row {
     display: flex;
     align-items: center;
-    gap: 10px;
+    justify-content: space-between;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
     flex-wrap: wrap;
 }
 
 .admin-maint-title {
-    font-size: 0.95rem;
+    font-size: 0.94rem;
     font-weight: 700;
     color: var(--text-main, #ffffff);
     letter-spacing: -0.01em;
+    line-height: 1.25;
 }
 
 .admin-maint-status-pill {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 3px 10px;
+    padding: 4px 10px;
     border-radius: 20px;
     font-size: 0.72rem;
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    line-height: 1;
 }
 
 .admin-maint-status-pill.online {
@@ -31076,13 +31093,15 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
     border-radius: 50%;
     background: currentColor;
     box-shadow: 0 0 6px currentColor;
+    flex-shrink: 0;
 }
 
 .admin-maint-description {
     font-size: 0.8rem;
-    color: var(--text-dim, #999999);
+    color: var(--text-dim, #a1a1aa);
     margin: 0;
-    line-height: 1.35;
+    line-height: 1.45;
+    width: 100%;
 }
 
 .admin-maint-description strong {
@@ -31090,21 +31109,32 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
 }
 
 .admin-maint-banner-right {
+    width: 100%;
     flex-shrink: 0;
 }
 
 .admin-maint-toggle-btn {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
-    padding: 10px 18px;
-    border-radius: 10px;
-    font-size: 0.85rem;
+    width: 100%;
+    padding: 11px 18px;
+    border-radius: 11px;
+    font-size: 0.86rem;
     font-weight: 800;
+    white-space: nowrap;
     cursor: pointer;
     border: 1px solid transparent;
     transition: all 0.25s ease;
     user-select: none;
+}
+
+.admin-maint-toggle-btn svg,
+.admin-maint-toggle-btn i {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
 }
 
 .admin-maint-toggle-btn.btn-activate {

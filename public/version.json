@@ -1,6 +1,6 @@
 {
-  "version": "1.0.318",
-  "build": 318,
-  "releaseDate": "2026-11-24",
-  "notes": "Otimização PageSpeed 95-100 v1.0.318: elimina CLS Desktop (0.343->0.000), reduz LCP Mobile ocultando sidebar atrás do login, corrige aria-prohibited-attr e label-content-name-mismatch (Acessibilidade 100), libera paste nativo no catálogo (Práticas Recomendadas 100) e ativa BFCache"
+  "version": "1.0.319",
+  "build": 319,
+  "releaseDate": "2026-11-26",
+  "notes": "Reorganização responsiva do card Modo de Manutenção no Painel ADM em 3 faixas verticais (cabeçalho com ícone/título/status, descrição em largura total e botão de ação 100% largura) v1.0.319"
 }
