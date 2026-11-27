@@ -33321,7 +33321,18 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
 .channel-community-composer {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
+    width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
+    background: #171717;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 12px;
+}
+.channel-community-publish-btn {
+    width: 100%;
+    flex: none;
 }
 .channel-community-list,
 .channel-manage-list {
@@ -33338,6 +33349,9 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
     border: 1px solid rgba(255, 255, 255, 0.09);
     border-radius: 12px;
     padding: 10px 12px;
+    box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
 }
 .channel-manage-item {
     display: flex;
@@ -33745,19 +33759,25 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
     line-height: 1.42;
     white-space: pre-line;
 }
-/* Telas Próprias: Seguidores & Interação e Super Fã & Seja Membro (v1.0.322) */
+/* Telas Próprias: Seguidores & Interação, Super Fã & Seja Membro, Comunidade e Nível VORTEX (v1.0.322–v1.0.323) */
 .channel-analytics-screen,
-.channel-membership-screen {
+.channel-membership-screen,
+.channel-community-screen,
+.channel-level-screen {
     z-index: 1380;
     background: #0f0f0f;
     overflow: hidden;
 }
 .channel-analytics-screen.active,
-.channel-membership-screen.active {
+.channel-membership-screen.active,
+.channel-community-screen.active,
+.channel-level-screen.active {
     display: flex !important;
 }
 .channel-analytics-topbar,
-.channel-membership-topbar {
+.channel-membership-topbar,
+.channel-community-topbar,
+.channel-level-topbar {
     flex-shrink: 0;
 }
 .channel-subscreen-topbar-title {
@@ -33778,14 +33798,18 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
     flex-shrink: 0;
 }
 .channel-analytics-scroll-body,
-.channel-membership-scroll-body {
+.channel-membership-scroll-body,
+.channel-community-scroll-body,
+.channel-level-scroll-body {
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-y: contain;
 }
 .channel-analytics-container,
-.channel-membership-container {
+.channel-membership-container,
+.channel-community-container,
+.channel-level-container {
     width: 100%;
     max-width: 580px;
     margin: 0 auto;
@@ -34149,6 +34173,50 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
    ========================================================================== */
 #music-picker-modal.custom-modal-overlay {
     z-index: 20030 !important;
+}
+/* Tela Própria: Escolher Música (v1.0.323) */
+#music-picker-modal.music-picker-screen {
+    z-index: 20030 !important;
+    background: #0d1018;
+    color: #f1f1f1;
+    overflow: hidden;
+}
+#music-picker-modal.music-picker-screen.active {
+    display: flex !important;
+}
+.music-picker-topbar {
+    flex-shrink: 0;
+    background: #0d1018;
+}
+.music-picker-scroll-body {
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+}
+.music-picker-container {
+    width: 100%;
+    max-width: 580px;
+    margin: 0 auto;
+    padding: 14px 16px calc(40px + env(safe-area-inset-bottom, 0px));
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.music-picker-screen .music-results-container {
+    flex: none;
+    overflow: visible;
+    padding-right: 0;
+    max-height: none;
+}
+.music-picker-screen .music-upload-device-section,
+.music-picker-screen .music-search-box,
+.music-picker-screen .music-genre-chips,
+.music-picker-screen .music-tracks-list {
+    width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
 }
 /* Tela Própria: Gerenciar Vídeos e Imagens do Canal (v1.0.321) */
 .channel-manage-screen {
@@ -35093,8 +35161,11 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
 }
 .channel-level-actions-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
+    width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
 }
 .channel-level-action-chip {
     display: flex;
@@ -35106,6 +35177,10 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
     border: 1px solid rgba(255, 255, 255, 0.09);
     font-size: 0.76rem;
     color: #e4e4e7;
+    gap: 6px;
+    box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
 }
 .channel-level-action-chip strong {
     color: var(--accent-color, #39ff14);
@@ -35888,6 +35963,9 @@ textarea,
     .channel-manage-scroll-body,
     .channel-analytics-scroll-body,
     .channel-membership-scroll-body,
+    .channel-community-scroll-body,
+    .channel-level-scroll-body,
+    .music-picker-scroll-body,
     .channel-modal-body,
     .settings-content,
     .post-composer {
@@ -35927,7 +36005,10 @@ body.vortex-mobile-opt .channel-panel,
 body.vortex-mobile-opt .channel-customize-screen,
 body.vortex-mobile-opt .channel-manage-screen,
 body.vortex-mobile-opt .channel-analytics-screen,
-body.vortex-mobile-opt .channel-membership-screen {
+body.vortex-mobile-opt .channel-membership-screen,
+body.vortex-mobile-opt .channel-community-screen,
+body.vortex-mobile-opt .channel-level-screen,
+body.vortex-mobile-opt .music-picker-screen {
     contain: layout style;
 }
 

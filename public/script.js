@@ -24751,7 +24751,7 @@ export function getAdminReports() {
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
 const TRANSPARENT_IMG_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E";
-export const CURRENT_APP_VERSION = '1.0.322';
+export const CURRENT_APP_VERSION = '1.0.323';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -44152,8 +44152,13 @@ export function openMusicPicker(target = 'status', targetPostId = null) {
     activeMusicPickerTarget = target;
     pendingChannelManageMusicPostId = (target === 'channel-manage' && targetPostId) ? String(targetPostId) : null;
     const modal = document.getElementById('music-picker-modal');
-    if (modal) modal.classList.add('active');
-    
+    if (modal) {
+        modal.classList.add('active');
+        modal.setAttribute('aria-hidden', 'false');
+    }
+    const scrollBody = document.getElementById('music-picker-scroll-body');
+    if (scrollBody) scrollBody.scrollTop = 0;
+
     loadUserFavoriteTracks();
 
     const searchInput = document.getElementById('music-search-input');
@@ -44170,12 +44175,16 @@ export function openMusicPicker(target = 'status', targetPostId = null) {
     });
 
     loadMusicPickerResults('', 'for-you');
+    if (window.lucide) lucide.createIcons();
 }
 
 export function closeMusicPicker() {
     stopMusicPreview();
     const modal = document.getElementById('music-picker-modal');
-    if (modal) modal.classList.remove('active');
+    if (modal) {
+        modal.classList.remove('active');
+        modal.setAttribute('aria-hidden', 'true');
+    }
     activeMusicPickerTarget = null;
     pendingChannelManageMusicPostId = null;
 }
@@ -45578,6 +45587,7 @@ export function closeTopmostActiveLayer() {
     const channelSubModals = [
         'channel-analytics-modal',
         'channel-membership-modal',
+        'level-progression-modal',
         'channel-media-viewer-modal',
         'channel-manage-modal',
         'channel-community-modal',
@@ -46163,7 +46173,9 @@ if (typeof window !== 'undefined') {
     window.MUSIC_API_KEY = MUSIC_API_KEY;
     window.searchMusicTracks = searchMusicTracks;
     window.openMusicPicker = openMusicPicker;
+    window.openMusicPickerScreen = openMusicPicker;
     window.closeMusicPicker = closeMusicPicker;
+    window.closeMusicPickerScreen = closeMusicPicker;
     window.selectMusicTrack = selectMusicTrack;
     window.removeSelectedMusic = removeSelectedMusic;
     window.updateMusicSnippetUI = updateMusicSnippetUI;
@@ -56360,10 +56372,20 @@ export function openLevelProgressionModal(targetUid = activeChannelUid || curren
         </div>
     `;
 
+    const scrollBody = document.getElementById('level-progression-scroll-body');
+    if (scrollBody) scrollBody.scrollTop = 0;
+
+    modal.classList?.add('active');
     modal.style.display = 'flex';
     modal.setAttribute('aria-hidden', 'false');
     if (window.lucide) lucide.createIcons();
 }
+
+export function closeLevelProgressionScreen() {
+    closeChannelSubModal('level-progression-modal');
+}
+
+export const openLevelProgressionScreen = openLevelProgressionModal;
 
 export function getChannelMediaPostsForUser(uid, tab = 'inicio', playlistFilter = 'all', postsSource = cachedFeedPosts, userData = null) {
     const now = Date.now();
@@ -57309,6 +57331,8 @@ export function closeUserChannelScreen() {
     closeChannelManageScreen();
     closeChannelAnalyticsScreen();
     closeChannelMembershipScreen();
+    closeChannelCommunityScreen();
+    closeLevelProgressionScreen();
     if (typeof stopFeedPostMusic === 'function') {
         stopFeedPostMusic();
     }
@@ -57726,6 +57750,7 @@ export function openChannelCommunityModal(options = {}) {
     const listEl = document.getElementById('channel-community-list');
     if (!modal || !listEl) return false;
 
+    const wasOpen = Boolean(modal.style.display === 'flex' || modal.classList?.contains('active'));
     const uid = activeChannelUid || currentUser?.uid || '';
     const isOwner = Boolean(uid && currentUser?.uid && uid === currentUser.uid);
     const userData = getEffectiveChannelUserData(uid, activeChannelUserData);
@@ -57764,10 +57789,22 @@ export function openChannelCommunityModal(options = {}) {
         });
     });
 
+    if (!wasOpen) {
+        const scrollBody = document.getElementById('channel-community-scroll-body');
+        if (scrollBody) scrollBody.scrollTop = 0;
+    }
+
+    modal.classList?.add('active');
     modal.style.display = 'flex';
     modal.setAttribute('aria-hidden', 'false');
     if (window.lucide) lucide.createIcons();
 }
+
+export function closeChannelCommunityScreen() {
+    closeChannelSubModal('channel-community-modal');
+}
+
+export const openChannelCommunityScreen = openChannelCommunityModal;
 
 export async function toggleChannelCommunityPostLike(channelUid = activeChannelUid, commPostId = '') {
     if (!currentUser?.uid) {
@@ -57832,7 +57869,7 @@ export async function toggleChannelCommunityPostLike(channelUid = activeChannelU
     }
 
     const modal = document.getElementById('channel-community-modal');
-    if (modal && modal.style.display === 'flex') {
+    if (modal && (modal.style.display === 'flex' || modal.classList?.contains('active'))) {
         openChannelCommunityModal();
     }
 
@@ -58853,6 +58890,8 @@ if (typeof window !== 'undefined') {
     window.toggleChannelSubscription = toggleChannelSubscription;
     window.openChannelAboutModal = openChannelAboutModal;
     window.openChannelCommunityModal = openChannelCommunityModal;
+    window.openChannelCommunityScreen = openChannelCommunityModal;
+    window.closeChannelCommunityScreen = closeChannelCommunityScreen;
     window.toggleChannelCommunityPostLike = toggleChannelCommunityPostLike;
     window.publishChannelCommunityPost = publishChannelCommunityPost;
     window.openChannelManageModal = openChannelManageModal;
@@ -58916,6 +58955,8 @@ if (typeof window !== 'undefined') {
     window.renderVortexStarSealHTML = renderVortexStarSealHTML;
     window.togglePinChannelShort = togglePinChannelShort;
     window.openLevelProgressionModal = openLevelProgressionModal;
+    window.openLevelProgressionScreen = openLevelProgressionModal;
+    window.closeLevelProgressionScreen = closeLevelProgressionScreen;
     window.normalizePostVisibility = normalizePostVisibility;
     window.isPostPrivate = isPostPrivate;
     window.canUserViewPost = canUserViewPost;
