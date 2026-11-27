@@ -1,6 +1,6 @@
 {
-  "version": "1.0.321",
-  "build": 321,
+  "version": "1.0.322",
+  "build": 322,
   "releaseDate": "2026-11-27",
-  "notes": "Tela própria em tela cheia para Gerenciar vídeos e imagens do canal com topbar (Voltar/+Novo), filtros, edição inline e cards responsivos sem overflow horizontal v1.0.321"
+  "notes": "Telas próprias em tela cheia para Seguidores & Interação e Super Fã & Seja Membro do canal com topbar (Voltar), rolagem independente e cards responsivos sem overflow horizontal v1.0.322"
 }

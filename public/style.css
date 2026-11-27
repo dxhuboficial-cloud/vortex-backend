@@ -33745,6 +33745,56 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
     line-height: 1.42;
     white-space: pre-line;
 }
+/* Telas Próprias: Seguidores & Interação e Super Fã & Seja Membro (v1.0.322) */
+.channel-analytics-screen,
+.channel-membership-screen {
+    z-index: 1380;
+    background: #0f0f0f;
+    overflow: hidden;
+}
+.channel-analytics-screen.active,
+.channel-membership-screen.active {
+    display: flex !important;
+}
+.channel-analytics-topbar,
+.channel-membership-topbar {
+    flex-shrink: 0;
+}
+.channel-subscreen-topbar-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    text-align: center;
+}
+.channel-subscreen-topbar-title i,
+.channel-subscreen-topbar-title svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+.channel-subscreen-topbar-spacer {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+}
+.channel-analytics-scroll-body,
+.channel-membership-scroll-body {
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+}
+.channel-analytics-container,
+.channel-membership-container {
+    width: 100%;
+    max-width: 580px;
+    margin: 0 auto;
+    padding: 16px 16px calc(40px + env(safe-area-inset-bottom, 0px));
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
 .channel-analytics-summary-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -33758,6 +33808,9 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
     display: flex;
     flex-direction: column;
     gap: 4px;
+    box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
 }
 .channel-analytics-stat-card.videos {
     border-color: rgba(57, 255, 20, 0.3);
@@ -33825,6 +33878,9 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
     border-radius: 10px;
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.07);
+    box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
 }
 .channel-analytics-video-title {
     font-size: 0.82rem;
@@ -34759,6 +34815,9 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
     border-radius: 12px;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.12);
+    box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
 }
 .channel-membership-hero.unlocked {
     background: linear-gradient(135deg, rgba(57, 255, 20, 0.12), rgba(255, 215, 0, 0.12));
@@ -34793,6 +34852,9 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
     display: flex;
     flex-direction: column;
     gap: 2px;
+    box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
 }
 .channel-membership-mini-card strong {
     font-size: 1.05rem;
@@ -34815,6 +34877,9 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
     border-radius: 10px;
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.08);
+    box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
 }
 .channel-membership-row.met {
     border-color: rgba(57, 255, 20, 0.38);
@@ -35821,6 +35886,8 @@ textarea,
     .channel-scroll-area,
     .channel-customize-scroll-body,
     .channel-manage-scroll-body,
+    .channel-analytics-scroll-body,
+    .channel-membership-scroll-body,
     .channel-modal-body,
     .settings-content,
     .post-composer {
@@ -35858,7 +35925,9 @@ body.vortex-mobile-opt .custom-modal-overlay,
 body.vortex-mobile-opt .feed-overlay,
 body.vortex-mobile-opt .channel-panel,
 body.vortex-mobile-opt .channel-customize-screen,
-body.vortex-mobile-opt .channel-manage-screen {
+body.vortex-mobile-opt .channel-manage-screen,
+body.vortex-mobile-opt .channel-analytics-screen,
+body.vortex-mobile-opt .channel-membership-screen {
     contain: layout style;
 }
 

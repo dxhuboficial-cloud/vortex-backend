@@ -24751,7 +24751,7 @@ export function getAdminReports() {
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
 const TRANSPARENT_IMG_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E";
-export const CURRENT_APP_VERSION = '1.0.321';
+export const CURRENT_APP_VERSION = '1.0.322';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -45577,6 +45577,7 @@ export function closeTopmostActiveLayer() {
 
     const channelSubModals = [
         'channel-analytics-modal',
+        'channel-membership-modal',
         'channel-media-viewer-modal',
         'channel-manage-modal',
         'channel-community-modal',
@@ -57306,6 +57307,8 @@ export async function openUserChannelScreen(targetUid = null, fallbackData = nul
 export function closeUserChannelScreen() {
     closeChannelCustomizeScreen();
     closeChannelManageScreen();
+    closeChannelAnalyticsScreen();
+    closeChannelMembershipScreen();
     if (typeof stopFeedPostMusic === 'function') {
         stopFeedPostMusic();
     }
@@ -57667,10 +57670,20 @@ export function openChannelMembershipModal(targetUid = activeChannelUid || curre
         <div class="channel-membership-list">${rowsHtml}</div>
     `;
 
+    const scrollBody = document.getElementById('channel-membership-scroll-body');
+    if (scrollBody) scrollBody.scrollTop = 0;
+
+    modal.classList?.add('active');
     modal.style.display = 'flex';
     modal.setAttribute('aria-hidden', 'false');
     if (window.lucide) lucide.createIcons();
 }
+
+export function closeChannelMembershipScreen() {
+    closeChannelSubModal('channel-membership-modal');
+}
+
+export const openChannelMembershipScreen = openChannelMembershipModal;
 
 export function openChannelAboutModal() {
     const modal = document.getElementById('channel-about-modal');
@@ -57942,10 +57955,20 @@ export function openChannelAnalyticsModal() {
         </div>
     `;
 
+    const scrollBody = document.getElementById('channel-analytics-scroll-body');
+    if (scrollBody) scrollBody.scrollTop = 0;
+
+    modal.classList?.add('active');
     modal.style.display = 'flex';
     modal.setAttribute('aria-hidden', 'false');
     if (window.lucide) lucide.createIcons();
 }
+
+export function closeChannelAnalyticsScreen() {
+    closeChannelSubModal('channel-analytics-modal');
+}
+
+export const openChannelAnalyticsScreen = openChannelAnalyticsModal;
 
 function normalizeChannelManageFilter(filter) {
     const val = String(filter || '').toLowerCase();
@@ -58817,6 +58840,8 @@ if (typeof window !== 'undefined') {
     window.getChannelMediaPostsForUser = getChannelMediaPostsForUser;
     window.getChannelFollowerAnalytics = getChannelFollowerAnalytics;
     window.openChannelAnalyticsModal = openChannelAnalyticsModal;
+    window.openChannelAnalyticsScreen = openChannelAnalyticsModal;
+    window.closeChannelAnalyticsScreen = closeChannelAnalyticsScreen;
     window.classifyFollowAttributionSource = classifyFollowAttributionSource;
     window.uploadChannelBannerFile = uploadChannelBannerFile;
     window.removeChannelBanner = removeChannelBanner;
@@ -58874,6 +58899,8 @@ if (typeof window !== 'undefined') {
     window.evaluateChannelMembershipEligibility = evaluateChannelMembershipEligibility;
     window.isChannelMembershipUnlocked = isChannelMembershipUnlocked;
     window.openChannelMembershipModal = openChannelMembershipModal;
+    window.openChannelMembershipScreen = openChannelMembershipModal;
+    window.closeChannelMembershipScreen = closeChannelMembershipScreen;
     window.toggleChannelMember = toggleChannelMember;
     window.toggleChannelSuperFan = toggleChannelSuperFan;
     window.VORTEX_XP_PER_LEVEL = VORTEX_XP_PER_LEVEL;
