@@ -1,6 +1,6 @@
 {
-  "version": "1.0.319",
-  "build": 319,
-  "releaseDate": "2026-11-26",
-  "notes": "Reorganização responsiva do card Modo de Manutenção no Painel ADM em 3 faixas verticais (cabeçalho com ícone/título/status, descrição em largura total e botão de ação 100% largura) v1.0.319"
+  "version": "1.0.320",
+  "build": 320,
+  "releaseDate": "2026-11-27",
+  "notes": "Tela própria em tela cheia para Personalizar o canal com barra superior (Voltar/Salvar), seções agrupadas e ações de banner responsivas sem estouro horizontal v1.0.320"
 }

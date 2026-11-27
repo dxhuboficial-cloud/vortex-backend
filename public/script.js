@@ -24751,7 +24751,7 @@ export function getAdminReports() {
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
 const TRANSPARENT_IMG_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E";
-export const CURRENT_APP_VERSION = '1.0.319';
+export const CURRENT_APP_VERSION = '1.0.320';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -57304,6 +57304,7 @@ export async function openUserChannelScreen(targetUid = null, fallbackData = nul
 }
 
 export function closeUserChannelScreen() {
+    closeChannelCustomizeScreen();
     if (typeof stopFeedPostMusic === 'function') {
         stopFeedPostMusic();
     }
@@ -57423,9 +57424,21 @@ export function openChannelCustomizeModal() {
     if (enabledToggle) enabledToggle.checked = isUserChannelEnabled(userData);
     if (showFollowersToggle) showFollowersToggle.checked = userData.channelShowFollowers !== false;
 
+    const scrollBody = document.getElementById('channel-customize-scroll-body');
+    if (scrollBody) scrollBody.scrollTop = 0;
+
+    modal.classList?.add('active');
     modal.style.display = 'flex';
     modal.setAttribute('aria-hidden', 'false');
     if (window.lucide) lucide.createIcons();
+}
+
+export function closeChannelCustomizeScreen() {
+    const modal = document.getElementById('channel-customize-modal');
+    if (!modal) return;
+    modal.classList?.remove('active');
+    modal.style.display = 'none';
+    modal.setAttribute('aria-hidden', 'true');
 }
 
 export async function saveChannelCustomizeModal() {
@@ -57487,14 +57500,13 @@ export async function saveChannelCustomizeModal() {
         console.error('Erro ao salvar personalização do canal:', err);
     }
 
-    const modal = document.getElementById('channel-customize-modal');
-    if (modal) {
-        modal.style.display = 'none';
-        modal.setAttribute('aria-hidden', 'true');
-    }
+    closeChannelCustomizeScreen();
     renderChannelScreen();
     showToast('Canal Atualizado!', 'As informações do canal foram salvas.', 'green');
 }
+
+export const openChannelCustomizeScreen = openChannelCustomizeModal;
+export const saveChannelCustomizeScreen = saveChannelCustomizeModal;
 
 export async function toggleChannelSubscription(targetUid = activeChannelUid) {
     if (!currentUser?.uid || !targetUid || targetUid === currentUser.uid) return;
@@ -58459,6 +58471,7 @@ export function openChannelGridMediaViewer(postId) {
 function closeChannelSubModal(modalId) {
     const modal = document.getElementById(modalId);
     if (!modal) return;
+    modal.classList?.remove('active');
     modal.style.display = 'none';
     modal.setAttribute('aria-hidden', 'true');
     if (modalId === 'channel-media-viewer-modal') {
@@ -58555,6 +58568,7 @@ function bindChannelScreenListeners() {
         document.getElementById('profile-btn')?.click();
     });
     document.getElementById('save-channel-customize-btn')?.addEventListener('click', saveChannelCustomizeModal);
+    document.getElementById('channel-customize-topbar-save-btn')?.addEventListener('click', saveChannelCustomizeModal);
 
     document.getElementById('channel-manage-videos-btn')?.addEventListener('click', () => {
         playSound(clickSound);
@@ -58783,7 +58797,10 @@ if (typeof window !== 'undefined') {
     window.uploadChannelBannerFile = uploadChannelBannerFile;
     window.removeChannelBanner = removeChannelBanner;
     window.openChannelCustomizeModal = openChannelCustomizeModal;
+    window.openChannelCustomizeScreen = openChannelCustomizeModal;
+    window.closeChannelCustomizeScreen = closeChannelCustomizeScreen;
     window.saveChannelCustomizeModal = saveChannelCustomizeModal;
+    window.saveChannelCustomizeScreen = saveChannelCustomizeModal;
     window.toggleChannelSubscription = toggleChannelSubscription;
     window.openChannelAboutModal = openChannelAboutModal;
     window.openChannelCommunityModal = openChannelCommunityModal;
