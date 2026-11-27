@@ -33328,6 +33328,9 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
 }
 .channel-community-post-card,
 .channel-manage-item {
@@ -33377,6 +33380,7 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
     border-radius: 8px;
     padding: 4px 6px;
     font-size: 0.74rem;
+    max-width: 100%;
 }
 .channel-about-link-item {
     display: flex;
@@ -34090,6 +34094,49 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
 #music-picker-modal.custom-modal-overlay {
     z-index: 20030 !important;
 }
+/* Tela Própria: Gerenciar Vídeos e Imagens do Canal (v1.0.321) */
+.channel-manage-screen {
+    z-index: 1380;
+    background: #0f0f0f;
+    overflow: hidden;
+}
+.channel-manage-screen.active {
+    display: flex !important;
+}
+.channel-manage-topbar {
+    flex-shrink: 0;
+}
+.channel-manage-topbar-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.channel-manage-topbar-title i,
+.channel-manage-topbar-title svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+.channel-manage-scroll-body {
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+}
+.channel-manage-container {
+    width: 100%;
+    max-width: 580px;
+    margin: 0 auto;
+    padding: 14px 16px calc(40px + env(safe-area-inset-bottom, 0px));
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.channel-manage-new-post-btn {
+    width: 100%;
+    margin: 0;
+}
 .channel-manage-filter-tabs {
     display: flex;
     align-items: center;
@@ -34098,6 +34145,9 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
     border-radius: 12px;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.08);
+    width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
 }
 .channel-manage-filter-btn {
     flex: 1;
@@ -34124,6 +34174,10 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
     flex-direction: column;
     align-items: stretch;
     gap: 10px;
+    width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
 }
 .channel-manage-main-row {
     display: flex;
@@ -35766,6 +35820,7 @@ textarea,
     .feed-list,
     .channel-scroll-area,
     .channel-customize-scroll-body,
+    .channel-manage-scroll-body,
     .channel-modal-body,
     .settings-content,
     .post-composer {
@@ -35802,7 +35857,8 @@ textarea,
 body.vortex-mobile-opt .custom-modal-overlay,
 body.vortex-mobile-opt .feed-overlay,
 body.vortex-mobile-opt .channel-panel,
-body.vortex-mobile-opt .channel-customize-screen {
+body.vortex-mobile-opt .channel-customize-screen,
+body.vortex-mobile-opt .channel-manage-screen {
     contain: layout style;
 }
 

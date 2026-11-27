@@ -24751,7 +24751,7 @@ export function getAdminReports() {
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
 const TRANSPARENT_IMG_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E";
-export const CURRENT_APP_VERSION = '1.0.320';
+export const CURRENT_APP_VERSION = '1.0.321';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -55863,7 +55863,7 @@ export function syncChannelEnabledUI(isEnabled = isUserChannelEnabled(currentPro
         feedBanner.style.display = enabled ? 'none' : 'flex';
     }
 
-    ['open-post-from-feed-btn', 'new-post-nav-btn', 'channel-topbar-create-btn', 'channel-manage-new-post-btn'].forEach(btnId => {
+    ['open-post-from-feed-btn', 'new-post-nav-btn', 'channel-topbar-create-btn', 'channel-manage-new-post-btn', 'channel-manage-topbar-new-btn'].forEach(btnId => {
         const el = document.getElementById(btnId);
         if (el?.classList) {
             el.classList.toggle('post-action-channel-disabled', !enabled);
@@ -57305,6 +57305,7 @@ export async function openUserChannelScreen(targetUid = null, fallbackData = nul
 
 export function closeUserChannelScreen() {
     closeChannelCustomizeScreen();
+    closeChannelManageScreen();
     if (typeof stopFeedPostMusic === 'function') {
         stopFeedPostMusic();
     }
@@ -57985,7 +57986,7 @@ function refreshChannelAndFeedViews() {
 
 function isChannelManageModalOpen() {
     const modal = document.getElementById('channel-manage-modal');
-    return Boolean(modal && modal.style.display === 'flex');
+    return Boolean(modal && (modal.style.display === 'flex' || modal.classList?.contains('active')));
 }
 
 /** Atualiza metadados editáveis (título, legenda, aba ou música) de uma publicação gerenciada no canal. */
@@ -58211,23 +58212,27 @@ export function openChannelManageModal(filter = activeChannelManageFilter) {
     const listEl = document.getElementById('channel-manage-list');
     if (!modal || !listEl || !currentUser?.uid) return;
 
+    const wasOpen = isChannelManageModalOpen();
     activeChannelManageFilter = normalizeChannelManageFilter(filter);
     const metaByFilter = {
         videos: {
             icon: 'film',
             title: 'Gerenciar vídeos',
+            topbarBtnText: '+ Vídeo',
             newBtnText: '+ Novo Vídeo / Reels',
             emptyText: 'Você ainda não publicou vídeos ou Reels no seu canal.'
         },
         imagens: {
             icon: 'image',
             title: 'Gerenciar imagens',
+            topbarBtnText: '+ Imagem',
             newBtnText: '+ Nova Imagem',
             emptyText: 'Você ainda não publicou imagens no seu canal.'
         },
         all: {
             icon: 'layers',
             title: 'Gerenciar mídias',
+            topbarBtnText: '+ Novo',
             newBtnText: '+ Nova Publicação',
             emptyText: 'Você ainda não publicou mídias no seu canal.'
         }
@@ -58242,6 +58247,11 @@ export function openChannelManageModal(filter = activeChannelManageFilter) {
     if (newPostBtn) {
         newPostBtn.innerText = meta.newBtnText;
         newPostBtn.classList?.toggle('post-action-channel-disabled', !isUserChannelEnabled(currentProfile));
+    }
+    const topbarNewBtn = document.getElementById('channel-manage-topbar-new-btn');
+    if (topbarNewBtn) {
+        topbarNewBtn.innerText = meta.topbarBtnText;
+        topbarNewBtn.classList?.toggle('post-action-channel-disabled', !isUserChannelEnabled(currentProfile));
     }
     const tabsWrap = document.getElementById('channel-manage-filter-tabs');
     if (tabsWrap) {
@@ -58265,11 +58275,23 @@ export function openChannelManageModal(filter = activeChannelManageFilter) {
         }
     }
 
+    if (!wasOpen) {
+        const scrollBody = document.getElementById('channel-manage-scroll-body');
+        if (scrollBody) scrollBody.scrollTop = 0;
+    }
+
+    modal.classList?.add('active');
     modal.style.display = 'flex';
     modal.setAttribute('aria-hidden', 'false');
     if (modal.dataset) modal.dataset.manageFilter = activeChannelManageFilter;
     if (window.lucide) lucide.createIcons();
 }
+
+export function closeChannelManageScreen() {
+    closeChannelSubModal('channel-manage-modal');
+}
+
+export const openChannelManageScreen = openChannelManageModal;
 
 export function syncChannelViewerLikeButton(post = null) {
     const likeBtn = document.getElementById('channel-viewer-like-btn');
@@ -58524,11 +58546,13 @@ function bindChannelScreenListeners() {
     document.getElementById('channel-empty-post-btn')?.addEventListener('click', () => {
         openPostComposerScreen({ defaultFormat: activeChannelTab === 'imagens' ? 'image' : 'auto', fromChannel: true });
     });
-    document.getElementById('channel-manage-new-post-btn')?.addEventListener('click', () => {
-        const defaultFormat = activeChannelManageFilter === 'imagens' ? 'image' : 'auto';
-        if (openPostComposerScreen({ defaultFormat, fromChannel: true })) {
-            closeChannelSubModal('channel-manage-modal');
-        }
+    ['channel-manage-new-post-btn', 'channel-manage-topbar-new-btn'].forEach(btnId => {
+        document.getElementById(btnId)?.addEventListener('click', () => {
+            const defaultFormat = activeChannelManageFilter === 'imagens' ? 'image' : 'auto';
+            if (openPostComposerScreen({ defaultFormat, fromChannel: true })) {
+                closeChannelSubModal('channel-manage-modal');
+            }
+        });
     });
     document.getElementById('channel-toggle-status-btn')?.addEventListener('click', () => {
         playSound(clickSound);
@@ -58807,6 +58831,8 @@ if (typeof window !== 'undefined') {
     window.toggleChannelCommunityPostLike = toggleChannelCommunityPostLike;
     window.publishChannelCommunityPost = publishChannelCommunityPost;
     window.openChannelManageModal = openChannelManageModal;
+    window.openChannelManageScreen = openChannelManageModal;
+    window.closeChannelManageScreen = closeChannelManageScreen;
     window.setChannelManageFilter = setChannelManageFilter;
     window.getChannelManagePosts = getChannelManagePosts;
     window.updateChannelManagedPost = updateChannelManagedPost;

@@ -1,6 +1,6 @@
 {
-  "version": "1.0.320",
-  "build": 320,
+  "version": "1.0.321",
+  "build": 321,
   "releaseDate": "2026-11-27",
-  "notes": "Tela própria em tela cheia para Personalizar o canal com barra superior (Voltar/Salvar), seções agrupadas e ações de banner responsivas sem estouro horizontal v1.0.320"
+  "notes": "Tela própria em tela cheia para Gerenciar vídeos e imagens do canal com topbar (Voltar/+Novo), filtros, edição inline e cards responsivos sem overflow horizontal v1.0.321"
 }
