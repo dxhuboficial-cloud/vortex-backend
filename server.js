@@ -171,6 +171,8 @@ async function getChannelMemberFeePercentFromFirestore() {
  */
 async function activateChannelMembershipInFirestore(channelOwnerUid, subscriberUid, paymentId, amount, extra = {}) {
     if (!channelOwnerUid || !subscriberUid || !paymentId) return { alreadyCredited: false, skipped: true };
+    const tier = extra.tier === 'superfan' ? 'superfan' : 'member';
+    const isSuperFanTier = tier === 'superfan';
     const now = Date.now();
     const expiresAt = now + (30 * 24 * 60 * 60 * 1000);
     const feePercent = extra.feePercent !== undefined
@@ -178,7 +180,7 @@ async function activateChannelMembershipInFirestore(channelOwnerUid, subscriberU
         : await getChannelMemberFeePercentFromFirestore();
     const { grossAmount, platformFee, creatorNet } = calculateChannelMembershipSplit(amount, feePercent);
 
-    if (!db) return { alreadyCredited: false, expiresAt, grossAmount, feePercent, platformFee, creatorNet };
+    if (!db) return { alreadyCredited: false, tier, fanRank: isSuperFanTier ? 1 : 0, expiresAt, grossAmount, feePercent, platformFee, creatorNet };
 
     try {
         const payRef = db.collection('channel_member_payments').doc(String(paymentId));
@@ -186,6 +188,8 @@ async function activateChannelMembershipInFirestore(channelOwnerUid, subscriberU
         if (existingSnap.exists && existingSnap.data()?.credited === true) {
             return {
                 alreadyCredited: true,
+                tier: existingSnap.data().tier || tier,
+                fanRank: existingSnap.data().fanRank || 0,
                 expiresAt: existingSnap.data().expiresAt || expiresAt,
                 grossAmount: existingSnap.data().grossAmount || grossAmount,
                 feePercent: existingSnap.data().feePercent ?? feePercent,
@@ -194,8 +198,32 @@ async function activateChannelMembershipInFirestore(channelOwnerUid, subscriberU
             };
         }
 
+        let fanRank = 0;
+        if (isSuperFanTier) {
+            try {
+                const ownerSnap = await db.collection('users').doc(channelOwnerUid).get();
+                if (ownerSnap.exists) {
+                    const oData = ownerSnap.data() || {};
+                    const existingSubRank = Number(oData.channelSuperFanSubscriptions?.[subscriberUid]?.rank || 0);
+                    if (existingSubRank > 0) {
+                        fanRank = existingSubRank;
+                    } else {
+                        const sfArr = Array.isArray(oData.channelSuperFans) ? oData.channelSuperFans.filter(Boolean) : [];
+                        const pos = sfArr.indexOf(subscriberUid);
+                        fanRank = pos >= 0 ? pos + 1 : sfArr.length + 1;
+                    }
+                } else {
+                    fanRank = 1;
+                }
+            } catch (_) {
+                fanRank = 1;
+            }
+        }
+
         await payRef.set({
             paymentId: String(paymentId),
+            tier,
+            ...(isSuperFanTier ? { fanRank } : {}),
             channelOwnerUid,
             subscriberUid,
             subscriberName: String(extra.subscriberName || ''),
@@ -211,19 +239,36 @@ async function activateChannelMembershipInFirestore(channelOwnerUid, subscriberU
             expiresAt
         }, { merge: true });
 
-        const ownerUpdates = {
-            channelMembers: adminFieldValue ? adminFieldValue.arrayUnion(subscriberUid) : [subscriberUid],
-            [`channelMemberSubscriptions.${subscriberUid}`]: {
-                uid: subscriberUid,
-                paymentId: String(paymentId),
-                amount: grossAmount,
-                creatorNet,
-                feePercent,
-                platformFee,
-                startedAt: now,
-                expiresAt
+        const ownerUpdates = isSuperFanTier
+            ? {
+                channelSuperFans: adminFieldValue ? adminFieldValue.arrayUnion(subscriberUid) : [subscriberUid],
+                [`channelSuperFanSubscriptions.${subscriberUid}`]: {
+                    uid: subscriberUid,
+                    tier: 'superfan',
+                    rank: fanRank,
+                    paymentId: String(paymentId),
+                    amount: grossAmount,
+                    creatorNet,
+                    feePercent,
+                    platformFee,
+                    startedAt: now,
+                    expiresAt
+                }
             }
-        };
+            : {
+                channelMembers: adminFieldValue ? adminFieldValue.arrayUnion(subscriberUid) : [subscriberUid],
+                [`channelMemberSubscriptions.${subscriberUid}`]: {
+                    uid: subscriberUid,
+                    tier: 'member',
+                    paymentId: String(paymentId),
+                    amount: grossAmount,
+                    creatorNet,
+                    feePercent,
+                    platformFee,
+                    startedAt: now,
+                    expiresAt
+                }
+            };
         if (creatorNet > 0 && adminFieldValue) {
             ownerUpdates.channelMemberEarningsBalance = adminFieldValue.increment(creatorNet);
             ownerUpdates.channelMemberEarningsTotal = adminFieldValue.increment(creatorNet);
@@ -252,9 +297,11 @@ async function activateChannelMembershipInFirestore(channelOwnerUid, subscriberU
 
         await db.collection('notifications').add({
             toUid: subscriberUid,
-            type: 'channel_membership',
-            title: 'Seja Membro Liberado! 👑',
-            message: `Seu pagamento Pix foi aprovado! Você agora é membro do canal${extra.channelName ? ` "${extra.channelName}"` : ''} pelos próximos 30 dias.`,
+            type: isSuperFanTier ? 'channel_superfan' : 'channel_membership',
+            title: isSuperFanTier ? `Super Fã #${fanRank} Liberado! 🏆` : 'Seja Membro Liberado! 👑',
+            message: isSuperFanTier
+                ? `Seu pagamento Pix foi aprovado! Você agora é Super Fã (Fã ${fanRank} 🏆) do canal${extra.channelName ? ` "${extra.channelName}"` : ''} pelos próximos 30 dias.`
+                : `Seu pagamento Pix foi aprovado! Você agora é membro do canal${extra.channelName ? ` "${extra.channelName}"` : ''} pelos próximos 30 dias.`,
             read: false,
             createdAt: now,
             author: 'VORTEX VIP'
@@ -262,18 +309,18 @@ async function activateChannelMembershipInFirestore(channelOwnerUid, subscriberU
 
         await db.collection('notifications').add({
             toUid: channelOwnerUid,
-            type: 'channel_membership_earning',
-            title: 'Novo Membro Pago via Pix! 💰',
-            message: `${extra.subscriberName || 'Um visitante'} assinou o Seja Membro por R$ ${grossAmount.toFixed(2).replace('.', ',')} — líquido creditado: R$ ${creatorNet.toFixed(2).replace('.', ',')} (taxa plataforma ${feePercent}%).`,
+            type: isSuperFanTier ? 'channel_superfan_earning' : 'channel_membership_earning',
+            title: isSuperFanTier ? 'Novo Super Fã Pago via Pix! 🏆' : 'Novo Membro Pago via Pix! 💰',
+            message: `${extra.subscriberName || 'Um visitante'} assinou o ${isSuperFanTier ? `Super Fã (Fã ${fanRank} 🏆)` : 'Seja Membro'} por R$ ${grossAmount.toFixed(2).replace('.', ',')} — líquido creditado: R$ ${creatorNet.toFixed(2).replace('.', ',')} (taxa plataforma ${feePercent}%).`,
             read: false,
             createdAt: now,
             author: 'VORTEX VIP'
         }).catch(() => {});
 
-        return { alreadyCredited: false, expiresAt, grossAmount, feePercent, platformFee, creatorNet };
+        return { alreadyCredited: false, tier, fanRank, expiresAt, grossAmount, feePercent, platformFee, creatorNet };
     } catch (e) {
         console.error('[CHANNEL MEMBER] Erro ao ativar membro no Firestore:', e);
-        return { alreadyCredited: false, error: e.message };
+        return { alreadyCredited: false, tier, error: e.message };
     }
 }
 
@@ -508,10 +555,12 @@ app.post('/api/mercadopago-webhook', async (req, res) => {
                     if (mpData.metadata?.type === 'channel_membership') {
                         const channelOwnerUid = mpData.metadata?.channel_owner_uid;
                         const subscriberUid = mpData.metadata?.subscriber_uid;
+                        const tier = mpData.metadata?.tier === 'superfan' ? 'superfan' : 'member';
                         const amount = Number(mpData.transaction_amount || mpData.metadata?.amount || 0);
                         const feePercent = mpData.metadata?.fee_percent !== undefined ? Number(mpData.metadata.fee_percent) : undefined;
                         if (channelOwnerUid && subscriberUid) {
                             await activateChannelMembershipInFirestore(channelOwnerUid, subscriberUid, paymentId, amount, {
+                                tier,
                                 subscriberName: mpData.metadata?.subscriber_name || '',
                                 channelName: mpData.metadata?.channel_name || '',
                                 feePercent
@@ -531,7 +580,7 @@ app.post('/api/mercadopago-webhook', async (req, res) => {
     }
 });
 
-// 5b. Criação de Pagamento Pix para Assinatura Seja Membro do Canal (R$ 1,00 a R$ 5.000,00)
+// 5b. Criação de Pagamento Pix para Assinatura Seja Membro ou Super Fã do Canal (R$ 1,00 a R$ 5.000,00)
 app.post('/api/create-channel-membership-pix', async (req, res) => {
     try {
         const {
@@ -541,14 +590,18 @@ app.post('/api/create-channel-membership-pix', async (req, res) => {
             cpf,
             email,
             amount,
-            channelName
+            channelName,
+            tier: rawTier
         } = req.body || {};
+
+        const tier = rawTier === 'superfan' ? 'superfan' : 'member';
+        const isSuperFanTier = tier === 'superfan';
 
         if (!channelOwnerUid || !subscriberUid) {
             return res.status(400).json({ error: 'channelOwnerUid e subscriberUid são obrigatórios.' });
         }
         if (channelOwnerUid === subscriberUid) {
-            return res.status(400).json({ error: 'Você não pode assinar o Seja Membro do seu próprio canal.' });
+            return res.status(400).json({ error: `Você não pode assinar o ${isSuperFanTier ? 'Super Fã' : 'Seja Membro'} do seu próprio canal.` });
         }
 
         let resolvedAmount = Number(amount || 0);
@@ -559,10 +612,12 @@ app.post('/api/create-channel-membership-pix', async (req, res) => {
                 const ownerSnap = await db.collection('users').doc(String(channelOwnerUid)).get();
                 if (ownerSnap.exists) {
                     const ownerData = ownerSnap.data() || {};
-                    if (!ownerData.channelMemberPaidEnabled) {
-                        return res.status(400).json({ error: 'Este canal não está com assinatura paga ativada no momento.' });
+                    const isTierEnabled = isSuperFanTier ? ownerData.channelSuperFanPaidEnabled : ownerData.channelMemberPaidEnabled;
+                    if (!isTierEnabled) {
+                        return res.status(400).json({ error: `Este canal não está com assinatura paga de ${isSuperFanTier ? 'Super Fã' : 'Seja Membro'} ativada no momento.` });
                     }
-                    resolvedAmount = Number(ownerData.channelMemberPrice || resolvedAmount || 0);
+                    const tierStoredPrice = isSuperFanTier ? ownerData.channelSuperFanPrice : ownerData.channelMemberPrice;
+                    resolvedAmount = Number(tierStoredPrice || resolvedAmount || 0);
                     if (ownerData.channelName || ownerData.name) {
                         resolvedChannelName = String(ownerData.channelName || ownerData.name).trim().slice(0, 60);
                     }
@@ -591,7 +646,7 @@ app.post('/api/create-channel-membership-pix', async (req, res) => {
 
         const paymentPayload = {
             transaction_amount: grossAmount,
-            description: `Seja Membro - ${resolvedChannelName} (VORTEX)`.slice(0, 120),
+            description: `${isSuperFanTier ? 'Super Fã' : 'Seja Membro'} - ${resolvedChannelName} (VORTEX)`.slice(0, 120),
             payment_method_id: 'pix',
             payer: {
                 email: payerEmail,
@@ -605,6 +660,7 @@ app.post('/api/create-channel-membership-pix', async (req, res) => {
             ...(isPublicDomain ? { notification_url: `${req.protocol}://${host}/api/mercadopago-webhook` } : {}),
             metadata: {
                 type: 'channel_membership',
+                tier,
                 channel_owner_uid: String(channelOwnerUid),
                 subscriber_uid: String(subscriberUid),
                 subscriber_name: String(name || 'Assinante VORTEX').trim().slice(0, 80),
@@ -621,14 +677,14 @@ app.post('/api/create-channel-membership-pix', async (req, res) => {
             headers: {
                 'Authorization': `Bearer ${MERCADO_PAGO_ACCESS_TOKEN}`,
                 'Content-Type': 'application/json',
-                'X-Idempotency-Key': `cmem_${channelOwnerUid}_${subscriberUid}_${Date.now()}`
+                'X-Idempotency-Key': `${isSuperFanTier ? 'csfan' : 'cmem'}_${channelOwnerUid}_${subscriberUid}_${Date.now()}`
             },
             body: JSON.stringify(paymentPayload)
         });
 
         const mpData = await mpRes.json();
         if (!mpRes.ok) {
-            console.error('Erro Mercado Pago Seja Membro PIX:', mpData);
+            console.error('Erro Mercado Pago Seja Membro/Super Fã PIX:', mpData);
             return res.status(mpRes.status).json({
                 error: mpData.message || 'Erro ao gerar Pix no Mercado Pago.',
                 details: mpData
@@ -640,6 +696,7 @@ app.post('/api/create-channel-membership-pix', async (req, res) => {
         if (db && mpData.id) {
             db.collection('channel_member_payments').doc(String(mpData.id)).set({
                 paymentId: String(mpData.id),
+                tier,
                 channelOwnerUid: String(channelOwnerUid),
                 subscriberUid: String(subscriberUid),
                 subscriberName: String(name || '').trim().slice(0, 80),
@@ -657,6 +714,7 @@ app.post('/api/create-channel-membership-pix', async (req, res) => {
 
         res.json({
             id: mpData.id,
+            tier,
             status: mpData.status,
             qr_code: transactionData.qr_code || '',
             qr_code_base64: transactionData.qr_code_base64 || '',
@@ -692,18 +750,20 @@ app.get('/api/channel-membership-payment-status/:id', async (req, res) => {
 
         let channelOwnerUid = mpData.metadata?.channel_owner_uid || '';
         let subscriberUid = mpData.metadata?.subscriber_uid || '';
+        let tier = mpData.metadata?.tier === 'superfan' ? 'superfan' : (mpData.metadata?.tier || '');
         let amount = Number(mpData.transaction_amount || mpData.metadata?.amount || 0);
         let subscriberName = mpData.metadata?.subscriber_name || '';
         let channelName = mpData.metadata?.channel_name || '';
         let feePercent = mpData.metadata?.fee_percent !== undefined ? Number(mpData.metadata.fee_percent) : undefined;
 
-        if ((!channelOwnerUid || !subscriberUid || feePercent === undefined) && db) {
+        if ((!channelOwnerUid || !subscriberUid || !tier || feePercent === undefined) && db) {
             try {
                 const paySnap = await db.collection('channel_member_payments').doc(String(paymentId)).get();
                 if (paySnap.exists) {
                     const p = paySnap.data() || {};
                     channelOwnerUid = channelOwnerUid || p.channelOwnerUid || '';
                     subscriberUid = subscriberUid || p.subscriberUid || '';
+                    tier = tier || p.tier || '';
                     amount = amount || Number(p.amount || 0);
                     subscriberName = subscriberName || p.subscriberName || '';
                     channelName = channelName || p.channelName || '';
@@ -713,27 +773,35 @@ app.get('/api/channel-membership-payment-status/:id', async (req, res) => {
                 }
             } catch (_) {}
         }
+        tier = tier === 'superfan' ? 'superfan' : 'member';
 
         const isApproved = mpData.status === 'approved';
         let splitInfo = calculateChannelMembershipSplit(amount, feePercent);
+        let fanRank = 0;
         if (isApproved && channelOwnerUid && subscriberUid) {
             const actRes = await activateChannelMembershipInFirestore(channelOwnerUid, subscriberUid, paymentId, amount, {
+                tier,
                 subscriberName,
                 channelName,
                 feePercent
             });
-            if (actRes && actRes.feePercent !== undefined) {
-                splitInfo = {
-                    grossAmount: actRes.grossAmount ?? splitInfo.grossAmount,
-                    feePercent: actRes.feePercent,
-                    platformFee: actRes.platformFee ?? splitInfo.platformFee,
-                    creatorNet: actRes.creatorNet ?? splitInfo.creatorNet
-                };
+            if (actRes) {
+                if (actRes.fanRank) fanRank = actRes.fanRank;
+                if (actRes.feePercent !== undefined) {
+                    splitInfo = {
+                        grossAmount: actRes.grossAmount ?? splitInfo.grossAmount,
+                        feePercent: actRes.feePercent,
+                        platformFee: actRes.platformFee ?? splitInfo.platformFee,
+                        creatorNet: actRes.creatorNet ?? splitInfo.creatorNet
+                    };
+                }
             }
         }
 
         res.json({
             id: mpData.id,
+            tier,
+            fanRank,
             status: mpData.status,
             status_detail: mpData.status_detail,
             isApproved,

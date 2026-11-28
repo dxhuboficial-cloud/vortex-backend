@@ -24902,7 +24902,7 @@ export function getAdminReports() {
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
 const TRANSPARENT_IMG_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E";
-export const CURRENT_APP_VERSION = '1.0.339';
+export const CURRENT_APP_VERSION = '1.0.340';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -35499,6 +35499,8 @@ export async function submitInlineComment(postId, text) {
         const commentId = 'comm_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
         const isMyVip = checkIsVipUser(currentProfile);
         const memberCtx = getChannelMemberCommentContext(postObj, currentUser.uid);
+        const superFanCtx = getChannelSuperFanCommentContext(postObj, currentUser.uid);
+        const matchedCelebrationKw = superFanCtx.celebrationKeywords ? detectSuperFanCelebrationKeywords(cleanText) : [];
         comments.push({
             id: commentId,
             author: currentProfile?.name || currentUser.displayName || 'Usuário',
@@ -35514,11 +35516,19 @@ export async function submitInlineComment(postId, text) {
             memberExclusiveBadge: memberCtx.exclusiveBadge,
             memberPriority: memberCtx.commentPriority,
             memberAnimatedEmojis: memberCtx.animatedEmojis,
+            isChannelSuperFan: superFanCtx.isSuperFan,
+            superFanRank: superFanCtx.fanRank,
+            superFanAnimatedMiniFont: superFanCtx.animatedMiniFont,
+            superFanBadge: superFanCtx.superFanBadge,
+            superFanCelebration: matchedCelebrationKw.length > 0,
             likes: []
         });
         openPostCommentCards.add(postId);
         await updateDoc(postRef, { comments });
         syncPostCommentsStateInDOM(postId, comments);
+        if (matchedCelebrationKw.length > 0) {
+            triggerSuperFanCelebrationBurst(matchedCelebrationKw);
+        }
         if (typeof awardUserXP === 'function') {
             await awardUserXP('comment', `${postId}_${commentId}`);
         }
@@ -38473,10 +38483,16 @@ function renderFeedCardHTML(post) {
 
                             const isEditingThisComment = activeEditingComment && activeEditingComment.postId === post.id && activeEditingComment.commentId === commentId;
                             const memberCtx = getChannelMemberCommentContext(post, comment.authorUid, comment);
+                            const superFanCtx = getChannelSuperFanCommentContext(post, comment.authorUid, comment);
                             const showMemberPriorityCategory = Boolean(isOwner && memberCtx.commentPriority);
-                            const renderedFeedCommentText = memberCtx.animatedEmojis
+                            const feedMatchedKw = superFanCtx.celebrationKeywords ? detectSuperFanCelebrationKeywords(comment.text || '') : [];
+                            const showFeedCelebrationTag = Boolean(comment.superFanCelebration || feedMatchedKw.length > 0);
+                            let renderedFeedCommentText = memberCtx.animatedEmojis
                                 ? formatCommentTextWithAnimatedEmojis(comment.text || '', memberCtx.animatedEmojiList)
                                 : escapeHTML(comment.text || '');
+                            if (superFanCtx.animatedMiniFont) {
+                                renderedFeedCommentText = formatSuperFanMiniBounceHTML(renderedFeedCommentText);
+                            }
 
                             return `
                                 <div class="feed-comment ${isPinned ? 'is-pinned' : ''}${showMemberPriorityCategory ? ' is-member-priority' : ''}" id="feed-comment-${post.id}-${commentId}" data-comment-id="${commentId}">
@@ -38490,7 +38506,9 @@ function renderFeedCardHTML(post) {
                                             <strong>${escapeHTML(comment.author || 'Usuário')}</strong>
                                             <i data-lucide="badge-check" class="verified-badge comment-verified-badge${checkIsAdminUser({ uid: comment.authorUid, name: comment.author, email: comment.authorEmail, username: comment.authorUsername }) ? ' verified-badge-admin' : (checkIsCompanyUser(comment) ? ' verified-badge-company' : '')}" data-author-uid="${comment.authorUid || ''}" ${checkIsAdminUser({ uid: comment.authorUid, name: comment.author, email: comment.authorEmail, username: comment.authorUsername }) ? 'data-admin-badge="true" title="💥Admin⚡"' : (checkIsCompanyUser(comment) ? 'data-company-badge="true" title="⚔️ Empresa Verificada ⚡"' : 'title="Verificado VIP"')} style="display:${(isAuthorVipUser(comment.authorUid, comment) || checkIsCompanyUser(comment)) ? 'inline-flex' : 'none'};"></i>
                                             ${memberCtx.exclusiveBadge ? '<span class="comment-member-exclusive-badge" title="Membro Exclusivo do Canal">👑 Membro</span>' : ''}
+                                            ${(superFanCtx.superFanBadge && superFanCtx.fanRank > 0) ? `<span class="comment-superfan-badge" title="Super Fã #${superFanCtx.fanRank} do Canal">Fã ${superFanCtx.fanRank} 🏆</span>` : ''}
                                             ${showMemberPriorityCategory ? '<span class="comment-priority-category-badge" title="Comentário prioritário de Membro">⚡ (Prioridade)</span>' : ''}
+                                            ${showFeedCelebrationTag ? '<button type="button" class="comment-superfan-celebration-tag" data-action="replay-superfan-celebration" title="Ver chuva de balões e bandeiras do Brasil">🎈🇧🇷</button>' : ''}
                                             <span>:</span>
                                             ${isEdited ? `<span class="comment-edited-badge">(editado)</span>` : ''}
                                         </div>
@@ -38721,6 +38739,15 @@ function bindFeedInteractions(feedList, posts = []) {
                 activeEditingComment = null;
                 renderPostsFeed(getLivePosts());
             }
+        });
+    });
+
+    feedList.querySelectorAll('[data-action="replay-superfan-celebration"]').forEach(btn => {
+        if (!markFeedNodeBound(btn)) return;
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            triggerSuperFanCelebrationBurst();
         });
     });
 
@@ -39537,10 +39564,16 @@ export function renderCommentsModalList() {
 
         const isEditingThisComment = activeEditingComment && activeEditingComment.postId === activeCommentPost.id && activeEditingComment.commentId === commentId;
         const memberCtx = getChannelMemberCommentContext(activeCommentPost, c.authorUid, c);
+        const superFanCtx = getChannelSuperFanCommentContext(activeCommentPost, c.authorUid, c);
         const showMemberPriorityCategory = Boolean(isOwner && memberCtx.commentPriority);
-        const renderedCommentText = memberCtx.animatedEmojis
+        const modalMatchedKw = superFanCtx.celebrationKeywords ? detectSuperFanCelebrationKeywords(text) : [];
+        const showModalCelebrationTag = Boolean(c.superFanCelebration || modalMatchedKw.length > 0);
+        let renderedCommentText = memberCtx.animatedEmojis
             ? formatCommentTextWithAnimatedEmojis(text, memberCtx.animatedEmojiList)
             : escapeHTML(text);
+        if (superFanCtx.animatedMiniFont) {
+            renderedCommentText = formatSuperFanMiniBounceHTML(renderedCommentText);
+        }
 
         return `
             <div class="comment-item ${isPinned ? 'is-pinned' : ''}${showMemberPriorityCategory ? ' is-member-priority' : ''}" data-comment-id="${commentId}">
@@ -39554,7 +39587,9 @@ export function renderCommentsModalList() {
                         <strong>${escapeHTML(author)}</strong>
                         <i data-lucide="badge-check" class="verified-badge comment-verified-badge${checkIsAdminUser({ uid: c.authorUid, name: author, email: c.authorEmail, username: c.authorUsername }) ? ' verified-badge-admin' : (checkIsCompanyUser(c) ? ' verified-badge-company' : '')}" data-author-uid="${c.authorUid || ''}" ${checkIsAdminUser({ uid: c.authorUid, name: author, email: c.authorEmail, username: c.authorUsername }) ? 'data-admin-badge="true" title="💥Admin⚡"' : (checkIsCompanyUser(c) ? 'data-company-badge="true" title="⚔️ Empresa Verificada ⚡"' : 'title="Verificado VIP"')} style="display:${(isCommentVip || checkIsCompanyUser(c)) ? 'inline-flex' : 'none'};"></i>
                         ${memberCtx.exclusiveBadge ? '<span class="comment-member-exclusive-badge" title="Membro Exclusivo do Canal">👑 Membro</span>' : ''}
+                        ${(superFanCtx.superFanBadge && superFanCtx.fanRank > 0) ? `<span class="comment-superfan-badge" title="Super Fã #${superFanCtx.fanRank} do Canal">Fã ${superFanCtx.fanRank} 🏆</span>` : ''}
                         ${showMemberPriorityCategory ? '<span class="comment-priority-category-badge" title="Comentário prioritário de Membro">⚡ (Prioridade)</span>' : ''}
+                        ${showModalCelebrationTag ? '<button type="button" class="comment-superfan-celebration-tag" data-action="replay-superfan-celebration" title="Ver chuva de balões e bandeiras do Brasil">🎈🇧🇷</button>' : ''}
                         <span>:</span>
                         ${isEdited ? `<span class="comment-edited-badge">(editado)</span>` : ''}
                     </div>
@@ -39725,6 +39760,14 @@ export function renderCommentsModalList() {
             });
         };
     });
+
+    list.querySelectorAll('[data-action="replay-superfan-celebration"]').forEach(btn => {
+        btn.onclick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            triggerSuperFanCelebrationBurst();
+        };
+    });
 }
 
 export async function submitPostComment() {
@@ -39760,6 +39803,8 @@ export async function submitPostComment() {
 
     const isMyVip = checkIsVipUser(currentProfile);
     const memberCtx = getChannelMemberCommentContext(activeCommentPost, currentUser.uid);
+    const superFanCtx = getChannelSuperFanCommentContext(activeCommentPost, currentUser.uid);
+    const matchedCelebrationKw = superFanCtx.celebrationKeywords ? detectSuperFanCelebrationKeywords(text) : [];
     const newComment = {
         id: 'comm_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
         author: currentProfile?.name || currentUser.displayName || 'Usuário',
@@ -39775,6 +39820,11 @@ export async function submitPostComment() {
         memberExclusiveBadge: memberCtx.exclusiveBadge,
         memberPriority: memberCtx.commentPriority,
         memberAnimatedEmojis: memberCtx.animatedEmojis,
+        isChannelSuperFan: superFanCtx.isSuperFan,
+        superFanRank: superFanCtx.fanRank,
+        superFanAnimatedMiniFont: superFanCtx.animatedMiniFont,
+        superFanBadge: superFanCtx.superFanBadge,
+        superFanCelebration: matchedCelebrationKw.length > 0,
         likes: []
     };
 
@@ -39793,6 +39843,9 @@ export async function submitPostComment() {
         }
         if (input) input.value = '';
         syncPostCommentsStateInDOM(activeCommentPost.id, updated);
+        if (matchedCelebrationKw.length > 0) {
+            triggerSuperFanCelebrationBurst(matchedCelebrationKw);
+        }
         if (typeof awardUserXP === 'function') {
             await awardUserXP('comment', `${activeCommentPost.id}_${newComment.id}`);
         }
@@ -57519,11 +57572,24 @@ export function renderChannelScreen() {
         const superFanLabel = document.getElementById('channel-superfan-label');
         const superFansArr = Array.isArray(userData.channelSuperFans) ? userData.channelSuperFans.filter(Boolean) : [];
         const isSuperFan = Boolean(currentUser?.uid && superFansArr.includes(currentUser.uid));
+        const mySuperFanRank = isSuperFan ? getUserSuperFanRank(userData, currentUser?.uid) : 0;
         if (superFanBtn) {
             superFanBtn.style.display = canShowPaidPerks ? 'inline-flex' : 'none';
             superFanBtn.classList.toggle('active', canShowPaidPerks && isSuperFan);
+            if (isSuperFan && mySuperFanRank > 0) {
+                superFanBtn.title = `Super Fã ativo: Fã ${mySuperFanRank} 🏆`;
+            }
         }
-        if (superFanLabel) superFanLabel.innerText = isSuperFan ? 'Super Fã ★' : 'Super Fã';
+        if (superFanLabel) {
+            if (isSuperFan) {
+                superFanLabel.innerText = 'Super Fã ★';
+            } else if (isChannelPaidSuperFanActive(userData)) {
+                const sfPricing = getChannelSuperFanPricing(userData);
+                superFanLabel.innerText = `Super Fã • ${formatBrlCurrency(sfPricing.price)}`;
+            } else {
+                superFanLabel.innerText = 'Super Fã';
+            }
+        }
     }
 
     const communityPosts = Array.isArray(userData.channelCommunityPosts) ? userData.channelCommunityPosts : [];
@@ -58247,6 +58313,7 @@ export const CHANNEL_MEMBER_DEFAULT_FEE_PERCENT = 20;
 export const CHANNEL_MEMBER_MAX_FEE_PERCENT = 50;
 
 let activeChannelMemberCheckoutOwnerUid = '';
+let activeChannelCheckoutTier = 'member';
 let activeChannelMemberPaymentId = null;
 let channelMemberPixPollInterval = null;
 let currentChannelMemberFeePercent = CHANNEL_MEMBER_DEFAULT_FEE_PERCENT;
@@ -58450,6 +58517,179 @@ export function renderCommentModalMemberEmojiBar(post = activeCommentPost) {
     return true;
 }
 
+export const SUPERFAN_CELEBRATION_KEYWORDS = ['top', 'gostei', 'muito bom', 'fyp', 'viral'];
+export const DEFAULT_CHANNEL_SUPERFAN_PERKS = {
+    animatedMiniFont: true,
+    celebrationKeywords: true,
+    superFanBadge: true
+};
+
+export function normalizeChannelSuperFanPerks(rawPerks) {
+    const src = (rawPerks && typeof rawPerks === 'object') ? rawPerks : {};
+    return {
+        animatedMiniFont: src.animatedMiniFont !== undefined ? Boolean(src.animatedMiniFont) : DEFAULT_CHANNEL_SUPERFAN_PERKS.animatedMiniFont,
+        celebrationKeywords: src.celebrationKeywords !== undefined ? Boolean(src.celebrationKeywords) : DEFAULT_CHANNEL_SUPERFAN_PERKS.celebrationKeywords,
+        superFanBadge: src.superFanBadge !== undefined ? Boolean(src.superFanBadge) : DEFAULT_CHANNEL_SUPERFAN_PERKS.superFanBadge
+    };
+}
+
+export function getChannelSuperFanPricing(userData = currentProfile) {
+    const u = (userData && typeof userData === 'object') ? userData : {};
+    const price = parseChannelMemberPrice(u.channelSuperFanPrice);
+    const paidEnabled = Boolean(u.channelSuperFanPaidEnabled) && price >= CHANNEL_MEMBER_MIN_PRICE;
+    const perks = normalizeChannelSuperFanPerks(u.channelSuperFanPerks);
+    return {
+        paidEnabled,
+        rawPaidEnabled: Boolean(u.channelSuperFanPaidEnabled),
+        price,
+        pixKey: String(u.channelMemberPixKey || u.pixKey || '').trim(),
+        perks
+    };
+}
+
+export function isChannelPaidSuperFanActive(userData = currentProfile) {
+    const pricing = getChannelSuperFanPricing(userData);
+    return Boolean(pricing.paidEnabled && pricing.price >= CHANNEL_MEMBER_MIN_PRICE && pricing.price <= CHANNEL_MEMBER_MAX_PRICE);
+}
+
+export function getUserSuperFanRank(ownerData, subscriberUid) {
+    const subUid = String(subscriberUid || '').trim();
+    if (!ownerData || typeof ownerData !== 'object' || !subUid) return 0;
+    const subsMap = (ownerData.channelSuperFanSubscriptions && typeof ownerData.channelSuperFanSubscriptions === 'object')
+        ? ownerData.channelSuperFanSubscriptions
+        : null;
+    const subEntry = subsMap ? subsMap[subUid] : null;
+    if (subEntry && Number(subEntry.rank) > 0) {
+        return Math.floor(Number(subEntry.rank));
+    }
+    const list = Array.isArray(ownerData.channelSuperFans) ? ownerData.channelSuperFans.filter(Boolean).map(String) : [];
+    const idx = list.indexOf(subUid);
+    return idx >= 0 ? idx + 1 : 0;
+}
+
+export function isUserActiveChannelSuperFan(ownerData, subscriberUid) {
+    const subUid = String(subscriberUid || '').trim();
+    if (!ownerData || typeof ownerData !== 'object' || !subUid) return false;
+    if (ownerData.uid && String(ownerData.uid) === subUid) return false;
+    const fans = Array.isArray(ownerData.channelSuperFans) ? ownerData.channelSuperFans.map(String) : [];
+    if (!fans.includes(subUid)) return false;
+    const subsMap = (ownerData.channelSuperFanSubscriptions && typeof ownerData.channelSuperFanSubscriptions === 'object')
+        ? ownerData.channelSuperFanSubscriptions
+        : null;
+    const subEntry = subsMap ? subsMap[subUid] : null;
+    if (subEntry && subEntry.expiresAt && Number(subEntry.expiresAt) > 0 && Number(subEntry.expiresAt) <= Date.now()) {
+        return false;
+    }
+    return true;
+}
+
+export function getChannelSuperFanCommentContext(post, authorUid, commentObj = null) {
+    const ownerUid = String(post?.authorUid || '').trim();
+    let ownerData = typeof getPostAuthorUserData === 'function' ? getPostAuthorUserData(post) : null;
+    if ((!ownerData || !Array.isArray(ownerData.channelSuperFans)) && ownerUid) {
+        const cached = (typeof contactUserDataMap !== 'undefined' && contactUserDataMap?.get?.(ownerUid))
+            || ((typeof activeChannelUid !== 'undefined' && activeChannelUid === ownerUid) ? activeChannelUserData : null)
+            || ((currentUser?.uid === ownerUid) ? currentProfile : null);
+        if (cached) ownerData = { ...(ownerData || {}), ...cached };
+    }
+    const perks = normalizeChannelSuperFanPerks(ownerData?.channelSuperFanPerks);
+    const hasOwnerFansLoaded = Boolean(ownerData && Array.isArray(ownerData.channelSuperFans));
+    const isSuperFan = hasOwnerFansLoaded
+        ? isUserActiveChannelSuperFan(ownerData, authorUid)
+        : Boolean(commentObj?.isChannelSuperFan);
+    if (!isSuperFan) {
+        return {
+            isSuperFan: false,
+            fanRank: 0,
+            animatedMiniFont: false,
+            celebrationKeywords: false,
+            superFanBadge: false
+        };
+    }
+    const liveRank = getUserSuperFanRank(ownerData, authorUid);
+    const fanRank = liveRank > 0 ? liveRank : Math.max(1, Math.floor(Number(commentObj?.superFanRank || 1)));
+    const useMiniFont = ownerData?.channelSuperFanPerks !== undefined
+        ? perks.animatedMiniFont
+        : (commentObj?.superFanAnimatedMiniFont !== undefined ? Boolean(commentObj.superFanAnimatedMiniFont) : perks.animatedMiniFont);
+    const useKeywords = ownerData?.channelSuperFanPerks !== undefined
+        ? perks.celebrationKeywords
+        : Boolean(commentObj?.superFanCelebration || perks.celebrationKeywords);
+    const useBadge = ownerData?.channelSuperFanPerks !== undefined
+        ? perks.superFanBadge
+        : (commentObj?.superFanBadge !== undefined ? Boolean(commentObj.superFanBadge) : perks.superFanBadge);
+    return {
+        isSuperFan: true,
+        fanRank,
+        animatedMiniFont: useMiniFont,
+        celebrationKeywords: useKeywords,
+        superFanBadge: useBadge
+    };
+}
+
+export function detectSuperFanCelebrationKeywords(text) {
+    const raw = String(text || '').toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (!raw.trim()) return [];
+    const matched = [];
+    for (const kw of SUPERFAN_CELEBRATION_KEYWORDS) {
+        const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
+        const regex = new RegExp(`(^|[^a-z0-9])${escaped}(?=$|[^a-z0-9])`, 'i');
+        if (regex.test(raw)) {
+            matched.push(kw);
+        }
+    }
+    return matched;
+}
+
+export function formatSuperFanMiniBounceHTML(renderedHtml) {
+    const htmlStr = String(renderedHtml || '');
+    if (!htmlStr) return '';
+    const segments = htmlStr.split(/(<[^>]+>)/g);
+    let wordIdx = 0;
+    const decorated = segments.map(seg => {
+        if (!seg || seg.startsWith('<')) return seg;
+        return seg.replace(/\S+/g, (token) => {
+            const colorClass = wordIdx % 2 === 0 ? 'is-red' : 'is-blue';
+            const delayMs = (wordIdx % 8) * 90;
+            wordIdx++;
+            return `<span class="superfan-bounce-word ${colorClass}" style="animation-delay:${delayMs}ms;">${token}</span>`;
+        });
+    }).join('');
+    return `<span class="superfan-mini-bounce-text">${decorated}</span>`;
+}
+
+let superFanCelebrationClearTimer = null;
+export function triggerSuperFanCelebrationBurst(matchedKeywords = []) {
+    if (typeof document === 'undefined') {
+        return { triggered: false, count: 0, keywords: matchedKeywords };
+    }
+    const layer = document.getElementById('superfan-celebration-layer');
+    if (!layer) {
+        return { triggered: false, count: 0, keywords: matchedKeywords };
+    }
+    const icons = ['🎈', '🇧🇷', '🎈', '🎉', '🇧🇷', '🎈'];
+    const count = 24;
+    const particlesHtml = Array.from({ length: count }, (_, idx) => {
+        const icon = icons[idx % icons.length];
+        const leftPct = 4 + ((idx * 3.8 + (idx % 3) * 5) % 90);
+        const durSec = (2.6 + (idx % 5) * 0.35).toFixed(2);
+        const delaySec = ((idx % 6) * 0.14).toFixed(2);
+        const driftPx = ((idx % 2 === 0 ? 1 : -1) * (12 + (idx % 4) * 8));
+        return `<span class="superfan-celebration-particle" style="left:${leftPct.toFixed(1)}%; --sf-dur:${durSec}s; --sf-drift:${driftPx}px; animation-delay:${delaySec}s;">${icon}</span>`;
+    }).join('');
+    layer.innerHTML = particlesHtml;
+    if (layer.dataset) {
+        layer.dataset.lastBurstCount = String(count);
+        layer.dataset.lastKeywords = Array.isArray(matchedKeywords) ? matchedKeywords.join(',') : '';
+    }
+    if (superFanCelebrationClearTimer) clearTimeout(superFanCelebrationClearTimer);
+    superFanCelebrationClearTimer = setTimeout(() => {
+        const el = document.getElementById('superfan-celebration-layer');
+        if (el) el.innerHTML = '';
+    }, 4500);
+    return { triggered: true, count, keywords: Array.isArray(matchedKeywords) ? matchedKeywords : [] };
+}
+
 export function getChannelMembershipPricing(userData = currentProfile) {
     const u = (userData && typeof userData === 'object') ? userData : {};
     const price = parseChannelMemberPrice(u.channelMemberPrice);
@@ -58600,6 +58840,45 @@ export async function saveChannelMembershipPricing(overrideInput = null) {
         pixKey = pixCheck.formatted || pixKey;
     }
 
+    const sfToggleEl = document.getElementById('channel-superfan-paid-toggle');
+    const sfPriceInputEl = document.getElementById('channel-superfan-price-input');
+    const superFanPaidEnabled = overrideInput && typeof overrideInput === 'object' && 'superFanPaidEnabled' in overrideInput
+        ? Boolean(overrideInput.superFanPaidEnabled)
+        : (sfToggleEl ? Boolean(sfToggleEl.checked) : Boolean(currentProfile?.channelSuperFanPaidEnabled));
+    const rawSuperFanPrice = overrideInput && typeof overrideInput === 'object' && 'superFanPrice' in overrideInput
+        ? overrideInput.superFanPrice
+        : (sfPriceInputEl ? sfPriceInputEl.value : (currentProfile?.channelSuperFanPrice || 0));
+    const superFanPrice = parseChannelMemberPrice(rawSuperFanPrice);
+
+    if (superFanPaidEnabled) {
+        if (!Number.isFinite(superFanPrice) || superFanPrice < CHANNEL_MEMBER_MIN_PRICE || superFanPrice > CHANNEL_MEMBER_MAX_PRICE) {
+            showToast('Valor do Super Fã inválido', 'Informe um preço entre R$ 1,00 e R$ 5.000,00 para o Super Fã.', 'red');
+            return { success: false, reason: 'invalid_superfan_price' };
+        }
+        const sfPixCheck = typeof validatePixKey === 'function' ? validatePixKey(pixKey) : { isValid: Boolean(pixKey), formatted: pixKey };
+        if (!pixKey || !sfPixCheck.isValid) {
+            showToast('Chave Pix obrigatória', sfPixCheck.error || 'Informe uma Chave Pix válida para receber do Super Fã.', 'red');
+            return { success: false, reason: 'invalid_pix_key' };
+        }
+        pixKey = sfPixCheck.formatted || pixKey;
+    }
+
+    const existingSfPerks = normalizeChannelSuperFanPerks(currentProfile?.channelSuperFanPerks);
+    const hasSfPerksOverride = Boolean(overrideInput && typeof overrideInput === 'object' && overrideInput.superFanPerks);
+    const sfPerkFontEl = document.getElementById('channel-superfan-perk-font');
+    const sfPerkKeywordsEl = document.getElementById('channel-superfan-perk-keywords');
+    const sfPerkBadgeEl = document.getElementById('channel-superfan-perk-badge');
+    const hasDomSfPerks = Boolean(sfPerkFontEl || sfPerkKeywordsEl || sfPerkBadgeEl);
+    const superFanPerks = hasSfPerksOverride
+        ? normalizeChannelSuperFanPerks(overrideInput.superFanPerks)
+        : (hasDomSfPerks
+            ? normalizeChannelSuperFanPerks({
+                animatedMiniFont: sfPerkFontEl ? Boolean(sfPerkFontEl.checked) : existingSfPerks.animatedMiniFont,
+                celebrationKeywords: sfPerkKeywordsEl ? Boolean(sfPerkKeywordsEl.checked) : existingSfPerks.celebrationKeywords,
+                superFanBadge: sfPerkBadgeEl ? Boolean(sfPerkBadgeEl.checked) : existingSfPerks.superFanBadge
+            })
+            : existingSfPerks);
+
     const selectedEmojiNodes = typeof document !== 'undefined' && typeof document.querySelectorAll === 'function'
         ? Array.from(document.querySelectorAll('#channel-member-emoji-grid .channel-member-emoji-choice.selected'))
         : [];
@@ -58633,6 +58912,9 @@ export async function saveChannelMembershipPricing(overrideInput = null) {
         channelMemberBenefits: benefits,
         channelMemberPixKey: pixKey,
         channelMemberPerks: perks,
+        channelSuperFanPaidEnabled: superFanPaidEnabled,
+        channelSuperFanPrice: superFanPrice,
+        channelSuperFanPerks: superFanPerks,
         updatedAt: Date.now()
     };
 
@@ -58657,12 +58939,19 @@ export async function saveChannelMembershipPricing(overrideInput = null) {
     if (document.getElementById('channel-membership-modal')?.classList?.contains('active')) {
         openChannelMembershipModal(currentUser.uid);
     }
+    const anyPaid = paidEnabled || superFanPaidEnabled;
     showToast(
-        paidEnabled ? 'Cobrança Pix Ativada! 💰' : 'Seja Membro Gratuito',
-        paidEnabled ? `Assinatura configurada por ${formatBrlCurrency(price)} via Pix.` : 'O botão Seja Membro voltou ao modo gratuito.',
-        paidEnabled ? 'green' : 'blue'
+        anyPaid ? 'Cobrança Pix Salva! 💰' : 'Modo Gratuito Salvo',
+        anyPaid
+            ? `Seja Membro: ${paidEnabled ? formatBrlCurrency(price) : 'Grátis'} • Super Fã: ${superFanPaidEnabled ? formatBrlCurrency(superFanPrice) : 'Grátis'}.`
+            : 'Seja Membro e Super Fã ficaram no modo gratuito.',
+        anyPaid ? 'green' : 'blue'
     );
-    return { success: true, pricing: getChannelMembershipPricing(currentProfile) };
+    return {
+        success: true,
+        pricing: getChannelMembershipPricing(currentProfile),
+        superFanPricing: getChannelSuperFanPricing(currentProfile)
+    };
 }
 
 export async function requestChannelMemberPayout() {
@@ -58745,41 +59034,88 @@ export function closeChannelMemberCheckoutModal() {
     closeChannelSubModal('channel-member-checkout-modal');
 }
 
-export function openChannelMemberCheckoutModal(targetUid = activeChannelUid) {
+export function openChannelMemberCheckoutModal(targetUid = activeChannelUid, tier = 'member') {
     const uid = targetUid || activeChannelUid || '';
     const modal = document.getElementById('channel-member-checkout-modal');
     if (!modal || !uid) return false;
 
+    const resolvedTier = tier === 'superfan' ? 'superfan' : 'member';
+    const isSuperFanTier = resolvedTier === 'superfan';
     const userData = getEffectiveChannelUserData(uid, activeChannelUserData);
     const pricing = getChannelMembershipPricing(userData);
+    const sfPricing = getChannelSuperFanPricing(userData);
+    const checkoutPrice = isSuperFanTier ? sfPricing.price : pricing.price;
+
     activeChannelMemberCheckoutOwnerUid = uid;
+    activeChannelCheckoutTier = resolvedTier;
     activeChannelMemberPaymentId = null;
     if (channelMemberPixPollInterval) {
         clearInterval(channelMemberPixPollInterval);
         channelMemberPixPollInterval = null;
     }
 
+    const titleEl = document.getElementById('channel-member-checkout-title');
+    const durationEl = document.getElementById('channel-member-checkout-duration');
+    const autoTextEl = document.getElementById('channel-member-checkout-auto-text');
+    const payBtnLabelEl = document.getElementById('channel-member-generate-pix-label');
+    if (titleEl) {
+        titleEl.innerHTML = isSuperFanTier
+            ? '<i data-lucide="trophy"></i> Assinar Super Fã'
+            : '<i data-lucide="crown"></i> Assinar Seja Membro';
+    }
+    if (durationEl) {
+        durationEl.innerText = isSuperFanTier
+            ? 'Acesso exclusivo de Super Fã por 30 dias via Pix'
+            : 'Acesso de membro por 30 dias via Pix';
+    }
+    if (autoTextEl) {
+        autoTextEl.innerText = isSuperFanTier
+            ? 'Liberação automática de Super Fã assim que o Pix for pago'
+            : 'Liberação automática de Membro assim que o Pix for pago';
+    }
+    if (payBtnLabelEl) {
+        payBtnLabelEl.innerText = isSuperFanTier
+            ? 'Gerar Pix para Virar Super Fã'
+            : 'Gerar Pix para Entrar nos Membros';
+    }
+
     const chNameEl = document.getElementById('channel-member-checkout-channel-name');
     const priceEl = document.getElementById('channel-member-checkout-price-badge');
     const benefitsEl = document.getElementById('channel-member-checkout-benefits');
     if (chNameEl) chNameEl.innerText = userData.channelName || userData.name || 'Canal VORTEX';
-    if (priceEl) priceEl.innerText = formatBrlCurrency(pricing.price);
+    if (priceEl) priceEl.innerText = formatBrlCurrency(checkoutPrice);
     if (benefitsEl) {
-        benefitsEl.innerText = pricing.benefits || 'Acesso exclusivo aos benefícios de membro oficial deste canal por 30 dias.';
+        benefitsEl.innerText = isSuperFanTier
+            ? 'Desbloqueie benefícios especiais de Super Fã nos comentários deste canal por 30 dias.'
+            : (pricing.benefits || 'Acesso exclusivo aos benefícios de membro oficial deste canal por 30 dias.');
     }
     const perksListEl = document.getElementById('channel-member-checkout-perks-list');
     if (perksListEl) {
-        const perks = pricing.perks || DEFAULT_CHANNEL_MEMBER_PERKS;
         const pills = [];
-        if (perks.exclusiveBadge) {
-            pills.push('<span class="channel-member-checkout-perk-pill">👑 Selo de Membro Exclusivo</span>');
-        }
-        if (perks.commentPriority) {
-            pills.push('<span class="channel-member-checkout-perk-pill">⚡ Prioridade nos Comentários</span>');
-        }
-        if (perks.animatedEmojis && perks.animatedEmojiList.length) {
-            const previewEmojis = perks.animatedEmojiList.slice(0, 6).join(' ');
-            pills.push(`<span class="channel-member-checkout-perk-pill">✨ ${perks.animatedEmojiList.length} Emojis Animados (${previewEmojis})</span>`);
+        if (isSuperFanTier) {
+            const sfPerks = sfPricing.perks || DEFAULT_CHANNEL_SUPERFAN_PERKS;
+            if (sfPerks.animatedMiniFont) {
+                pills.push('<span class="channel-member-checkout-perk-pill">✨ Fonte Mini Saltitante Vermelho/Azul</span>');
+            }
+            if (sfPerks.celebrationKeywords) {
+                pills.push('<span class="channel-member-checkout-perk-pill">🎈🇧🇷 Balões + Bandeira nas Palavras-chave</span>');
+            }
+            if (sfPerks.superFanBadge) {
+                const nextRank = (Array.isArray(userData.channelSuperFans) ? userData.channelSuperFans.filter(Boolean).length : 0) + 1;
+                pills.push(`<span class="channel-member-checkout-perk-pill">🏆 Emblema Exclusivo (ex.: Fã ${nextRank} 🏆)</span>`);
+            }
+        } else {
+            const perks = pricing.perks || DEFAULT_CHANNEL_MEMBER_PERKS;
+            if (perks.exclusiveBadge) {
+                pills.push('<span class="channel-member-checkout-perk-pill">👑 Selo de Membro Exclusivo</span>');
+            }
+            if (perks.commentPriority) {
+                pills.push('<span class="channel-member-checkout-perk-pill">⚡ Prioridade nos Comentários</span>');
+            }
+            if (perks.animatedEmojis && perks.animatedEmojiList.length) {
+                const previewEmojis = perks.animatedEmojiList.slice(0, 6).join(' ');
+                pills.push(`<span class="channel-member-checkout-perk-pill">✨ ${perks.animatedEmojiList.length} Emojis Animados (${previewEmojis})</span>`);
+            }
         }
         perksListEl.innerHTML = pills.join('');
         perksListEl.style.display = pills.length ? 'flex' : 'none';
@@ -58816,19 +59152,22 @@ export function openChannelMemberCheckoutModal(targetUid = activeChannelUid) {
     return true;
 }
 
-export async function handleApprovedChannelMemberPayment({ paymentId, channelOwnerUid, subscriberUid, amount, subscriberName, feePercent } = {}) {
+export async function handleApprovedChannelMemberPayment({ paymentId, channelOwnerUid, subscriberUid, amount, subscriberName, feePercent, tier: rawTier, fanRank: rawFanRank } = {}) {
     const ownerUid = channelOwnerUid || activeChannelMemberCheckoutOwnerUid || activeChannelUid || '';
     const memberUid = subscriberUid || currentUser?.uid || '';
     if (!ownerUid || !memberUid) return false;
 
+    const resolvedTier = (rawTier || activeChannelCheckoutTier) === 'superfan' ? 'superfan' : 'member';
+    const isSuperFanTier = resolvedTier === 'superfan';
     const now = Date.now();
     const expiresAt = now + CHANNEL_MEMBER_DURATION_MS;
     const ownerData = getEffectiveChannelUserData(ownerUid, activeChannelUserData);
     const pricing = getChannelMembershipPricing(ownerData);
+    const sfPricing = getChannelSuperFanPricing(ownerData);
     const resolvedFee = feePercent !== undefined
         ? normalizeChannelMemberFeePercent(feePercent)
         : await loadChannelMembershipPlatformConfig();
-    const rawAmount = Math.max(0, Number(amount || pricing.price || 0));
+    const rawAmount = Math.max(0, Number(amount || (isSuperFanTier ? sfPricing.price : pricing.price) || 0));
     const { grossAmount, feePercent: appliedFeePercent, platformFee, creatorNet } = calculateChannelMembershipSplit(rawAmount, resolvedFee);
 
     let alreadyCredited = false;
@@ -58851,26 +59190,52 @@ export async function handleApprovedChannelMemberPayment({ paymentId, channelOwn
         } catch (_) {}
     }
 
-    const prevMembers = Array.isArray(latestOwnerDoc.channelMembers) ? latestOwnerDoc.channelMembers.filter(Boolean) : [];
-    const nextMembers = [...new Set([...prevMembers, memberUid])];
-    const nextSubs = {
-        ...(latestOwnerDoc.channelMemberSubscriptions && typeof latestOwnerDoc.channelMemberSubscriptions === 'object' ? latestOwnerDoc.channelMemberSubscriptions : {}),
-        [memberUid]: {
-            uid: memberUid,
-            paymentId: String(paymentId || ''),
-            amount: grossAmount,
-            creatorNet,
-            feePercent: appliedFeePercent,
-            platformFee,
-            startedAt: now,
-            expiresAt
-        }
-    };
+    const prevList = Array.isArray(isSuperFanTier ? latestOwnerDoc.channelSuperFans : latestOwnerDoc.channelMembers)
+        ? (isSuperFanTier ? latestOwnerDoc.channelSuperFans : latestOwnerDoc.channelMembers).filter(Boolean)
+        : [];
+    const nextList = [...new Set([...prevList, memberUid])];
+    const resolvedRank = isSuperFanTier
+        ? (Number(rawFanRank) > 0
+            ? Math.floor(Number(rawFanRank))
+            : (getUserSuperFanRank(latestOwnerDoc, memberUid) || nextList.indexOf(memberUid) + 1))
+        : 0;
 
-    const ownerPatch = {
-        channelMembers: nextMembers,
-        channelMemberSubscriptions: nextSubs
-    };
+    const ownerPatch = isSuperFanTier
+        ? {
+            channelSuperFans: nextList,
+            channelSuperFanSubscriptions: {
+                ...(latestOwnerDoc.channelSuperFanSubscriptions && typeof latestOwnerDoc.channelSuperFanSubscriptions === 'object' ? latestOwnerDoc.channelSuperFanSubscriptions : {}),
+                [memberUid]: {
+                    uid: memberUid,
+                    tier: 'superfan',
+                    rank: resolvedRank,
+                    paymentId: String(paymentId || ''),
+                    amount: grossAmount,
+                    creatorNet,
+                    feePercent: appliedFeePercent,
+                    platformFee,
+                    startedAt: now,
+                    expiresAt
+                }
+            }
+        }
+        : {
+            channelMembers: nextList,
+            channelMemberSubscriptions: {
+                ...(latestOwnerDoc.channelMemberSubscriptions && typeof latestOwnerDoc.channelMemberSubscriptions === 'object' ? latestOwnerDoc.channelMemberSubscriptions : {}),
+                [memberUid]: {
+                    uid: memberUid,
+                    tier: 'member',
+                    paymentId: String(paymentId || ''),
+                    amount: grossAmount,
+                    creatorNet,
+                    feePercent: appliedFeePercent,
+                    platformFee,
+                    startedAt: now,
+                    expiresAt
+                }
+            }
+        };
 
     if (!alreadyCredited) {
         const curBalance = Math.max(0, Number(latestOwnerDoc.channelMemberEarningsBalance || 0));
@@ -58887,8 +59252,10 @@ export async function handleApprovedChannelMemberPayment({ paymentId, channelOwn
         ownerPatch.channelMemberRecentPayments = [
             {
                 paymentId: String(paymentId || ''),
+                tier: resolvedTier,
+                ...(isSuperFanTier ? { fanRank: resolvedRank } : {}),
                 subscriberUid: memberUid,
-                subscriberName: String(subscriberName || currentProfile?.name || 'Membro VIP'),
+                subscriberName: String(subscriberName || currentProfile?.name || (isSuperFanTier ? `Fã ${resolvedRank} VIP` : 'Membro VIP')),
                 amount: creatorNet,
                 grossAmount,
                 feePercent: appliedFeePercent,
@@ -58902,6 +59269,8 @@ export async function handleApprovedChannelMemberPayment({ paymentId, channelOwn
             try {
                 await setDoc(doc(db, 'channel_member_payments', String(paymentId)), {
                     paymentId: String(paymentId),
+                    tier: resolvedTier,
+                    ...(isSuperFanTier ? { fanRank: resolvedRank } : {}),
                     channelOwnerUid: ownerUid,
                     subscriberUid: memberUid,
                     amount: grossAmount,
@@ -58939,12 +59308,20 @@ export async function handleApprovedChannelMemberPayment({ paymentId, channelOwn
     if (successStep) successStep.style.display = 'flex';
     if (successMsg) {
         const chTitle = latestOwnerDoc.channelName || latestOwnerDoc.name || 'canal';
-        successMsg.innerText = `Pagamento Pix de ${formatBrlCurrency(grossAmount)} confirmado! Você já é Membro de ${chTitle}.`;
+        successMsg.innerText = isSuperFanTier
+            ? `Pagamento Pix de ${formatBrlCurrency(grossAmount)} confirmado! Você agora é Fã ${resolvedRank} 🏆 de ${chTitle}.`
+            : `Pagamento Pix de ${formatBrlCurrency(grossAmount)} confirmado! Você já é Membro de ${chTitle}.`;
     }
 
     renderChannelScreen();
     if (!alreadyCredited) {
-        showToast('Seja Membro Liberado! 👑', `Seu acesso de Membro foi ativado após a confirmação do Pix (${formatBrlCurrency(grossAmount)}).`, 'green');
+        showToast(
+            isSuperFanTier ? `Super Fã Liberado! Fã ${resolvedRank} 🏆` : 'Seja Membro Liberado! 👑',
+            isSuperFanTier
+                ? `Seu acesso de Super Fã (Fã ${resolvedRank} 🏆) foi ativado após o Pix (${formatBrlCurrency(grossAmount)}).`
+                : `Seu acesso de Membro foi ativado após a confirmação do Pix (${formatBrlCurrency(grossAmount)}).`,
+            'green'
+        );
     }
     return true;
 }
@@ -58963,14 +59340,17 @@ export async function checkChannelMemberPaymentStatus(paymentId = activeChannelM
                 clearInterval(channelMemberPixPollInterval);
                 channelMemberPixPollInterval = null;
             }
+            const resolvedTier = data.tier || activeChannelCheckoutTier || 'member';
             await handleApprovedChannelMemberPayment({
                 paymentId,
+                tier: resolvedTier,
+                fanRank: data.fanRank,
                 channelOwnerUid: data.channelOwnerUid || channelOwnerUid,
                 subscriberUid: data.subscriberUid || currentUser?.uid,
                 amount: data.amount,
                 feePercent: data.feePercent
             });
-            return { approved: true, paymentId, status: 'approved' };
+            return { approved: true, paymentId, status: 'approved', tier: resolvedTier };
         }
         return { approved: false, status: data.status || 'pending' };
     } catch (err) {
@@ -58996,10 +59376,14 @@ export async function generateChannelMemberPixPayment(overrideInputs = null) {
         return { success: false, reason: 'invalid_channel' };
     }
 
+    const resolvedTier = (overrideInputs?.tier || activeChannelCheckoutTier) === 'superfan' ? 'superfan' : 'member';
+    const isSuperFanTier = resolvedTier === 'superfan';
     const ownerData = getEffectiveChannelUserData(ownerUid, activeChannelUserData);
     const pricing = getChannelMembershipPricing(ownerData);
-    if (!pricing.paidEnabled) {
-        return { success: false, reason: 'not_paid_channel' };
+    const sfPricing = getChannelSuperFanPricing(ownerData);
+    const activeTierPricing = isSuperFanTier ? sfPricing : pricing;
+    if (!activeTierPricing.paidEnabled) {
+        return { success: false, reason: isSuperFanTier ? 'not_paid_superfan_channel' : 'not_paid_channel' };
     }
 
     const name = String(overrideInputs?.name ?? (document.getElementById('channel-member-payer-name')?.value || '')).trim();
@@ -59027,12 +59411,13 @@ export async function generateChannelMemberPixPayment(overrideInputs = null) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
+                tier: resolvedTier,
                 channelOwnerUid: ownerUid,
                 subscriberUid: currentUser.uid,
                 name,
                 cpf: cpfRaw,
                 email,
-                amount: pricing.price,
+                amount: activeTierPricing.price,
                 channelName: ownerData.channelName || ownerData.name || 'Canal VORTEX'
             })
         });
@@ -59054,11 +59439,15 @@ export async function generateChannelMemberPixPayment(overrideInputs = null) {
         if (formStep) formStep.style.display = 'none';
         if (qrStep) qrStep.style.display = 'flex';
 
-        showToast('Pix Gerado! ⚡', `Pague ${formatBrlCurrency(data.amount || pricing.price)} no Pix para liberar o Seja Membro.`, 'green');
+        showToast(
+            'Pix Gerado! ⚡',
+            `Pague ${formatBrlCurrency(data.amount || activeTierPricing.price)} no Pix para liberar o ${isSuperFanTier ? 'Super Fã' : 'Seja Membro'}.`,
+            'green'
+        );
         startChannelMemberPixPolling(data.id, ownerUid);
-        return { success: true, paymentId: data.id, amount: data.amount || pricing.price, qr_code: data.qr_code || '' };
+        return { success: true, tier: resolvedTier, paymentId: data.id, amount: data.amount || activeTierPricing.price, qr_code: data.qr_code || '' };
     } catch (err) {
-        showToast('Erro no Pix', err.message || 'Erro ao gerar Pix de Seja Membro.', 'red');
+        showToast('Erro no Pix', err.message || 'Erro ao gerar Pix de assinatura.', 'red');
         return { success: false, reason: 'api_error', error: err.message };
     } finally {
         if (payBtn) payBtn.disabled = false;
@@ -59088,14 +59477,30 @@ export async function toggleChannelMember(targetUid = activeChannelUid) {
             return false;
         }
         const pricing = getChannelMembershipPricing(userData);
-        openChannelMemberCheckoutModal(targetUid);
-        return { openedCheckout: true, price: pricing.price, channelOwnerUid: targetUid };
+        openChannelMemberCheckoutModal(targetUid, 'member');
+        return { openedCheckout: true, tier: 'member', price: pricing.price, channelOwnerUid: targetUid };
     }
 
     return toggleChannelMembershipTier(targetUid, 'member');
 }
 
 export async function toggleChannelSuperFan(targetUid = activeChannelUid) {
+    if (!currentUser?.uid || !targetUid || targetUid === currentUser.uid) return false;
+    const userData = getEffectiveChannelUserData(targetUid, activeChannelUserData);
+    const currentSuperFans = Array.isArray(userData.channelSuperFans) ? userData.channelSuperFans.filter(Boolean) : [];
+    const alreadySuperFan = currentSuperFans.includes(currentUser.uid);
+
+    if (!alreadySuperFan && isChannelPaidSuperFanActive(userData)) {
+        const eligibility = evaluateChannelMembershipEligibility(targetUid, userData);
+        if (!eligibility.eligible || !isUserChannelEnabled(userData)) {
+            showToast('Requisitos Pendentes 🔒', CHANNEL_MEMBERSHIP_TIER_CONFIG.superfan.blockedMsg, 'yellow');
+            return false;
+        }
+        const sfPricing = getChannelSuperFanPricing(userData);
+        openChannelMemberCheckoutModal(targetUid, 'superfan');
+        return { openedCheckout: true, tier: 'superfan', price: sfPricing.price, channelOwnerUid: targetUid };
+    }
+
     return toggleChannelMembershipTier(targetUid, 'superfan');
 }
 
@@ -59227,6 +59632,52 @@ export function openChannelMembershipModal(targetUid = activeChannelUid || curre
                 <label for="channel-member-benefits-input" class="channel-modal-label">Benefícios para os Membros</label>
                 <textarea id="channel-member-benefits-input" class="channel-modal-textarea" rows="2" maxlength="280" placeholder="Ex: Selo de membro, lives exclusivas, prioridade nos comentários...">${escapeHTML(pricing.benefits)}</textarea>
             </div>
+            <div class="channel-superfan-config-box" aria-label="Configuração do Super Fã via Pix">
+                ${(() => {
+                    const sfPricing = getChannelSuperFanPricing(userData);
+                    const sfPerks = sfPricing.perks || DEFAULT_CHANNEL_SUPERFAN_PERKS;
+                    const sfSplitSample = calculateChannelMembershipSplit(sfPricing.price || 0, currentFeePct);
+                    return `
+                        <div class="channel-superfan-config-header">
+                            <strong><i data-lucide="trophy"></i> Cobrança &amp; Benefícios do Super Fã</strong>
+                            <span class="channel-member-price-pill">${sfPricing.paidEnabled ? formatBrlCurrency(sfPricing.price) : 'Gratuito'}</span>
+                        </div>
+                        <label class="channel-member-toggle-row" for="channel-superfan-paid-toggle">
+                            <span>
+                                <strong>Cobrar entrada no Super Fã via Pix</strong>
+                                <small>Assinante libera Super Fã por 30 dias via Pix (${creatorSharePct}% líquido para você).</small>
+                            </span>
+                            <input type="checkbox" id="channel-superfan-paid-toggle" class="channel-customize-checkbox" ${sfPricing.rawPaidEnabled ? 'checked' : ''}>
+                        </label>
+                        <div class="channel-member-form-group">
+                            <label for="channel-superfan-price-input" class="channel-modal-label">Preço do Super Fã (R$ 1,00 a R$ 5.000,00)</label>
+                            <input type="text" id="channel-superfan-price-input" class="channel-modal-input" inputmode="decimal" placeholder="Ex: 9,90" value="${sfPricing.price > 0 ? sfPricing.price.toFixed(2).replace('.', ',') : ''}">
+                        </div>
+                        <div id="channel-superfan-fee-preview" class="channel-member-fee-preview">${buildFeePreviewText(sfSplitSample.grossAmount)}</div>
+                        <label class="channel-member-toggle-row channel-member-perk-toggle" for="channel-superfan-perk-font">
+                            <span>
+                                <strong>🎨 Fonte Mini Saltitante Vermelho e Azul</strong>
+                                <small>Texto exclusivo em fonte mini animada saltitante nas cores vermelho e azul nos comentários.</small>
+                            </span>
+                            <input type="checkbox" id="channel-superfan-perk-font" class="channel-customize-checkbox" ${sfPerks.animatedMiniFont ? 'checked' : ''}>
+                        </label>
+                        <label class="channel-member-toggle-row channel-member-perk-toggle" for="channel-superfan-perk-keywords">
+                            <span>
+                                <strong>🎈🇧🇷 Balões + Bandeira do Brasil por Palavras-chave</strong>
+                                <small>Ao digitar Top, Gostei, Muito bom, Fyp ou Viral, sobem balões de aniversário e 🇧🇷.</small>
+                            </span>
+                            <input type="checkbox" id="channel-superfan-perk-keywords" class="channel-customize-checkbox" ${sfPerks.celebrationKeywords ? 'checked' : ''}>
+                        </label>
+                        <label class="channel-member-toggle-row channel-member-perk-toggle" for="channel-superfan-perk-badge">
+                            <span>
+                                <strong>🏆 Emblema de Super Fã (ex.: Fã 1 🏆)</strong>
+                                <small>Exibe o ranking exclusivo do assinante ao lado do nome nos comentários.</small>
+                            </span>
+                            <input type="checkbox" id="channel-superfan-perk-badge" class="channel-customize-checkbox" ${sfPerks.superFanBadge ? 'checked' : ''}>
+                        </label>
+                    `;
+                })()}
+            </div>
             <div class="channel-member-monetization-actions">
                 <button type="button" id="save-channel-member-pricing-btn" class="danger-btn save-profile-action-btn channel-member-save-btn">
                     <i data-lucide="save"></i>
@@ -59335,8 +59786,22 @@ export function openChannelMembershipModal(targetUid = activeChannelUid || curre
         );
         syncCreatorPendingChannelPayouts(uid).catch(() => {});
     }
+    const sfPricingInit = getChannelSuperFanPricing(userData);
+    const sfPerksInit = sfPricingInit.perks || DEFAULT_CHANNEL_SUPERFAN_PERKS;
+    const sfToggleInp = document.getElementById('channel-superfan-paid-toggle');
+    const sfFontInp = document.getElementById('channel-superfan-perk-font');
+    const sfKeywordsInp = document.getElementById('channel-superfan-perk-keywords');
+    const sfBadgeInp = document.getElementById('channel-superfan-perk-badge');
+    if (sfToggleInp) sfToggleInp.checked = Boolean(sfPricingInit.rawPaidEnabled);
+    if (sfFontInp) sfFontInp.checked = Boolean(sfPerksInit.animatedMiniFont);
+    if (sfKeywordsInp) sfKeywordsInp.checked = Boolean(sfPerksInit.celebrationKeywords);
+    if (sfBadgeInp) sfBadgeInp.checked = Boolean(sfPerksInit.superFanBadge);
     document.getElementById('channel-member-price-input')?.addEventListener('input', (e) => {
         const previewEl = document.getElementById('channel-member-fee-preview');
+        if (previewEl) previewEl.innerText = buildFeePreviewText(e?.target?.value || '');
+    });
+    document.getElementById('channel-superfan-price-input')?.addEventListener('input', (e) => {
+        const previewEl = document.getElementById('channel-superfan-fee-preview');
         if (previewEl) previewEl.innerText = buildFeePreviewText(e?.target?.value || '');
     });
     loadChannelMembershipPlatformConfig().then((livePct) => {
@@ -62052,6 +62517,17 @@ if (typeof window !== 'undefined') {
     window.getChannelMemberCommentContext = getChannelMemberCommentContext;
     window.formatCommentTextWithAnimatedEmojis = formatCommentTextWithAnimatedEmojis;
     window.renderCommentModalMemberEmojiBar = renderCommentModalMemberEmojiBar;
+    window.SUPERFAN_CELEBRATION_KEYWORDS = SUPERFAN_CELEBRATION_KEYWORDS;
+    window.DEFAULT_CHANNEL_SUPERFAN_PERKS = DEFAULT_CHANNEL_SUPERFAN_PERKS;
+    window.normalizeChannelSuperFanPerks = normalizeChannelSuperFanPerks;
+    window.getChannelSuperFanPricing = getChannelSuperFanPricing;
+    window.isChannelPaidSuperFanActive = isChannelPaidSuperFanActive;
+    window.getUserSuperFanRank = getUserSuperFanRank;
+    window.isUserActiveChannelSuperFan = isUserActiveChannelSuperFan;
+    window.getChannelSuperFanCommentContext = getChannelSuperFanCommentContext;
+    window.detectSuperFanCelebrationKeywords = detectSuperFanCelebrationKeywords;
+    window.formatSuperFanMiniBounceHTML = formatSuperFanMiniBounceHTML;
+    window.triggerSuperFanCelebrationBurst = triggerSuperFanCelebrationBurst;
     window.openChannelMemberCheckoutModal = openChannelMemberCheckoutModal;
     window.closeChannelMemberCheckoutModal = closeChannelMemberCheckoutModal;
     window.generateChannelMemberPixPayment = generateChannelMemberPixPayment;
