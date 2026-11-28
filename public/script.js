@@ -24902,7 +24902,7 @@ export function getAdminReports() {
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
 const TRANSPARENT_IMG_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E";
-export const CURRENT_APP_VERSION = '1.0.337';
+export const CURRENT_APP_VERSION = '1.0.338';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -58261,8 +58261,96 @@ export function getChannelMembershipPricing(userData = currentProfile) {
         earningsTotal: Math.round(Math.max(0, Number(u.channelMemberEarningsTotal || 0)) * 100) / 100,
         paidCount: Math.max(0, Math.floor(Number(u.channelMemberPaidCount || 0))),
         payoutsTotal: Math.round(Math.max(0, Number(u.channelMemberPayoutsTotal || 0)) * 100) / 100,
+        pendingPayoutAmount: Math.round(Math.max(0, Number(u.channelMemberPendingPayoutAmount || 0)) * 100) / 100,
+        pendingPayoutCount: Math.max(0, Math.floor(Number(u.channelMemberPendingPayoutCount || 0))),
+        lastPayoutStatus: String(u.channelMemberLastPayoutStatus || '').trim(),
         recentPayments: Array.isArray(u.channelMemberRecentPayments) ? u.channelMemberRecentPayments : []
     };
+}
+
+export function buildChannelMemberPayoutReviewHtml(pendingAmount = 0, pendingCount = 0) {
+    const amt = Math.round(Math.max(0, Number(pendingAmount || 0)) * 100) / 100;
+    const count = Math.max(0, Math.floor(Number(pendingCount || 0)));
+    if (count <= 0 && amt <= 0) return '';
+    let descText = 'Seu saque Pix está sendo processado. Assim que a transferência for concluída, você será notificado.';
+    if (count > 1 && amt > 0) {
+        descText = `Processando ${count} transferências Pix (total ${formatBrlCurrency(amt)}). Assim que concluído, você será notificado.`;
+    } else if (amt > 0) {
+        descText = `Seu saque Pix de ${formatBrlCurrency(amt)} está sendo processado. Assim que a transferência for concluída, você será notificado.`;
+    }
+    return `
+        <div class="channel-member-payout-review-header">
+            <span class="channel-member-payout-review-dot" aria-hidden="true"></span>
+            <strong class="channel-member-payout-review-title">Em Análise ⏳</strong>
+        </div>
+        <p class="channel-member-payout-review-desc">${descText}</p>
+    `;
+}
+
+export function applyChannelMemberPayoutReviewNotice(el, pendingAmount = 0, pendingCount = 0) {
+    if (!el) return false;
+    const amt = Math.round(Math.max(0, Number(pendingAmount || 0)) * 100) / 100;
+    const count = Math.max(0, Math.floor(Number(pendingCount || 0)));
+    const hasPending = count > 0 || amt > 0;
+    el.innerHTML = buildChannelMemberPayoutReviewHtml(amt, count);
+    if (hasPending) {
+        el.style.display = 'flex';
+        el.classList?.add('is-active');
+        el.setAttribute?.('aria-hidden', 'false');
+    } else {
+        el.style.display = 'none';
+        el.classList?.remove('is-active');
+        el.setAttribute?.('aria-hidden', 'true');
+    }
+    return hasPending;
+}
+
+export async function syncCreatorPendingChannelPayouts(targetUid = currentUser?.uid) {
+    const uid = String(targetUid || '').trim();
+    if (!uid || typeof getDocs !== 'function' || typeof collection !== 'function' || typeof db === 'undefined' || !db) {
+        return { pendingAmount: 0, pendingCount: 0, synced: false };
+    }
+    let totalForUser = 0;
+    let pendingAmount = 0;
+    let pendingCount = 0;
+    try {
+        const refOrQuery = (typeof query === 'function' && typeof where === 'function')
+            ? query(collection(db, 'channel_member_payouts'), where('uid', '==', uid))
+            : collection(db, 'channel_member_payouts');
+        const snap = await getDocs(refOrQuery);
+        snap?.forEach?.((d) => {
+            const data = typeof d?.data === 'function' ? (d.data() || {}) : {};
+            if (data.uid !== uid) return;
+            totalForUser++;
+            const st = String(data.status || 'requested').trim();
+            if (!st || st === 'requested' || st === 'pending') {
+                pendingCount++;
+                pendingAmount += Math.max(0, Number(data.amount || 0));
+            }
+        });
+    } catch (err) {
+        console.warn('Erro ao sincronizar saques pendentes do canal:', err);
+        return { pendingAmount: 0, pendingCount: 0, synced: false };
+    }
+
+    const roundedAmt = Math.round(pendingAmount * 100) / 100;
+    if (totalForUser > 0) {
+        const patch = {
+            channelMemberPendingPayoutAmount: roundedAmt,
+            channelMemberPendingPayoutCount: pendingCount
+        };
+        if (currentProfile && currentUser?.uid === uid) {
+            Object.assign(currentProfile, patch);
+        }
+        if (activeChannelUid === uid && activeChannelUserData) {
+            Object.assign(activeChannelUserData, patch);
+        }
+        const noticeEl = document.getElementById('channel-member-payout-review-notice');
+        if (noticeEl && (!noticeEl.dataset?.ownerUid || noticeEl.dataset.ownerUid === uid)) {
+            applyChannelMemberPayoutReviewNotice(noticeEl, roundedAmt, pendingCount);
+        }
+    }
+    return { pendingAmount: roundedAmt, pendingCount, synced: totalForUser > 0 };
 }
 
 export function isChannelPaidMembershipActive(userData = currentProfile) {
@@ -58363,6 +58451,8 @@ export async function requestChannelMemberPayout() {
 
     const amount = pricing.earningsBalance;
     const nextPayoutsTotal = Math.round((pricing.payoutsTotal + amount) * 100) / 100;
+    const nextPendingAmount = Math.round((pricing.pendingPayoutAmount + amount) * 100) / 100;
+    const nextPendingCount = pricing.pendingPayoutCount + 1;
     const now = Date.now();
 
     if (typeof addDoc === 'function' && typeof collection === 'function' && typeof db !== 'undefined' && db) {
@@ -58383,6 +58473,9 @@ export async function requestChannelMemberPayout() {
     const ownerPatch = {
         channelMemberEarningsBalance: 0,
         channelMemberPayoutsTotal: nextPayoutsTotal,
+        channelMemberPendingPayoutAmount: nextPendingAmount,
+        channelMemberPendingPayoutCount: nextPendingCount,
+        channelMemberLastPayoutStatus: 'requested',
         channelMemberLastPayoutAt: now,
         updatedAt: now
     };
@@ -58400,8 +58493,15 @@ export async function requestChannelMemberPayout() {
     if (document.getElementById('channel-membership-modal')?.classList?.contains('active')) {
         openChannelMembershipModal(uid);
     }
-    showToast('Repasse Pix Solicitado! ⚡', `Saque de ${formatBrlCurrency(amount)} enviado para a chave ${pixKey}.`, 'green');
-    return { success: true, amount, pixKey, payoutsTotal: nextPayoutsTotal };
+    showToast('Saque em Análise ⏳', `Solicitação de ${formatBrlCurrency(amount)} recebida! Sua transferência Pix para ${pixKey} está sendo processada.`, 'green');
+    return {
+        success: true,
+        amount,
+        pixKey,
+        payoutsTotal: nextPayoutsTotal,
+        pendingPayoutAmount: nextPendingAmount,
+        pendingPayoutCount: nextPendingCount
+    };
 }
 
 export function closeChannelMemberCheckoutModal() {
@@ -58846,6 +58946,9 @@ export function openChannelMembershipModal(targetUid = activeChannelUid || curre
                     <span>Sacar via Pix (${formatBrlCurrency(pricing.earningsBalance)})</span>
                 </button>
             </div>
+            <div id="channel-member-payout-review-notice" class="channel-member-payout-review-notice${(pricing.pendingPayoutCount > 0 || pricing.pendingPayoutAmount > 0) ? ' is-active' : ''}" data-owner-uid="${escapeHTML(uid)}" role="status" aria-live="polite" style="${(pricing.pendingPayoutCount > 0 || pricing.pendingPayoutAmount > 0) ? 'display:flex;' : 'display:none;'}">
+                ${buildChannelMemberPayoutReviewHtml(pricing.pendingPayoutAmount, pricing.pendingPayoutCount)}
+            </div>
             ${pricing.recentPayments.length ? `
                 <div class="channel-member-recent-list">
                     ${pricing.recentPayments.map(p => `
@@ -58889,18 +58992,18 @@ export function openChannelMembershipModal(targetUid = activeChannelUid || curre
 
     document.getElementById('save-channel-member-pricing-btn')?.addEventListener('click', () => saveChannelMembershipPricing());
     document.getElementById('request-channel-member-payout-btn')?.addEventListener('click', () => requestChannelMemberPayout());
+    if (isOwner && elig.eligible) {
+        applyChannelMemberPayoutReviewNotice(
+            document.getElementById('channel-member-payout-review-notice'),
+            pricing.pendingPayoutAmount,
+            pricing.pendingPayoutCount
+        );
+        syncCreatorPendingChannelPayouts(uid).catch(() => {});
+    }
     document.getElementById('channel-member-price-input')?.addEventListener('input', (e) => {
         const previewEl = document.getElementById('channel-member-fee-preview');
         if (previewEl) previewEl.innerText = buildFeePreviewText(e?.target?.value || '');
     });
-    loadChannelMembershipPlatformConfig().then((livePct) => {
-        const previewEl = document.getElementById('channel-member-fee-preview');
-        const priceEl = document.getElementById('channel-member-price-input');
-        if (previewEl && priceEl && Number(livePct) !== Number(currentFeePct)) {
-            previewEl.innerText = buildFeePreviewText(priceEl.value || pricing.price || 0);
-        }
-    }).catch(() => {});
-
     loadChannelMembershipPlatformConfig().then((livePct) => {
         const previewEl = document.getElementById('channel-member-fee-preview');
         const priceEl = document.getElementById('channel-member-price-input');
@@ -59107,7 +59210,15 @@ export async function markAdminChannelPayoutPaid(payoutId) {
     if (!isUserAdmin() || !payoutId) {
         return { success: false, reason: 'unauthorized' };
     }
-    const target = adminChannelPayoutsCache.find(p => p && p.id === payoutId) || {};
+    let target = adminChannelPayoutsCache.find(p => p && p.id === payoutId) || null;
+    if (!target && typeof getDoc === 'function' && typeof doc === 'function' && typeof db !== 'undefined' && db) {
+        try {
+            const snap = await getDoc(doc(db, 'channel_member_payouts', String(payoutId)));
+            if (snap.exists()) target = { id: payoutId, ...snap.data() };
+        } catch (_) {}
+    }
+    target = target || {};
+    const paidAmount = Math.round(Math.max(0, Number(target.amount || 0)) * 100) / 100;
     const now = Date.now();
     if (typeof updateDoc === 'function' && typeof doc === 'function' && typeof db !== 'undefined' && db) {
         try {
@@ -59116,6 +59227,32 @@ export async function markAdminChannelPayoutPaid(payoutId) {
                 paidAt: now,
                 paidBy: currentUser?.email || ''
             });
+        } catch (_) {}
+    }
+    if (target.uid && typeof getDoc === 'function' && typeof updateDoc === 'function' && typeof doc === 'function' && typeof db !== 'undefined' && db) {
+        try {
+            const uSnap = await getDoc(doc(db, 'users', target.uid));
+            const uData = uSnap.exists() ? (uSnap.data() || {}) : {};
+            const nextPendingCount = Math.max(0, Math.floor(Number(uData.channelMemberPendingPayoutCount || 0)) - 1);
+            const nextPendingAmount = nextPendingCount === 0
+                ? 0
+                : Math.round(Math.max(0, Number(uData.channelMemberPendingPayoutAmount || 0) - paidAmount) * 100) / 100;
+            const userPatch = {
+                channelMemberPendingPayoutAmount: nextPendingAmount,
+                channelMemberPendingPayoutCount: nextPendingCount,
+                channelMemberLastPayoutStatus: nextPendingCount > 0 ? 'requested' : 'paid'
+            };
+            await updateDoc(doc(db, 'users', target.uid), userPatch);
+            if (currentProfile && currentUser?.uid === target.uid) {
+                Object.assign(currentProfile, userPatch);
+            }
+            if (activeChannelUid === target.uid && activeChannelUserData) {
+                Object.assign(activeChannelUserData, userPatch);
+            }
+            const noticeEl = document.getElementById('channel-member-payout-review-notice');
+            if (noticeEl && (!noticeEl.dataset?.ownerUid || noticeEl.dataset.ownerUid === target.uid)) {
+                applyChannelMemberPayoutReviewNotice(noticeEl, nextPendingAmount, nextPendingCount);
+            }
         } catch (_) {}
     }
     if (target.uid && typeof addDoc === 'function' && typeof collection === 'function' && typeof db !== 'undefined' && db) {
@@ -59169,13 +59306,27 @@ export async function rejectAdminChannelPayout(payoutId) {
             const uData = uSnap.exists() ? (uSnap.data() || {}) : {};
             const nextBal = Math.round((Math.max(0, Number(uData.channelMemberEarningsBalance || 0)) + refundedAmount) * 100) / 100;
             const nextPayoutsTotal = Math.round(Math.max(0, Number(uData.channelMemberPayoutsTotal || 0) - refundedAmount) * 100) / 100;
-            await updateDoc(doc(db, 'users', payout.uid), {
+            const nextPendingCount = Math.max(0, Math.floor(Number(uData.channelMemberPendingPayoutCount || 0)) - 1);
+            const nextPendingAmount = nextPendingCount === 0
+                ? 0
+                : Math.round(Math.max(0, Number(uData.channelMemberPendingPayoutAmount || 0) - refundedAmount) * 100) / 100;
+            const userPatch = {
                 channelMemberEarningsBalance: nextBal,
-                channelMemberPayoutsTotal: nextPayoutsTotal
-            });
+                channelMemberPayoutsTotal: nextPayoutsTotal,
+                channelMemberPendingPayoutAmount: nextPendingAmount,
+                channelMemberPendingPayoutCount: nextPendingCount,
+                channelMemberLastPayoutStatus: nextPendingCount > 0 ? 'requested' : 'rejected'
+            };
+            await updateDoc(doc(db, 'users', payout.uid), userPatch);
             if (currentProfile && currentUser?.uid === payout.uid) {
-                currentProfile.channelMemberEarningsBalance = nextBal;
-                currentProfile.channelMemberPayoutsTotal = nextPayoutsTotal;
+                Object.assign(currentProfile, userPatch);
+            }
+            if (activeChannelUid === payout.uid && activeChannelUserData) {
+                Object.assign(activeChannelUserData, userPatch);
+            }
+            const noticeEl = document.getElementById('channel-member-payout-review-notice');
+            if (noticeEl && (!noticeEl.dataset?.ownerUid || noticeEl.dataset.ownerUid === payout.uid)) {
+                applyChannelMemberPayoutReviewNotice(noticeEl, nextPendingAmount, nextPendingCount);
             }
         } catch (_) {}
     }
@@ -61555,6 +61706,9 @@ if (typeof window !== 'undefined') {
     window.isChannelPaidMembershipActive = isChannelPaidMembershipActive;
     window.saveChannelMembershipPricing = saveChannelMembershipPricing;
     window.requestChannelMemberPayout = requestChannelMemberPayout;
+    window.buildChannelMemberPayoutReviewHtml = buildChannelMemberPayoutReviewHtml;
+    window.applyChannelMemberPayoutReviewNotice = applyChannelMemberPayoutReviewNotice;
+    window.syncCreatorPendingChannelPayouts = syncCreatorPendingChannelPayouts;
     window.openChannelMemberCheckoutModal = openChannelMemberCheckoutModal;
     window.closeChannelMemberCheckoutModal = closeChannelMemberCheckoutModal;
     window.generateChannelMemberPixPayment = generateChannelMemberPixPayment;
