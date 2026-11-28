@@ -24751,7 +24751,7 @@ export function getAdminReports() {
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
 const TRANSPARENT_IMG_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E";
-export const CURRENT_APP_VERSION = '1.0.323';
+export const CURRENT_APP_VERSION = '1.0.324';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -26692,32 +26692,35 @@ export async function recordSecurityIncident({
     }
 }
 
+export function openGlobalSecurityTipsModal() {
+    const modal = document.getElementById('global-security-tips-modal');
+    if (!modal) return;
+    const scrollBody = document.getElementById('global-security-tips-scroll-body');
+    if (scrollBody) scrollBody.scrollTop = 0;
+    modal.classList?.add('active');
+    modal.style.display = 'flex';
+    modal.setAttribute('aria-hidden', 'false');
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        lucide.createIcons();
+    }
+}
+
+export function closeGlobalSecurityTipsModal() {
+    const modal = document.getElementById('global-security-tips-modal');
+    if (!modal) return;
+    modal.classList?.remove('active');
+    modal.style.display = 'none';
+    modal.setAttribute('aria-hidden', 'true');
+}
+
 export function initGlobalSecurityUI() {
     const openBtn = document.getElementById('open-security-tips-modal-btn');
     const closeBtn = document.getElementById('close-global-security-tips-modal');
     const confirmBtn = document.getElementById('confirm-security-tips-btn');
-    const modal = document.getElementById('global-security-tips-modal');
 
-    const openModal = () => {
-        if (modal) {
-            modal.style.display = 'flex';
-            modal.setAttribute('aria-hidden', 'false');
-            if (window.lucide && typeof window.lucide.createIcons === 'function') {
-                lucide.createIcons();
-            }
-        }
-    };
-
-    const closeModal = () => {
-        if (modal) {
-            modal.style.display = 'none';
-            modal.setAttribute('aria-hidden', 'true');
-        }
-    };
-
-    openBtn?.addEventListener('click', openModal);
-    closeBtn?.addEventListener('click', closeModal);
-    confirmBtn?.addEventListener('click', closeModal);
+    openBtn?.addEventListener('click', openGlobalSecurityTipsModal);
+    closeBtn?.addEventListener('click', closeGlobalSecurityTipsModal);
+    confirmBtn?.addEventListener('click', closeGlobalSecurityTipsModal);
 }
 
 /* ==========================================================================
@@ -26727,6 +26730,9 @@ export function initGlobalSecurityUI() {
 export function openPrivacyPolicyModal() {
     const modal = document.getElementById('privacy-policy-modal');
     if (modal) {
+        const scrollBody = document.getElementById('privacy-policy-scroll-body');
+        if (scrollBody) scrollBody.scrollTop = 0;
+        modal.classList?.add('active');
         modal.style.display = 'flex';
         modal.setAttribute('aria-hidden', 'false');
         if (window.lucide && typeof window.lucide.createIcons === 'function') {
@@ -26738,6 +26744,7 @@ export function openPrivacyPolicyModal() {
 export function closePrivacyPolicyModal() {
     const modal = document.getElementById('privacy-policy-modal');
     if (modal) {
+        modal.classList?.remove('active');
         modal.style.display = 'none';
         modal.setAttribute('aria-hidden', 'true');
     }
@@ -26751,24 +26758,24 @@ export function initPrivacyPolicyUI() {
     const modal = document.getElementById('privacy-policy-modal');
 
     openBtn?.addEventListener('click', (e) => {
-        e.preventDefault();
+        e?.preventDefault?.();
         openPrivacyPolicyModal();
     });
 
     closeBtn?.addEventListener('click', (e) => {
-        e.preventDefault();
+        e?.preventDefault?.();
         closePrivacyPolicyModal();
     });
 
     confirmBtn?.addEventListener('click', (e) => {
-        e.preventDefault();
+        e?.preventDefault?.();
         closePrivacyPolicyModal();
     });
 
     // Abrir modal in-app pelo link da tela de login se for clique comum
     authLink?.addEventListener('click', (e) => {
-        if (!e.ctrlKey && !e.metaKey && modal) {
-            e.preventDefault();
+        if (!e?.ctrlKey && !e?.metaKey && modal) {
+            e?.preventDefault?.();
             openPrivacyPolicyModal();
         }
     });
@@ -27047,6 +27054,9 @@ export async function openBetaTesterModal() {
     updateBetaTesterUI();
     const modal = document.getElementById('beta-tester-modal');
     if (modal) {
+        const scrollBody = document.getElementById('beta-tester-scroll-body');
+        if (scrollBody) scrollBody.scrollTop = 0;
+        modal.classList?.add('active');
         modal.style.display = 'flex';
         modal.setAttribute('aria-hidden', 'false');
         if (window.lucide && typeof window.lucide.createIcons === 'function') {
@@ -27062,6 +27072,7 @@ export function closeBetaTesterModal() {
     stopBetaTesterCountdown();
     const modal = document.getElementById('beta-tester-modal');
     if (modal) {
+        modal.classList?.remove('active');
         modal.style.display = 'none';
         modal.setAttribute('aria-hidden', 'true');
     }
@@ -27115,22 +27126,22 @@ export function initBetaTesterUI() {
     const modal = document.getElementById('beta-tester-modal');
 
     openBtn?.addEventListener('click', (e) => {
-        e.preventDefault();
+        e?.preventDefault?.();
         openBetaTesterModal();
     });
 
     closeBtn?.addEventListener('click', (e) => {
-        e.preventDefault();
+        e?.preventDefault?.();
         closeBetaTesterModal();
     });
 
     closeFooterBtn?.addEventListener('click', (e) => {
-        e.preventDefault();
+        e?.preventDefault?.();
         closeBetaTesterModal();
     });
 
     requestBtn?.addEventListener('click', (e) => {
-        e.preventDefault();
+        e?.preventDefault?.();
         requestBetaTesterAccess();
     });
 
@@ -45542,6 +45553,27 @@ export function closeTopmostActiveLayer() {
         return true;
     }
 
+    const settingsSubScreens = [
+        ['company-chatbot-modal', typeof closeCompanyChatbotModal === 'function' ? closeCompanyChatbotModal : null],
+        ['app-permissions-modal', typeof closeAppPermissionsModal === 'function' ? closeAppPermissionsModal : null],
+        ['global-security-tips-modal', typeof closeGlobalSecurityTipsModal === 'function' ? closeGlobalSecurityTipsModal : null],
+        ['privacy-policy-modal', typeof closePrivacyPolicyModal === 'function' ? closePrivacyPolicyModal : null],
+        ['beta-tester-modal', typeof closeBetaTesterModal === 'function' ? closeBetaTesterModal : null]
+    ];
+    for (const [screenId, closeFn] of settingsSubScreens) {
+        const screenEl = document.getElementById(screenId);
+        if (screenEl && (screenEl.style.display === 'flex' || (screenEl.classList && screenEl.classList.contains('active')))) {
+            if (closeFn) {
+                closeFn();
+            } else {
+                screenEl.style.display = 'none';
+                screenEl.classList?.remove('active');
+                screenEl.setAttribute?.('aria-hidden', 'true');
+            }
+            return true;
+        }
+    }
+
     const reportModal = document.getElementById('report-contact-modal');
     if (reportModal && reportModal.classList && reportModal.classList.contains('active')) {
         if (typeof closeReportModal === 'function') {
@@ -46650,8 +46682,14 @@ window.handleCallSwitchedToVideo = handleCallSwitchedToVideo;
     window.recordSecurityIncident = recordSecurityIncident;
     window.globalFraudIncidents = globalFraudIncidents;
     window.initGlobalSecurityUI = initGlobalSecurityUI;
+    window.openGlobalSecurityTipsModal = openGlobalSecurityTipsModal;
+    window.openGlobalSecurityTipsScreen = openGlobalSecurityTipsModal;
+    window.closeGlobalSecurityTipsModal = closeGlobalSecurityTipsModal;
+    window.closeGlobalSecurityTipsScreen = closeGlobalSecurityTipsModal;
     window.openPrivacyPolicyModal = openPrivacyPolicyModal;
+    window.openPrivacyPolicyScreen = openPrivacyPolicyModal;
     window.closePrivacyPolicyModal = closePrivacyPolicyModal;
+    window.closePrivacyPolicyScreen = closePrivacyPolicyModal;
     window.initPrivacyPolicyUI = initPrivacyPolicyUI;
     window.BETA_TESTER_WAIT_MS = BETA_TESTER_WAIT_MS;
     window.getBetaTesterStorageKey = getBetaTesterStorageKey;
@@ -46664,7 +46702,9 @@ window.handleCallSwitchedToVideo = handleCallSwitchedToVideo;
     window.stopBetaTesterCountdown = stopBetaTesterCountdown;
     window.startBetaTesterCountdown = startBetaTesterCountdown;
     window.openBetaTesterModal = openBetaTesterModal;
+    window.openBetaTesterScreen = openBetaTesterModal;
     window.closeBetaTesterModal = closeBetaTesterModal;
+    window.closeBetaTesterScreen = closeBetaTesterModal;
     window.requestBetaTesterAccess = requestBetaTesterAccess;
     window.initBetaTesterUI = initBetaTesterUI;
     window.MAX_GROUP_CALL_INVITES = MAX_GROUP_CALL_INVITES;
@@ -46790,7 +46830,9 @@ window.handleCallSwitchedToVideo = handleCallSwitchedToVideo;
     window.normalizeChatbotText = normalizeChatbotText;
     window.processIncomingMessageForChatbot = processIncomingMessageForChatbot;
     window.openCompanyChatbotModal = openCompanyChatbotModal;
+    window.openCompanyChatbotScreen = openCompanyChatbotModal;
     window.closeCompanyChatbotModal = closeCompanyChatbotModal;
+    window.closeCompanyChatbotScreen = closeCompanyChatbotModal;
     window.renderChatbotRulesList = renderChatbotRulesList;
     window.updateCompanyChatbotSettingsUI = updateCompanyChatbotSettingsUI;
     window.initCompanyChatbotControls = initCompanyChatbotControls;
@@ -47356,6 +47398,9 @@ export function updateAppPermissionsUI() {
 export function openAppPermissionsModal() {
     const modal = document.getElementById('app-permissions-modal');
     if (modal) {
+        const scrollBody = document.getElementById('app-permissions-scroll-body');
+        if (scrollBody) scrollBody.scrollTop = 0;
+        modal.classList?.add('active');
         modal.style.display = 'flex';
         modal.setAttribute('aria-hidden', 'false');
     }
@@ -47370,6 +47415,7 @@ export function openAppPermissionsModal() {
 export function closeAppPermissionsModal() {
     const modal = document.getElementById('app-permissions-modal');
     if (modal) {
+        modal.classList?.remove('active');
         modal.style.display = 'none';
         modal.setAttribute('aria-hidden', 'true');
     }
@@ -47406,7 +47452,9 @@ if (typeof window !== 'undefined') {
     window.requestAllAppPermissions = requestAllAppPermissions;
     window.updateAppPermissionsUI = updateAppPermissionsUI;
     window.openAppPermissionsModal = openAppPermissionsModal;
+    window.openAppPermissionsScreen = openAppPermissionsModal;
     window.closeAppPermissionsModal = closeAppPermissionsModal;
+    window.closeAppPermissionsScreen = closeAppPermissionsModal;
     window.initPermissionsManager = initPermissionsManager;
 
     initBackNavigation();
@@ -48750,6 +48798,9 @@ export function openCompanyChatbotModal() {
     }
     const modal = document.getElementById('company-chatbot-modal');
     if (!modal) return;
+    const scrollBody = document.getElementById('company-chatbot-scroll-body');
+    if (scrollBody) scrollBody.scrollTop = 0;
+    modal.classList?.add('active');
     modal.style.display = 'flex';
     modal.setAttribute('aria-hidden', 'false');
     renderChatbotRulesList();
@@ -48761,6 +48812,7 @@ export function openCompanyChatbotModal() {
 export function closeCompanyChatbotModal() {
     const modal = document.getElementById('company-chatbot-modal');
     if (!modal) return;
+    modal.classList?.remove('active');
     modal.style.display = 'none';
     modal.setAttribute('aria-hidden', 'true');
 }

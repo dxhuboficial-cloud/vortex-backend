@@ -35966,6 +35966,7 @@ textarea,
     .channel-community-scroll-body,
     .channel-level-scroll-body,
     .music-picker-scroll-body,
+    .vortex-settings-screen-scroll-body,
     .channel-modal-body,
     .settings-content,
     .post-composer {
@@ -36008,8 +36009,60 @@ body.vortex-mobile-opt .channel-analytics-screen,
 body.vortex-mobile-opt .channel-membership-screen,
 body.vortex-mobile-opt .channel-community-screen,
 body.vortex-mobile-opt .channel-level-screen,
-body.vortex-mobile-opt .music-picker-screen {
+body.vortex-mobile-opt .music-picker-screen,
+body.vortex-mobile-opt .vortex-settings-screen {
     contain: layout style;
+}
+
+/* ==========================================================================
+   v1.0.324: Telas Próprias em Tela Cheia (Segurança, Beta, Privacidade, Permissões e Chatbot)
+   ========================================================================== */
+.vortex-settings-screen {
+    z-index: 20010 !important;
+    background: #0c0e16;
+    color: #f1f1f1;
+    overflow: hidden;
+}
+.vortex-settings-screen.active {
+    display: flex !important;
+}
+.vortex-settings-screen.beta-tester-screen {
+    background: linear-gradient(180deg, #121024 0%, #0a0e1a 100%);
+}
+.vortex-settings-screen.privacy-policy-screen {
+    background: linear-gradient(180deg, #101422 0%, #0a0e18 100%);
+}
+.vortex-settings-screen.global-security-screen {
+    background: #0d0e15;
+}
+.vortex-settings-screen.app-permissions-screen,
+.vortex-settings-screen.company-chatbot-screen {
+    background: #0b0e17;
+}
+.vortex-settings-screen-topbar {
+    flex-shrink: 0;
+    background: rgba(12, 14, 22, 0.94);
+}
+.vortex-settings-screen-scroll-body {
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+}
+.vortex-settings-screen-container {
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 16px 16px calc(42px + env(safe-area-inset-bottom, 0px)) !important;
+    box-sizing: border-box;
+    max-height: none !important;
+    overflow: visible !important;
+    min-width: 0;
+}
+.vortex-settings-screen-container > * {
+    max-width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
 }
 
 @media (prefers-reduced-motion: reduce) {
