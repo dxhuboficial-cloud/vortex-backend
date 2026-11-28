@@ -24902,7 +24902,7 @@ export function getAdminReports() {
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
 const TRANSPARENT_IMG_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E";
-export const CURRENT_APP_VERSION = '1.0.341';
+export const CURRENT_APP_VERSION = '1.0.342';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -46473,6 +46473,24 @@ export let gamesConfig = {
     roleta: true
 };
 
+export const PLATFORM_EVENT_CONFETTI_SYMBOLS = ['✨', '⚡', '🌟', '💥', '🎊', '🎉', '💫', '🍀', '🌲'];
+const PLATFORM_EVENT_CONFETTI_COLORS = ['#39ff14', '#facc15', '#38bdf8', '#f43f5e', '#a855f7', '#22d3ee', '#fb923c'];
+
+export let platformEventConfettiConfig = {
+    active: false,
+    label: 'Evento🍀',
+    burstNonce: 0,
+    updatedAt: 0,
+    updatedBy: ''
+};
+
+let platformEventListenerAttached = false;
+let platformEventMorphInterval = null;
+let platformEventSymbolCursor = 0;
+let platformEventLastBurstNonce = 0;
+let platformEventWasActive = false;
+let platformEventNoticeDismissedNonce = -1;
+
 export let maintenanceConfig = {
     active: false,
     updatedAt: 0,
@@ -47536,6 +47554,14 @@ window.handleCallSwitchedToVideo = handleCallSwitchedToVideo;
     window.syncMaintenanceAdminButtonVisibility = syncMaintenanceAdminButtonVisibility;
     window.handleMaintenanceAdminLogin = handleMaintenanceAdminLogin;
     window.initMaintenanceControls = initMaintenanceControls;
+    window.PLATFORM_EVENT_CONFETTI_SYMBOLS = PLATFORM_EVENT_CONFETTI_SYMBOLS;
+    window.platformEventConfettiConfig = platformEventConfettiConfig;
+    window.applyPlatformEventConfettiState = applyPlatformEventConfettiState;
+    window.loadPlatformEventConfettiConfig = loadPlatformEventConfettiConfig;
+    window.adminTogglePlatformEventConfetti = adminTogglePlatformEventConfetti;
+    window.adminTriggerPlatformEventSideBurst = adminTriggerPlatformEventSideBurst;
+    window.cyclePlatformEventConfettiSymbols = cyclePlatformEventConfettiSymbols;
+    window.initPlatformEventConfettiControls = initPlatformEventConfettiControls;
     window.AI_SECURITY_CONFIG = AI_SECURITY_CONFIG;
     window.aiSecurityIncidents = aiSecurityIncidents;
     window.aiBehaviorTracker = aiBehaviorTracker;
@@ -48031,6 +48057,8 @@ if (typeof window !== 'undefined') {
     initBusinessVerificationEvents();
     loadMaintenanceConfig();
     initMaintenanceControls();
+    loadPlatformEventConfettiConfig();
+    initPlatformEventConfettiControls();
     loadAISecurityConfig();
     initAdminAISecurityUI();
 }
@@ -52586,6 +52614,287 @@ export function initMaintenanceControls() {
     const adminLoginBtn = document.getElementById('maintenance-admin-login-btn');
     adminLoginBtn?.addEventListener('click', handleMaintenanceAdminLogin);
     syncMaintenanceAdminButtonVisibility(currentUser, currentProfile);
+}
+
+/* ==========================================================================
+   VORTEX VIP ⚡ - EVENTO🍀 GLOBAL NO PAINEL ADM (v1.0.342)
+   Confete nas laterais + chuva brilhante do topo mudando ✨⚡🌟💥🎊🎉💫🍀🌲
+   ========================================================================== */
+
+function spawnPlatformEventSideCannons() {
+    if (typeof document === 'undefined') return 0;
+    const sideLayer = document.getElementById('vortex-event-side-burst-layer');
+    if (!sideLayer) return 0;
+    const pieces = [];
+    const total = 28;
+    for (let i = 0; i < total; i++) {
+        const isLeft = i % 2 === 0;
+        const sideClass = isLeft ? 'from-left' : 'from-right';
+        const bottomPct = 14 + ((i * 5.2) % 62);
+        const txVw = 18 + ((i * 3.7) % 34);
+        const tyVh = -10 - ((i * 4.1) % 36);
+        const durSec = (1.9 + (i % 5) * 0.25).toFixed(2);
+        const delaySec = ((i % 6) * 0.07).toFixed(2);
+        const isSymbol = i % 2 === 1;
+        if (isSymbol) {
+            const sym = PLATFORM_EVENT_CONFETTI_SYMBOLS[i % PLATFORM_EVENT_CONFETTI_SYMBOLS.length];
+            pieces.push(
+                `<span class="vortex-confetti-side-piece ${sideClass} is-symbol" data-event-confetti-symbol="true" data-symbol-offset="${i}" style="bottom:${bottomPct.toFixed(1)}%; --ev-tx:${txVw.toFixed(1)}vw; --ev-ty:${tyVh.toFixed(1)}vh; --ev-dur:${durSec}s; animation-delay:${delaySec}s;">${sym}</span>`
+            );
+        } else {
+            const color = PLATFORM_EVENT_CONFETTI_COLORS[i % PLATFORM_EVENT_CONFETTI_COLORS.length];
+            pieces.push(
+                `<span class="vortex-confetti-side-piece ${sideClass} is-ribbon" style="bottom:${bottomPct.toFixed(1)}%; background:${color}; color:${color}; --ev-tx:${txVw.toFixed(1)}vw; --ev-ty:${tyVh.toFixed(1)}vh; --ev-dur:${durSec}s; animation-delay:${delaySec}s;"></span>`
+            );
+        }
+    }
+    sideLayer.innerHTML = pieces.join('');
+    return total;
+}
+
+function startPlatformEventFallingConfettiRain() {
+    if (typeof document === 'undefined') return 0;
+    const rainLayer = document.getElementById('vortex-event-rain-layer');
+    if (!rainLayer) return 0;
+    const pieces = [];
+    const total = 36;
+    for (let i = 0; i < total; i++) {
+        const leftPct = 2 + ((i * 2.75 + (i % 4) * 3) % 94);
+        const swayPx = (i % 2 === 0 ? 1 : -1) * (16 + (i % 5) * 8);
+        const durSec = (3.8 + (i % 6) * 0.45).toFixed(2);
+        // Atraso inicial logo após o jato lateral para transicionar dos lados -> chuva de cima
+        const delaySec = (0.55 + (i % 9) * 0.38).toFixed(2);
+        const isSymbol = i % 3 !== 0;
+        if (isSymbol) {
+            const sym = PLATFORM_EVENT_CONFETTI_SYMBOLS[(i + platformEventSymbolCursor) % PLATFORM_EVENT_CONFETTI_SYMBOLS.length];
+            pieces.push(
+                `<span class="vortex-confetti-rain-piece is-symbol" data-event-confetti-symbol="true" data-symbol-offset="${i}" style="left:${leftPct.toFixed(1)}%; --ev-sway:${swayPx}px; --ev-dur:${durSec}s; animation-delay:${delaySec}s;">${sym}</span>`
+            );
+        } else {
+            const color = PLATFORM_EVENT_CONFETTI_COLORS[i % PLATFORM_EVENT_CONFETTI_COLORS.length];
+            pieces.push(
+                `<span class="vortex-confetti-rain-piece is-ribbon" style="left:${leftPct.toFixed(1)}%; background:${color}; color:${color}; --ev-sway:${swayPx}px; --ev-dur:${durSec}s; animation-delay:${delaySec}s;"></span>`
+            );
+        }
+    }
+    rainLayer.innerHTML = pieces.join('');
+    return total;
+}
+
+export function cyclePlatformEventConfettiSymbols() {
+    platformEventSymbolCursor = (platformEventSymbolCursor + 1) % PLATFORM_EVENT_CONFETTI_SYMBOLS.length;
+    const activeSym = PLATFORM_EVENT_CONFETTI_SYMBOLS[platformEventSymbolCursor];
+    if (typeof document === 'undefined') return activeSym;
+
+    const noticeSymEl = document.getElementById('vortex-event-notice-symbol');
+    if (noticeSymEl) noticeSymEl.innerText = activeSym;
+
+    const symbolNodes = typeof document.querySelectorAll === 'function'
+        ? document.querySelectorAll('[data-event-confetti-symbol]')
+        : [];
+    if (symbolNodes && symbolNodes.length) {
+        symbolNodes.forEach((node, idx) => {
+            const offset = Number(node.dataset?.symbolOffset ?? idx) || 0;
+            const sym = PLATFORM_EVENT_CONFETTI_SYMBOLS[(offset + platformEventSymbolCursor) % PLATFORM_EVENT_CONFETTI_SYMBOLS.length];
+            node.innerText = sym;
+        });
+    } else {
+        const rainLayer = document.getElementById('vortex-event-rain-layer');
+        if (rainLayer && rainLayer.innerHTML && rainLayer.innerHTML.includes('data-event-confetti-symbol')) {
+            let localIdx = 0;
+            rainLayer.innerHTML = rainLayer.innerHTML.replace(
+                /(<span[^>]*data-event-confetti-symbol="true"[^>]*>)[^<]*(<\/span>)/g,
+                (_, openTag, closeTag) => {
+                    const sym = PLATFORM_EVENT_CONFETTI_SYMBOLS[(localIdx + platformEventSymbolCursor) % PLATFORM_EVENT_CONFETTI_SYMBOLS.length];
+                    localIdx++;
+                    return `${openTag}${sym}${closeTag}`;
+                }
+            );
+        }
+    }
+    return activeSym;
+}
+
+export function applyPlatformEventConfettiState(cfg = platformEventConfettiConfig) {
+    const resolved = {
+        active: Boolean(cfg?.active),
+        label: String(cfg?.label || 'Evento🍀').trim() || 'Evento🍀',
+        burstNonce: Number(cfg?.burstNonce || 0),
+        updatedAt: Number(cfg?.updatedAt || 0),
+        updatedBy: String(cfg?.updatedBy || '')
+    };
+    platformEventConfettiConfig = resolved;
+
+    if (typeof document === 'undefined') return resolved;
+
+    const bannerCard = document.getElementById('admin-event-confetti-banner');
+    const statusPill = document.getElementById('admin-event-status-pill');
+    const statusLabel = document.getElementById('admin-event-status-label');
+    const toggleBtn = document.getElementById('admin-toggle-event-confetti-btn');
+    const toggleLabel = document.getElementById('admin-toggle-event-confetti-label');
+    const retriggerBtn = document.getElementById('admin-retrigger-event-confetti-btn');
+
+    if (bannerCard) bannerCard.classList?.toggle('is-active', resolved.active);
+    if (statusPill) {
+        statusPill.classList?.toggle('live', resolved.active);
+        statusPill.classList?.toggle('off', !resolved.active);
+    }
+    if (statusLabel) statusLabel.innerText = resolved.active ? 'Ativo • Evento🍀' : 'Desativado';
+    if (toggleBtn) {
+        toggleBtn.classList?.toggle('btn-deactivate', resolved.active);
+        toggleBtn.classList?.toggle('btn-activate', !resolved.active);
+    }
+    if (toggleLabel) toggleLabel.innerText = resolved.active ? 'Desativar Evento🍀' : 'Ativar Evento🍀';
+    if (retriggerBtn) retriggerBtn.style.display = resolved.active ? 'inline-flex' : 'none';
+
+    const confettiLayer = document.getElementById('vortex-event-confetti-layer');
+    const sideLayer = document.getElementById('vortex-event-side-burst-layer');
+    const rainLayer = document.getElementById('vortex-event-rain-layer');
+    const noticeBanner = document.getElementById('vortex-event-notice-banner');
+    const noticeText = document.getElementById('vortex-event-notice-text');
+    const noticeSym = document.getElementById('vortex-event-notice-symbol');
+
+    if (resolved.active) {
+        const newlyActivated = !platformEventWasActive;
+        const burstChanged = resolved.burstNonce !== platformEventLastBurstNonce;
+
+        if (confettiLayer) confettiLayer.style.display = 'block';
+        if (noticeText) noticeText.innerText = resolved.label;
+        if (noticeSym) noticeSym.innerText = PLATFORM_EVENT_CONFETTI_SYMBOLS[platformEventSymbolCursor];
+        if (noticeBanner) {
+            const isDismissedSameBurst = platformEventNoticeDismissedNonce === resolved.burstNonce && !newlyActivated;
+            noticeBanner.style.display = isDismissedSameBurst ? 'none' : 'flex';
+        }
+        if (newlyActivated || burstChanged || (sideLayer && !sideLayer.innerHTML)) {
+            spawnPlatformEventSideCannons();
+        }
+        if (rainLayer && !rainLayer.innerHTML) {
+            startPlatformEventFallingConfettiRain();
+        }
+        if (!platformEventMorphInterval) {
+            platformEventMorphInterval = setInterval(() => {
+                cyclePlatformEventConfettiSymbols();
+            }, 1800);
+        }
+        if (newlyActivated) {
+            showToast('Evento🍀', 'Um administrador ativou o Evento🍀 na plataforma VORTEX VIP! ✨', 'green');
+        }
+        platformEventWasActive = true;
+        platformEventLastBurstNonce = resolved.burstNonce;
+    } else {
+        if (platformEventMorphInterval) {
+            clearInterval(platformEventMorphInterval);
+            platformEventMorphInterval = null;
+        }
+        if (sideLayer) sideLayer.innerHTML = '';
+        if (rainLayer) rainLayer.innerHTML = '';
+        if (confettiLayer) confettiLayer.style.display = 'none';
+        if (noticeBanner) noticeBanner.style.display = 'none';
+        platformEventWasActive = false;
+        platformEventNoticeDismissedNonce = -1;
+    }
+    return resolved;
+}
+
+export function loadPlatformEventConfettiConfig() {
+    if (platformEventListenerAttached) return;
+    try {
+        if (typeof db !== 'undefined' && db && typeof doc === 'function' && typeof onSnapshot === 'function') {
+            platformEventListenerAttached = true;
+            const eventRef = doc(db, 'settings', 'event_confetti');
+            onSnapshot(eventRef, (snap) => {
+                if (snap && snap.exists && snap.exists()) {
+                    const data = snap.data() || {};
+                    applyPlatformEventConfettiState({ ...platformEventConfettiConfig, ...data });
+                }
+            }, (err) => {
+                console.warn('[VORTEX] Aviso listener Evento🍀 Firestore:', err);
+            });
+        }
+    } catch (err) {
+        console.warn('[VORTEX] Falha ao iniciar listener Evento🍀:', err);
+    }
+}
+
+export async function adminTogglePlatformEventConfetti(forceState = null) {
+    if (!isUserAdmin(currentUser, currentProfile)) {
+        showToast('Acesso Negado', 'Apenas administradores podem ativar o Evento🍀.', 'red');
+        return { success: false, reason: 'unauthorized' };
+    }
+
+    const newActive = typeof forceState === 'boolean' ? forceState : !platformEventConfettiConfig.active;
+    const nextConfig = {
+        active: newActive,
+        label: 'Evento🍀',
+        burstNonce: (Number(platformEventConfettiConfig.burstNonce) || 0) + 1,
+        updatedAt: Date.now(),
+        updatedBy: currentUser?.email || currentProfile?.email || 'admin'
+    };
+    platformEventNoticeDismissedNonce = -1;
+    applyPlatformEventConfettiState(nextConfig);
+
+    try {
+        if (typeof db !== 'undefined' && db && typeof setDoc === 'function' && typeof doc === 'function') {
+            await setDoc(doc(db, 'settings', 'event_confetti'), nextConfig, { merge: true });
+        }
+    } catch (err) {
+        console.warn('[VORTEX] Erro ao salvar Evento🍀 no Firestore:', err);
+    }
+
+    showToast(
+        newActive ? 'Evento🍀 Ativado!' : 'Evento🍀 Desativado',
+        newActive
+            ? 'Confetes laterais + chuva brilhante e aviso Evento🍀 ativos para todos na plataforma!'
+            : 'Efeito de confetes e aviso Evento🍀 encerrados.',
+        newActive ? 'green' : 'blue'
+    );
+    return { success: true, active: newActive, config: { ...platformEventConfettiConfig } };
+}
+
+export async function adminTriggerPlatformEventSideBurst() {
+    if (!isUserAdmin(currentUser, currentProfile)) {
+        showToast('Acesso Negado', 'Apenas administradores podem disparar o Evento🍀.', 'red');
+        return { success: false, reason: 'unauthorized' };
+    }
+    const nextConfig = {
+        ...platformEventConfettiConfig,
+        active: true,
+        label: 'Evento🍀',
+        burstNonce: (Number(platformEventConfettiConfig.burstNonce) || 0) + 1,
+        updatedAt: Date.now(),
+        updatedBy: currentUser?.email || currentProfile?.email || 'admin'
+    };
+    platformEventNoticeDismissedNonce = -1;
+    applyPlatformEventConfettiState(nextConfig);
+    try {
+        if (typeof db !== 'undefined' && db && typeof setDoc === 'function' && typeof doc === 'function') {
+            await setDoc(doc(db, 'settings', 'event_confetti'), nextConfig, { merge: true });
+        }
+    } catch (_) {}
+    return { success: true, burstNonce: nextConfig.burstNonce };
+}
+
+export function initPlatformEventConfettiControls() {
+    const toggleBtn = document.getElementById('admin-toggle-event-confetti-btn');
+    if (toggleBtn && !toggleBtn.dataset?.boundEvent) {
+        if (toggleBtn.dataset) toggleBtn.dataset.boundEvent = 'true';
+        toggleBtn.addEventListener('click', () => adminTogglePlatformEventConfetti());
+    }
+    const retriggerBtn = document.getElementById('admin-retrigger-event-confetti-btn');
+    if (retriggerBtn && !retriggerBtn.dataset?.boundEvent) {
+        if (retriggerBtn.dataset) retriggerBtn.dataset.boundEvent = 'true';
+        retriggerBtn.addEventListener('click', () => adminTriggerPlatformEventSideBurst());
+    }
+    const dismissBtn = document.getElementById('vortex-event-notice-dismiss-btn');
+    if (dismissBtn && !dismissBtn.dataset?.boundEvent) {
+        if (dismissBtn.dataset) dismissBtn.dataset.boundEvent = 'true';
+        dismissBtn.addEventListener('click', () => {
+            platformEventNoticeDismissedNonce = Number(platformEventConfettiConfig.burstNonce || 0);
+            const banner = document.getElementById('vortex-event-notice-banner');
+            if (banner) banner.style.display = 'none';
+        });
+    }
+    applyPlatformEventConfettiState(platformEventConfettiConfig);
 }
 
 /* ==========================================================================
