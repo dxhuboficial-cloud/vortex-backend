@@ -34102,7 +34102,8 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
     font-size: 0.85rem;
     font-weight: 600;
     color: #f4f4f5;
-    word-break: break-word;
+    word-break: normal;
+    overflow-wrap: break-word;
 }
 .channel-community-poll-option-meta {
     display: inline-flex;
@@ -34215,18 +34216,19 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
     justify-content: center;
     cursor: pointer;
 }
-.channel-community-poll-options.is-image-poll {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-}
+.channel-community-poll-options.is-image-poll,
 .channel-community-poll-options.is-image-poll.count-3 {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
 }
 .channel-community-poll-image-item {
     display: flex;
-    flex-direction: column;
-    gap: 6px;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 8px;
+    width: 100%;
     border-radius: 12px;
     padding: 6px;
     background: rgba(255, 255, 255, 0.03);
@@ -34240,9 +34242,11 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
 }
 .channel-community-poll-image-thumb-wrap {
     position: relative;
-    width: 100%;
-    aspect-ratio: 4 / 3;
-    border-radius: 8px;
+    width: 58px;
+    height: 58px;
+    min-width: 58px;
+    flex-shrink: 0;
+    border-radius: 9px;
     overflow: hidden;
     background: #0a0a0a;
 }
@@ -34257,13 +34261,13 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
 }
 .channel-community-poll-image-zoom-btn {
     position: absolute;
-    top: 6px;
-    right: 6px;
-    width: 26px;
-    height: 26px;
+    top: 3px;
+    right: 3px;
+    width: 20px;
+    height: 20px;
     border-radius: 50%;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    background: rgba(0, 0, 0, 0.72);
+    border: 1px solid rgba(255, 255, 255, 0.24);
+    background: rgba(0, 0, 0, 0.78);
     color: #fff;
     display: inline-flex;
     align-items: center;
@@ -34273,17 +34277,20 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
 }
 .channel-community-poll-image-zoom-btn i,
 .channel-community-poll-image-zoom-btn svg {
-    width: 13px;
-    height: 13px;
+    width: 11px;
+    height: 11px;
+}
+.channel-community-poll-option-btn.has-image {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    min-height: 58px;
 }
 .channel-community-poll-option-btn.has-image .channel-community-poll-option-content {
-    padding: 8px 9px;
-    gap: 6px;
-}
-@media (max-width: 480px) {
-    .channel-community-poll-options.is-image-poll.count-3 {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
+    width: 100%;
+    padding: 10px 12px;
+    gap: 10px;
 }
 
 /* 4. Opção do Dono: Seguidores Vindos dos Vídeos vs Inscritos por Visita no Canal */

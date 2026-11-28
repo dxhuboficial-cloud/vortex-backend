@@ -1,6 +1,6 @@
 {
-  "version": "1.0.328",
-  "build": 328,
-  "releaseDate": "2026-11-27",
-  "notes": "Enquete com imagem na Comunidade do Canal: 1 pergunta com até 3 respostas com imagem, armazenamento em channel_community_media, hidratação, zoom, votação e exclusão v1.0.328"
+  "version": "1.0.329",
+  "build": 329,
+  "releaseDate": "2026-11-28",
+  "notes": "Layout estilo YouTube para Enquete com Imagem na Comunidade: opções empilhadas em lista horizontal com miniatura à esquerda e resposta à direita sem quebra de palavra v1.0.329"
 }
