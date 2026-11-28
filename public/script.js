@@ -7,7 +7,7 @@ import {
     getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged 
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { 
-    getFirestore, collection, doc, setDoc, getDoc, getDocs, updateDoc, 
+    getFirestore, initializeFirestore, collection, doc, setDoc, getDoc, getDocs, updateDoc, 
     deleteDoc, addDoc, onSnapshot, query, where, orderBy, limit, writeBatch, arrayUnion, arrayRemove, runTransaction
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { 
@@ -29,9 +29,21 @@ const firebaseConfig = {
   measurementId: "G-KB9V9Y79VF"
 };
 
+export const FIRESTORE_INIT_OPTIONS = {
+    experimentalAutoDetectLongPolling: true,
+    useFetchStreams: false
+};
+
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = getFirestore(app);
+let db;
+try {
+    db = typeof initializeFirestore === 'function'
+        ? initializeFirestore(app, FIRESTORE_INIT_OPTIONS)
+        : getFirestore(app);
+} catch (_) {
+    db = getFirestore(app);
+}
 const rtdb = getDatabase(app);
 
 const rtcServers = {
@@ -847,7 +859,10 @@ let currentChatDocUnsubscribe = null;
 let currentChatEphemeralDuration = 'off';
 let ephemeralExpirationTimer = null;
 let isSendingChatMessage = false;
+let userDocUnsubscribe = null;
 let contactsUnsubscribe = null;
+let pendingPostsRenderFrame = null;
+let latestSnapshotPosts = null;
 let requestsUnsubscribe = null;
 let storiesUnsubscribe = null;
 let notificationsUnsubscribe = null;
@@ -3028,9 +3043,17 @@ onAuthStateChanged(auth, async (user) => {
 
         setupPresence(user.uid);
 
-        onSnapshot(userDocRef, (docSnap) => {
+        if (typeof userDocUnsubscribe === 'function') {
+            try { userDocUnsubscribe(); } catch (_) {}
+            userDocUnsubscribe = null;
+        }
+        userDocUnsubscribe = onSnapshot(userDocRef, (docSnap) => {
             if (docSnap.exists()) {
-                currentProfile = { ...currentProfile, ...docSnap.data() };
+                const nextData = docSnap.data();
+                const onlyPresence = isOnlyPresenceProfileDiff(currentProfile, nextData);
+                currentProfile = { ...currentProfile, ...nextData };
+                if (onlyPresence) return;
+
                 pinnedChats = Array.isArray(currentProfile.pinnedChats) ? currentProfile.pinnedChats : [];
                 applyUserTheme();
                 updateProfileDOM();
@@ -3718,22 +3741,72 @@ export function refreshContactProfilePresenceUI(contactUid = activeContactProfil
     }
 }
 
+export function isOnlyPresenceProfileDiff(prevProfile, nextData) {
+    if (!prevProfile || !nextData || typeof prevProfile !== 'object' || typeof nextData !== 'object') return false;
+    const ignoredKeys = new Set(['online', 'lastSeen']);
+    const nextKeys = Object.keys(nextData);
+    if (nextKeys.length === 0) return true;
+    for (const key of nextKeys) {
+        if (ignoredKeys.has(key)) continue;
+        const prevVal = prevProfile[key];
+        const nextVal = nextData[key];
+        if (prevVal === nextVal) continue;
+        if (typeof prevVal === 'object' || typeof nextVal === 'object') {
+            try {
+                if (JSON.stringify(prevVal) === JSON.stringify(nextVal)) continue;
+            } catch (_) {}
+        }
+        return false;
+    }
+    return true;
+}
+
+const FIRESTORE_PRESENCE_SYNC_MS = 55000;
+let presenceHeartbeatInterval = null;
+let presenceExpireInterval = null;
+let presenceConnectedUnsubscribe = null;
+let presenceWindowCleanup = null;
+let lastFirestorePresenceWriteAt = 0;
+
+function cleanupPresenceResources() {
+    if (presenceHeartbeatInterval) {
+        clearInterval(presenceHeartbeatInterval);
+        presenceHeartbeatInterval = null;
+    }
+    if (presenceExpireInterval) {
+        clearInterval(presenceExpireInterval);
+        presenceExpireInterval = null;
+    }
+    if (typeof presenceConnectedUnsubscribe === 'function') {
+        try { presenceConnectedUnsubscribe(); } catch (_) {}
+    }
+    presenceConnectedUnsubscribe = null;
+    if (typeof presenceWindowCleanup === 'function') {
+        try { presenceWindowCleanup(); } catch (_) {}
+    }
+    presenceWindowCleanup = null;
+}
+
 function setupPresence(uid) {
+    cleanupPresenceResources();
+
     const userDocRef = doc(db, 'users', uid);
     const myConnectionsRef = ref(rtdb, `presence/${uid}`);
     const connectedRef = ref(rtdb, '.info/connected');
 
     if (!currentProfile.ghostMode) {
         const ts = Date.now();
+        lastFirestorePresenceWriteAt = ts;
         updateDoc(userDocRef, { online: true, lastSeen: ts }).catch(() => {});
         rtdbSet(myConnectionsRef, { state: 'online', last_changed: ts }).catch(() => {});
     }
 
-    onValue(connectedRef, (snap) => {
+    presenceConnectedUnsubscribe = onValue(connectedRef, (snap) => {
         if (snap.val() === true) {
             onDisconnect(myConnectionsRef).set({ state: 'offline', last_changed: rtdbTimestamp() });
             if (!currentProfile.ghostMode) {
                 const ts = Date.now();
+                lastFirestorePresenceWriteAt = ts;
                 rtdbSet(myConnectionsRef, { state: 'online', last_changed: ts }).catch(() => {});
                 updateDoc(userDocRef, { online: true, lastSeen: ts }).catch(() => {});
             } else {
@@ -3753,30 +3826,39 @@ function setupPresence(uid) {
     const setOnline = () => {
         if (!currentProfile.ghostMode && currentUser) {
             const ts = Date.now();
+            lastFirestorePresenceWriteAt = ts;
             rtdbSet(myConnectionsRef, { state: 'online', last_changed: ts }).catch(() => {});
             updateDoc(userDocRef, { online: true, lastSeen: ts }).catch(() => {});
         }
     };
 
-    document.addEventListener('visibilitychange', () => {
+    const onVisChange = () => {
         if (document.visibilityState === 'hidden') setOffline();
         else if (document.visibilityState === 'visible') setOnline();
-    });
-
+    };
+    document.addEventListener('visibilitychange', onVisChange);
     window.addEventListener('pagehide', setOffline);
     window.addEventListener('beforeunload', setOffline);
+    presenceWindowCleanup = () => {
+        document.removeEventListener('visibilitychange', onVisChange);
+        window.removeEventListener('pagehide', setOffline);
+        window.removeEventListener('beforeunload', setOffline);
+    };
 
-    // Heartbeat de presença ativo a cada 25s enquanto a aba estiver visível
-    setInterval(() => {
+    // Heartbeat RTDB a cada 25s e sincronização reduzida com Firestore (55s) evitando churn no listener
+    presenceHeartbeatInterval = setInterval(() => {
         if (!currentProfile.ghostMode && currentUser && document.visibilityState === 'visible') {
             const ts = Date.now();
-            updateDoc(userDocRef, { online: true, lastSeen: ts }).catch(() => {});
             rtdbSet(myConnectionsRef, { state: 'online', last_changed: ts }).catch(() => {});
+            if ((ts - lastFirestorePresenceWriteAt) >= FIRESTORE_PRESENCE_SYNC_MS) {
+                lastFirestorePresenceWriteAt = ts;
+                updateDoc(userDocRef, { online: true, lastSeen: ts }).catch(() => {});
+            }
         }
     }, 25000);
 
     // Verificação periódica para expirar status online fantasma de contatos inativos
-    setInterval(() => {
+    presenceExpireInterval = setInterval(() => {
         contactUserDataMap.forEach((uData, cUid) => {
             const dot = document.getElementById(`online-dot-${cUid}`);
             if (dot) {
@@ -3792,9 +3874,13 @@ function setupPresence(uid) {
     }, 15000);
 }
 
-function applyPrivacyModeState() {
+let lastAppliedPrivacyMode = null;
+
+export function applyPrivacyModeState() {
     const enabled = !!currentProfile.privacyMode;
     document.body.classList.toggle('privacy-mode', enabled);
+    if (!enabled && lastAppliedPrivacyMode === false) return;
+    lastAppliedPrivacyMode = enabled;
 
     document.querySelectorAll('.message, .last-msg, .quoted-reply-box, .audio-player-ui, img, video, .file-attachment-card').forEach((el) => {
         if (el instanceof HTMLElement) {
@@ -6734,8 +6820,37 @@ function updateProfileDOM() {
 }
 
 function detachListeners() {
-    if (currentChatUnsubscribe) currentChatUnsubscribe();
-    if (contactsUnsubscribe) contactsUnsubscribe();
+    cleanupPresenceResources();
+    lastAppliedPrivacyMode = null;
+    if (pendingPostsRenderFrame && typeof cancelAnimationFrame === 'function') {
+        cancelAnimationFrame(pendingPostsRenderFrame);
+        pendingPostsRenderFrame = null;
+    }
+    if (typeof userDocUnsubscribe === 'function') {
+        try { userDocUnsubscribe(); } catch (_) {}
+        userDocUnsubscribe = null;
+    }
+    if (typeof currentChatUnsubscribe === 'function') {
+        try { currentChatUnsubscribe(); } catch (_) {}
+        currentChatUnsubscribe = null;
+    }
+    if (typeof contactsUnsubscribe === 'function') {
+        try { contactsUnsubscribe(); } catch (_) {}
+        contactsUnsubscribe = null;
+    }
+    activityUnsubscribes.splice(0).forEach(u => {
+        if (typeof u === 'function') {
+            try { u(); } catch (_) {}
+        }
+    });
+    if (typeof postsFeedUnsubscribe === 'function') {
+        try { postsFeedUnsubscribe(); } catch (_) {}
+        postsFeedUnsubscribe = null;
+    }
+    if (typeof activeChannelUnsubscribe === 'function') {
+        try { activeChannelUnsubscribe(); } catch (_) {}
+        activeChannelUnsubscribe = null;
+    }
     if (requestsUnsubscribe) requestsUnsubscribe();
     if (storiesUnsubscribe) storiesUnsubscribe();
     if (notificationsUnsubscribe) notificationsUnsubscribe();
@@ -16408,17 +16523,34 @@ export async function togglePinChat(targetId) {
 /* ==========================================================================
    SISTEMA DE CHAT, MENSAGENS, SELEÇÃO MÚLTIPLA & EXCLUSÃO
    ========================================================================== */
+let contactsSnapshotSeq = 0;
+
 function listenToContacts() {
     if (!currentUser) return;
-    activityUnsubscribes.splice(0).forEach(unsubscribe => unsubscribe());
+    if (typeof contactsUnsubscribe === 'function') {
+        try { contactsUnsubscribe(); } catch (_) {}
+        contactsUnsubscribe = null;
+    }
+    activityUnsubscribes.splice(0).forEach(unsubscribe => {
+        if (typeof unsubscribe === 'function') {
+            try { unsubscribe(); } catch (_) {}
+        }
+    });
     const contactsRef = collection(db, 'users', currentUser.uid, 'contacts');
     
     contactsUnsubscribe = onSnapshot(contactsRef, async (snapshot) => {
+        const renderSeq = ++contactsSnapshotSeq;
         userContactsSet = new Set(snapshot.docs.map(docSnap => docSnap.id));
         const chatListEl = document.getElementById('chat-conversations-list');
         if (!chatListEl) return;
 
         const groupsSnap = await getDocs(collection(db, 'users', currentUser.uid, 'groups'));
+        if (renderSeq !== contactsSnapshotSeq) return;
+        activityUnsubscribes.splice(0).forEach(unsubscribe => {
+            if (typeof unsubscribe === 'function') {
+                try { unsubscribe(); } catch (_) {}
+            }
+        });
         const groups = groupsSnap.docs.map(docSnap => ({ ...docSnap.data(), id: docSnap.id }));
 
         if (snapshot.empty && groups.length === 0) {
@@ -16531,23 +16663,46 @@ function listenToContacts() {
             });
 
             chatListEl.appendChild(card);
-            if (window.lucide) lucide.createIcons();
 
             const contactUserUnsubscribe = onSnapshot(doc(db, 'users', contactUid), (userSnap) => {
                 const tagEl = document.getElementById(`vip-tag-${contactUid}`);
                 const badgeEl = document.getElementById(`chat-card-verified-badge-${contactUid}`);
+                const avatar = document.getElementById(`contact-avatar-${contactUid}`);
+                const dot = document.getElementById(`online-dot-${contactUid}`);
                 if (userSnap.exists()) {
                     const uData = userSnap.data();
+                    contactUserDataMap.set(contactUid, uData);
+                    const liveAvatar = uData.avatar || '';
+                    const liveName = uData.name || contact.name || 'Contato';
+
                     contact.status = uData.status || contact.status;
                     contact.isVip = uData.isVip;
                     contact.isVerified = uData.isVerified;
+                    contact.avatar = liveAvatar;
+                    contact.name = liveName;
+                    contact.online = uData.online;
+                    contact.lastSeen = uData.lastSeen;
+                    contact.ghostMode = uData.ghostMode;
+
+                    const isOnline = isContactTrulyOnline(uData, contactUid);
+                    if (dot) dot.style.display = isOnline ? 'block' : 'none';
+                    if (avatar) {
+                        setAvatarContent(avatar, liveAvatar, liveName, `avatar-initial-${contactUid}`);
+                    }
+                    const nameText = card.querySelector('.name-text') || card.querySelector('.name');
+                    if (nameText && uData.name) nameText.innerText = liveName;
+
+                    const prevVip = card.dataset.isVip;
+                    const prevBadgeDisplay = badgeEl ? badgeEl.style.display : '';
                     const isVip = checkIsVipUser(uData);
                     if (tagEl) tagEl.style.display = isVip ? 'inline-block' : 'none';
                     if (badgeEl) {
                         updateVerifiedBadgeElement(badgeEl, uData);
                     }
                     card.dataset.isVip = isVip ? 'true' : 'false';
-                    if (window.lucide) lucide.createIcons();
+                    if (window.lucide && (prevVip !== card.dataset.isVip || (badgeEl && prevBadgeDisplay !== badgeEl.style.display))) {
+                        lucide.createIcons();
+                    }
 
                     const lastMsgEl = document.getElementById(`last-msg-${chatId}`);
                     if (lastMsgEl && (!lastMsgEl.dataset.fallback || lastMsgEl.dataset.fallback.startsWith('💬 Recado:') || lastMsgEl.dataset.fallback === 'Toque para abrir a conversa...')) {
@@ -16557,11 +16712,31 @@ function listenToContacts() {
                             lastMsgEl.innerText = newBioText;
                         }
                     }
+
+                    if (activeChatContact?.uid === contactUid) {
+                        activeChatContact.avatar = liveAvatar;
+                        activeChatContact.name = liveName;
+                        activeChatContact.online = uData.online;
+                        activeChatContact.lastSeen = uData.lastSeen;
+                        activeChatContact.ghostMode = uData.ghostMode;
+                        const chatAvatar = document.getElementById('chat-window-avatar');
+                        const chatName = document.getElementById('chat-window-name');
+                        if (chatAvatar) {
+                            setAvatarContent(chatAvatar, liveAvatar, liveName, 'chat-window-avatar-initial');
+                            const chatDot = document.getElementById('chat-window-online-dot');
+                            if (chatDot) chatDot.style.display = isOnline ? 'block' : 'none';
+                        }
+                        if (chatName) chatName.innerText = liveName;
+                    }
+                    if (activeContactProfileUid === contactUid) {
+                        activeContactProfileData = uData;
+                        refreshContactProfilePresenceUI(contactUid);
+                    }
                 } else {
                     if (tagEl) tagEl.style.display = 'none';
                     card.dataset.isVip = 'false';
                 }
-            }, (error) => console.error('Erro ao ouvir status VIP do contato:', error));
+            }, (error) => console.error('Erro ao ouvir perfil/status do contato:', error));
             activityUnsubscribes.push(contactUserUnsubscribe);
 
             const activityUnsubscribe = onSnapshot(doc(db, 'users', currentUser.uid, 'activity', contactUid), (activitySnap) => {
@@ -16724,53 +16899,6 @@ function listenToContacts() {
                 }
             }, (error) => console.error('Erro ao ouvir mensagens do chat:', error));
             activityUnsubscribes.push(lastMsgUnsubscribe);
-
-            const userContactProfileUnsub = onSnapshot(doc(db, 'users', contactUid), (uSnap) => {
-                const avatar = document.getElementById(`contact-avatar-${contactUid}`);
-                const dot = document.getElementById(`online-dot-${contactUid}`);
-                if (uSnap.exists()) {
-                    const uData = uSnap.data();
-                    contactUserDataMap.set(contactUid, uData);
-                    const liveAvatar = uData.avatar || '';
-                    const liveName = uData.name || contact.name || 'Contato';
-
-                    const isOnline = isContactTrulyOnline(uData, contactUid);
-                    if (dot) dot.style.display = isOnline ? 'block' : 'none';
-                    if (avatar) {
-                        setAvatarContent(avatar, liveAvatar, liveName, `avatar-initial-${contactUid}`);
-                    }
-
-                    const nameText = card.querySelector('.name-text') || card.querySelector('.name');
-                    if (nameText && uData.name) nameText.innerText = liveName;
-
-                    contact.avatar = liveAvatar;
-                    contact.name = liveName;
-                    contact.online = uData.online;
-                    contact.lastSeen = uData.lastSeen;
-                    contact.ghostMode = uData.ghostMode;
-
-                    if (activeChatContact?.uid === contactUid) {
-                        activeChatContact.avatar = liveAvatar;
-                        activeChatContact.name = liveName;
-                        activeChatContact.online = uData.online;
-                        activeChatContact.lastSeen = uData.lastSeen;
-                        activeChatContact.ghostMode = uData.ghostMode;
-                        const chatAvatar = document.getElementById('chat-window-avatar');
-                        const chatName = document.getElementById('chat-window-name');
-                        if (chatAvatar) {
-                            setAvatarContent(chatAvatar, liveAvatar, liveName, 'chat-window-avatar-initial');
-                            const chatDot = document.getElementById('chat-window-online-dot');
-                            if (chatDot) chatDot.style.display = isOnline ? 'block' : 'none';
-                        }
-                        if (chatName) chatName.innerText = liveName;
-                    }
-                    if (activeContactProfileUid === contactUid) {
-                        activeContactProfileData = uData;
-                        refreshContactProfilePresenceUI(contactUid);
-                    }
-                }
-            });
-            activityUnsubscribes.push(userContactProfileUnsub);
 
             const presenceRef = ref(rtdb, `presence/${contactUid}`);
             const presUnsub = onValue(presenceRef, (pSnap) => {
@@ -24770,7 +24898,7 @@ export function getAdminReports() {
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
 const TRANSPARENT_IMG_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E";
-export const CURRENT_APP_VERSION = '1.0.329';
+export const CURRENT_APP_VERSION = '1.0.330';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -39672,14 +39800,41 @@ window.copyPostShareLink = copyPostShareLink;
 window.checkUrlForSharedPost = checkUrlForSharedPost;
 window.getActiveSharePost = () => activeSharePost;
 
-function listenToPosts() {
-    if (postsFeedUnsubscribe) postsFeedUnsubscribe();
-    postsFeedUnsubscribe = onSnapshot(collection(db, 'posts'), (snapshot) => {
-        const posts = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
-        renderPostsFeed(posts);
+function schedulePostsFeedRender(posts) {
+    latestSnapshotPosts = posts;
+    const flush = () => {
+        pendingPostsRenderFrame = null;
+        if (!latestSnapshotPosts) return;
+        renderPostsFeed(latestSnapshotPosts);
         if (typeof syncChannelProfileAvatarAndMeta === 'function') {
             syncChannelProfileAvatarAndMeta();
         }
+    };
+    if (typeof requestAnimationFrame === 'function') {
+        if (pendingPostsRenderFrame && typeof cancelAnimationFrame === 'function') {
+            cancelAnimationFrame(pendingPostsRenderFrame);
+        }
+        pendingPostsRenderFrame = requestAnimationFrame(flush);
+    } else {
+        flush();
+    }
+}
+
+function listenToPosts(options = {}) {
+    if (postsFeedUnsubscribe && !options?.force) {
+        if (Array.isArray(cachedFeedPosts) && cachedFeedPosts.length > 0) {
+            schedulePostsFeedRender(cachedFeedPosts);
+        }
+        return;
+    }
+    if (typeof postsFeedUnsubscribe === 'function') {
+        try { postsFeedUnsubscribe(); } catch (_) {}
+        postsFeedUnsubscribe = null;
+    }
+    postsFeedUnsubscribe = onSnapshot(collection(db, 'posts'), (snapshot) => {
+        const posts = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+        cachedFeedPosts = posts;
+        schedulePostsFeedRender(posts);
     }, (error) => {
         console.error('Erro ao ouvir posts:', error);
     });
@@ -46340,6 +46495,11 @@ if (typeof window !== 'undefined') {
     window.sendPixMessage = sendPixMessage;
     window.openContactProfile = openContactProfile;
     window.closeContactProfile = closeContactProfile;
+    window.FIRESTORE_INIT_OPTIONS = FIRESTORE_INIT_OPTIONS;
+    window.isOnlyPresenceProfileDiff = isOnlyPresenceProfileDiff;
+    window.listenToContacts = listenToContacts;
+    window.listenToPosts = listenToPosts;
+    window.applyPrivacyModeState = applyPrivacyModeState;
     window.isContactTrulyOnline = isContactTrulyOnline;
     window.refreshContactProfilePresenceUI = refreshContactProfilePresenceUI;
     window.updateChatBioBubble = updateChatBioBubble;

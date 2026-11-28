@@ -1,6 +1,6 @@
 {
-  "version": "1.0.329",
-  "build": 329,
+  "version": "1.0.330",
+  "build": 330,
   "releaseDate": "2026-11-28",
-  "notes": "Layout estilo YouTube para Enquete com Imagem na Comunidade: opções empilhadas em lista horizontal com miniatura à esquerda e resposta à direita sem quebra de palavra v1.0.329"
+  "notes": "Estabilidade Firestore WebChannel (experimentalAutoDetectLongPolling + useFetchStreams: false), fim de listeners duplicados/vazados em contatos e posts, otimização do heartbeat de presença e eliminação de violações setTimeout v1.0.330"
 }
