@@ -24770,7 +24770,7 @@ export function getAdminReports() {
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
 const TRANSPARENT_IMG_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E";
-export const CURRENT_APP_VERSION = '1.0.326';
+export const CURRENT_APP_VERSION = '1.0.327';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -57871,6 +57871,229 @@ const CHANNEL_COMMUNITY_IMG_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http
 let pendingChannelCommunityPhotos = [];
 let channelCommunityPublishing = false;
 
+export const MIN_CHANNEL_COMMUNITY_POLL_OPTIONS = 2;
+export const MAX_CHANNEL_COMMUNITY_POLL_OPTIONS = 5;
+let channelCommunityPollActive = false;
+let channelCommunityPollQuestion = '';
+let channelCommunityPollOptions = ['', ''];
+
+export function getChannelCommunityPollDraft() {
+    return {
+        active: channelCommunityPollActive,
+        question: channelCommunityPollQuestion,
+        options: [...channelCommunityPollOptions]
+    };
+}
+
+export function renderChannelCommunityPollBuilder() {
+    const builder = document.getElementById('channel-community-poll-builder');
+    const toggleBtn = document.getElementById('channel-community-toggle-poll-btn');
+    const toggleLabel = document.getElementById('channel-community-toggle-poll-label');
+    const questionInput = document.getElementById('channel-community-poll-question');
+    const countEl = document.getElementById('channel-community-poll-count');
+    const addOptBtn = document.getElementById('channel-community-poll-add-option-btn');
+    const optionsListEl = document.getElementById('channel-community-poll-options-list');
+
+    if (builder) {
+        builder.style.display = channelCommunityPollActive ? 'flex' : 'none';
+    }
+    if (toggleBtn) {
+        toggleBtn.classList?.toggle('active', channelCommunityPollActive);
+        toggleBtn.setAttribute('aria-expanded', channelCommunityPollActive ? 'true' : 'false');
+    }
+    if (toggleLabel) {
+        toggleLabel.innerText = channelCommunityPollActive ? 'Remover enquete' : 'Criar enquete';
+    }
+    if (questionInput && questionInput.value !== channelCommunityPollQuestion) {
+        questionInput.value = channelCommunityPollQuestion;
+    }
+    if (countEl) {
+        countEl.innerText = `${channelCommunityPollOptions.length}/${MAX_CHANNEL_COMMUNITY_POLL_OPTIONS}`;
+    }
+    if (addOptBtn) {
+        addOptBtn.disabled = channelCommunityPollOptions.length >= MAX_CHANNEL_COMMUNITY_POLL_OPTIONS;
+    }
+    if (!optionsListEl) return;
+
+    if (!channelCommunityPollActive) {
+        optionsListEl.innerHTML = '';
+        return;
+    }
+
+    const canRemove = channelCommunityPollOptions.length > MIN_CHANNEL_COMMUNITY_POLL_OPTIONS;
+    optionsListEl.innerHTML = channelCommunityPollOptions.map((optVal, idx) => `
+        <div class="channel-community-poll-option-input-row" data-poll-opt-row="${idx}">
+            <input type="text" class="channel-community-poll-input channel-community-poll-option-input" data-poll-opt-index="${idx}" maxlength="100" value="${escapeHTML(optVal)}" placeholder="Resposta ${idx + 1}" aria-label="Resposta ${idx + 1} da enquete">
+            ${canRemove ? `<button type="button" class="channel-community-poll-option-remove-btn" data-remove-poll-opt="${idx}" aria-label="Remover resposta ${idx + 1}" title="Remover resposta">&times;</button>` : ''}
+        </div>
+    `).join('');
+
+    optionsListEl.querySelectorAll('[data-poll-opt-index]').forEach(inp => {
+        inp.addEventListener('input', (e) => {
+            const idx = Number(inp.dataset.pollOptIndex);
+            updateChannelCommunityPollOption(idx, e?.target?.value ?? inp.value ?? '');
+        });
+    });
+
+    optionsListEl.querySelectorAll('[data-remove-poll-opt]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const idx = Number(btn.dataset.removePollOpt);
+            removeChannelCommunityPollOption(idx);
+        });
+    });
+}
+
+export function toggleChannelCommunityPollBuilder(forceState) {
+    channelCommunityPollActive = typeof forceState === 'boolean' ? forceState : !channelCommunityPollActive;
+    if (channelCommunityPollActive) {
+        if (!Array.isArray(channelCommunityPollOptions) || channelCommunityPollOptions.length < MIN_CHANNEL_COMMUNITY_POLL_OPTIONS) {
+            channelCommunityPollOptions = ['', ''];
+        } else if (channelCommunityPollOptions.length > MAX_CHANNEL_COMMUNITY_POLL_OPTIONS) {
+            channelCommunityPollOptions = channelCommunityPollOptions.slice(0, MAX_CHANNEL_COMMUNITY_POLL_OPTIONS);
+        }
+    } else {
+        channelCommunityPollQuestion = '';
+        channelCommunityPollOptions = ['', ''];
+    }
+    renderChannelCommunityPollBuilder();
+    if (window.lucide) lucide.createIcons();
+    return channelCommunityPollActive;
+}
+
+export function resetChannelCommunityPollBuilder() {
+    channelCommunityPollActive = false;
+    channelCommunityPollQuestion = '';
+    channelCommunityPollOptions = ['', ''];
+    renderChannelCommunityPollBuilder();
+}
+
+export function setChannelCommunityPollQuestion(value) {
+    channelCommunityPollQuestion = String(value || '').slice(0, 180);
+    const qInput = document.getElementById('channel-community-poll-question');
+    if (qInput && qInput.value !== channelCommunityPollQuestion) {
+        qInput.value = channelCommunityPollQuestion;
+    }
+    return channelCommunityPollQuestion;
+}
+
+export function addChannelCommunityPollOption(initialText = '') {
+    if (channelCommunityPollOptions.length >= MAX_CHANNEL_COMMUNITY_POLL_OPTIONS) {
+        showToast('Limite de respostas', `Máximo de ${MAX_CHANNEL_COMMUNITY_POLL_OPTIONS} respostas por enquete.`, 'yellow');
+        return { added: false, total: channelCommunityPollOptions.length };
+    }
+    channelCommunityPollOptions.push(String(initialText || '').slice(0, 100));
+    renderChannelCommunityPollBuilder();
+    return { added: true, total: channelCommunityPollOptions.length };
+}
+
+export function updateChannelCommunityPollOption(index, value) {
+    const idx = Number(index);
+    if (!Number.isInteger(idx) || idx < 0 || idx >= channelCommunityPollOptions.length) return false;
+    channelCommunityPollOptions[idx] = String(value || '').slice(0, 100);
+    return true;
+}
+
+export function removeChannelCommunityPollOption(index) {
+    const idx = Number(index);
+    if (!Number.isInteger(idx) || idx < 0 || idx >= channelCommunityPollOptions.length) return false;
+    if (channelCommunityPollOptions.length <= MIN_CHANNEL_COMMUNITY_POLL_OPTIONS) return false;
+    channelCommunityPollOptions.splice(idx, 1);
+    renderChannelCommunityPollBuilder();
+    return true;
+}
+
+export async function voteChannelCommunityPoll(channelUid = activeChannelUid, commPostId = '', optionId = '') {
+    if (!currentUser?.uid) {
+        if (typeof showToast === 'function') {
+            showToast('Login necessário', 'Entre na sua conta para votar na enquete.', 'yellow');
+        }
+        return { success: false, reason: 'unauthenticated' };
+    }
+    if (typeof isUserRestricted === 'function' && isUserRestricted(currentProfile)) {
+        return { success: false, reason: 'restricted' };
+    }
+    const targetUid = channelUid || activeChannelUid || currentUser.uid;
+    const postKey = String(commPostId || '');
+    const optKey = String(optionId || '');
+    if (!targetUid || !postKey || !optKey) return { success: false, reason: 'invalid_args' };
+
+    let userData = getEffectiveChannelUserData(targetUid, activeChannelUserData);
+    if (typeof getDoc === 'function' && typeof doc === 'function' && typeof db !== 'undefined') {
+        try {
+            const snap = await getDoc(doc(db, 'users', targetUid));
+            const exists = snap && (typeof snap.exists === 'function' ? snap.exists() : !!snap.exists);
+            if (exists) {
+                userData = { ...userData, ...(snap.data() || {}) };
+            }
+        } catch (_) {}
+    }
+
+    const existing = Array.isArray(userData?.channelCommunityPosts) ? [...userData.channelCommunityPosts] : [];
+    const idx = existing.findIndex(item => item && String(item.id || item.createdAt || '') === postKey);
+    if (idx === -1) return { success: false, reason: 'not_found' };
+
+    const currentItem = { ...existing[idx] };
+    const poll = currentItem.poll;
+    if (!poll || !Array.isArray(poll.options)) return { success: false, reason: 'no_poll' };
+
+    const optIdx = poll.options.findIndex(opt => opt && String(opt.id) === optKey);
+    if (optIdx === -1) return { success: false, reason: 'option_not_found' };
+
+    const targetPrevVotes = Array.isArray(poll.options[optIdx].votes) ? poll.options[optIdx].votes.filter(Boolean) : [];
+    const wasSelected = targetPrevVotes.includes(currentUser.uid);
+
+    const nextOptions = poll.options.map((opt, oIdx) => {
+        const cleanedVotes = Array.isArray(opt.votes) ? opt.votes.filter(v => v && v !== currentUser.uid) : [];
+        if (oIdx === optIdx && !wasSelected) {
+            cleanedVotes.push(currentUser.uid);
+        }
+        return { ...opt, votes: cleanedVotes };
+    });
+
+    currentItem.id = currentItem.id || postKey;
+    currentItem.poll = { ...poll, options: nextOptions };
+    const nextPosts = [...existing];
+    nextPosts[idx] = currentItem;
+
+    if (activeChannelUid === targetUid && activeChannelUserData) {
+        activeChannelUserData.channelCommunityPosts = nextPosts;
+    }
+    if (typeof contactUserDataMap !== 'undefined' && contactUserDataMap?.has(targetUid)) {
+        contactUserDataMap.set(targetUid, { ...contactUserDataMap.get(targetUid), channelCommunityPosts: nextPosts });
+    }
+    if (currentUser.uid === targetUid && currentProfile) {
+        currentProfile.channelCommunityPosts = nextPosts;
+    }
+
+    if (typeof doc === 'function' && typeof db !== 'undefined') {
+        const userRef = doc(db, 'users', targetUid);
+        try {
+            if (typeof setDoc === 'function') {
+                await setDoc(userRef, { channelCommunityPosts: nextPosts, updatedAt: Date.now() }, { merge: true });
+            } else if (typeof updateDoc === 'function') {
+                await updateDoc(userRef, { channelCommunityPosts: nextPosts, updatedAt: Date.now() });
+            }
+        } catch (_) {}
+    }
+
+    const modal = document.getElementById('channel-community-modal');
+    if (modal && (modal.style.display === 'flex' || modal.classList?.contains('active'))) {
+        openChannelCommunityModal();
+    }
+
+    const totalVotes = nextOptions.reduce((sum, opt) => sum + opt.votes.length, 0);
+    const optionVotesCount = nextOptions[optIdx].votes.length;
+    return {
+        success: true,
+        postId: currentItem.id,
+        optionId: optKey,
+        voted: !wasSelected,
+        selectedOptionId: wasSelected ? null : optKey,
+        totalVotes,
+        optionVotesCount
+    };
+}
+
 function isSafeCommunityImageSrc(src) {
     if (!src || typeof src !== 'string') return false;
     return (
@@ -58128,6 +58351,7 @@ export function openChannelCommunityModal(options = {}) {
         composer.style.display = (isOwner && communityUnlocked) ? 'flex' : 'none';
         if (isOwner && communityUnlocked) {
             renderChannelCommunityPhotoPreview();
+            renderChannelCommunityPollBuilder();
         }
     }
     listEl.innerHTML = posts.length
@@ -58158,9 +58382,51 @@ export function openChannelCommunityModal(options = {}) {
                 }).join('')}</div>`
                 : '';
 
+            const pollObj = item?.poll;
+            const pollOpts = (pollObj && pollObj.question && Array.isArray(pollObj.options))
+                ? pollObj.options.slice(0, MAX_CHANNEL_COMMUNITY_POLL_OPTIONS)
+                : [];
+            let pollHtml = '';
+            if (pollOpts.length >= MIN_CHANNEL_COMMUNITY_POLL_OPTIONS) {
+                const totalVotes = pollOpts.reduce((sum, opt) => sum + (Array.isArray(opt.votes) ? opt.votes.filter(Boolean).length : 0), 0);
+                const votesLabel = totalVotes === 1 ? '1 voto' : `${totalVotes} votos`;
+                const optionsHtml = pollOpts.map((opt, optIdx) => {
+                    const optId = String(opt.id || `opt_${optIdx}`);
+                    const optVotes = Array.isArray(opt.votes) ? opt.votes.filter(Boolean) : [];
+                    const isSelected = Boolean(currentUser?.uid && optVotes.includes(currentUser.uid));
+                    const pct = totalVotes > 0 ? Math.round((optVotes.length / totalVotes) * 100) : 0;
+                    return `
+                        <button type="button" class="channel-community-poll-option-btn ${isSelected ? 'voted' : ''}" data-action="vote-community-poll" data-comm-id="${escapeHTML(commId)}" data-channel-uid="${escapeHTML(uid)}" data-option-id="${escapeHTML(optId)}" aria-pressed="${isSelected ? 'true' : 'false'}">
+                            <span class="channel-community-poll-option-fill" style="width:${pct}%;"></span>
+                            <span class="channel-community-poll-option-content">
+                                <span class="channel-community-poll-option-left">
+                                    <span class="channel-community-poll-radio"></span>
+                                    <span class="channel-community-poll-option-text">${escapeHTML(opt.text || '')}</span>
+                                </span>
+                                <span class="channel-community-poll-option-meta">
+                                    <span class="channel-community-poll-option-count">${optVotes.length}</span>
+                                    <span class="channel-community-poll-option-pct">${pct}%</span>
+                                </span>
+                            </span>
+                        </button>
+                    `;
+                }).join('');
+
+                pollHtml = `
+                    <div class="channel-community-poll-card" data-poll-comm-id="${escapeHTML(commId)}">
+                        <div class="channel-community-poll-tag"><i data-lucide="bar-chart-2"></i> Enquete</div>
+                        <div class="channel-community-poll-question">${escapeHTML(pollObj.question || '')}</div>
+                        <div class="channel-community-poll-options">${optionsHtml}</div>
+                        <div class="channel-community-poll-footer">
+                            <span>${votesLabel} • Seleção única</span>
+                        </div>
+                    </div>
+                `;
+            }
+
             const textHtml = item.text
                 ? `<div class="channel-community-post-text">${escapeHTML(item.text)}</div>`
-                : (!photoEntries.length ? '<div class="channel-community-post-text"></div>' : '');
+                : ((!photoEntries.length && !pollHtml) ? '<div class="channel-community-post-text"></div>' : '');
 
             const deleteBtnHtml = isOwner
                 ? `<button type="button" class="channel-community-delete-btn" data-action="delete-community-post" data-comm-id="${escapeHTML(commId)}" aria-label="Excluir publicação da comunidade"><i data-lucide="trash-2"></i><span>Excluir</span></button>`
@@ -58170,6 +58436,7 @@ export function openChannelCommunityModal(options = {}) {
                 <div class="channel-community-post-card" data-comm-id="${escapeHTML(commId)}">
                     <div style="font-size:0.74rem; color:#9a9a9a; margin-bottom:4px;">${new Date(item.createdAt || Date.now()).toLocaleString([], { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</div>
                     ${textHtml}
+                    ${pollHtml}
                     ${photosHtml}
                     <div class="channel-community-post-actions">
                         <button type="button" class="channel-community-like-btn ${isLiked ? 'liked' : ''}" data-action="like-community-post" data-comm-id="${escapeHTML(commId)}" data-channel-uid="${escapeHTML(uid)}" aria-pressed="${isLiked ? 'true' : 'false'}">
@@ -58188,6 +58455,13 @@ export function openChannelCommunityModal(options = {}) {
         btn.addEventListener('click', async () => {
             playSound(clickSound);
             await toggleChannelCommunityPostLike(btn.dataset.channelUid || uid, btn.dataset.commId || '');
+        });
+    });
+
+    listEl.querySelectorAll('[data-action="vote-community-poll"]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            playSound(clickSound);
+            await voteChannelCommunityPoll(btn.dataset.channelUid || uid, btn.dataset.commId || '', btn.dataset.optionId || '');
         });
     });
 
@@ -58321,10 +58595,52 @@ export async function publishChannelCommunityPost() {
     const input = document.getElementById('channel-community-input');
     const text = (input?.value || '').trim();
     const photosToPublish = getPendingChannelCommunityPhotos();
-    if (!text && photosToPublish.length === 0) return false;
 
-    if (text && typeof analyzeConversationByAI === 'function') {
-        const check = analyzeConversationByAI({ uid: currentUser.uid, text, account: currentProfile });
+    let pollPayload = null;
+    if (channelCommunityPollActive) {
+        const questionInputEl = document.getElementById('channel-community-poll-question');
+        const rawQuestion = (questionInputEl?.value ?? '').trim() ? questionInputEl.value : channelCommunityPollQuestion;
+        const pollQuestion = String(rawQuestion || '').trim().slice(0, 180);
+        if (!pollQuestion) {
+            showToast('Pergunta obrigatória', 'Digite a pergunta da sua enquete.', 'yellow');
+            return false;
+        }
+        const cleanedOptions = channelCommunityPollOptions
+            .map(opt => String(opt || '').trim().slice(0, 100))
+            .filter(Boolean);
+        if (cleanedOptions.length < MIN_CHANNEL_COMMUNITY_POLL_OPTIONS) {
+            showToast('Respostas insuficientes', `Adicione pelo menos ${MIN_CHANNEL_COMMUNITY_POLL_OPTIONS} respostas na enquete.`, 'yellow');
+            return false;
+        }
+        if (cleanedOptions.length > MAX_CHANNEL_COMMUNITY_POLL_OPTIONS) {
+            showToast('Limite de respostas', `A enquete permite no máximo ${MAX_CHANNEL_COMMUNITY_POLL_OPTIONS} respostas.`, 'yellow');
+            return false;
+        }
+        const uniqueLower = new Set(cleanedOptions.map(s => s.toLowerCase()));
+        if (uniqueLower.size !== cleanedOptions.length) {
+            showToast('Respostas repetidas', 'As opções da enquete devem ser diferentes entre si.', 'yellow');
+            return false;
+        }
+        pollPayload = {
+            question: pollQuestion,
+            maxOptions: MAX_CHANNEL_COMMUNITY_POLL_OPTIONS,
+            options: cleanedOptions.map((optText, idx) => ({
+                id: `opt_${idx}`,
+                text: optText,
+                votes: []
+            }))
+        };
+    }
+
+    if (!text && photosToPublish.length === 0 && !pollPayload) return false;
+
+    const aiCheckText = [
+        text,
+        pollPayload?.question || '',
+        ...(pollPayload?.options?.map(o => o.text) || [])
+    ].filter(Boolean).join(' ');
+    if (aiCheckText && typeof analyzeConversationByAI === 'function') {
+        const check = analyzeConversationByAI({ uid: currentUser.uid, text: aiCheckText, account: currentProfile });
         if (check?.shouldBlock) {
             showToast('Bloqueado pela IA 🛡️', check.alertMessage || 'Conteúdo bloqueado por segurança.', 'red');
             return false;
@@ -58373,6 +58689,9 @@ export async function publishChannelCommunityPost() {
             newPost.photoMediaIds = savedMediaIds;
             newPost.photosCount = savedMediaIds.length;
         }
+        if (pollPayload) {
+            newPost.poll = pollPayload;
+        }
 
         const combined = [newPost, ...existing];
         const nextList = combined.slice(0, 40);
@@ -58390,6 +58709,7 @@ export async function publishChannelCommunityPost() {
         }
         if (input) input.value = '';
         clearPendingChannelCommunityPhotos();
+        resetChannelCommunityPollBuilder();
 
         try {
             await setDoc(doc(db, 'users', currentUser.uid), { channelCommunityPosts: nextList, updatedAt: Date.now() }, { merge: true });
@@ -58399,7 +58719,9 @@ export async function publishChannelCommunityPost() {
         renderChannelScreen();
         showToast(
             'Publicado na Comunidade! 📣',
-            savedMediaIds.length > 0 ? 'Sua publicação com fotos já está visível no canal.' : 'Seu recado já está visível no canal.',
+            pollPayload
+                ? 'Sua enquete já está disponível na comunidade do canal.'
+                : (savedMediaIds.length > 0 ? 'Sua publicação com fotos já está visível no canal.' : 'Seu recado já está visível no canal.'),
             'green'
         );
         return true;
@@ -59073,6 +59395,7 @@ function closeChannelSubModal(modalId) {
         activeChannelManageFilter = 'videos';
     } else if (modalId === 'channel-community-modal') {
         clearPendingChannelCommunityPhotos();
+        resetChannelCommunityPollBuilder();
     }
 }
 
@@ -59263,6 +59586,21 @@ function bindChannelScreenListeners() {
     document.getElementById('channel-community-photo-input')?.addEventListener('change', async (e) => {
         await handleChannelCommunityPhotoSelection(e?.target?.files);
     });
+    document.getElementById('channel-community-toggle-poll-btn')?.addEventListener('click', () => {
+        playSound(clickSound);
+        toggleChannelCommunityPollBuilder();
+    });
+    document.getElementById('channel-community-poll-clear-btn')?.addEventListener('click', () => {
+        playSound(clickSound);
+        resetChannelCommunityPollBuilder();
+    });
+    document.getElementById('channel-community-poll-question')?.addEventListener('input', (e) => {
+        setChannelCommunityPollQuestion(e?.target?.value ?? '');
+    });
+    document.getElementById('channel-community-poll-add-option-btn')?.addEventListener('click', () => {
+        playSound(clickSound);
+        addChannelCommunityPollOption('');
+    });
     document.getElementById('channel-community-publish-btn')?.addEventListener('click', publishChannelCommunityPost);
     document.getElementById('channel-level-pill')?.addEventListener('click', () => {
         playSound(clickSound);
@@ -59405,6 +59743,17 @@ if (typeof window !== 'undefined') {
     window.handleChannelCommunityPhotoSelection = handleChannelCommunityPhotoSelection;
     window.hydrateChannelCommunityMedia = hydrateChannelCommunityMedia;
     window.deleteChannelCommunityPost = deleteChannelCommunityPost;
+    window.MIN_CHANNEL_COMMUNITY_POLL_OPTIONS = MIN_CHANNEL_COMMUNITY_POLL_OPTIONS;
+    window.MAX_CHANNEL_COMMUNITY_POLL_OPTIONS = MAX_CHANNEL_COMMUNITY_POLL_OPTIONS;
+    window.getChannelCommunityPollDraft = getChannelCommunityPollDraft;
+    window.toggleChannelCommunityPollBuilder = toggleChannelCommunityPollBuilder;
+    window.resetChannelCommunityPollBuilder = resetChannelCommunityPollBuilder;
+    window.setChannelCommunityPollQuestion = setChannelCommunityPollQuestion;
+    window.addChannelCommunityPollOption = addChannelCommunityPollOption;
+    window.updateChannelCommunityPollOption = updateChannelCommunityPollOption;
+    window.removeChannelCommunityPollOption = removeChannelCommunityPollOption;
+    window.renderChannelCommunityPollBuilder = renderChannelCommunityPollBuilder;
+    window.voteChannelCommunityPoll = voteChannelCommunityPoll;
     window.openChannelManageModal = openChannelManageModal;
     window.openChannelManageScreen = openChannelManageModal;
     window.closeChannelManageScreen = closeChannelManageScreen;

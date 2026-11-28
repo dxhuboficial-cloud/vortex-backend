@@ -1,6 +1,6 @@
 {
-  "version": "1.0.326",
-  "build": 326,
+  "version": "1.0.327",
+  "build": 327,
   "releaseDate": "2026-11-27",
-  "notes": "Envio de fotos na Comunidade do Canal pelo dono (preview até 4 fotos, armazenamento em channel_community_media, hidratação automática, zoom e exclusão) v1.0.326"
+  "notes": "Enquetes na Comunidade do Canal: 1 pergunta com até 5 respostas, validações, votação interativa com barra percentual, troca e remoção de voto v1.0.327"
 }
