@@ -24902,7 +24902,7 @@ export function getAdminReports() {
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
 const TRANSPARENT_IMG_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E";
-export const CURRENT_APP_VERSION = '1.0.338';
+export const CURRENT_APP_VERSION = '1.0.339';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -35215,7 +35215,7 @@ export async function deletePost(postId) {
 
 export let activeEditingComment = null;
 
-export function getSortedPostComments(comments) {
+export function getSortedPostComments(comments, options = {}) {
     if (!Array.isArray(comments)) return [];
     const list = comments.map((c, idx) => ({
         ...c,
@@ -35229,6 +35229,17 @@ export function getSortedPostComments(comments) {
     const unpinned = list.filter(c => !c.isPinned);
 
     pinned.sort((a, b) => (a.pinnedAt || 0) - (b.pinnedAt || 0));
+
+    if (options && typeof options.isPriorityComment === 'function') {
+        const priorityUnpinned = unpinned.filter(c => options.isPriorityComment(c));
+        const regularUnpinned = unpinned.filter(c => !options.isPriorityComment(c));
+        return [...pinned, ...priorityUnpinned, ...regularUnpinned];
+    }
+    if (options && options.prioritizeMembers) {
+        const priorityUnpinned = unpinned.filter(c => c.memberPriority === true || c.isChannelMember === true);
+        const regularUnpinned = unpinned.filter(c => !(c.memberPriority === true || c.isChannelMember === true));
+        return [...pinned, ...priorityUnpinned, ...regularUnpinned];
+    }
 
     return [...pinned, ...unpinned];
 }
@@ -35487,6 +35498,7 @@ export async function submitInlineComment(postId, text) {
         }
         const commentId = 'comm_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
         const isMyVip = checkIsVipUser(currentProfile);
+        const memberCtx = getChannelMemberCommentContext(postObj, currentUser.uid);
         comments.push({
             id: commentId,
             author: currentProfile?.name || currentUser.displayName || 'Usuário',
@@ -35498,6 +35510,10 @@ export async function submitInlineComment(postId, text) {
             isPinned: false,
             isVip: isMyVip,
             isVerified: isMyVip,
+            isChannelMember: memberCtx.isMember,
+            memberExclusiveBadge: memberCtx.exclusiveBadge,
+            memberPriority: memberCtx.commentPriority,
+            memberAnimatedEmojis: memberCtx.animatedEmojis,
             likes: []
         });
         openPostCommentCards.add(postId);
@@ -38334,7 +38350,10 @@ function renderFeedCardHTML(post) {
         moderatePostCommentsByAI(post, { persist: true });
     }
     const rawComments = (Array.isArray(post.comments) ? post.comments : []).filter(c => !isUserAccountDeleted(c.authorUid) && !c.isDeleted && !c.deleted);
-    const sortedComments = getSortedPostComments(rawComments);
+    const isOwnerForFeedComments = isPostOwner(post, currentUser, currentProfile);
+    const sortedComments = getSortedPostComments(rawComments, isOwnerForFeedComments
+        ? { isPriorityComment: (c) => getChannelMemberCommentContext(post, c.authorUid, c).commentPriority }
+        : {});
     const caption = post.caption || '';
     const mediaTag = renderPostMediaTagHTML(post);
     const createdAt = new Date(post.createdAt || Date.now());
@@ -38453,9 +38472,14 @@ function renderFeedCardHTML(post) {
                             const canDeleteComment = isOwner || isAuthor;
 
                             const isEditingThisComment = activeEditingComment && activeEditingComment.postId === post.id && activeEditingComment.commentId === commentId;
+                            const memberCtx = getChannelMemberCommentContext(post, comment.authorUid, comment);
+                            const showMemberPriorityCategory = Boolean(isOwner && memberCtx.commentPriority);
+                            const renderedFeedCommentText = memberCtx.animatedEmojis
+                                ? formatCommentTextWithAnimatedEmojis(comment.text || '', memberCtx.animatedEmojiList)
+                                : escapeHTML(comment.text || '');
 
                             return `
-                                <div class="feed-comment ${isPinned ? 'is-pinned' : ''}" id="feed-comment-${post.id}-${commentId}" data-comment-id="${commentId}">
+                                <div class="feed-comment ${isPinned ? 'is-pinned' : ''}${showMemberPriorityCategory ? ' is-member-priority' : ''}" id="feed-comment-${post.id}-${commentId}" data-comment-id="${commentId}">
                                     ${isPinned ? `
                                         <div class="comment-pinned-indicator">
                                             <i data-lucide="pin"></i> <span>Fixado</span>
@@ -38465,6 +38489,8 @@ function renderFeedCardHTML(post) {
                                         <div class="feed-comment-author-line">
                                             <strong>${escapeHTML(comment.author || 'Usuário')}</strong>
                                             <i data-lucide="badge-check" class="verified-badge comment-verified-badge${checkIsAdminUser({ uid: comment.authorUid, name: comment.author, email: comment.authorEmail, username: comment.authorUsername }) ? ' verified-badge-admin' : (checkIsCompanyUser(comment) ? ' verified-badge-company' : '')}" data-author-uid="${comment.authorUid || ''}" ${checkIsAdminUser({ uid: comment.authorUid, name: comment.author, email: comment.authorEmail, username: comment.authorUsername }) ? 'data-admin-badge="true" title="💥Admin⚡"' : (checkIsCompanyUser(comment) ? 'data-company-badge="true" title="⚔️ Empresa Verificada ⚡"' : 'title="Verificado VIP"')} style="display:${(isAuthorVipUser(comment.authorUid, comment) || checkIsCompanyUser(comment)) ? 'inline-flex' : 'none'};"></i>
+                                            ${memberCtx.exclusiveBadge ? '<span class="comment-member-exclusive-badge" title="Membro Exclusivo do Canal">👑 Membro</span>' : ''}
+                                            ${showMemberPriorityCategory ? '<span class="comment-priority-category-badge" title="Comentário prioritário de Membro">⚡ (Prioridade)</span>' : ''}
                                             <span>:</span>
                                             ${isEdited ? `<span class="comment-edited-badge">(editado)</span>` : ''}
                                         </div>
@@ -38477,7 +38503,7 @@ function renderFeedCardHTML(post) {
                                                 </div>
                                             </div>
                                         ` : `
-                                            <span>${escapeHTML(comment.text || '')}</span>
+                                            <span>${renderedFeedCommentText}</span>
                                         `}
                                     </div>
                                     <div class="feed-comment-actions-bar">
@@ -38514,6 +38540,7 @@ function renderFeedCardHTML(post) {
                         }).join('') : '<div class="feed-no-comments">Nenhum comentário ainda. Escreva o primeiro abaixo!</div>'}
                     </div>
 
+                    ${buildMemberEmojiPickerBarHTML(post, 'inline')}
                     <div class="feed-comment-form">
                         <input type="text" class="feed-comment-input" data-post-id="${post.id}" maxlength="220" placeholder="Escreva um comentário..." aria-label="Escreva um comentário">
                         <button class="feed-comment-send-btn" type="button" data-action="send-inline-comment" data-post-id="${post.id}" title="Enviar comentário">
@@ -38693,6 +38720,21 @@ function bindFeedInteractions(feedList, posts = []) {
                 e.preventDefault();
                 activeEditingComment = null;
                 renderPostsFeed(getLivePosts());
+            }
+        });
+    });
+
+    feedList.querySelectorAll('[data-action="insert-member-emoji"]').forEach(btn => {
+        if (!markFeedNodeBound(btn)) return;
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const postId = btn.dataset.postId;
+            const emoji = btn.dataset.emoji || '';
+            const input = feedList.querySelector(`.feed-comment-input[data-post-id="${postId}"]`);
+            if (input && emoji) {
+                input.value = `${input.value || ''}${emoji}`.slice(0, 220);
+                input.focus?.();
             }
         });
     });
@@ -39438,6 +39480,7 @@ export function openPostCommentModal(post) {
     }
 
     renderCommentsModalList();
+    renderCommentModalMemberEmojiBar(post);
 
     modal.classList.add('active');
     modal.setAttribute('aria-hidden', 'false');
@@ -39471,7 +39514,10 @@ export function renderCommentsModalList() {
         return;
     }
 
-    const sortedComments = getSortedPostComments(rawComments);
+    const isModalOwner = isPostOwner(activeCommentPost, currentUser, currentProfile);
+    const sortedComments = getSortedPostComments(rawComments, isModalOwner
+        ? { isPriorityComment: (c) => getChannelMemberCommentContext(activeCommentPost, c.authorUid, c).commentPriority }
+        : {});
 
     list.innerHTML = sortedComments.map((c) => {
         const commentId = c.id;
@@ -39485,14 +39531,19 @@ export function renderCommentsModalList() {
         const commentLikesCount = commentLikes.length;
         const userLikedComment = currentUser && commentLikes.includes(currentUser.uid);
 
-        const isOwner = isPostOwner(activeCommentPost, currentUser, currentProfile);
+        const isOwner = isModalOwner;
         const isAuthor = isCommentAuthor(c, currentUser, currentProfile);
         const canDelete = isOwner || isAuthor;
 
         const isEditingThisComment = activeEditingComment && activeEditingComment.postId === activeCommentPost.id && activeEditingComment.commentId === commentId;
+        const memberCtx = getChannelMemberCommentContext(activeCommentPost, c.authorUid, c);
+        const showMemberPriorityCategory = Boolean(isOwner && memberCtx.commentPriority);
+        const renderedCommentText = memberCtx.animatedEmojis
+            ? formatCommentTextWithAnimatedEmojis(text, memberCtx.animatedEmojiList)
+            : escapeHTML(text);
 
         return `
-            <div class="comment-item ${isPinned ? 'is-pinned' : ''}" data-comment-id="${commentId}">
+            <div class="comment-item ${isPinned ? 'is-pinned' : ''}${showMemberPriorityCategory ? ' is-member-priority' : ''}" data-comment-id="${commentId}">
                 ${isPinned ? `
                     <div class="comment-pinned-indicator">
                         <i data-lucide="pin"></i> <span>Fixado</span>
@@ -39502,6 +39553,8 @@ export function renderCommentsModalList() {
                     <div class="comment-item-header">
                         <strong>${escapeHTML(author)}</strong>
                         <i data-lucide="badge-check" class="verified-badge comment-verified-badge${checkIsAdminUser({ uid: c.authorUid, name: author, email: c.authorEmail, username: c.authorUsername }) ? ' verified-badge-admin' : (checkIsCompanyUser(c) ? ' verified-badge-company' : '')}" data-author-uid="${c.authorUid || ''}" ${checkIsAdminUser({ uid: c.authorUid, name: author, email: c.authorEmail, username: c.authorUsername }) ? 'data-admin-badge="true" title="💥Admin⚡"' : (checkIsCompanyUser(c) ? 'data-company-badge="true" title="⚔️ Empresa Verificada ⚡"' : 'title="Verificado VIP"')} style="display:${(isCommentVip || checkIsCompanyUser(c)) ? 'inline-flex' : 'none'};"></i>
+                        ${memberCtx.exclusiveBadge ? '<span class="comment-member-exclusive-badge" title="Membro Exclusivo do Canal">👑 Membro</span>' : ''}
+                        ${showMemberPriorityCategory ? '<span class="comment-priority-category-badge" title="Comentário prioritário de Membro">⚡ (Prioridade)</span>' : ''}
                         <span>:</span>
                         ${isEdited ? `<span class="comment-edited-badge">(editado)</span>` : ''}
                     </div>
@@ -39514,7 +39567,7 @@ export function renderCommentsModalList() {
                             </div>
                         </div>
                     ` : `
-                        <span style="display: block; margin-top: 2px;">${escapeHTML(text)}</span>
+                        <span style="display: block; margin-top: 2px;">${renderedCommentText}</span>
                     `}
                     <div class="comment-actions-bar">
                         <button class="feed-comment-action-btn comment-like-btn ${userLikedComment ? 'liked' : ''}" type="button" data-action="like-comment" data-post-id="${activeCommentPost.id}" data-comment-id="${commentId}" data-comment-idx="${idx}" title="${userLikedComment ? 'Descurtir' : 'Curtir'}">
@@ -39706,6 +39759,7 @@ export async function submitPostComment() {
     }
 
     const isMyVip = checkIsVipUser(currentProfile);
+    const memberCtx = getChannelMemberCommentContext(activeCommentPost, currentUser.uid);
     const newComment = {
         id: 'comm_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
         author: currentProfile?.name || currentUser.displayName || 'Usuário',
@@ -39717,6 +39771,10 @@ export async function submitPostComment() {
         isPinned: false,
         isVip: isMyVip,
         isVerified: isMyVip,
+        isChannelMember: memberCtx.isMember,
+        memberExclusiveBadge: memberCtx.exclusiveBadge,
+        memberPriority: memberCtx.commentPriority,
+        memberAnimatedEmojis: memberCtx.animatedEmojis,
         likes: []
     };
 
@@ -58247,16 +58305,163 @@ export function formatBrlCurrency(value) {
     return `R$ ${safe.toFixed(2).replace('.', ',')}`;
 }
 
+export const CHANNEL_MEMBER_MAX_ANIMATED_EMOJIS = 14;
+export const CHANNEL_MEMBER_EMOJI_CATALOG = [
+    '🔥', '👑', '⚡', '💎', '❤️', '🚀', '🌟',
+    '🎉', '😍', '😂', '👏', '🏆', '💯', '🤩',
+    '🥳', '💖', '✨', '🌈', '🎵', '🎬', '🎮',
+    '💥', '😎', '🙌', '🫶', '🦋', '🍀', '🎯'
+];
+export const DEFAULT_CHANNEL_MEMBER_PERKS = {
+    exclusiveBadge: true,
+    commentPriority: true,
+    animatedEmojis: true,
+    animatedEmojiList: ['🔥', '👑', '⚡', '💎', '❤️', '🚀']
+};
+
+export function normalizeChannelMemberPerks(rawPerks) {
+    const src = (rawPerks && typeof rawPerks === 'object') ? rawPerks : {};
+    const hasCustomList = Array.isArray(src.animatedEmojiList);
+    const baseList = hasCustomList ? src.animatedEmojiList : DEFAULT_CHANNEL_MEMBER_PERKS.animatedEmojiList;
+    const deduped = [];
+    const seen = new Set();
+    for (const item of baseList) {
+        const clean = String(item || '').trim();
+        if (!clean || seen.has(clean)) continue;
+        seen.add(clean);
+        deduped.push(clean);
+        if (deduped.length >= CHANNEL_MEMBER_MAX_ANIMATED_EMOJIS) break;
+    }
+    return {
+        exclusiveBadge: src.exclusiveBadge !== undefined ? Boolean(src.exclusiveBadge) : DEFAULT_CHANNEL_MEMBER_PERKS.exclusiveBadge,
+        commentPriority: src.commentPriority !== undefined ? Boolean(src.commentPriority) : DEFAULT_CHANNEL_MEMBER_PERKS.commentPriority,
+        animatedEmojis: src.animatedEmojis !== undefined ? Boolean(src.animatedEmojis) : DEFAULT_CHANNEL_MEMBER_PERKS.animatedEmojis,
+        animatedEmojiList: deduped
+    };
+}
+
+export function isUserActiveChannelMember(ownerData, subscriberUid) {
+    const subUid = String(subscriberUid || '').trim();
+    if (!ownerData || typeof ownerData !== 'object' || !subUid) return false;
+    if (ownerData.uid && String(ownerData.uid) === subUid) return false;
+    const members = Array.isArray(ownerData.channelMembers) ? ownerData.channelMembers.map(String) : [];
+    if (!members.includes(subUid)) return false;
+    const subsMap = (ownerData.channelMemberSubscriptions && typeof ownerData.channelMemberSubscriptions === 'object')
+        ? ownerData.channelMemberSubscriptions
+        : null;
+    const subEntry = subsMap ? subsMap[subUid] : null;
+    if (subEntry && subEntry.expiresAt && Number(subEntry.expiresAt) > 0 && Number(subEntry.expiresAt) <= Date.now()) {
+        return false;
+    }
+    return true;
+}
+
+export function getChannelMemberCommentContext(post, authorUid, commentObj = null) {
+    const ownerUid = String(post?.authorUid || '').trim();
+    let ownerData = typeof getPostAuthorUserData === 'function' ? getPostAuthorUserData(post) : null;
+    if ((!ownerData || !Array.isArray(ownerData.channelMembers)) && ownerUid) {
+        const cached = (typeof contactUserDataMap !== 'undefined' && contactUserDataMap?.get?.(ownerUid))
+            || ((typeof activeChannelUid !== 'undefined' && activeChannelUid === ownerUid) ? activeChannelUserData : null)
+            || ((currentUser?.uid === ownerUid) ? currentProfile : null);
+        if (cached) ownerData = { ...(ownerData || {}), ...cached };
+    }
+    const perks = normalizeChannelMemberPerks(ownerData?.channelMemberPerks);
+    const hasOwnerMembersLoaded = Boolean(ownerData && Array.isArray(ownerData.channelMembers));
+    const isMember = hasOwnerMembersLoaded
+        ? isUserActiveChannelMember(ownerData, authorUid)
+        : Boolean(commentObj?.isChannelMember);
+    if (!isMember) {
+        return {
+            isMember: false,
+            exclusiveBadge: false,
+            commentPriority: false,
+            animatedEmojis: false,
+            animatedEmojiList: []
+        };
+    }
+    const useExclusiveBadge = ownerData?.channelMemberPerks !== undefined
+        ? perks.exclusiveBadge
+        : (commentObj?.memberExclusiveBadge !== undefined ? Boolean(commentObj.memberExclusiveBadge) : perks.exclusiveBadge);
+    const useCommentPriority = ownerData?.channelMemberPerks !== undefined
+        ? perks.commentPriority
+        : (commentObj?.memberPriority !== undefined ? Boolean(commentObj.memberPriority) : perks.commentPriority);
+    const useAnimatedEmojis = ownerData?.channelMemberPerks !== undefined
+        ? (perks.animatedEmojis && perks.animatedEmojiList.length > 0)
+        : (commentObj?.memberAnimatedEmojis !== undefined ? (Boolean(commentObj.memberAnimatedEmojis) && perks.animatedEmojiList.length > 0) : (perks.animatedEmojis && perks.animatedEmojiList.length > 0));
+    return {
+        isMember: true,
+        exclusiveBadge: useExclusiveBadge,
+        commentPriority: useCommentPriority,
+        animatedEmojis: useAnimatedEmojis,
+        animatedEmojiList: perks.animatedEmojiList
+    };
+}
+
+export function formatCommentTextWithAnimatedEmojis(text, allowedEmojis = []) {
+    const safeHtml = escapeHTML(String(text || ''));
+    if (!safeHtml || !Array.isArray(allowedEmojis) || allowedEmojis.length === 0) return safeHtml;
+    const ordered = [...new Set(allowedEmojis.map(e => String(e || '').trim()).filter(Boolean))]
+        .sort((a, b) => b.length - a.length)
+        .slice(0, CHANNEL_MEMBER_MAX_ANIMATED_EMOJIS);
+    if (!ordered.length) return safeHtml;
+    const escapedTokens = ordered.map(e => e.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    const regex = new RegExp(`(${escapedTokens.join('|')})`, 'g');
+    return safeHtml.replace(regex, '<span class="member-animated-emoji" title="Emoji animado exclusivo de Membro">$1</span>');
+}
+
+export function buildMemberEmojiPickerBarHTML(post, mode = 'inline') {
+    if (!post || !currentUser?.uid) return '';
+    const ctx = getChannelMemberCommentContext(post, currentUser.uid);
+    if (!ctx.isMember || !ctx.animatedEmojis || !ctx.animatedEmojiList.length) return '';
+    const postIdAttr = escapeHTML(String(post.id || ''));
+    const wrapperClass = mode === 'modal' ? 'comment-member-emojis-bar' : 'feed-member-emojis-bar';
+    const buttonsHtml = ctx.animatedEmojiList.map(emoji =>
+        `<button type="button" class="comment-member-emoji-btn" data-action="insert-member-emoji" data-post-id="${postIdAttr}" data-emoji="${escapeHTML(emoji)}" title="Inserir emoji animado ${escapeHTML(emoji)}"><span class="member-animated-emoji">${escapeHTML(emoji)}</span></button>`
+    ).join('');
+    if (mode === 'modal') {
+        return `<span class="comment-member-emojis-label">👑 Emojis de Membro:</span>${buttonsHtml}`;
+    }
+    return `<div class="${wrapperClass}" data-post-id="${postIdAttr}" aria-label="Emojis animados exclusivos de Membro"><span class="comment-member-emojis-label">👑 Membro:</span>${buttonsHtml}</div>`;
+}
+
+export function renderCommentModalMemberEmojiBar(post = activeCommentPost) {
+    const barEl = document.getElementById('comment-modal-member-emojis');
+    if (!barEl) return false;
+    const inner = buildMemberEmojiPickerBarHTML(post, 'modal');
+    if (!inner) {
+        barEl.innerHTML = '';
+        barEl.style.display = 'none';
+        return false;
+    }
+    barEl.innerHTML = inner;
+    barEl.style.display = 'flex';
+    barEl.querySelectorAll('[data-action="insert-member-emoji"]').forEach(btn => {
+        btn.onclick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const input = document.getElementById('comment-modal-input');
+            const emoji = btn.dataset.emoji || '';
+            if (input && emoji) {
+                input.value = `${input.value || ''}${emoji}`.slice(0, 220);
+                input.focus?.();
+            }
+        };
+    });
+    return true;
+}
+
 export function getChannelMembershipPricing(userData = currentProfile) {
     const u = (userData && typeof userData === 'object') ? userData : {};
     const price = parseChannelMemberPrice(u.channelMemberPrice);
     const paidEnabled = Boolean(u.channelMemberPaidEnabled) && price >= CHANNEL_MEMBER_MIN_PRICE;
+    const perks = normalizeChannelMemberPerks(u.channelMemberPerks);
     return {
         paidEnabled,
         rawPaidEnabled: Boolean(u.channelMemberPaidEnabled),
         price,
         benefits: String(u.channelMemberBenefits || '').trim(),
         pixKey: String(u.channelMemberPixKey || u.pixKey || '').trim(),
+        perks,
         earningsBalance: Math.round(Math.max(0, Number(u.channelMemberEarningsBalance || 0)) * 100) / 100,
         earningsTotal: Math.round(Math.max(0, Number(u.channelMemberEarningsTotal || 0)) * 100) / 100,
         paidCount: Math.max(0, Math.floor(Number(u.channelMemberPaidCount || 0))),
@@ -58395,11 +58600,39 @@ export async function saveChannelMembershipPricing(overrideInput = null) {
         pixKey = pixCheck.formatted || pixKey;
     }
 
+    const selectedEmojiNodes = typeof document !== 'undefined' && typeof document.querySelectorAll === 'function'
+        ? Array.from(document.querySelectorAll('#channel-member-emoji-grid .channel-member-emoji-choice.selected'))
+        : [];
+    const domEmojiList = selectedEmojiNodes.map(btn => btn?.dataset?.emoji || '').filter(Boolean);
+    const existingPerks = normalizeChannelMemberPerks(currentProfile?.channelMemberPerks);
+    const hasPerksOverride = Boolean(overrideInput && typeof overrideInput === 'object' && overrideInput.perks);
+    const perkBadgeEl = document.getElementById('channel-member-perk-badge');
+    const perkPriorityEl = document.getElementById('channel-member-perk-priority');
+    const perkEmojisEl = document.getElementById('channel-member-perk-emojis');
+    const hasDomPerks = Boolean(perkBadgeEl || perkPriorityEl || perkEmojisEl);
+
+    const perks = hasPerksOverride
+        ? normalizeChannelMemberPerks(overrideInput.perks)
+        : (hasDomPerks
+            ? normalizeChannelMemberPerks({
+                exclusiveBadge: perkBadgeEl ? Boolean(perkBadgeEl.checked) : existingPerks.exclusiveBadge,
+                commentPriority: perkPriorityEl ? Boolean(perkPriorityEl.checked) : existingPerks.commentPriority,
+                animatedEmojis: perkEmojisEl ? Boolean(perkEmojisEl.checked) : existingPerks.animatedEmojis,
+                animatedEmojiList: selectedEmojiNodes.length ? domEmojiList : (Array.isArray(overrideInput?.animatedEmojiList) ? overrideInput.animatedEmojiList : existingPerks.animatedEmojiList)
+            })
+            : normalizeChannelMemberPerks(overrideInput?.animatedEmojiList ? { ...existingPerks, animatedEmojiList: overrideInput.animatedEmojiList } : existingPerks));
+
+    if (perks.animatedEmojis && perks.animatedEmojiList.length === 0) {
+        showToast('Selecione ao menos 1 emoji', `Escolha de 1 a ${CHANNEL_MEMBER_MAX_ANIMATED_EMOJIS} emojis animados ou desative essa opção.`, 'yellow');
+        return { success: false, reason: 'empty_animated_emojis' };
+    }
+
     const updateFields = {
         channelMemberPaidEnabled: paidEnabled,
         channelMemberPrice: price,
         channelMemberBenefits: benefits,
         channelMemberPixKey: pixKey,
+        channelMemberPerks: perks,
         updatedAt: Date.now()
     };
 
@@ -58533,6 +58766,23 @@ export function openChannelMemberCheckoutModal(targetUid = activeChannelUid) {
     if (priceEl) priceEl.innerText = formatBrlCurrency(pricing.price);
     if (benefitsEl) {
         benefitsEl.innerText = pricing.benefits || 'Acesso exclusivo aos benefícios de membro oficial deste canal por 30 dias.';
+    }
+    const perksListEl = document.getElementById('channel-member-checkout-perks-list');
+    if (perksListEl) {
+        const perks = pricing.perks || DEFAULT_CHANNEL_MEMBER_PERKS;
+        const pills = [];
+        if (perks.exclusiveBadge) {
+            pills.push('<span class="channel-member-checkout-perk-pill">👑 Selo de Membro Exclusivo</span>');
+        }
+        if (perks.commentPriority) {
+            pills.push('<span class="channel-member-checkout-perk-pill">⚡ Prioridade nos Comentários</span>');
+        }
+        if (perks.animatedEmojis && perks.animatedEmojiList.length) {
+            const previewEmojis = perks.animatedEmojiList.slice(0, 6).join(' ');
+            pills.push(`<span class="channel-member-checkout-perk-pill">✨ ${perks.animatedEmojiList.length} Emojis Animados (${previewEmojis})</span>`);
+        }
+        perksListEl.innerHTML = pills.join('');
+        perksListEl.style.display = pills.length ? 'flex' : 'none';
     }
 
     const formStep = document.getElementById('channel-member-pix-step-form');
@@ -58896,6 +59146,14 @@ export function openChannelMembershipModal(targetUid = activeChannelUid || curre
         return `Taxa da plataforma: ${pct}% (${formatBrlCurrency(split.platformFee)}) • Você recebe líquido: ${formatBrlCurrency(split.creatorNet)} (${creatorPct}%)`;
     };
 
+    const channelPerks = pricing.perks || DEFAULT_CHANNEL_MEMBER_PERKS;
+    const hasPayoutBalance = pricing.earningsBalance > 0;
+    const selectedEmojisSet = new Set(channelPerks.animatedEmojiList);
+    const emojiChoicesHtml = CHANNEL_MEMBER_EMOJI_CATALOG.map(emoji => {
+        const isSel = selectedEmojisSet.has(emoji);
+        return `<button type="button" class="channel-member-emoji-choice${isSel ? ' selected' : ''}" data-emoji="${escapeHTML(emoji)}" aria-pressed="${isSel ? 'true' : 'false'}" title="Selecionar emoji animado ${escapeHTML(emoji)}">${escapeHTML(emoji)}</button>`;
+    }).join('');
+
     const monetizationHtml = (isOwner && elig.eligible) ? `
         <section class="channel-member-monetization-card" aria-label="Monetização Seja Membro via Pix">
             <div class="channel-member-monetization-header">
@@ -58932,6 +59190,39 @@ export function openChannelMembershipModal(targetUid = activeChannelUid || curre
                 <label for="channel-member-pix-input" class="channel-modal-label">Sua Chave Pix para receber</label>
                 <input type="text" id="channel-member-pix-input" class="channel-modal-input" maxlength="140" placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória" value="${escapeHTML(pricing.pixKey)}">
             </div>
+            <div class="channel-member-perks-box" aria-label="Benefícios liberados para assinantes">
+                <div class="channel-member-perks-header">
+                    <strong><i data-lucide="sparkles"></i> O que liberar para os Membros</strong>
+                </div>
+                <label class="channel-member-toggle-row channel-member-perk-toggle" for="channel-member-perk-badge">
+                    <span>
+                        <strong>👑 Selo de Membro Exclusivo</strong>
+                        <small>Mostra o selo exclusivo de Membro ao lado do nome do assinante nos comentários.</small>
+                    </span>
+                    <input type="checkbox" id="channel-member-perk-badge" class="channel-customize-checkbox" ${channelPerks.exclusiveBadge ? 'checked' : ''}>
+                </label>
+                <label class="channel-member-toggle-row channel-member-perk-toggle" for="channel-member-perk-priority">
+                    <span>
+                        <strong>⚡ Prioridade nos Comentários</strong>
+                        <small>Para você (dono do canal), exibe a categoria (Prioridade) e destaca esses comentários no topo.</small>
+                    </span>
+                    <input type="checkbox" id="channel-member-perk-priority" class="channel-customize-checkbox" ${channelPerks.commentPriority ? 'checked' : ''}>
+                </label>
+                <label class="channel-member-toggle-row channel-member-perk-toggle" for="channel-member-perk-emojis">
+                    <span>
+                        <strong>✨ Emojis Animados nos Comentários</strong>
+                        <small>Membros enviam os emojis animados que você liberar (até ${CHANNEL_MEMBER_MAX_ANIMATED_EMOJIS} emojis).</small>
+                    </span>
+                    <input type="checkbox" id="channel-member-perk-emojis" class="channel-customize-checkbox" ${channelPerks.animatedEmojis ? 'checked' : ''}>
+                </label>
+                <div id="channel-member-emoji-picker-box" class="channel-member-emoji-picker-box" style="display:${channelPerks.animatedEmojis ? 'flex' : 'none'};">
+                    <div class="channel-member-emoji-picker-head">
+                        <span>Escolha os emojis animados dos comentários</span>
+                        <span id="channel-member-emoji-counter" class="channel-member-emoji-counter">${selectedEmojisSet.size}/${CHANNEL_MEMBER_MAX_ANIMATED_EMOJIS}</span>
+                    </div>
+                    <div id="channel-member-emoji-grid" class="channel-member-emoji-grid">${emojiChoicesHtml}</div>
+                </div>
+            </div>
             <div class="channel-member-form-group">
                 <label for="channel-member-benefits-input" class="channel-modal-label">Benefícios para os Membros</label>
                 <textarea id="channel-member-benefits-input" class="channel-modal-textarea" rows="2" maxlength="280" placeholder="Ex: Selo de membro, lives exclusivas, prioridade nos comentários...">${escapeHTML(pricing.benefits)}</textarea>
@@ -58941,7 +59232,7 @@ export function openChannelMembershipModal(targetUid = activeChannelUid || curre
                     <i data-lucide="save"></i>
                     <span>Salvar Cobrança Pix</span>
                 </button>
-                <button type="button" id="request-channel-member-payout-btn" class="channel-pill-btn channel-member-payout-btn" ${pricing.earningsBalance <= 0 ? 'disabled' : ''}>
+                <button type="button" id="request-channel-member-payout-btn" class="channel-pill-btn channel-member-payout-btn${hasPayoutBalance ? ' has-balance' : ''}" ${!hasPayoutBalance ? 'disabled' : ''}>
                     <i data-lucide="arrow-up-right"></i>
                     <span>Sacar via Pix (${formatBrlCurrency(pricing.earningsBalance)})</span>
                 </button>
@@ -58991,7 +59282,51 @@ export function openChannelMembershipModal(targetUid = activeChannelUid || curre
     `;
 
     document.getElementById('save-channel-member-pricing-btn')?.addEventListener('click', () => saveChannelMembershipPricing());
-    document.getElementById('request-channel-member-payout-btn')?.addEventListener('click', () => requestChannelMemberPayout());
+    const payoutBtnEl = document.getElementById('request-channel-member-payout-btn');
+    if (payoutBtnEl) {
+        payoutBtnEl.classList?.toggle('has-balance', hasPayoutBalance);
+        payoutBtnEl.disabled = !hasPayoutBalance;
+        payoutBtnEl.addEventListener('click', () => requestChannelMemberPayout());
+    }
+    const perkBadgeInp = document.getElementById('channel-member-perk-badge');
+    const perkPriorityInp = document.getElementById('channel-member-perk-priority');
+    if (perkBadgeInp) perkBadgeInp.checked = Boolean(channelPerks.exclusiveBadge);
+    if (perkPriorityInp) perkPriorityInp.checked = Boolean(channelPerks.commentPriority);
+    const emojiToggleEl = document.getElementById('channel-member-perk-emojis');
+    const emojiPickerBoxEl = document.getElementById('channel-member-emoji-picker-box');
+    const emojiCounterEl = document.getElementById('channel-member-emoji-counter');
+    if (emojiToggleEl) emojiToggleEl.checked = Boolean(channelPerks.animatedEmojis);
+    if (emojiPickerBoxEl) emojiPickerBoxEl.style.display = channelPerks.animatedEmojis ? 'flex' : 'none';
+    if (emojiToggleEl && emojiPickerBoxEl) {
+        emojiToggleEl.addEventListener('change', () => {
+            emojiPickerBoxEl.style.display = emojiToggleEl.checked ? 'flex' : 'none';
+        });
+    }
+    if (typeof document.querySelectorAll === 'function') {
+        const updateEmojiSelectionCount = () => {
+            const count = document.querySelectorAll('#channel-member-emoji-grid .channel-member-emoji-choice.selected').length;
+            if (emojiCounterEl) emojiCounterEl.innerText = `${count}/${CHANNEL_MEMBER_MAX_ANIMATED_EMOJIS}`;
+            return count;
+        };
+        document.querySelectorAll('#channel-member-emoji-grid .channel-member-emoji-choice').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const isSel = btn.classList?.contains('selected');
+                if (!isSel) {
+                    const currentCount = document.querySelectorAll('#channel-member-emoji-grid .channel-member-emoji-choice.selected').length;
+                    if (currentCount >= CHANNEL_MEMBER_MAX_ANIMATED_EMOJIS) {
+                        showToast('Limite de 14 emojis atingido', `Você pode selecionar no máximo ${CHANNEL_MEMBER_MAX_ANIMATED_EMOJIS} emojis animados por canal.`, 'yellow');
+                        return;
+                    }
+                    btn.classList?.add('selected');
+                    btn.setAttribute?.('aria-pressed', 'true');
+                } else {
+                    btn.classList?.remove('selected');
+                    btn.setAttribute?.('aria-pressed', 'false');
+                }
+                updateEmojiSelectionCount();
+            });
+        });
+    }
     if (isOwner && elig.eligible) {
         applyChannelMemberPayoutReviewNotice(
             document.getElementById('channel-member-payout-review-notice'),
@@ -61709,6 +62044,14 @@ if (typeof window !== 'undefined') {
     window.buildChannelMemberPayoutReviewHtml = buildChannelMemberPayoutReviewHtml;
     window.applyChannelMemberPayoutReviewNotice = applyChannelMemberPayoutReviewNotice;
     window.syncCreatorPendingChannelPayouts = syncCreatorPendingChannelPayouts;
+    window.CHANNEL_MEMBER_MAX_ANIMATED_EMOJIS = CHANNEL_MEMBER_MAX_ANIMATED_EMOJIS;
+    window.CHANNEL_MEMBER_EMOJI_CATALOG = CHANNEL_MEMBER_EMOJI_CATALOG;
+    window.DEFAULT_CHANNEL_MEMBER_PERKS = DEFAULT_CHANNEL_MEMBER_PERKS;
+    window.normalizeChannelMemberPerks = normalizeChannelMemberPerks;
+    window.isUserActiveChannelMember = isUserActiveChannelMember;
+    window.getChannelMemberCommentContext = getChannelMemberCommentContext;
+    window.formatCommentTextWithAnimatedEmojis = formatCommentTextWithAnimatedEmojis;
+    window.renderCommentModalMemberEmojiBar = renderCommentModalMemberEmojiBar;
     window.openChannelMemberCheckoutModal = openChannelMemberCheckoutModal;
     window.closeChannelMemberCheckoutModal = closeChannelMemberCheckoutModal;
     window.generateChannelMemberPixPayment = generateChannelMemberPixPayment;
