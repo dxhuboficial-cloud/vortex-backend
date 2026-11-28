@@ -8339,8 +8339,11 @@ export function renderSellerCouponsUI() {
 export function openCouponsModal() {
     const modal = document.getElementById('catalog-coupons-modal');
     if (!modal) return;
+    const scrollBody = document.getElementById('catalog-coupons-scroll-body');
+    if (scrollBody) scrollBody.scrollTop = 0;
     modal.style.display = 'flex';
     modal.classList.add('active');
+    modal.setAttribute('aria-hidden', 'false');
     const codeInp = document.getElementById('catalog-coupon-code-input');
     const valInp = document.getElementById('catalog-coupon-val-input');
     const labelInp = document.getElementById('catalog-coupon-label-input');
@@ -8348,6 +8351,7 @@ export function openCouponsModal() {
     if (valInp) valInp.value = '';
     if (labelInp) labelInp.value = '';
     renderSellerCouponsUI();
+    if (window.lucide) lucide.createIcons();
 }
 
 export function closeCouponsModal() {
@@ -8355,6 +8359,7 @@ export function closeCouponsModal() {
     if (!modal) return;
     modal.style.display = 'none';
     modal.classList.remove('active');
+    modal.setAttribute('aria-hidden', 'true');
 }
 
 export async function loadSellerShipping(sellerUid) {
@@ -8412,8 +8417,11 @@ export async function saveSellerShipping(config) {
 export function openShippingModal() {
     const modal = document.getElementById('catalog-shipping-modal');
     if (!modal) return;
+    const scrollBody = document.getElementById('catalog-shipping-scroll-body');
+    if (scrollBody) scrollBody.scrollTop = 0;
     modal.style.display = 'flex';
     modal.classList.add('active');
+    modal.setAttribute('aria-hidden', 'false');
 
     const config = currentProfile?.storeShipping || {
         type: 'fixed',
@@ -8433,6 +8441,7 @@ export function openShippingModal() {
     if (deadlineInput) deadlineInput.value = config.deadline || '';
 
     updateShippingModalUI();
+    if (window.lucide) lucide.createIcons();
 }
 
 export function closeShippingModal() {
@@ -8440,6 +8449,7 @@ export function closeShippingModal() {
     if (!modal) return;
     modal.style.display = 'none';
     modal.classList.remove('active');
+    modal.setAttribute('aria-hidden', 'true');
 }
 
 export function updateShippingModalUI() {
@@ -10220,8 +10230,11 @@ export async function openProductEditor(productId = null) {
     renderEditorColors();
 
     if (modal) {
+        const scrollBody = document.getElementById('catalog-editor-scroll-body');
+        if (scrollBody) scrollBody.scrollTop = 0;
         modal.style.display = 'flex';
         modal.classList.add('active');
+        modal.setAttribute('aria-hidden', 'false');
         if (window.lucide) lucide.createIcons();
     }
 }
@@ -10231,6 +10244,7 @@ export function closeProductEditor() {
     if (modal) {
         modal.style.display = 'none';
         modal.classList.remove('active');
+        modal.setAttribute('aria-hidden', 'true');
     }
     currentEditingProductId = null;
     currentEditorPhotos = [];
@@ -11140,8 +11154,12 @@ export async function openProductDetail(productId, sellerUid) {
         </div>
     `;
 
+    const scrollBody = document.getElementById('catalog-detail-scroll-body');
+    if (scrollBody) scrollBody.scrollTop = 0;
     modal.style.display = 'flex';
     modal.classList.add('active');
+    modal.setAttribute('aria-hidden', 'false');
+    if (window.lucide) lucide.createIcons();
 
     try {
         let prod = (catalogSellerProductsCache || []).find(p => p.id === productId);
@@ -11639,6 +11657,7 @@ export function closeProductDetail() {
     if (modal) {
         modal.style.display = 'none';
         modal.classList.remove('active');
+        modal.setAttribute('aria-hidden', 'true');
     }
 }
 
@@ -24751,7 +24770,7 @@ export function getAdminReports() {
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
 const TRANSPARENT_IMG_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E";
-export const CURRENT_APP_VERSION = '1.0.324';
+export const CURRENT_APP_VERSION = '1.0.325';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -45428,6 +45447,18 @@ export function closeTopmostActiveLayer() {
         else catalogEditorModal.style.display = 'none';
         return true;
     }
+    const catalogCouponsModal = document.getElementById('catalog-coupons-modal');
+    if (catalogCouponsModal && (catalogCouponsModal.style.display === 'flex' || catalogCouponsModal.classList?.contains('active'))) {
+        if (typeof closeCouponsModal === 'function') closeCouponsModal();
+        else catalogCouponsModal.style.display = 'none';
+        return true;
+    }
+    const catalogShippingModal = document.getElementById('catalog-shipping-modal');
+    if (catalogShippingModal && (catalogShippingModal.style.display === 'flex' || catalogShippingModal.classList?.contains('active'))) {
+        if (typeof closeShippingModal === 'function') closeShippingModal();
+        else catalogShippingModal.style.display = 'none';
+        return true;
+    }
 
     // 3. Chamadas de Voz / Vídeo
     const videoCallOverlay = document.getElementById('video-call-overlay');
@@ -45554,6 +45585,7 @@ export function closeTopmostActiveLayer() {
     }
 
     const settingsSubScreens = [
+        ['daily-chest-withdraw-modal', typeof closeDailyChestWithdrawModal === 'function' ? closeDailyChestWithdrawModal : null],
         ['company-chatbot-modal', typeof closeCompanyChatbotModal === 'function' ? closeCompanyChatbotModal : null],
         ['app-permissions-modal', typeof closeAppPermissionsModal === 'function' ? closeAppPermissionsModal : null],
         ['global-security-tips-modal', typeof closeGlobalSecurityTipsModal === 'function' ? closeGlobalSecurityTipsModal : null],
@@ -46431,7 +46463,9 @@ if (typeof window !== 'undefined') {
     window.loadMyCatalog = loadMyCatalog;
     window.renderCatalogGrid = renderCatalogGrid;
     window.openProductEditor = openProductEditor;
+    window.openProductEditorScreen = openProductEditor;
     window.closeProductEditor = closeProductEditor;
+    window.closeProductEditorScreen = closeProductEditor;
     window.saveCatalogProduct = saveCatalogProduct;
     window.deleteCatalogProduct = deleteCatalogProduct;
     window.toggleProductActive = toggleProductActive;
@@ -46440,7 +46474,9 @@ if (typeof window !== 'undefined') {
     window.addCatalogCategory = addCatalogCategory;
     window.deleteCatalogCategory = deleteCatalogCategory;
     window.openProductDetail = openProductDetail;
+    window.openProductDetailScreen = openProductDetail;
     window.closeProductDetail = closeProductDetail;
+    window.closeProductDetailScreen = closeProductDetail;
     window.buildCatalogProductReadyMessage = buildCatalogProductReadyMessage;
     window.fillCatalogChatReadyMessage = fillCatalogChatReadyMessage;
     window.talkToSellerAboutProduct = talkToSellerAboutProduct;
@@ -46579,11 +46615,15 @@ if (typeof window !== 'undefined') {
     window.deleteSellerCoupon = deleteSellerCoupon;
     window.renderSellerCouponsUI = renderSellerCouponsUI;
     window.openCouponsModal = openCouponsModal;
+    window.openCouponsScreen = openCouponsModal;
     window.closeCouponsModal = closeCouponsModal;
+    window.closeCouponsScreen = closeCouponsModal;
     window.loadSellerShipping = loadSellerShipping;
     window.saveSellerShipping = saveSellerShipping;
     window.openShippingModal = openShippingModal;
+    window.openShippingScreen = openShippingModal;
     window.closeShippingModal = closeShippingModal;
+    window.closeShippingScreen = closeShippingModal;
     window.updateShippingModalUI = updateShippingModalUI;
     window.calculateCartShipping = calculateCartShipping;
     // Histórico de Ligações Dentro das Conversas, Perfil Isolado e Controle de Câmera (v1.0.182)
@@ -46791,7 +46831,9 @@ window.handleCallSwitchedToVideo = handleCallSwitchedToVideo;
     window.closeDailyChestModal = closeDailyChestModal;
     window.claimDailyChestReward = claimDailyChestReward;
     window.openDailyChestWithdrawModal = openDailyChestWithdrawModal;
+    window.openDailyChestWithdrawScreen = openDailyChestWithdrawModal;
     window.closeDailyChestWithdrawModal = closeDailyChestWithdrawModal;
+    window.closeDailyChestWithdrawScreen = closeDailyChestWithdrawModal;
     window.submitChestWithdrawal = submitChestWithdrawal;
     window.saveChestPixKeyType = saveChestPixKeyType;
     window.saveChestPixKey = saveChestPixKey;
@@ -47875,6 +47917,9 @@ export function openDailyChestWithdrawModal() {
     updateDailyChestUI();
     const modal = document.getElementById('daily-chest-withdraw-modal');
     if (modal) {
+        const scrollBody = document.getElementById('daily-chest-withdraw-scroll-body');
+        if (scrollBody) scrollBody.scrollTop = 0;
+        modal.classList?.add('active');
         modal.style.display = 'flex';
         modal.setAttribute('aria-hidden', 'false');
     }
@@ -47886,6 +47931,7 @@ export function openDailyChestWithdrawModal() {
 export function closeDailyChestWithdrawModal() {
     const modal = document.getElementById('daily-chest-withdraw-modal');
     if (modal) {
+        modal.classList?.remove('active');
         modal.style.display = 'none';
         modal.setAttribute('aria-hidden', 'true');
     }
@@ -57383,6 +57429,7 @@ export function closeUserChannelScreen() {
     closeChannelManageScreen();
     closeChannelAnalyticsScreen();
     closeChannelMembershipScreen();
+    closeChannelAboutScreen();
     closeChannelCommunityScreen();
     closeLevelProgressionScreen();
     if (typeof stopFeedPostMusic === 'function') {
@@ -57791,10 +57838,19 @@ export function openChannelAboutModal() {
         </div>
     `;
 
+    const scrollBody = document.getElementById('channel-about-scroll-body');
+    if (scrollBody) scrollBody.scrollTop = 0;
+    modal.classList?.add('active');
     modal.style.display = 'flex';
     modal.setAttribute('aria-hidden', 'false');
     if (window.lucide) lucide.createIcons();
 }
+
+export function closeChannelAboutScreen() {
+    closeChannelSubModal('channel-about-modal');
+}
+
+export const openChannelAboutScreen = openChannelAboutModal;
 
 export function openChannelCommunityModal(options = {}) {
     const modal = document.getElementById('channel-community-modal');
@@ -58941,6 +58997,8 @@ if (typeof window !== 'undefined') {
     window.saveChannelCustomizeScreen = saveChannelCustomizeModal;
     window.toggleChannelSubscription = toggleChannelSubscription;
     window.openChannelAboutModal = openChannelAboutModal;
+    window.openChannelAboutScreen = openChannelAboutModal;
+    window.closeChannelAboutScreen = closeChannelAboutScreen;
     window.openChannelCommunityModal = openChannelCommunityModal;
     window.openChannelCommunityScreen = openChannelCommunityModal;
     window.closeChannelCommunityScreen = closeChannelCommunityScreen;

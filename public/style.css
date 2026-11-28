@@ -33763,7 +33763,8 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
 .channel-analytics-screen,
 .channel-membership-screen,
 .channel-community-screen,
-.channel-level-screen {
+.channel-level-screen,
+.channel-about-screen {
     z-index: 1380;
     background: #0f0f0f;
     overflow: hidden;
@@ -33771,13 +33772,15 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
 .channel-analytics-screen.active,
 .channel-membership-screen.active,
 .channel-community-screen.active,
-.channel-level-screen.active {
+.channel-level-screen.active,
+.channel-about-screen.active {
     display: flex !important;
 }
 .channel-analytics-topbar,
 .channel-membership-topbar,
 .channel-community-topbar,
-.channel-level-topbar {
+.channel-level-topbar,
+.channel-about-topbar {
     flex-shrink: 0;
 }
 .channel-subscreen-topbar-title {
@@ -33800,7 +33803,8 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
 .channel-analytics-scroll-body,
 .channel-membership-scroll-body,
 .channel-community-scroll-body,
-.channel-level-scroll-body {
+.channel-level-scroll-body,
+.channel-about-scroll-body {
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
@@ -33809,7 +33813,8 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
 .channel-analytics-container,
 .channel-membership-container,
 .channel-community-container,
-.channel-level-container {
+.channel-level-container,
+.channel-about-container {
     width: 100%;
     max-width: 580px;
     margin: 0 auto;
@@ -35965,8 +35970,10 @@ textarea,
     .channel-membership-scroll-body,
     .channel-community-scroll-body,
     .channel-level-scroll-body,
+    .channel-about-scroll-body,
     .music-picker-scroll-body,
     .vortex-settings-screen-scroll-body,
+    .catalog-subscreen-scroll-body,
     .channel-modal-body,
     .settings-content,
     .post-composer {
@@ -36009,8 +36016,10 @@ body.vortex-mobile-opt .channel-analytics-screen,
 body.vortex-mobile-opt .channel-membership-screen,
 body.vortex-mobile-opt .channel-community-screen,
 body.vortex-mobile-opt .channel-level-screen,
+body.vortex-mobile-opt .channel-about-screen,
 body.vortex-mobile-opt .music-picker-screen,
-body.vortex-mobile-opt .vortex-settings-screen {
+body.vortex-mobile-opt .vortex-settings-screen,
+body.vortex-mobile-opt .catalog-subscreen {
     contain: layout style;
 }
 
@@ -36063,6 +36072,70 @@ body.vortex-mobile-opt .vortex-settings-screen {
     max-width: 100%;
     box-sizing: border-box;
     min-width: 0;
+}
+
+/* ==========================================================================
+   v1.0.325: Telas Próprias do Catálogo (Produto, Detalhes, Cupons, Frete) e Saque Pix
+   ========================================================================== */
+.catalog-subscreen {
+    z-index: 2500;
+    background: #0f0f12;
+    color: #f1f1f1;
+    overflow: hidden;
+}
+.catalog-subscreen.active {
+    display: flex !important;
+}
+.catalog-subscreen.catalog-coupons-screen,
+.catalog-subscreen.catalog-shipping-screen {
+    background: #0d0f1a;
+}
+.catalog-subscreen-topbar {
+    flex-shrink: 0;
+    background: #0f0f12;
+}
+.catalog-subscreen-scroll-body {
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+}
+.catalog-subscreen-container {
+    width: 100%;
+    max-width: 600px !important;
+    margin: 0 auto;
+    padding: 16px 16px calc(36px + env(safe-area-inset-bottom, 0px)) !important;
+    box-sizing: border-box;
+    flex: none !important;
+    max-height: none !important;
+    overflow: visible !important;
+    min-width: 0;
+}
+.catalog-subscreen-container > * {
+    max-width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
+}
+.catalog-subscreen-footer {
+    flex-shrink: 0;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 12px 16px calc(14px + env(safe-area-inset-bottom, 0px));
+}
+.catalog-subscreen-footer-inner {
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-sizing: border-box;
+}
+.vortex-settings-screen.daily-chest-withdraw-screen {
+    background: linear-gradient(180deg, #101320 0%, #0a0c14 100%);
+}
+.daily-chest-withdraw-screen .daily-chest-withdraw-actions {
+    flex-wrap: wrap !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
