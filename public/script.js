@@ -24898,7 +24898,7 @@ export function getAdminReports() {
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
 const TRANSPARENT_IMG_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E";
-export const CURRENT_APP_VERSION = '1.0.333';
+export const CURRENT_APP_VERSION = '1.0.334';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -36017,9 +36017,16 @@ export function renderPostCarouselHTML(postOrSlides, options = {}) {
                 chunkAttr = `data-chunk-post-slide="${escapeHTML(postId)}:${idx}"`;
             }
         }
+        const isDeferredRemote = Boolean(idx > 0 && src && /^https?:\/\//i.test(src));
+        const isPending = Boolean((!src && chunkAttr) || isDeferredRemote || (idx === 0 && src && /^https?:\/\//i.test(src)));
+        const srcAttr = (!src || isDeferredRemote) ? '' : `src="${src}"`;
+        const deferredAttr = isDeferredRemote ? `data-lazy-slide-src="${escapeHTML(src)}"` : '';
         return `
-            <div class="vortex-carousel-slide${idx === 0 ? ' active' : ''}" data-slide-index="${idx}">
-                <img src="${src || ''}" ${chunkAttr} alt="${altText} (${idx + 1}/${total})" loading="lazy" decoding="async" draggable="false" oncontextmenu="return false;" class="protected-media${imgClass}" />
+            <div class="vortex-carousel-slide${idx === 0 ? ' active' : ''}${isPending ? ' is-loading' : ''}" data-slide-index="${idx}">
+                <div class="vortex-carousel-loader" aria-hidden="${isPending ? 'false' : 'true'}">
+                    <span class="vortex-carousel-spinner"></span>
+                </div>
+                <img ${srcAttr} ${chunkAttr} ${deferredAttr} alt="${altText} (${idx + 1}/${total})" loading="lazy" decoding="async" draggable="false" oncontextmenu="return false;" class="protected-media${imgClass}" />
             </div>
         `;
     }).join('');
@@ -36097,6 +36104,136 @@ function getCarouselNode(carouselEl, selector) {
     return carouselEl.querySelector?.(selector) || null;
 }
 
+function setCarouselSlideLoading(slideEl, isLoading) {
+    if (!slideEl) return;
+    slideEl.classList?.toggle('is-loading', Boolean(isLoading));
+    const loader = getCarouselNode(slideEl, '.vortex-carousel-loader');
+    loader?.setAttribute?.('aria-hidden', isLoading ? 'false' : 'true');
+}
+
+function bindCarouselSlideImageEvents(slideEl, imgEl) {
+    if (!slideEl || !imgEl || imgEl.dataset?.carouselLoadBound === 'true') return;
+    if (imgEl.dataset) imgEl.dataset.carouselLoadBound = 'true';
+    if (typeof imgEl.addEventListener === 'function') {
+        imgEl.addEventListener('load', () => setCarouselSlideLoading(slideEl, false));
+        imgEl.addEventListener('error', () => setCarouselSlideLoading(slideEl, false));
+    }
+}
+
+function finishCarouselSlideImage(slideEl, imgEl, src) {
+    if (!slideEl || !imgEl || !src) {
+        setCarouselSlideLoading(slideEl, false);
+        return;
+    }
+    bindCarouselSlideImageEvents(slideEl, imgEl);
+    imgEl.src = src;
+    if (typeof imgEl.naturalWidth === 'undefined' || (imgEl.complete && imgEl.naturalWidth > 0)) {
+        setCarouselSlideLoading(slideEl, false);
+    }
+}
+
+export async function loadCarouselSlideAtIndex(carouselEl, slideIdx = 0) {
+    if (!carouselEl) return false;
+    const slideEls = Array.from(carouselEl.querySelectorAll?.('.vortex-carousel-slide') || []);
+    const targetNum = Math.max(0, Number(slideIdx) || 0);
+    const slideEl = slideEls.find(el => String(el.dataset?.slideIndex) === String(targetNum)) || slideEls[targetNum] || null;
+    if (!slideEl) return false;
+
+    const imgEl = slideEl.querySelector?.('img') || slideEl.querySelectorAll?.('img')?.[0] || null;
+    if (!imgEl) {
+        setCarouselSlideLoading(slideEl, false);
+        return false;
+    }
+    bindCarouselSlideImageEvents(slideEl, imgEl);
+
+    const chunkPostId = imgEl.dataset?.chunkPostId;
+    if (chunkPostId) {
+        const cacheKey = `posts_${chunkPostId}`;
+        if (mediaChunkCache.has(cacheKey)) {
+            finishCarouselSlideImage(slideEl, imgEl, mediaChunkCache.get(cacheKey));
+            imgEl.removeAttribute?.('data-chunk-post-id');
+            if (imgEl.dataset) delete imgEl.dataset.chunkPostId;
+            return true;
+        }
+        if (imgEl.dataset?.chunkLoading === 'true') return true;
+        if (imgEl.dataset) imgEl.dataset.chunkLoading = 'true';
+        setCarouselSlideLoading(slideEl, true);
+        try {
+            const fullData = await loadMediaWithChunks('posts', chunkPostId);
+            if (fullData) {
+                mediaChunkCache.set(cacheKey, fullData);
+                finishCarouselSlideImage(slideEl, imgEl, fullData);
+                imgEl.removeAttribute?.('data-chunk-post-id');
+                if (imgEl.dataset) delete imgEl.dataset.chunkPostId;
+            } else {
+                setCarouselSlideLoading(slideEl, false);
+            }
+        } catch (err) {
+            setCarouselSlideLoading(slideEl, false);
+            console.warn('Erro ao carregar slide inicial do carrossel:', err);
+        } finally {
+            if (imgEl.dataset) delete imgEl.dataset.chunkLoading;
+        }
+        return true;
+    }
+
+    const chunkSlideSpec = imgEl.dataset?.chunkPostSlide || '';
+    if (chunkSlideSpec) {
+        const parts = chunkSlideSpec.split(':');
+        const postId = parts[0];
+        const sIdx = Number(parts[1]);
+        if (postId && Number.isInteger(sIdx)) {
+            const slideDocId = `${postId}_${sIdx}`;
+            const cacheKey = `post_slides_${slideDocId}`;
+            if (mediaChunkCache.has(cacheKey)) {
+                finishCarouselSlideImage(slideEl, imgEl, mediaChunkCache.get(cacheKey));
+                imgEl.removeAttribute?.('data-chunk-post-slide');
+                if (imgEl.dataset) delete imgEl.dataset.chunkPostSlide;
+                return true;
+            }
+            if (imgEl.dataset?.chunkLoading === 'true') return true;
+            if (imgEl.dataset) imgEl.dataset.chunkLoading = 'true';
+            setCarouselSlideLoading(slideEl, true);
+            try {
+                const fullData = await loadMediaWithChunks('post_slides', slideDocId);
+                if (fullData) {
+                    mediaChunkCache.set(cacheKey, fullData);
+                    finishCarouselSlideImage(slideEl, imgEl, fullData);
+                    imgEl.removeAttribute?.('data-chunk-post-slide');
+                    if (imgEl.dataset) delete imgEl.dataset.chunkPostSlide;
+                } else {
+                    setCarouselSlideLoading(slideEl, false);
+                }
+            } catch (err) {
+                setCarouselSlideLoading(slideEl, false);
+                console.warn('Erro ao carregar slide do carrossel:', err);
+            } finally {
+                if (imgEl.dataset) delete imgEl.dataset.chunkLoading;
+            }
+            return true;
+        }
+    }
+
+    const lazySrc = imgEl.dataset?.lazySlideSrc || '';
+    if (lazySrc) {
+        setCarouselSlideLoading(slideEl, true);
+        imgEl.removeAttribute?.('data-lazy-slide-src');
+        if (imgEl.dataset) delete imgEl.dataset.lazySlideSrc;
+        finishCarouselSlideImage(slideEl, imgEl, lazySrc);
+        return true;
+    }
+
+    const currentSrc = imgEl.src || imgEl.getAttribute?.('src') || '';
+    if (currentSrc) {
+        if (typeof imgEl.naturalWidth === 'undefined' || (imgEl.complete && imgEl.naturalWidth > 0) || /^data:|^blob:/i.test(currentSrc)) {
+            setCarouselSlideLoading(slideEl, false);
+        }
+    } else {
+        setCarouselSlideLoading(slideEl, false);
+    }
+    return true;
+}
+
 export function setPostCarouselSlide(carouselEl, targetIndex) {
     if (!carouselEl) return 0;
     const total = Number(carouselEl.dataset?.carouselTotal || carouselEl.querySelectorAll?.('.vortex-carousel-slide')?.length || 0);
@@ -36143,6 +36280,8 @@ export function setPostCarouselSlide(carouselEl, targetIndex) {
             thumb.classList?.toggle('active', i === nextIdx);
         });
     }
+
+    loadCarouselSlideAtIndex(carouselEl, nextIdx);
     return nextIdx;
 }
 
@@ -36214,6 +36353,8 @@ export function bindPostCarousels(container) {
                 }
             }, { passive: true });
         }
+
+        loadCarouselSlideAtIndex(carouselEl, Number(carouselEl.dataset?.carouselIndex || 0));
     });
 }
 
@@ -37516,13 +37657,28 @@ function resolvePostChunkedMedia(container, postsList) {
             if (isVideoChunk) {
                 return loadVideoChunkOnDemand(el, postsList);
             }
+            const slideEl = el.closest?.('.vortex-carousel-slide');
+            if (el.dataset?.chunkLoading === 'true') return Promise.resolve();
+            if (el.dataset) el.dataset.chunkLoading = 'true';
             return loadMediaWithChunks('posts', pId).then(fullData => {
-                if (!fullData) return;
+                if (!fullData) {
+                    if (slideEl) setCarouselSlideLoading(slideEl, false);
+                    return;
+                }
                 const postObj = Array.isArray(postsList) ? postsList.find(p => p.id === pId) : null;
                 if (postObj) postObj.mediaData = fullData;
-                el.src = fullData;
+                if (slideEl) {
+                    finishCarouselSlideImage(slideEl, el, fullData);
+                } else {
+                    el.src = fullData;
+                }
                 el.removeAttribute('data-chunk-post-id');
-            }).catch(err => console.warn('Erro ao carregar chunks de mídia do post:', err));
+            }).catch(err => {
+                if (slideEl) setCarouselSlideLoading(slideEl, false);
+                console.warn('Erro ao carregar chunks de mídia do post:', err);
+            }).finally(() => {
+                if (el.dataset) delete el.dataset.chunkLoading;
+            });
         });
     });
 
@@ -37534,9 +37690,21 @@ function resolvePostChunkedMedia(container, postsList) {
         if (!postId || !Number.isInteger(slideIdx)) return;
         const slideDocId = `${postId}_${slideIdx}`;
         const cacheKey = `post_slides_${slideDocId}`;
+        const slideEl = el.closest?.('.vortex-carousel-slide');
         if (mediaChunkCache.has(cacheKey)) {
-            el.src = mediaChunkCache.get(cacheKey);
+            if (slideEl) {
+                finishCarouselSlideImage(slideEl, el, mediaChunkCache.get(cacheKey));
+            } else {
+                el.src = mediaChunkCache.get(cacheKey);
+            }
             el.removeAttribute('data-chunk-post-slide');
+            return;
+        }
+        // Em carrosséis, os slides seguintes carregam sob demanda de um por um ao passar para o lado
+        if (el.closest?.('.vortex-carousel')) {
+            if (slideEl && slideEl.classList?.contains('active')) {
+                loadCarouselSlideAtIndex(el.closest('.vortex-carousel'), slideIdx);
+            }
             return;
         }
         observeChunkMediaElement(el, () => {
@@ -60345,6 +60513,7 @@ if (typeof window !== 'undefined') {
     window.setPostCarouselSlide = setPostCarouselSlide;
     window.navigatePostCarousel = navigatePostCarousel;
     window.bindPostCarousels = bindPostCarousels;
+    window.loadCarouselSlideAtIndex = loadCarouselSlideAtIndex;
     window.isMp4VideoFile = isMp4VideoFile;
     window.getPostVideoCover = getPostVideoCover;
     window.getPendingPostVideoCoverData = getPendingPostVideoCoverData;

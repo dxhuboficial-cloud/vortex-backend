@@ -35153,6 +35153,7 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
     will-change: transform;
 }
 .vortex-carousel-slide {
+    position: relative;
     flex: 0 0 100%;
     width: 100%;
     min-width: 100%;
@@ -35161,12 +35162,46 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
     justify-content: center;
     background: #000;
 }
+.vortex-carousel-slide.is-loading {
+    min-height: 220px;
+}
 .vortex-carousel-slide img {
     width: 100%;
     max-height: 520px;
     object-fit: contain;
     display: block;
     background: #000;
+    transition: opacity 0.22s ease;
+}
+.vortex-carousel-slide.is-loading img {
+    opacity: 0;
+    visibility: hidden;
+}
+.vortex-carousel-loader {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.72);
+    pointer-events: none;
+}
+.vortex-carousel-slide.is-loading .vortex-carousel-loader {
+    display: flex;
+}
+.vortex-carousel-spinner {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 3px solid rgba(255, 255, 255, 0.2);
+    border-top-color: var(--accent-color, #fff01f);
+    animation: vortexCarouselSpin 0.75s linear infinite;
+}
+@keyframes vortexCarouselSpin {
+    to {
+        transform: rotate(360deg);
+    }
 }
 .post-media .vortex-carousel-slide img {
     max-height: 280px;

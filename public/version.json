@@ -1,6 +1,6 @@
 {
-  "version": "1.0.333",
-  "build": 333,
+  "version": "1.0.334",
+  "build": 334,
   "releaseDate": "2026-11-28",
-  "notes": "Reorganização do emblema Melhor Criador centralizado sob a foto do canal em fluxo flex sem corte lateral no celular (v1.0.333)"
+  "notes": "Bolinha de carregamento (spinner) por slide no carrossel de imagens com carregamento sob demanda de um por um ao passar para o lado (v1.0.334)"
 }
