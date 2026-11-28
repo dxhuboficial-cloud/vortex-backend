@@ -1,6 +1,6 @@
 {
-  "version": "1.0.332",
-  "build": 332,
+  "version": "1.0.333",
+  "build": 333,
   "releaseDate": "2026-11-28",
-  "notes": "Liberação automática de todos os desbloqueios de nível do canal (10/30/50/70/90/110) para administradores mantendo progressão normal para usuários comuns (v1.0.332)"
+  "notes": "Reorganização do emblema Melhor Criador centralizado sob a foto do canal em fluxo flex sem corte lateral no celular (v1.0.333)"
 }

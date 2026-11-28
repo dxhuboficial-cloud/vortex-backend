@@ -24898,7 +24898,7 @@ export function getAdminReports() {
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
 const TRANSPARENT_IMG_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E";
-export const CURRENT_APP_VERSION = '1.0.332';
+export const CURRENT_APP_VERSION = '1.0.333';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
