@@ -24898,7 +24898,7 @@ export function getAdminReports() {
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
 const TRANSPARENT_IMG_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E";
-export const CURRENT_APP_VERSION = '1.0.335';
+export const CURRENT_APP_VERSION = '1.0.336';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -57401,7 +57401,16 @@ export function renderChannelScreen() {
             memberBtn.style.display = canShowPaidPerks ? 'inline-flex' : 'none';
             memberBtn.classList.toggle('active', canShowPaidPerks && isMember);
         }
-        if (memberLabel) memberLabel.innerText = isMember ? 'Membro ✓' : 'Seja Membro';
+        if (memberLabel) {
+            if (isMember) {
+                memberLabel.innerText = 'Membro ✓';
+            } else if (isChannelPaidMembershipActive(userData)) {
+                const pricing = getChannelMembershipPricing(userData);
+                memberLabel.innerText = `Seja Membro • ${formatBrlCurrency(pricing.price)}`;
+            } else {
+                memberLabel.innerText = 'Seja Membro';
+            }
+        }
 
         const superFanBtn = document.getElementById('channel-superfan-btn');
         const superFanLabel = document.getElementById('channel-superfan-label');
@@ -58128,7 +58137,507 @@ async function toggleChannelMembershipTier(targetUid, tierKey) {
     return !alreadyActive;
 }
 
+export const CHANNEL_MEMBER_MIN_PRICE = 1;
+export const CHANNEL_MEMBER_MAX_PRICE = 5000;
+export const CHANNEL_MEMBER_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
+
+let activeChannelMemberCheckoutOwnerUid = '';
+let activeChannelMemberPaymentId = null;
+let channelMemberPixPollInterval = null;
+
+export function parseChannelMemberPrice(rawValue) {
+    if (typeof rawValue === 'number') {
+        return Number.isFinite(rawValue) ? Math.round(Math.max(0, rawValue) * 100) / 100 : 0;
+    }
+    let cleaned = String(rawValue || '').replace(/R\$\s*/gi, '').replace(/\s+/g, '').trim();
+    if (!cleaned) return 0;
+    if (cleaned.includes(',') && cleaned.includes('.')) {
+        cleaned = cleaned.replace(/\./g, '').replace(',', '.');
+    } else if (cleaned.includes(',')) {
+        cleaned = cleaned.replace(',', '.');
+    }
+    const parsed = Number(cleaned);
+    return Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed * 100) / 100 : 0;
+}
+
+export function formatBrlCurrency(value) {
+    const safe = Number.isFinite(Number(value)) ? Number(value) : 0;
+    return `R$ ${safe.toFixed(2).replace('.', ',')}`;
+}
+
+export function getChannelMembershipPricing(userData = currentProfile) {
+    const u = (userData && typeof userData === 'object') ? userData : {};
+    const price = parseChannelMemberPrice(u.channelMemberPrice);
+    const paidEnabled = Boolean(u.channelMemberPaidEnabled) && price >= CHANNEL_MEMBER_MIN_PRICE;
+    return {
+        paidEnabled,
+        rawPaidEnabled: Boolean(u.channelMemberPaidEnabled),
+        price,
+        benefits: String(u.channelMemberBenefits || '').trim(),
+        pixKey: String(u.channelMemberPixKey || u.pixKey || '').trim(),
+        earningsBalance: Math.round(Math.max(0, Number(u.channelMemberEarningsBalance || 0)) * 100) / 100,
+        earningsTotal: Math.round(Math.max(0, Number(u.channelMemberEarningsTotal || 0)) * 100) / 100,
+        paidCount: Math.max(0, Math.floor(Number(u.channelMemberPaidCount || 0))),
+        payoutsTotal: Math.round(Math.max(0, Number(u.channelMemberPayoutsTotal || 0)) * 100) / 100,
+        recentPayments: Array.isArray(u.channelMemberRecentPayments) ? u.channelMemberRecentPayments : []
+    };
+}
+
+export function isChannelPaidMembershipActive(userData = currentProfile) {
+    const pricing = getChannelMembershipPricing(userData);
+    return Boolean(pricing.paidEnabled && pricing.price >= CHANNEL_MEMBER_MIN_PRICE && pricing.price <= CHANNEL_MEMBER_MAX_PRICE);
+}
+
+export async function saveChannelMembershipPricing(overrideInput = null) {
+    if (!currentUser?.uid) {
+        showToast('Login necessário', 'Entre na sua conta para salvar a monetização.', 'red');
+        return { success: false, reason: 'unauthenticated' };
+    }
+
+    const paidEnabled = overrideInput && typeof overrideInput === 'object' && 'paidEnabled' in overrideInput
+        ? Boolean(overrideInput.paidEnabled)
+        : Boolean(document.getElementById('channel-member-paid-toggle')?.checked);
+    const rawPrice = overrideInput && typeof overrideInput === 'object' && 'price' in overrideInput
+        ? overrideInput.price
+        : (document.getElementById('channel-member-price-input')?.value || '');
+    const rawPixKey = overrideInput && typeof overrideInput === 'object' && 'pixKey' in overrideInput
+        ? overrideInput.pixKey
+        : (document.getElementById('channel-member-pix-input')?.value || '');
+    const benefits = String(
+        overrideInput && typeof overrideInput === 'object' && 'benefits' in overrideInput
+            ? overrideInput.benefits
+            : (document.getElementById('channel-member-benefits-input')?.value || '')
+    ).trim().slice(0, 280);
+
+    const price = parseChannelMemberPrice(rawPrice);
+    let pixKey = String(rawPixKey || '').trim();
+
+    if (paidEnabled) {
+        if (!Number.isFinite(price) || price < CHANNEL_MEMBER_MIN_PRICE || price > CHANNEL_MEMBER_MAX_PRICE) {
+            showToast('Valor inválido', 'Informe um preço entre R$ 1,00 e R$ 5.000,00 para cobrar no Seja Membro.', 'red');
+            return { success: false, reason: 'invalid_price' };
+        }
+        const pixCheck = typeof validatePixKey === 'function' ? validatePixKey(pixKey) : { isValid: Boolean(pixKey), formatted: pixKey };
+        if (!pixKey || !pixCheck.isValid) {
+            showToast('Chave Pix obrigatória', pixCheck.error || 'Informe uma Chave Pix válida para receber os pagamentos.', 'red');
+            return { success: false, reason: 'invalid_pix_key' };
+        }
+        pixKey = pixCheck.formatted || pixKey;
+    }
+
+    const updateFields = {
+        channelMemberPaidEnabled: paidEnabled,
+        channelMemberPrice: price,
+        channelMemberBenefits: benefits,
+        channelMemberPixKey: pixKey,
+        updatedAt: Date.now()
+    };
+
+    if (!currentProfile) currentProfile = { uid: currentUser.uid };
+    Object.assign(currentProfile, updateFields);
+    if (activeChannelUid === currentUser.uid && activeChannelUserData) {
+        Object.assign(activeChannelUserData, updateFields);
+    }
+    if (typeof contactUserDataMap !== 'undefined' && contactUserDataMap?.has(currentUser.uid)) {
+        contactUserDataMap.set(currentUser.uid, { ...contactUserDataMap.get(currentUser.uid), ...updateFields });
+    }
+
+    if (typeof setDoc === 'function' && typeof doc === 'function' && typeof db !== 'undefined' && db) {
+        try {
+            await setDoc(doc(db, 'users', currentUser.uid), updateFields, { merge: true });
+        } catch (err) {
+            console.warn('Erro ao salvar preço do Seja Membro:', err);
+        }
+    }
+
+    renderChannelScreen();
+    if (document.getElementById('channel-membership-modal')?.classList?.contains('active')) {
+        openChannelMembershipModal(currentUser.uid);
+    }
+    showToast(
+        paidEnabled ? 'Cobrança Pix Ativada! 💰' : 'Seja Membro Gratuito',
+        paidEnabled ? `Assinatura configurada por ${formatBrlCurrency(price)} via Pix.` : 'O botão Seja Membro voltou ao modo gratuito.',
+        paidEnabled ? 'green' : 'blue'
+    );
+    return { success: true, pricing: getChannelMembershipPricing(currentProfile) };
+}
+
+export async function requestChannelMemberPayout() {
+    if (!currentUser?.uid) {
+        return { success: false, reason: 'unauthenticated' };
+    }
+    const uid = currentUser.uid;
+    const pricing = getChannelMembershipPricing(currentProfile);
+    if (pricing.earningsBalance <= 0) {
+        showToast('Sem saldo disponível', 'Você ainda não possui saldo de assinaturas para sacar via Pix.', 'yellow');
+        return { success: false, reason: 'no_balance' };
+    }
+    const pixKey = pricing.pixKey || String(currentProfile?.pixKey || '').trim();
+    const pixCheck = typeof validatePixKey === 'function' ? validatePixKey(pixKey) : { isValid: Boolean(pixKey), formatted: pixKey };
+    if (!pixKey || !pixCheck.isValid) {
+        showToast('Chave Pix necessária', pixCheck.error || 'Salve uma Chave Pix válida antes de solicitar o repasse.', 'red');
+        return { success: false, reason: 'invalid_pix_key' };
+    }
+
+    const amount = pricing.earningsBalance;
+    const nextPayoutsTotal = Math.round((pricing.payoutsTotal + amount) * 100) / 100;
+    const now = Date.now();
+
+    if (typeof addDoc === 'function' && typeof collection === 'function' && typeof db !== 'undefined' && db) {
+        try {
+            await addDoc(collection(db, 'channel_member_payouts'), {
+                uid,
+                pixKey,
+                amount,
+                status: 'requested',
+                createdAt: now
+            });
+        } catch (_) {}
+    }
+
+    const ownerPatch = {
+        channelMemberEarningsBalance: 0,
+        channelMemberPayoutsTotal: nextPayoutsTotal,
+        channelMemberLastPayoutAt: now,
+        updatedAt: now
+    };
+    Object.assign(currentProfile, ownerPatch);
+    if (activeChannelUid === uid && activeChannelUserData) {
+        Object.assign(activeChannelUserData, ownerPatch);
+    }
+
+    if (typeof updateDoc === 'function' && typeof doc === 'function' && typeof db !== 'undefined' && db) {
+        try {
+            await updateDoc(doc(db, 'users', uid), ownerPatch);
+        } catch (_) {}
+    }
+
+    if (document.getElementById('channel-membership-modal')?.classList?.contains('active')) {
+        openChannelMembershipModal(uid);
+    }
+    showToast('Repasse Pix Solicitado! ⚡', `Saque de ${formatBrlCurrency(amount)} enviado para a chave ${pixKey}.`, 'green');
+    return { success: true, amount, pixKey, payoutsTotal: nextPayoutsTotal };
+}
+
+export function closeChannelMemberCheckoutModal() {
+    if (channelMemberPixPollInterval) {
+        clearInterval(channelMemberPixPollInterval);
+        channelMemberPixPollInterval = null;
+    }
+    closeChannelSubModal('channel-member-checkout-modal');
+}
+
+export function openChannelMemberCheckoutModal(targetUid = activeChannelUid) {
+    const uid = targetUid || activeChannelUid || '';
+    const modal = document.getElementById('channel-member-checkout-modal');
+    if (!modal || !uid) return false;
+
+    const userData = getEffectiveChannelUserData(uid, activeChannelUserData);
+    const pricing = getChannelMembershipPricing(userData);
+    activeChannelMemberCheckoutOwnerUid = uid;
+    activeChannelMemberPaymentId = null;
+    if (channelMemberPixPollInterval) {
+        clearInterval(channelMemberPixPollInterval);
+        channelMemberPixPollInterval = null;
+    }
+
+    const chNameEl = document.getElementById('channel-member-checkout-channel-name');
+    const priceEl = document.getElementById('channel-member-checkout-price-badge');
+    const benefitsEl = document.getElementById('channel-member-checkout-benefits');
+    if (chNameEl) chNameEl.innerText = userData.channelName || userData.name || 'Canal VORTEX';
+    if (priceEl) priceEl.innerText = formatBrlCurrency(pricing.price);
+    if (benefitsEl) {
+        benefitsEl.innerText = pricing.benefits || 'Acesso exclusivo aos benefícios de membro oficial deste canal por 30 dias.';
+    }
+
+    const formStep = document.getElementById('channel-member-pix-step-form');
+    const qrStep = document.getElementById('channel-member-pix-step-qrcode');
+    const successStep = document.getElementById('channel-member-pix-step-success');
+    if (formStep) formStep.style.display = 'flex';
+    if (qrStep) qrStep.style.display = 'none';
+    if (successStep) successStep.style.display = 'none';
+
+    const qrImg = document.getElementById('channel-member-pix-qr-image');
+    const copyInp = document.getElementById('channel-member-pix-copy-input');
+    if (qrImg) qrImg.src = '';
+    if (copyInp) copyInp.value = '';
+
+    const nameInp = document.getElementById('channel-member-payer-name');
+    const emailInp = document.getElementById('channel-member-payer-email');
+    if (nameInp && currentProfile?.name) {
+        nameInp.value = `${currentProfile.name} ${currentProfile.surname || ''}`.trim();
+    }
+    if (emailInp && currentUser?.email) {
+        emailInp.value = currentUser.email;
+    }
+
+    const scrollBody = document.getElementById('channel-member-checkout-scroll-body');
+    if (scrollBody) scrollBody.scrollTop = 0;
+
+    modal.classList?.add('active');
+    modal.style.display = 'flex';
+    modal.setAttribute('aria-hidden', 'false');
+    if (window.lucide) lucide.createIcons();
+    return true;
+}
+
+export async function handleApprovedChannelMemberPayment({ paymentId, channelOwnerUid, subscriberUid, amount, subscriberName } = {}) {
+    const ownerUid = channelOwnerUid || activeChannelMemberCheckoutOwnerUid || activeChannelUid || '';
+    const memberUid = subscriberUid || currentUser?.uid || '';
+    if (!ownerUid || !memberUid) return false;
+
+    const now = Date.now();
+    const expiresAt = now + CHANNEL_MEMBER_DURATION_MS;
+    const ownerData = getEffectiveChannelUserData(ownerUid, activeChannelUserData);
+    const pricing = getChannelMembershipPricing(ownerData);
+    const safeAmount = Math.round(Math.max(0, Number(amount || pricing.price || 0)) * 100) / 100;
+
+    let alreadyCredited = false;
+    if (paymentId && typeof getDoc === 'function' && typeof doc === 'function' && typeof db !== 'undefined' && db) {
+        try {
+            const paySnap = await getDoc(doc(db, 'channel_member_payments', String(paymentId)));
+            if (paySnap.exists() && paySnap.data()?.credited === true) {
+                alreadyCredited = true;
+            }
+        } catch (_) {}
+    }
+
+    let latestOwnerDoc = ownerData;
+    if (typeof getDoc === 'function' && typeof doc === 'function' && typeof db !== 'undefined' && db) {
+        try {
+            const ownerSnap = await getDoc(doc(db, 'users', ownerUid));
+            if (ownerSnap.exists()) {
+                latestOwnerDoc = { ...ownerData, ...ownerSnap.data(), uid: ownerUid };
+            }
+        } catch (_) {}
+    }
+
+    const prevMembers = Array.isArray(latestOwnerDoc.channelMembers) ? latestOwnerDoc.channelMembers.filter(Boolean) : [];
+    const nextMembers = [...new Set([...prevMembers, memberUid])];
+    const nextSubs = {
+        ...(latestOwnerDoc.channelMemberSubscriptions && typeof latestOwnerDoc.channelMemberSubscriptions === 'object' ? latestOwnerDoc.channelMemberSubscriptions : {}),
+        [memberUid]: {
+            uid: memberUid,
+            paymentId: String(paymentId || ''),
+            amount: safeAmount,
+            startedAt: now,
+            expiresAt
+        }
+    };
+
+    const ownerPatch = {
+        channelMembers: nextMembers,
+        channelMemberSubscriptions: nextSubs
+    };
+
+    if (!alreadyCredited) {
+        const curBalance = Math.max(0, Number(latestOwnerDoc.channelMemberEarningsBalance || 0));
+        const curTotal = Math.max(0, Number(latestOwnerDoc.channelMemberEarningsTotal || 0));
+        const curCount = Math.max(0, Math.floor(Number(latestOwnerDoc.channelMemberPaidCount || 0)));
+        const prevRecent = Array.isArray(latestOwnerDoc.channelMemberRecentPayments) ? latestOwnerDoc.channelMemberRecentPayments : [];
+        ownerPatch.channelMemberEarningsBalance = Math.round((curBalance + safeAmount) * 100) / 100;
+        ownerPatch.channelMemberEarningsTotal = Math.round((curTotal + safeAmount) * 100) / 100;
+        ownerPatch.channelMemberPaidCount = curCount + 1;
+        ownerPatch.channelMemberRecentPayments = [
+            {
+                paymentId: String(paymentId || ''),
+                subscriberUid: memberUid,
+                subscriberName: String(subscriberName || currentProfile?.name || 'Membro VIP'),
+                amount: safeAmount,
+                approvedAt: now
+            },
+            ...prevRecent.filter(p => p && p.paymentId !== String(paymentId || ''))
+        ].slice(0, 15);
+
+        if (paymentId && typeof setDoc === 'function' && typeof doc === 'function' && typeof db !== 'undefined' && db) {
+            try {
+                await setDoc(doc(db, 'channel_member_payments', String(paymentId)), {
+                    paymentId: String(paymentId),
+                    channelOwnerUid: ownerUid,
+                    subscriberUid: memberUid,
+                    amount: safeAmount,
+                    status: 'approved',
+                    credited: true,
+                    approvedAt: now,
+                    expiresAt
+                }, { merge: true });
+            } catch (_) {}
+        }
+    }
+
+    if (activeChannelUserData && activeChannelUid === ownerUid) {
+        Object.assign(activeChannelUserData, ownerPatch);
+    }
+    if (typeof contactUserDataMap !== 'undefined' && contactUserDataMap?.has(ownerUid)) {
+        contactUserDataMap.set(ownerUid, { ...contactUserDataMap.get(ownerUid), ...ownerPatch });
+    }
+    if (typeof updateDoc === 'function' && typeof doc === 'function' && typeof db !== 'undefined' && db) {
+        try {
+            await updateDoc(doc(db, 'users', ownerUid), ownerPatch);
+        } catch (_) {}
+    }
+
+    const qrStep = document.getElementById('channel-member-pix-step-qrcode');
+    const formStep = document.getElementById('channel-member-pix-step-form');
+    const successStep = document.getElementById('channel-member-pix-step-success');
+    const successMsg = document.getElementById('channel-member-success-msg');
+    if (formStep) formStep.style.display = 'none';
+    if (qrStep) qrStep.style.display = 'none';
+    if (successStep) successStep.style.display = 'flex';
+    if (successMsg) {
+        const chTitle = latestOwnerDoc.channelName || latestOwnerDoc.name || 'canal';
+        successMsg.innerText = `Pagamento Pix de ${formatBrlCurrency(safeAmount)} confirmado! Você já é Membro de ${chTitle}.`;
+    }
+
+    renderChannelScreen();
+    if (!alreadyCredited) {
+        showToast('Seja Membro Liberado! 👑', `Seu acesso de Membro foi ativado após a confirmação do Pix (${formatBrlCurrency(safeAmount)}).`, 'green');
+    }
+    return true;
+}
+
+export async function checkChannelMemberPaymentStatus(paymentId = activeChannelMemberPaymentId, channelOwnerUid = activeChannelMemberCheckoutOwnerUid) {
+    if (!paymentId) return { approved: false, reason: 'missing_payment_id' };
+    try {
+        const res = await fetchApi(`/api/channel-membership-payment-status/${paymentId}`);
+        if (!res.ok) return { approved: false, status: 'error' };
+        const contentType = res.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) return { approved: false, status: 'invalid' };
+        const data = await res.json();
+
+        if (data.isApproved || data.status === 'approved') {
+            if (channelMemberPixPollInterval) {
+                clearInterval(channelMemberPixPollInterval);
+                channelMemberPixPollInterval = null;
+            }
+            await handleApprovedChannelMemberPayment({
+                paymentId,
+                channelOwnerUid: data.channelOwnerUid || channelOwnerUid,
+                subscriberUid: data.subscriberUid || currentUser?.uid,
+                amount: data.amount
+            });
+            return { approved: true, paymentId, status: 'approved' };
+        }
+        return { approved: false, status: data.status || 'pending' };
+    } catch (err) {
+        console.warn('Erro ao consultar status do Pix Seja Membro:', err);
+        return { approved: false, status: 'error' };
+    }
+}
+
+export function startChannelMemberPixPolling(paymentId, channelOwnerUid) {
+    if (channelMemberPixPollInterval) clearInterval(channelMemberPixPollInterval);
+    channelMemberPixPollInterval = setInterval(() => {
+        checkChannelMemberPaymentStatus(paymentId, channelOwnerUid);
+    }, 3000);
+}
+
+export async function generateChannelMemberPixPayment(overrideInputs = null) {
+    if (!currentUser?.uid) {
+        showToast('Login necessário', 'Entre na sua conta para assinar via Pix.', 'red');
+        return { success: false, reason: 'unauthenticated' };
+    }
+    const ownerUid = overrideInputs?.channelOwnerUid || activeChannelMemberCheckoutOwnerUid || activeChannelUid || '';
+    if (!ownerUid || ownerUid === currentUser.uid) {
+        return { success: false, reason: 'invalid_channel' };
+    }
+
+    const ownerData = getEffectiveChannelUserData(ownerUid, activeChannelUserData);
+    const pricing = getChannelMembershipPricing(ownerData);
+    if (!pricing.paidEnabled) {
+        return { success: false, reason: 'not_paid_channel' };
+    }
+
+    const name = String(overrideInputs?.name ?? (document.getElementById('channel-member-payer-name')?.value || '')).trim();
+    const cpfRaw = String(overrideInputs?.cpf ?? (document.getElementById('channel-member-payer-cpf')?.value || '')).replace(/\D/g, '');
+    const email = String(overrideInputs?.email ?? (document.getElementById('channel-member-payer-email')?.value || '')).trim();
+
+    if (!name) {
+        showToast('Campo obrigatório', 'Preencha seu Nome Completo.', 'red');
+        return { success: false, reason: 'missing_name' };
+    }
+    if (!cpfRaw || cpfRaw.length !== 11) {
+        showToast('CPF obrigatório', 'Preencha seu CPF completo com 11 dígitos.', 'red');
+        return { success: false, reason: 'invalid_cpf' };
+    }
+    if (!email || !email.includes('@')) {
+        showToast('E-mail obrigatório', 'Preencha um e-mail válido para o comprovante Pix.', 'red');
+        return { success: false, reason: 'invalid_email' };
+    }
+
+    const payBtn = document.getElementById('channel-member-generate-pix-btn');
+    if (payBtn) payBtn.disabled = true;
+
+    try {
+        const res = await fetchApi('/api/create-channel-membership-pix', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                channelOwnerUid: ownerUid,
+                subscriberUid: currentUser.uid,
+                name,
+                cpf: cpfRaw,
+                email,
+                amount: pricing.price,
+                channelName: ownerData.channelName || ownerData.name || 'Canal VORTEX'
+            })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            throw new Error(data.error || 'Não foi possível gerar o Pix para o canal.');
+        }
+
+        activeChannelMemberPaymentId = data.id;
+        const formStep = document.getElementById('channel-member-pix-step-form');
+        const qrStep = document.getElementById('channel-member-pix-step-qrcode');
+        const qrImg = document.getElementById('channel-member-pix-qr-image');
+        const copyInp = document.getElementById('channel-member-pix-copy-input');
+
+        if (qrImg) {
+            qrImg.src = data.qr_code_base64 ? `data:image/png;base64,${data.qr_code_base64}` : (data.ticket_url || '');
+        }
+        if (copyInp) copyInp.value = data.qr_code || '';
+        if (formStep) formStep.style.display = 'none';
+        if (qrStep) qrStep.style.display = 'flex';
+
+        showToast('Pix Gerado! ⚡', `Pague ${formatBrlCurrency(data.amount || pricing.price)} no Pix para liberar o Seja Membro.`, 'green');
+        startChannelMemberPixPolling(data.id, ownerUid);
+        return { success: true, paymentId: data.id, amount: data.amount || pricing.price, qr_code: data.qr_code || '' };
+    } catch (err) {
+        showToast('Erro no Pix', err.message || 'Erro ao gerar Pix de Seja Membro.', 'red');
+        return { success: false, reason: 'api_error', error: err.message };
+    } finally {
+        if (payBtn) payBtn.disabled = false;
+    }
+}
+
+export function copyChannelMemberPixCode() {
+    const copyInput = document.getElementById('channel-member-pix-copy-input');
+    if (!copyInput || !copyInput.value) return false;
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        navigator.clipboard.writeText(copyInput.value).catch(() => {});
+    }
+    showToast('Código Pix Copiado', 'Pix Copia e Cola copiado!', 'blue');
+    return true;
+}
+
 export async function toggleChannelMember(targetUid = activeChannelUid) {
+    if (!currentUser?.uid || !targetUid || targetUid === currentUser.uid) return false;
+    const userData = getEffectiveChannelUserData(targetUid, activeChannelUserData);
+    const currentMembers = Array.isArray(userData.channelMembers) ? userData.channelMembers.filter(Boolean) : [];
+    const alreadyMember = currentMembers.includes(currentUser.uid);
+
+    if (!alreadyMember && isChannelPaidMembershipActive(userData)) {
+        const eligibility = evaluateChannelMembershipEligibility(targetUid, userData);
+        if (!eligibility.eligible || !isUserChannelEnabled(userData)) {
+            showToast('Requisitos Pendentes 🔒', CHANNEL_MEMBERSHIP_TIER_CONFIG.member.blockedMsg, 'yellow');
+            return false;
+        }
+        const pricing = getChannelMembershipPricing(userData);
+        openChannelMemberCheckoutModal(targetUid);
+        return { openedCheckout: true, price: pricing.price, channelOwnerUid: targetUid };
+    }
+
     return toggleChannelMembershipTier(targetUid, 'member');
 }
 
@@ -58142,8 +58651,10 @@ export function openChannelMembershipModal(targetUid = activeChannelUid || curre
     if (!modal || !contentEl) return;
 
     const uid = targetUid || currentUser?.uid || '';
+    const isOwner = Boolean(uid && currentUser?.uid && uid === currentUser.uid);
     const userData = getEffectiveChannelUserData(uid, activeChannelUserData);
     const elig = evaluateChannelMembershipEligibility(uid, userData);
+    const pricing = getChannelMembershipPricing(userData);
     const missingCount = elig.totalRequirements - elig.completedCount;
 
     const rowsHtml = elig.criteria.map(item => {
@@ -58166,6 +58677,68 @@ export function openChannelMembershipModal(targetUid = activeChannelUid || curre
             </div>
         `;
     }).join('');
+
+    const monetizationHtml = (isOwner && elig.eligible) ? `
+        <section class="channel-member-monetization-card" aria-label="Monetização Seja Membro via Pix">
+            <div class="channel-member-monetization-header">
+                <strong><i data-lucide="wallet"></i> Cobrança &amp; Ganhos via Pix</strong>
+                <span class="channel-member-price-pill">${pricing.paidEnabled ? formatBrlCurrency(pricing.price) : 'Gratuito'}</span>
+            </div>
+            <div class="channel-member-earnings-grid">
+                <div class="channel-member-earning-box">
+                    <strong>${formatBrlCurrency(pricing.earningsBalance)}</strong>
+                    <span>Saldo disponível</span>
+                </div>
+                <div class="channel-member-earning-box">
+                    <strong>${formatBrlCurrency(pricing.earningsTotal)}</strong>
+                    <span>Total arrecadado</span>
+                </div>
+                <div class="channel-member-earning-box">
+                    <strong>${pricing.paidCount}</strong>
+                    <span>Assinaturas Pix</span>
+                </div>
+            </div>
+            <label class="channel-member-toggle-row" for="channel-member-paid-toggle">
+                <span>
+                    <strong>Cobrar entrada no Seja Membro via Pix</strong>
+                    <small>Quando pago no Pix, a plataforma libera o acesso automaticamente por 30 dias.</small>
+                </span>
+                <input type="checkbox" id="channel-member-paid-toggle" class="channel-customize-checkbox" ${pricing.rawPaidEnabled ? 'checked' : ''}>
+            </label>
+            <div class="channel-member-form-group">
+                <label for="channel-member-price-input" class="channel-modal-label">Valor da entrada (R$ 1,00 a R$ 5.000,00)</label>
+                <input type="text" id="channel-member-price-input" class="channel-modal-input" inputmode="decimal" placeholder="Ex: 19,90" value="${pricing.price > 0 ? pricing.price.toFixed(2).replace('.', ',') : ''}">
+            </div>
+            <div class="channel-member-form-group">
+                <label for="channel-member-pix-input" class="channel-modal-label">Sua Chave Pix para receber</label>
+                <input type="text" id="channel-member-pix-input" class="channel-modal-input" maxlength="140" placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória" value="${escapeHTML(pricing.pixKey)}">
+            </div>
+            <div class="channel-member-form-group">
+                <label for="channel-member-benefits-input" class="channel-modal-label">Benefícios para os Membros</label>
+                <textarea id="channel-member-benefits-input" class="channel-modal-textarea" rows="2" maxlength="280" placeholder="Ex: Selo de membro, lives exclusivas, prioridade nos comentários...">${escapeHTML(pricing.benefits)}</textarea>
+            </div>
+            <div class="channel-member-monetization-actions">
+                <button type="button" id="save-channel-member-pricing-btn" class="danger-btn save-profile-action-btn channel-member-save-btn">
+                    <i data-lucide="save"></i>
+                    <span>Salvar Cobrança Pix</span>
+                </button>
+                <button type="button" id="request-channel-member-payout-btn" class="channel-pill-btn channel-member-payout-btn" ${pricing.earningsBalance <= 0 ? 'disabled' : ''}>
+                    <i data-lucide="arrow-up-right"></i>
+                    <span>Sacar via Pix (${formatBrlCurrency(pricing.earningsBalance)})</span>
+                </button>
+            </div>
+            ${pricing.recentPayments.length ? `
+                <div class="channel-member-recent-list">
+                    ${pricing.recentPayments.map(p => `
+                        <div class="channel-member-recent-item">
+                            <span>${escapeHTML(p.subscriberName || 'Membro VIP')}</span>
+                            <strong>+${formatBrlCurrency(p.amount)}</strong>
+                        </div>
+                    `).join('')}
+                </div>
+            ` : ''}
+        </section>
+    ` : '';
 
     contentEl.innerHTML = `
         <div class="channel-membership-hero${elig.eligible ? ' unlocked' : ''}">
@@ -58191,8 +58764,12 @@ export function openChannelMembershipModal(targetUid = activeChannelUid || curre
                 <span>Super Fãs do canal</span>
             </div>
         </div>
+        ${monetizationHtml}
         <div class="channel-membership-list">${rowsHtml}</div>
     `;
+
+    document.getElementById('save-channel-member-pricing-btn')?.addEventListener('click', () => saveChannelMembershipPricing());
+    document.getElementById('request-channel-member-payout-btn')?.addEventListener('click', () => requestChannelMemberPayout());
 
     const scrollBody = document.getElementById('channel-membership-scroll-body');
     if (scrollBody) scrollBody.scrollTop = 0;
@@ -60417,6 +60994,12 @@ function bindChannelScreenListeners() {
         }
     });
 
+    document.getElementById('close-channel-member-checkout-modal')?.addEventListener('click', closeChannelMemberCheckoutModal);
+    document.getElementById('channel-member-generate-pix-btn')?.addEventListener('click', () => generateChannelMemberPixPayment());
+    document.getElementById('channel-member-copy-pix-btn')?.addEventListener('click', copyChannelMemberPixCode);
+    document.getElementById('channel-member-check-pix-btn')?.addEventListener('click', () => checkChannelMemberPaymentStatus());
+    document.getElementById('channel-member-success-close-btn')?.addEventListener('click', closeChannelMemberCheckoutModal);
+
     [
         ['close-channel-customize-modal', 'channel-customize-modal'],
         ['close-channel-about-modal', 'channel-about-modal'],
@@ -60543,6 +61126,21 @@ if (typeof window !== 'undefined') {
     window.closeChannelMembershipScreen = closeChannelMembershipScreen;
     window.toggleChannelMember = toggleChannelMember;
     window.toggleChannelSuperFan = toggleChannelSuperFan;
+    window.CHANNEL_MEMBER_MIN_PRICE = CHANNEL_MEMBER_MIN_PRICE;
+    window.CHANNEL_MEMBER_MAX_PRICE = CHANNEL_MEMBER_MAX_PRICE;
+    window.CHANNEL_MEMBER_DURATION_MS = CHANNEL_MEMBER_DURATION_MS;
+    window.parseChannelMemberPrice = parseChannelMemberPrice;
+    window.formatBrlCurrency = formatBrlCurrency;
+    window.getChannelMembershipPricing = getChannelMembershipPricing;
+    window.isChannelPaidMembershipActive = isChannelPaidMembershipActive;
+    window.saveChannelMembershipPricing = saveChannelMembershipPricing;
+    window.requestChannelMemberPayout = requestChannelMemberPayout;
+    window.openChannelMemberCheckoutModal = openChannelMemberCheckoutModal;
+    window.closeChannelMemberCheckoutModal = closeChannelMemberCheckoutModal;
+    window.generateChannelMemberPixPayment = generateChannelMemberPixPayment;
+    window.checkChannelMemberPaymentStatus = checkChannelMemberPaymentStatus;
+    window.handleApprovedChannelMemberPayment = handleApprovedChannelMemberPayment;
+    window.copyChannelMemberPixCode = copyChannelMemberPixCode;
     window.VORTEX_XP_PER_LEVEL = VORTEX_XP_PER_LEVEL;
     window.VORTEX_XP_ACTIONS = VORTEX_XP_ACTIONS;
     window.VORTEX_LEVEL_UNLOCKS = VORTEX_LEVEL_UNLOCKS;

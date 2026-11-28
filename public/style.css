@@ -35642,6 +35642,224 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
     transition: width 0.25s ease;
 }
 
+/* v1.0.336: Monetização Seja Membro via Pix no Canal */
+.channel-member-monetization-card {
+    margin-top: 12px;
+    padding: 14px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(62, 166, 255, 0.32);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
+}
+.channel-member-monetization-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.channel-member-monetization-header strong {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.92rem;
+    color: #fff;
+}
+.channel-member-earnings-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+}
+.channel-member-earning-box {
+    padding: 10px 8px;
+    border-radius: 10px;
+    background: rgba(15, 23, 42, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+.channel-member-earning-box strong {
+    font-size: 0.92rem;
+    color: #86efac;
+    word-break: break-word;
+}
+.channel-member-earning-box span {
+    font-size: 0.7rem;
+    color: #a1a1aa;
+}
+.channel-member-toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    cursor: pointer;
+}
+.channel-member-toggle-row span {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 0.82rem;
+    color: #f4f4f5;
+}
+.channel-member-toggle-row small {
+    font-size: 0.72rem;
+    color: #a1a1aa;
+}
+.channel-member-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+.channel-member-monetization-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.channel-member-save-btn,
+.channel-member-payout-btn {
+    flex: 1 1 180px;
+    justify-content: center;
+}
+.channel-member-payout-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+.channel-member-recent-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.channel-member-recent-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    font-size: 0.78rem;
+    color: #e4e4e7;
+}
+.channel-member-checkout-container {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding-bottom: 28px;
+    box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
+}
+.channel-member-checkout-hero,
+.channel-member-checkout-card,
+.channel-member-success-box {
+    padding: 14px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
+}
+.channel-member-checkout-hero-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.channel-member-checkout-hero-top strong {
+    display: block;
+    font-size: 1rem;
+    color: #fff;
+}
+.channel-member-checkout-duration {
+    font-size: 0.76rem;
+    color: #a1a1aa;
+}
+.channel-member-price-pill {
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #2563eb, #3ea6ff);
+    color: #fff;
+    font-size: 0.92rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+.channel-member-checkout-benefits {
+    margin: 0;
+    font-size: 0.82rem;
+    color: #d4d4d8;
+    line-height: 1.45;
+}
+.channel-member-auto-pill,
+.channel-member-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    background: rgba(57, 255, 20, 0.1);
+    border: 1px solid rgba(57, 255, 20, 0.3);
+    color: #86efac;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+.channel-member-qr-wrap {
+    display: flex;
+    justify-content: center;
+    padding: 10px;
+    background: #ffffff;
+    border-radius: 12px;
+    align-self: center;
+}
+.channel-member-qr-img {
+    width: 210px;
+    height: 210px;
+    max-width: 100%;
+    object-fit: contain;
+    display: block;
+}
+.channel-member-pix-copy-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+.channel-member-pix-copy-row .channel-modal-input {
+    flex: 1;
+    min-width: 0;
+}
+.channel-member-success-box {
+    align-items: center;
+    text-align: center;
+    border-color: rgba(57, 255, 20, 0.45);
+    background: rgba(57, 255, 20, 0.08);
+}
+.channel-member-success-box strong {
+    font-size: 1.05rem;
+    color: #86efac;
+}
+.channel-member-success-box p {
+    margin: 0;
+    font-size: 0.84rem;
+    color: #e4e4e7;
+}
+
 /* ==========================================================================
    v1.0.307: Nível XP, Recursos Desbloqueáveis (10/30/50/70/90) & Estrela VORTEX (110)
    ========================================================================== */

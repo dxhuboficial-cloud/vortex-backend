@@ -1,6 +1,6 @@
 {
-  "version": "1.0.335",
-  "build": 335,
+  "version": "1.0.336",
+  "build": 336,
   "releaseDate": "2026-11-28",
-  "notes": "Liberação automática de Super Fã e Seja Membro no canal para administradores mantendo os 7 requisitos oficiais para usuários comuns (v1.0.335)"
+  "notes": "Monetização do Seja Membro no canal via Pix com configuração de preço pelo criador, QR Code Mercado Pago e liberação automática ao pagar (v1.0.336)"
 }

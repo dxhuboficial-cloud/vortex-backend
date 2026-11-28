@@ -138,6 +138,84 @@ async function activateUserVipInFirestore(uid, paymentId, paymentType = 'pix') {
     }
 }
 
+/**
+ * Ativa a assinatura Seja Membro do canal após pagamento Pix confirmado (idempotente)
+ */
+async function activateChannelMembershipInFirestore(channelOwnerUid, subscriberUid, paymentId, amount, extra = {}) {
+    if (!channelOwnerUid || !subscriberUid || !paymentId) return { alreadyCredited: false, skipped: true };
+    const now = Date.now();
+    const expiresAt = now + (30 * 24 * 60 * 60 * 1000);
+    const safeAmount = Math.round(Math.max(0, Number(amount) || 0) * 100) / 100;
+
+    if (!db) return { alreadyCredited: false, expiresAt };
+
+    try {
+        const payRef = db.collection('channel_member_payments').doc(String(paymentId));
+        const existingSnap = await payRef.get();
+        if (existingSnap.exists && existingSnap.data()?.credited === true) {
+            return { alreadyCredited: true, expiresAt: existingSnap.data().expiresAt || expiresAt };
+        }
+
+        await payRef.set({
+            paymentId: String(paymentId),
+            channelOwnerUid,
+            subscriberUid,
+            subscriberName: String(extra.subscriberName || ''),
+            channelName: String(extra.channelName || ''),
+            amount: safeAmount,
+            status: 'approved',
+            credited: true,
+            approvedAt: now,
+            expiresAt
+        }, { merge: true });
+
+        const ownerUpdates = {
+            channelMembers: adminFieldValue ? adminFieldValue.arrayUnion(subscriberUid) : [subscriberUid],
+            [`channelMemberSubscriptions.${subscriberUid}`]: {
+                uid: subscriberUid,
+                paymentId: String(paymentId),
+                amount: safeAmount,
+                startedAt: now,
+                expiresAt
+            }
+        };
+        if (safeAmount > 0 && adminFieldValue) {
+            ownerUpdates.channelMemberEarningsBalance = adminFieldValue.increment(safeAmount);
+            ownerUpdates.channelMemberEarningsTotal = adminFieldValue.increment(safeAmount);
+        }
+        if (adminFieldValue) {
+            ownerUpdates.channelMemberPaidCount = adminFieldValue.increment(1);
+        }
+
+        await db.collection('users').doc(channelOwnerUid).set(ownerUpdates, { merge: true });
+
+        await db.collection('notifications').add({
+            toUid: subscriberUid,
+            type: 'channel_membership',
+            title: 'Seja Membro Liberado! 👑',
+            message: `Seu pagamento Pix foi aprovado! Você agora é membro do canal${extra.channelName ? ` "${extra.channelName}"` : ''} pelos próximos 30 dias.`,
+            read: false,
+            createdAt: now,
+            author: 'VORTEX VIP'
+        }).catch(() => {});
+
+        await db.collection('notifications').add({
+            toUid: channelOwnerUid,
+            type: 'channel_membership_earning',
+            title: 'Novo Membro Pago via Pix! 💰',
+            message: `${extra.subscriberName || 'Um visitante'} assinou o Seja Membro do seu canal por R$ ${safeAmount.toFixed(2).replace('.', ',')}.`,
+            read: false,
+            createdAt: now,
+            author: 'VORTEX VIP'
+        }).catch(() => {});
+
+        return { alreadyCredited: false, expiresAt };
+    } catch (e) {
+        console.error('[CHANNEL MEMBER] Erro ao ativar membro no Firestore:', e);
+        return { alreadyCredited: false, error: e.message };
+    }
+}
+
 // 1. Configuração pública para o cliente (somente Public Key)
 app.get('/api/config', (req, res) => {
     res.json({
@@ -366,15 +444,216 @@ app.post('/api/mercadopago-webhook', async (req, res) => {
             if (mpRes.ok) {
                 const mpData = await mpRes.json();
                 if (mpData.status === 'approved') {
-                    const uid = mpData.metadata?.uid;
-                    if (uid) {
-                        await activateUserVipInFirestore(uid, paymentId, mpData.payment_method_id || 'pix');
+                    if (mpData.metadata?.type === 'channel_membership') {
+                        const channelOwnerUid = mpData.metadata?.channel_owner_uid;
+                        const subscriberUid = mpData.metadata?.subscriber_uid;
+                        const amount = Number(mpData.transaction_amount || mpData.metadata?.amount || 0);
+                        if (channelOwnerUid && subscriberUid) {
+                            await activateChannelMembershipInFirestore(channelOwnerUid, subscriberUid, paymentId, amount, {
+                                subscriberName: mpData.metadata?.subscriber_name || '',
+                                channelName: mpData.metadata?.channel_name || ''
+                            });
+                        }
+                    } else {
+                        const uid = mpData.metadata?.uid;
+                        if (uid) {
+                            await activateUserVipInFirestore(uid, paymentId, mpData.payment_method_id || 'pix');
+                        }
                     }
                 }
             }
         }
     } catch (err) {
         console.error('Erro ao processar webhook do Mercado Pago:', err);
+    }
+});
+
+// 5b. Criação de Pagamento Pix para Assinatura Seja Membro do Canal (R$ 1,00 a R$ 5.000,00)
+app.post('/api/create-channel-membership-pix', async (req, res) => {
+    try {
+        const {
+            channelOwnerUid,
+            subscriberUid,
+            name,
+            cpf,
+            email,
+            amount,
+            channelName
+        } = req.body || {};
+
+        if (!channelOwnerUid || !subscriberUid) {
+            return res.status(400).json({ error: 'channelOwnerUid e subscriberUid são obrigatórios.' });
+        }
+        if (channelOwnerUid === subscriberUid) {
+            return res.status(400).json({ error: 'Você não pode assinar o Seja Membro do seu próprio canal.' });
+        }
+
+        let resolvedAmount = Number(amount || 0);
+        let resolvedChannelName = String(channelName || 'Canal VORTEX').trim().slice(0, 60);
+
+        if (db) {
+            try {
+                const ownerSnap = await db.collection('users').doc(String(channelOwnerUid)).get();
+                if (ownerSnap.exists) {
+                    const ownerData = ownerSnap.data() || {};
+                    if (!ownerData.channelMemberPaidEnabled) {
+                        return res.status(400).json({ error: 'Este canal não está com assinatura paga ativada no momento.' });
+                    }
+                    resolvedAmount = Number(ownerData.channelMemberPrice || resolvedAmount || 0);
+                    if (ownerData.channelName || ownerData.name) {
+                        resolvedChannelName = String(ownerData.channelName || ownerData.name).trim().slice(0, 60);
+                    }
+                }
+            } catch (dbErr) {
+                console.warn('[CHANNEL MEMBER PIX] Aviso ao ler dados do criador:', dbErr.message);
+            }
+        }
+
+        const finalAmount = Math.round(resolvedAmount * 100) / 100;
+        if (!Number.isFinite(finalAmount) || finalAmount < 1 || finalAmount > 5000) {
+            return res.status(400).json({ error: 'Valor da assinatura inválido (R$ 1,00 a R$ 5.000,00).' });
+        }
+
+        const payerEmail = (email && String(email).includes('@')) ? String(email).trim() : 'cliente@vortex.vip';
+        const cleanCpf = String(cpf || '11144477735').replace(/\D/g, '').padEnd(11, '0').slice(0, 11);
+        const nameParts = String(name || 'Assinante VORTEX').trim().split(/\s+/);
+        const firstName = nameParts[0] || 'Assinante';
+        const lastName = nameParts.slice(1).join(' ') || 'VIP';
+
+        const host = req.get('host') || '';
+        const isPublicDomain = host && !host.includes('localhost') && !host.includes('127.0.0.1');
+
+        const paymentPayload = {
+            transaction_amount: finalAmount,
+            description: `Seja Membro - ${resolvedChannelName} (VORTEX)`.slice(0, 120),
+            payment_method_id: 'pix',
+            payer: {
+                email: payerEmail,
+                first_name: firstName,
+                last_name: lastName,
+                identification: {
+                    type: 'CPF',
+                    number: cleanCpf
+                }
+            },
+            ...(isPublicDomain ? { notification_url: `${req.protocol}://${host}/api/mercadopago-webhook` } : {}),
+            metadata: {
+                type: 'channel_membership',
+                channel_owner_uid: String(channelOwnerUid),
+                subscriber_uid: String(subscriberUid),
+                subscriber_name: String(name || 'Assinante VORTEX').trim().slice(0, 80),
+                channel_name: resolvedChannelName,
+                amount: finalAmount
+            }
+        };
+
+        const mpRes = await fetch('https://api.mercadopago.com/v1/payments', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${MERCADO_PAGO_ACCESS_TOKEN}`,
+                'Content-Type': 'application/json',
+                'X-Idempotency-Key': `cmem_${channelOwnerUid}_${subscriberUid}_${Date.now()}`
+            },
+            body: JSON.stringify(paymentPayload)
+        });
+
+        const mpData = await mpRes.json();
+        if (!mpRes.ok) {
+            console.error('Erro Mercado Pago Seja Membro PIX:', mpData);
+            return res.status(mpRes.status).json({
+                error: mpData.message || 'Erro ao gerar Pix no Mercado Pago.',
+                details: mpData
+            });
+        }
+
+        const transactionData = mpData.point_of_interaction?.transaction_data || {};
+
+        if (db && mpData.id) {
+            db.collection('channel_member_payments').doc(String(mpData.id)).set({
+                paymentId: String(mpData.id),
+                channelOwnerUid: String(channelOwnerUid),
+                subscriberUid: String(subscriberUid),
+                subscriberName: String(name || '').trim().slice(0, 80),
+                channelName: resolvedChannelName,
+                amount: finalAmount,
+                status: mpData.status || 'pending',
+                credited: false,
+                createdAt: Date.now()
+            }, { merge: true }).catch(() => {});
+        }
+
+        res.json({
+            id: mpData.id,
+            status: mpData.status,
+            qr_code: transactionData.qr_code || '',
+            qr_code_base64: transactionData.qr_code_base64 || '',
+            ticket_url: transactionData.ticket_url || '',
+            amount: finalAmount,
+            channelOwnerUid: String(channelOwnerUid),
+            subscriberUid: String(subscriberUid)
+        });
+    } catch (err) {
+        console.error('Erro ao gerar Pix de Seja Membro:', err);
+        res.status(500).json({ error: 'Erro interno ao gerar pagamento Pix de Seja Membro.' });
+    }
+});
+
+// 5c. Consulta de Status do Pix Seja Membro (Polling + Liberação Idempotente)
+app.get('/api/channel-membership-payment-status/:id', async (req, res) => {
+    const paymentId = req.params.id;
+    if (!paymentId) return res.status(400).json({ error: 'ID do pagamento não informado.' });
+
+    try {
+        const mpRes = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+            headers: {
+                'Authorization': `Bearer ${MERCADO_PAGO_ACCESS_TOKEN}`
+            }
+        });
+        const mpData = await mpRes.json();
+        if (!mpRes.ok) {
+            return res.status(mpRes.status).json(mpData);
+        }
+
+        let channelOwnerUid = mpData.metadata?.channel_owner_uid || '';
+        let subscriberUid = mpData.metadata?.subscriber_uid || '';
+        let amount = Number(mpData.transaction_amount || mpData.metadata?.amount || 0);
+        let subscriberName = mpData.metadata?.subscriber_name || '';
+        let channelName = mpData.metadata?.channel_name || '';
+
+        if ((!channelOwnerUid || !subscriberUid) && db) {
+            try {
+                const paySnap = await db.collection('channel_member_payments').doc(String(paymentId)).get();
+                if (paySnap.exists) {
+                    const p = paySnap.data() || {};
+                    channelOwnerUid = channelOwnerUid || p.channelOwnerUid || '';
+                    subscriberUid = subscriberUid || p.subscriberUid || '';
+                    amount = amount || Number(p.amount || 0);
+                    subscriberName = subscriberName || p.subscriberName || '';
+                    channelName = channelName || p.channelName || '';
+                }
+            } catch (_) {}
+        }
+
+        const isApproved = mpData.status === 'approved';
+        if (isApproved && channelOwnerUid && subscriberUid) {
+            await activateChannelMembershipInFirestore(channelOwnerUid, subscriberUid, paymentId, amount, {
+                subscriberName,
+                channelName
+            });
+        }
+
+        res.json({
+            id: mpData.id,
+            status: mpData.status,
+            status_detail: mpData.status_detail,
+            isApproved,
+            channelOwnerUid: channelOwnerUid || null,
+            subscriberUid: subscriberUid || null,
+            amount
+        });
+    } catch (err) {
+        console.error('Erro ao consultar pagamento Seja Membro:', err);
+        res.status(500).json({ error: 'Erro ao consultar pagamento Pix Seja Membro.' });
     }
 });
 
