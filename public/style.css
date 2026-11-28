@@ -36371,6 +36371,143 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
     will-change: transform, opacity;
 }
 
+/* v1.0.341: Layout Desktop Tela Cheia para o Canal no PC */
+@media (min-width: 900px) {
+    #channel-panel.channel-overlay {
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        height: 100dvh;
+    }
+    #channel-panel .channel-topbar {
+        padding-left: clamp(20px, 3vw, 48px);
+        padding-right: clamp(20px, 3vw, 48px);
+    }
+    #channel-panel .channel-container {
+        max-width: 100%;
+        width: 100%;
+        padding: 0 clamp(24px, 3vw, 56px) 56px;
+        box-sizing: border-box;
+    }
+    #channel-panel .channel-banner-box {
+        margin: 18px 0 20px;
+        border-radius: 18px;
+        aspect-ratio: auto;
+        height: clamp(190px, 24vh, 290px);
+        min-height: 190px;
+    }
+    #channel-panel .channel-banner-edit-btn {
+        right: 14px;
+        bottom: 14px;
+        padding: 8px 14px;
+        font-size: 0.8rem;
+    }
+    #channel-panel .channel-identity-row {
+        padding: 4px 0 14px;
+        gap: 20px;
+    }
+    #channel-panel .channel-avatar {
+        width: 112px;
+        height: 112px;
+        min-width: 112px;
+        border-width: 3px;
+    }
+    #channel-panel .channel-title {
+        font-size: 1.75rem;
+    }
+    #channel-panel .channel-handle,
+    #channel-panel .channel-stats {
+        font-size: 0.92rem;
+    }
+    #channel-panel .channel-bio-row {
+        padding: 0 0 8px;
+        max-width: 960px;
+        font-size: 0.92rem;
+    }
+    #channel-panel .channel-links-row {
+        padding: 0 0 14px;
+        font-size: 0.9rem;
+    }
+    #channel-panel .channel-primary-link {
+        max-width: 480px;
+    }
+    #channel-panel .channel-actions-row {
+        flex-wrap: wrap;
+        overflow-x: visible;
+        padding: 4px 0 14px;
+        gap: 10px;
+    }
+    #channel-panel .channel-actions-row .channel-pill-btn {
+        flex: 0 1 auto;
+        padding: 9px 18px;
+        font-size: 0.86rem;
+    }
+    #channel-panel .channel-owner-insights-bar,
+    #channel-panel .channel-disabled-banner,
+    #channel-panel .channel-community-btn {
+        width: 100%;
+        max-width: 100%;
+        margin: 0 0 14px;
+    }
+    #channel-panel .channel-tabs-bar-wrap {
+        padding: 0;
+    }
+    #channel-panel .channel-tabs-bar {
+        gap: 28px;
+    }
+    #channel-panel .channel-tab-btn {
+        font-size: 0.96rem;
+        padding: 12px 6px;
+    }
+    #channel-panel .channel-tabs-next-btn {
+        display: none;
+    }
+    #channel-panel .channel-playlists-toolbar {
+        padding: 12px 0;
+    }
+    #channel-panel .channel-ig-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 14px;
+        padding-top: 16px;
+    }
+    #channel-panel .channel-ig-tile {
+        border-radius: 12px;
+        transition: transform 0.18s ease, box-shadow 0.18s ease;
+    }
+    #channel-panel .channel-ig-tile:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+    }
+    .channel-customize-container,
+    .channel-analytics-container,
+    .channel-membership-container,
+    .channel-community-container,
+    .channel-level-container,
+    .channel-about-container,
+    .channel-manage-container {
+        max-width: 1040px;
+        padding-left: 28px;
+        padding-right: 28px;
+    }
+    .channel-member-checkout-container {
+        max-width: 720px;
+        padding: 20px 24px 48px;
+    }
+}
+@media (min-width: 1280px) {
+    #channel-panel .channel-ig-grid {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 16px;
+        padding-top: 18px;
+    }
+}
+@media (min-width: 1600px) {
+    #channel-panel .channel-ig-grid {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 18px;
+    }
+}
+
 /* ==========================================================================
    v1.0.307: Nível XP, Recursos Desbloqueáveis (10/30/50/70/90) & Estrela VORTEX (110)
    ========================================================================== */

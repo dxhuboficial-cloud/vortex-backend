@@ -1,6 +1,6 @@
 {
-  "version": "1.0.340",
-  "build": 340,
+  "version": "1.0.341",
+  "build": 341,
   "releaseDate": "2026-11-28",
-  "notes": "Preço Pix configurável para Super Fã e benefícios exclusivos (fonte mini saltitante vermelho/azul, balões + bandeira 🇧🇷 por palavras-chave e emblema Fã N 🏆) (v1.0.340)"
+  "notes": "Layout desktop em tela cheia para o Canal no PC com largura total, ações sem corte e grade responsiva de 4 a 6 colunas (v1.0.341)"
 }
