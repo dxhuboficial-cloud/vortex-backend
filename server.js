@@ -138,22 +138,60 @@ async function activateUserVipInFirestore(uid, paymentId, paymentType = 'pix') {
     }
 }
 
+const DEFAULT_CHANNEL_MEMBER_FEE_PERCENT = 20;
+
+function normalizeChannelMemberFeePercent(raw) {
+    if (raw === undefined || raw === null || raw === '') return DEFAULT_CHANNEL_MEMBER_FEE_PERCENT;
+    const num = Number(raw);
+    if (!Number.isFinite(num)) return DEFAULT_CHANNEL_MEMBER_FEE_PERCENT;
+    return Math.min(50, Math.max(0, Math.round(num)));
+}
+
+function calculateChannelMembershipSplit(grossAmount, feePercent = DEFAULT_CHANNEL_MEMBER_FEE_PERCENT) {
+    const gross = Math.round(Math.max(0, Number(grossAmount) || 0) * 100) / 100;
+    const pct = normalizeChannelMemberFeePercent(feePercent);
+    const platformFee = Math.round((gross * (pct / 100)) * 100) / 100;
+    const creatorNet = Math.round((gross - platformFee) * 100) / 100;
+    return { grossAmount: gross, feePercent: pct, platformFee, creatorNet };
+}
+
+async function getChannelMemberFeePercentFromFirestore() {
+    if (!db) return DEFAULT_CHANNEL_MEMBER_FEE_PERCENT;
+    try {
+        const cfgSnap = await db.collection('system').doc('channel_membership_config').get();
+        if (cfgSnap.exists) {
+            return normalizeChannelMemberFeePercent(cfgSnap.data()?.feePercent);
+        }
+    } catch (_) {}
+    return DEFAULT_CHANNEL_MEMBER_FEE_PERCENT;
+}
+
 /**
- * Ativa a assinatura Seja Membro do canal após pagamento Pix confirmado (idempotente)
+ * Ativa a assinatura Seja Membro do canal após pagamento Pix confirmado (idempotente + split com taxa)
  */
 async function activateChannelMembershipInFirestore(channelOwnerUid, subscriberUid, paymentId, amount, extra = {}) {
     if (!channelOwnerUid || !subscriberUid || !paymentId) return { alreadyCredited: false, skipped: true };
     const now = Date.now();
     const expiresAt = now + (30 * 24 * 60 * 60 * 1000);
-    const safeAmount = Math.round(Math.max(0, Number(amount) || 0) * 100) / 100;
+    const feePercent = extra.feePercent !== undefined
+        ? normalizeChannelMemberFeePercent(extra.feePercent)
+        : await getChannelMemberFeePercentFromFirestore();
+    const { grossAmount, platformFee, creatorNet } = calculateChannelMembershipSplit(amount, feePercent);
 
-    if (!db) return { alreadyCredited: false, expiresAt };
+    if (!db) return { alreadyCredited: false, expiresAt, grossAmount, feePercent, platformFee, creatorNet };
 
     try {
         const payRef = db.collection('channel_member_payments').doc(String(paymentId));
         const existingSnap = await payRef.get();
         if (existingSnap.exists && existingSnap.data()?.credited === true) {
-            return { alreadyCredited: true, expiresAt: existingSnap.data().expiresAt || expiresAt };
+            return {
+                alreadyCredited: true,
+                expiresAt: existingSnap.data().expiresAt || expiresAt,
+                grossAmount: existingSnap.data().grossAmount || grossAmount,
+                feePercent: existingSnap.data().feePercent ?? feePercent,
+                platformFee: existingSnap.data().platformFee ?? platformFee,
+                creatorNet: existingSnap.data().creatorNet ?? creatorNet
+            };
         }
 
         await payRef.set({
@@ -162,7 +200,11 @@ async function activateChannelMembershipInFirestore(channelOwnerUid, subscriberU
             subscriberUid,
             subscriberName: String(extra.subscriberName || ''),
             channelName: String(extra.channelName || ''),
-            amount: safeAmount,
+            amount: grossAmount,
+            grossAmount,
+            feePercent,
+            platformFee,
+            creatorNet,
             status: 'approved',
             credited: true,
             approvedAt: now,
@@ -174,20 +216,39 @@ async function activateChannelMembershipInFirestore(channelOwnerUid, subscriberU
             [`channelMemberSubscriptions.${subscriberUid}`]: {
                 uid: subscriberUid,
                 paymentId: String(paymentId),
-                amount: safeAmount,
+                amount: grossAmount,
+                creatorNet,
+                feePercent,
+                platformFee,
                 startedAt: now,
                 expiresAt
             }
         };
-        if (safeAmount > 0 && adminFieldValue) {
-            ownerUpdates.channelMemberEarningsBalance = adminFieldValue.increment(safeAmount);
-            ownerUpdates.channelMemberEarningsTotal = adminFieldValue.increment(safeAmount);
+        if (creatorNet > 0 && adminFieldValue) {
+            ownerUpdates.channelMemberEarningsBalance = adminFieldValue.increment(creatorNet);
+            ownerUpdates.channelMemberEarningsTotal = adminFieldValue.increment(creatorNet);
+        }
+        if (grossAmount > 0 && adminFieldValue) {
+            ownerUpdates.channelMemberGrossTotal = adminFieldValue.increment(grossAmount);
+        }
+        if (platformFee > 0 && adminFieldValue) {
+            ownerUpdates.channelMemberPlatformFeeTotal = adminFieldValue.increment(platformFee);
         }
         if (adminFieldValue) {
             ownerUpdates.channelMemberPaidCount = adminFieldValue.increment(1);
         }
 
         await db.collection('users').doc(channelOwnerUid).set(ownerUpdates, { merge: true });
+
+        if (adminFieldValue) {
+            await db.collection('system').doc('channel_membership_stats').set({
+                totalGross: adminFieldValue.increment(grossAmount),
+                totalPlatformFee: adminFieldValue.increment(platformFee),
+                totalCreatorNet: adminFieldValue.increment(creatorNet),
+                totalPayments: adminFieldValue.increment(1),
+                updatedAt: now
+            }, { merge: true }).catch(() => {});
+        }
 
         await db.collection('notifications').add({
             toUid: subscriberUid,
@@ -203,13 +264,13 @@ async function activateChannelMembershipInFirestore(channelOwnerUid, subscriberU
             toUid: channelOwnerUid,
             type: 'channel_membership_earning',
             title: 'Novo Membro Pago via Pix! 💰',
-            message: `${extra.subscriberName || 'Um visitante'} assinou o Seja Membro do seu canal por R$ ${safeAmount.toFixed(2).replace('.', ',')}.`,
+            message: `${extra.subscriberName || 'Um visitante'} assinou o Seja Membro por R$ ${grossAmount.toFixed(2).replace('.', ',')} — líquido creditado: R$ ${creatorNet.toFixed(2).replace('.', ',')} (taxa plataforma ${feePercent}%).`,
             read: false,
             createdAt: now,
             author: 'VORTEX VIP'
         }).catch(() => {});
 
-        return { alreadyCredited: false, expiresAt };
+        return { alreadyCredited: false, expiresAt, grossAmount, feePercent, platformFee, creatorNet };
     } catch (e) {
         console.error('[CHANNEL MEMBER] Erro ao ativar membro no Firestore:', e);
         return { alreadyCredited: false, error: e.message };
@@ -448,10 +509,12 @@ app.post('/api/mercadopago-webhook', async (req, res) => {
                         const channelOwnerUid = mpData.metadata?.channel_owner_uid;
                         const subscriberUid = mpData.metadata?.subscriber_uid;
                         const amount = Number(mpData.transaction_amount || mpData.metadata?.amount || 0);
+                        const feePercent = mpData.metadata?.fee_percent !== undefined ? Number(mpData.metadata.fee_percent) : undefined;
                         if (channelOwnerUid && subscriberUid) {
                             await activateChannelMembershipInFirestore(channelOwnerUid, subscriberUid, paymentId, amount, {
                                 subscriberName: mpData.metadata?.subscriber_name || '',
-                                channelName: mpData.metadata?.channel_name || ''
+                                channelName: mpData.metadata?.channel_name || '',
+                                feePercent
                             });
                         }
                     } else {
@@ -514,6 +577,9 @@ app.post('/api/create-channel-membership-pix', async (req, res) => {
             return res.status(400).json({ error: 'Valor da assinatura inválido (R$ 1,00 a R$ 5.000,00).' });
         }
 
+        const feePercent = await getChannelMemberFeePercentFromFirestore();
+        const { grossAmount, platformFee, creatorNet } = calculateChannelMembershipSplit(finalAmount, feePercent);
+
         const payerEmail = (email && String(email).includes('@')) ? String(email).trim() : 'cliente@vortex.vip';
         const cleanCpf = String(cpf || '11144477735').replace(/\D/g, '').padEnd(11, '0').slice(0, 11);
         const nameParts = String(name || 'Assinante VORTEX').trim().split(/\s+/);
@@ -524,7 +590,7 @@ app.post('/api/create-channel-membership-pix', async (req, res) => {
         const isPublicDomain = host && !host.includes('localhost') && !host.includes('127.0.0.1');
 
         const paymentPayload = {
-            transaction_amount: finalAmount,
+            transaction_amount: grossAmount,
             description: `Seja Membro - ${resolvedChannelName} (VORTEX)`.slice(0, 120),
             payment_method_id: 'pix',
             payer: {
@@ -543,7 +609,10 @@ app.post('/api/create-channel-membership-pix', async (req, res) => {
                 subscriber_uid: String(subscriberUid),
                 subscriber_name: String(name || 'Assinante VORTEX').trim().slice(0, 80),
                 channel_name: resolvedChannelName,
-                amount: finalAmount
+                amount: grossAmount,
+                fee_percent: feePercent,
+                platform_fee: platformFee,
+                creator_net: creatorNet
             }
         };
 
@@ -575,7 +644,11 @@ app.post('/api/create-channel-membership-pix', async (req, res) => {
                 subscriberUid: String(subscriberUid),
                 subscriberName: String(name || '').trim().slice(0, 80),
                 channelName: resolvedChannelName,
-                amount: finalAmount,
+                amount: grossAmount,
+                grossAmount,
+                feePercent,
+                platformFee,
+                creatorNet,
                 status: mpData.status || 'pending',
                 credited: false,
                 createdAt: Date.now()
@@ -588,7 +661,10 @@ app.post('/api/create-channel-membership-pix', async (req, res) => {
             qr_code: transactionData.qr_code || '',
             qr_code_base64: transactionData.qr_code_base64 || '',
             ticket_url: transactionData.ticket_url || '',
-            amount: finalAmount,
+            amount: grossAmount,
+            feePercent,
+            platformFee,
+            creatorNet,
             channelOwnerUid: String(channelOwnerUid),
             subscriberUid: String(subscriberUid)
         });
@@ -619,8 +695,9 @@ app.get('/api/channel-membership-payment-status/:id', async (req, res) => {
         let amount = Number(mpData.transaction_amount || mpData.metadata?.amount || 0);
         let subscriberName = mpData.metadata?.subscriber_name || '';
         let channelName = mpData.metadata?.channel_name || '';
+        let feePercent = mpData.metadata?.fee_percent !== undefined ? Number(mpData.metadata.fee_percent) : undefined;
 
-        if ((!channelOwnerUid || !subscriberUid) && db) {
+        if ((!channelOwnerUid || !subscriberUid || feePercent === undefined) && db) {
             try {
                 const paySnap = await db.collection('channel_member_payments').doc(String(paymentId)).get();
                 if (paySnap.exists) {
@@ -630,16 +707,29 @@ app.get('/api/channel-membership-payment-status/:id', async (req, res) => {
                     amount = amount || Number(p.amount || 0);
                     subscriberName = subscriberName || p.subscriberName || '';
                     channelName = channelName || p.channelName || '';
+                    if (feePercent === undefined && p.feePercent !== undefined) {
+                        feePercent = Number(p.feePercent);
+                    }
                 }
             } catch (_) {}
         }
 
         const isApproved = mpData.status === 'approved';
+        let splitInfo = calculateChannelMembershipSplit(amount, feePercent);
         if (isApproved && channelOwnerUid && subscriberUid) {
-            await activateChannelMembershipInFirestore(channelOwnerUid, subscriberUid, paymentId, amount, {
+            const actRes = await activateChannelMembershipInFirestore(channelOwnerUid, subscriberUid, paymentId, amount, {
                 subscriberName,
-                channelName
+                channelName,
+                feePercent
             });
+            if (actRes && actRes.feePercent !== undefined) {
+                splitInfo = {
+                    grossAmount: actRes.grossAmount ?? splitInfo.grossAmount,
+                    feePercent: actRes.feePercent,
+                    platformFee: actRes.platformFee ?? splitInfo.platformFee,
+                    creatorNet: actRes.creatorNet ?? splitInfo.creatorNet
+                };
+            }
         }
 
         res.json({
@@ -649,7 +739,10 @@ app.get('/api/channel-membership-payment-status/:id', async (req, res) => {
             isApproved,
             channelOwnerUid: channelOwnerUid || null,
             subscriberUid: subscriberUid || null,
-            amount
+            amount: splitInfo.grossAmount,
+            feePercent: splitInfo.feePercent,
+            platformFee: splitInfo.platformFee,
+            creatorNet: splitInfo.creatorNet
         });
     } catch (err) {
         console.error('Erro ao consultar pagamento Seja Membro:', err);

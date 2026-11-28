@@ -22947,6 +22947,7 @@ export function openAdminPanel() {
     loadAdminGroups();
     loadAdminVipRequests();
     loadAdminBusinessRequests();
+    if (typeof loadAdminChannelPayouts === 'function') loadAdminChannelPayouts();
     if (typeof loadAISecurityConfig === 'function') loadAISecurityConfig();
     if (typeof runAdminAIPlatformScan === 'function') runAdminAIPlatformScan();
     if (window.lucide) lucide.createIcons();
@@ -22988,6 +22989,9 @@ export function switchAdminTab(tabName) {
     }
     if (tabName === 'withdrawals') {
         loadAdminWithdrawals().then(() => renderAdminWithdrawals());
+    }
+    if (tabName === 'channel-payouts') {
+        loadAdminChannelPayouts().then(() => renderAdminChannelPayouts());
     }
     if (tabName === 'links') {
         loadAdminLinks().then(() => renderAdminLinks());
@@ -24898,7 +24902,7 @@ export function getAdminReports() {
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
 const TRANSPARENT_IMG_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E";
-export const CURRENT_APP_VERSION = '1.0.336';
+export const CURRENT_APP_VERSION = '1.0.337';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -25703,6 +25707,47 @@ document.getElementById('admin-tab-broadcast-btn')?.addEventListener('click', ()
 
 document.getElementById('admin-tab-games-btn')?.addEventListener('click', () => {
     switchAdminTab('games');
+});
+
+document.getElementById('admin-tab-channel-payouts-btn')?.addEventListener('click', () => {
+    switchAdminTab('channel-payouts');
+});
+
+document.getElementById('admin-cmem-save-fee-btn')?.addEventListener('click', () => {
+    saveAdminChannelMemberFeePercent();
+});
+
+document.getElementById('admin-cmem-fee-percent-input')?.addEventListener('input', (e) => {
+    const val = normalizeChannelMemberFeePercent(e?.target?.value);
+    const hintEl = document.getElementById('admin-cmem-fee-split-hint');
+    if (hintEl) hintEl.innerText = `Plataforma: ${val}% • Dono do canal: ${100 - val}%`;
+});
+
+document.getElementById('admin-channel-payouts-search-input')?.addEventListener('input', () => {
+    renderAdminChannelPayouts();
+});
+
+document.querySelectorAll?.('#admin-channel-payouts-filters [data-cmem-filter]')?.forEach(pill => {
+    pill.addEventListener('click', () => {
+        document.querySelectorAll?.('#admin-channel-payouts-filters [data-cmem-filter]')?.forEach(p => p.classList?.remove('active'));
+        pill.classList?.add('active');
+        renderAdminChannelPayouts(pill.dataset?.cmemFilter || 'all');
+    });
+});
+
+document.getElementById('admin-channel-payouts-list')?.addEventListener('click', async (e) => {
+    const btn = e?.target?.closest?.('[data-cmem-action]');
+    if (!btn) return;
+    const action = btn.dataset?.cmemAction;
+    if (action === 'copy-pix') {
+        const key = btn.dataset?.pixKey || '';
+        if (key && navigator.clipboard?.writeText) navigator.clipboard.writeText(key).catch(() => {});
+        showToast('Chave Pix Copiada', key ? `Chave ${key} copiada!` : 'Sem chave Pix.', 'blue');
+    } else if (action === 'mark-paid') {
+        await markAdminChannelPayoutPaid(btn.dataset?.payoutId || '');
+    } else if (action === 'reject') {
+        await rejectAdminChannelPayout(btn.dataset?.payoutId || '');
+    }
 });
 
 document.querySelectorAll('.admin-pill').forEach(pill => {
@@ -58140,10 +58185,47 @@ async function toggleChannelMembershipTier(targetUid, tierKey) {
 export const CHANNEL_MEMBER_MIN_PRICE = 1;
 export const CHANNEL_MEMBER_MAX_PRICE = 5000;
 export const CHANNEL_MEMBER_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
+export const CHANNEL_MEMBER_DEFAULT_FEE_PERCENT = 20;
+export const CHANNEL_MEMBER_MAX_FEE_PERCENT = 50;
 
 let activeChannelMemberCheckoutOwnerUid = '';
 let activeChannelMemberPaymentId = null;
 let channelMemberPixPollInterval = null;
+let currentChannelMemberFeePercent = CHANNEL_MEMBER_DEFAULT_FEE_PERCENT;
+let adminChannelPayoutsCache = [];
+let adminChannelPaymentsCache = [];
+let adminChannelPayoutsFilter = 'all';
+
+export function normalizeChannelMemberFeePercent(raw) {
+    if (raw === undefined || raw === null || raw === '') return CHANNEL_MEMBER_DEFAULT_FEE_PERCENT;
+    const num = Number(raw);
+    if (!Number.isFinite(num)) return CHANNEL_MEMBER_DEFAULT_FEE_PERCENT;
+    return Math.min(CHANNEL_MEMBER_MAX_FEE_PERCENT, Math.max(0, Math.round(num)));
+}
+
+export function getChannelMemberFeePercent() {
+    return currentChannelMemberFeePercent;
+}
+
+export function calculateChannelMembershipSplit(grossAmount, feePercent = currentChannelMemberFeePercent) {
+    const gross = Math.round(Math.max(0, Number(grossAmount) || 0) * 100) / 100;
+    const pct = normalizeChannelMemberFeePercent(feePercent);
+    const platformFee = Math.round((gross * (pct / 100)) * 100) / 100;
+    const creatorNet = Math.round((gross - platformFee) * 100) / 100;
+    return { grossAmount: gross, feePercent: pct, platformFee, creatorNet };
+}
+
+export async function loadChannelMembershipPlatformConfig() {
+    if (typeof getDoc === 'function' && typeof doc === 'function' && typeof db !== 'undefined' && db) {
+        try {
+            const cfgSnap = await getDoc(doc(db, 'system', 'channel_membership_config'));
+            if (cfgSnap.exists()) {
+                currentChannelMemberFeePercent = normalizeChannelMemberFeePercent(cfgSnap.data()?.feePercent);
+            }
+        } catch (_) {}
+    }
+    return currentChannelMemberFeePercent;
+}
 
 export function parseChannelMemberPrice(rawValue) {
     if (typeof rawValue === 'number') {
@@ -58287,6 +58369,9 @@ export async function requestChannelMemberPayout() {
         try {
             await addDoc(collection(db, 'channel_member_payouts'), {
                 uid,
+                creatorName: currentProfile?.name || '',
+                channelName: currentProfile?.channelName || currentProfile?.name || '',
+                creatorEmail: currentProfile?.email || currentUser?.email || '',
                 pixKey,
                 amount,
                 status: 'requested',
@@ -58381,7 +58466,7 @@ export function openChannelMemberCheckoutModal(targetUid = activeChannelUid) {
     return true;
 }
 
-export async function handleApprovedChannelMemberPayment({ paymentId, channelOwnerUid, subscriberUid, amount, subscriberName } = {}) {
+export async function handleApprovedChannelMemberPayment({ paymentId, channelOwnerUid, subscriberUid, amount, subscriberName, feePercent } = {}) {
     const ownerUid = channelOwnerUid || activeChannelMemberCheckoutOwnerUid || activeChannelUid || '';
     const memberUid = subscriberUid || currentUser?.uid || '';
     if (!ownerUid || !memberUid) return false;
@@ -58390,7 +58475,11 @@ export async function handleApprovedChannelMemberPayment({ paymentId, channelOwn
     const expiresAt = now + CHANNEL_MEMBER_DURATION_MS;
     const ownerData = getEffectiveChannelUserData(ownerUid, activeChannelUserData);
     const pricing = getChannelMembershipPricing(ownerData);
-    const safeAmount = Math.round(Math.max(0, Number(amount || pricing.price || 0)) * 100) / 100;
+    const resolvedFee = feePercent !== undefined
+        ? normalizeChannelMemberFeePercent(feePercent)
+        : await loadChannelMembershipPlatformConfig();
+    const rawAmount = Math.max(0, Number(amount || pricing.price || 0));
+    const { grossAmount, feePercent: appliedFeePercent, platformFee, creatorNet } = calculateChannelMembershipSplit(rawAmount, resolvedFee);
 
     let alreadyCredited = false;
     if (paymentId && typeof getDoc === 'function' && typeof doc === 'function' && typeof db !== 'undefined' && db) {
@@ -58419,7 +58508,10 @@ export async function handleApprovedChannelMemberPayment({ paymentId, channelOwn
         [memberUid]: {
             uid: memberUid,
             paymentId: String(paymentId || ''),
-            amount: safeAmount,
+            amount: grossAmount,
+            creatorNet,
+            feePercent: appliedFeePercent,
+            platformFee,
             startedAt: now,
             expiresAt
         }
@@ -58433,17 +58525,24 @@ export async function handleApprovedChannelMemberPayment({ paymentId, channelOwn
     if (!alreadyCredited) {
         const curBalance = Math.max(0, Number(latestOwnerDoc.channelMemberEarningsBalance || 0));
         const curTotal = Math.max(0, Number(latestOwnerDoc.channelMemberEarningsTotal || 0));
+        const curGross = Math.max(0, Number(latestOwnerDoc.channelMemberGrossTotal || 0));
+        const curFeeTotal = Math.max(0, Number(latestOwnerDoc.channelMemberPlatformFeeTotal || 0));
         const curCount = Math.max(0, Math.floor(Number(latestOwnerDoc.channelMemberPaidCount || 0)));
         const prevRecent = Array.isArray(latestOwnerDoc.channelMemberRecentPayments) ? latestOwnerDoc.channelMemberRecentPayments : [];
-        ownerPatch.channelMemberEarningsBalance = Math.round((curBalance + safeAmount) * 100) / 100;
-        ownerPatch.channelMemberEarningsTotal = Math.round((curTotal + safeAmount) * 100) / 100;
+        ownerPatch.channelMemberEarningsBalance = Math.round((curBalance + creatorNet) * 100) / 100;
+        ownerPatch.channelMemberEarningsTotal = Math.round((curTotal + creatorNet) * 100) / 100;
+        ownerPatch.channelMemberGrossTotal = Math.round((curGross + grossAmount) * 100) / 100;
+        ownerPatch.channelMemberPlatformFeeTotal = Math.round((curFeeTotal + platformFee) * 100) / 100;
         ownerPatch.channelMemberPaidCount = curCount + 1;
         ownerPatch.channelMemberRecentPayments = [
             {
                 paymentId: String(paymentId || ''),
                 subscriberUid: memberUid,
                 subscriberName: String(subscriberName || currentProfile?.name || 'Membro VIP'),
-                amount: safeAmount,
+                amount: creatorNet,
+                grossAmount,
+                feePercent: appliedFeePercent,
+                platformFee,
                 approvedAt: now
             },
             ...prevRecent.filter(p => p && p.paymentId !== String(paymentId || ''))
@@ -58455,7 +58554,11 @@ export async function handleApprovedChannelMemberPayment({ paymentId, channelOwn
                     paymentId: String(paymentId),
                     channelOwnerUid: ownerUid,
                     subscriberUid: memberUid,
-                    amount: safeAmount,
+                    amount: grossAmount,
+                    grossAmount,
+                    feePercent: appliedFeePercent,
+                    platformFee,
+                    creatorNet,
                     status: 'approved',
                     credited: true,
                     approvedAt: now,
@@ -58486,12 +58589,12 @@ export async function handleApprovedChannelMemberPayment({ paymentId, channelOwn
     if (successStep) successStep.style.display = 'flex';
     if (successMsg) {
         const chTitle = latestOwnerDoc.channelName || latestOwnerDoc.name || 'canal';
-        successMsg.innerText = `Pagamento Pix de ${formatBrlCurrency(safeAmount)} confirmado! Você já é Membro de ${chTitle}.`;
+        successMsg.innerText = `Pagamento Pix de ${formatBrlCurrency(grossAmount)} confirmado! Você já é Membro de ${chTitle}.`;
     }
 
     renderChannelScreen();
     if (!alreadyCredited) {
-        showToast('Seja Membro Liberado! 👑', `Seu acesso de Membro foi ativado após a confirmação do Pix (${formatBrlCurrency(safeAmount)}).`, 'green');
+        showToast('Seja Membro Liberado! 👑', `Seu acesso de Membro foi ativado após a confirmação do Pix (${formatBrlCurrency(grossAmount)}).`, 'green');
     }
     return true;
 }
@@ -58514,7 +58617,8 @@ export async function checkChannelMemberPaymentStatus(paymentId = activeChannelM
                 paymentId,
                 channelOwnerUid: data.channelOwnerUid || channelOwnerUid,
                 subscriberUid: data.subscriberUid || currentUser?.uid,
-                amount: data.amount
+                amount: data.amount,
+                feePercent: data.feePercent
             });
             return { approved: true, paymentId, status: 'approved' };
         }
@@ -58678,6 +58782,20 @@ export function openChannelMembershipModal(targetUid = activeChannelUid || curre
         `;
     }).join('');
 
+    const currentFeePct = getChannelMemberFeePercent();
+    const creatorSharePct = 100 - currentFeePct;
+    const feeSplitSample = calculateChannelMembershipSplit(pricing.price || 0, currentFeePct);
+    const buildFeePreviewText = (rawVal) => {
+        const parsedVal = parseChannelMemberPrice(rawVal);
+        const split = calculateChannelMembershipSplit(parsedVal, getChannelMemberFeePercent());
+        const pct = split.feePercent;
+        const creatorPct = 100 - pct;
+        if (parsedVal <= 0) {
+            return `Taxa da plataforma: ${pct}% • Você recebe líquido: ${creatorPct}%`;
+        }
+        return `Taxa da plataforma: ${pct}% (${formatBrlCurrency(split.platformFee)}) • Você recebe líquido: ${formatBrlCurrency(split.creatorNet)} (${creatorPct}%)`;
+    };
+
     const monetizationHtml = (isOwner && elig.eligible) ? `
         <section class="channel-member-monetization-card" aria-label="Monetização Seja Membro via Pix">
             <div class="channel-member-monetization-header">
@@ -58687,11 +58805,11 @@ export function openChannelMembershipModal(targetUid = activeChannelUid || curre
             <div class="channel-member-earnings-grid">
                 <div class="channel-member-earning-box">
                     <strong>${formatBrlCurrency(pricing.earningsBalance)}</strong>
-                    <span>Saldo disponível</span>
+                    <span>Saldo líquido</span>
                 </div>
                 <div class="channel-member-earning-box">
                     <strong>${formatBrlCurrency(pricing.earningsTotal)}</strong>
-                    <span>Total arrecadado</span>
+                    <span>Total líquido</span>
                 </div>
                 <div class="channel-member-earning-box">
                     <strong>${pricing.paidCount}</strong>
@@ -58701,7 +58819,7 @@ export function openChannelMembershipModal(targetUid = activeChannelUid || curre
             <label class="channel-member-toggle-row" for="channel-member-paid-toggle">
                 <span>
                     <strong>Cobrar entrada no Seja Membro via Pix</strong>
-                    <small>Quando pago no Pix, a plataforma libera o acesso automaticamente por 30 dias.</small>
+                    <small>Quando pago no Pix, a plataforma libera o acesso automaticamente por 30 dias (${creatorSharePct}% líquido para você).</small>
                 </span>
                 <input type="checkbox" id="channel-member-paid-toggle" class="channel-customize-checkbox" ${pricing.rawPaidEnabled ? 'checked' : ''}>
             </label>
@@ -58709,6 +58827,7 @@ export function openChannelMembershipModal(targetUid = activeChannelUid || curre
                 <label for="channel-member-price-input" class="channel-modal-label">Valor da entrada (R$ 1,00 a R$ 5.000,00)</label>
                 <input type="text" id="channel-member-price-input" class="channel-modal-input" inputmode="decimal" placeholder="Ex: 19,90" value="${pricing.price > 0 ? pricing.price.toFixed(2).replace('.', ',') : ''}">
             </div>
+            <div id="channel-member-fee-preview" class="channel-member-fee-preview">${buildFeePreviewText(feeSplitSample.grossAmount)}</div>
             <div class="channel-member-form-group">
                 <label for="channel-member-pix-input" class="channel-modal-label">Sua Chave Pix para receber</label>
                 <input type="text" id="channel-member-pix-input" class="channel-modal-input" maxlength="140" placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória" value="${escapeHTML(pricing.pixKey)}">
@@ -58731,8 +58850,8 @@ export function openChannelMembershipModal(targetUid = activeChannelUid || curre
                 <div class="channel-member-recent-list">
                     ${pricing.recentPayments.map(p => `
                         <div class="channel-member-recent-item">
-                            <span>${escapeHTML(p.subscriberName || 'Membro VIP')}</span>
-                            <strong>+${formatBrlCurrency(p.amount)}</strong>
+                            <span>${escapeHTML(p.subscriberName || 'Membro VIP')}${p.grossAmount ? ` (bruto ${formatBrlCurrency(p.grossAmount)} • taxa ${Number(p.feePercent ?? currentFeePct)}%)` : ''}</span>
+                            <strong>+${formatBrlCurrency(p.amount)} líquido</strong>
                         </div>
                     `).join('')}
                 </div>
@@ -58770,6 +58889,25 @@ export function openChannelMembershipModal(targetUid = activeChannelUid || curre
 
     document.getElementById('save-channel-member-pricing-btn')?.addEventListener('click', () => saveChannelMembershipPricing());
     document.getElementById('request-channel-member-payout-btn')?.addEventListener('click', () => requestChannelMemberPayout());
+    document.getElementById('channel-member-price-input')?.addEventListener('input', (e) => {
+        const previewEl = document.getElementById('channel-member-fee-preview');
+        if (previewEl) previewEl.innerText = buildFeePreviewText(e?.target?.value || '');
+    });
+    loadChannelMembershipPlatformConfig().then((livePct) => {
+        const previewEl = document.getElementById('channel-member-fee-preview');
+        const priceEl = document.getElementById('channel-member-price-input');
+        if (previewEl && priceEl && Number(livePct) !== Number(currentFeePct)) {
+            previewEl.innerText = buildFeePreviewText(priceEl.value || pricing.price || 0);
+        }
+    }).catch(() => {});
+
+    loadChannelMembershipPlatformConfig().then((livePct) => {
+        const previewEl = document.getElementById('channel-member-fee-preview');
+        const priceEl = document.getElementById('channel-member-price-input');
+        if (previewEl && priceEl && Number(livePct) !== Number(currentFeePct)) {
+            previewEl.innerText = buildFeePreviewText(priceEl.value || pricing.price || 0);
+        }
+    }).catch(() => {});
 
     const scrollBody = document.getElementById('channel-membership-scroll-body');
     if (scrollBody) scrollBody.scrollTop = 0;
@@ -58778,6 +58916,288 @@ export function openChannelMembershipModal(targetUid = activeChannelUid || curre
     modal.style.display = 'flex';
     modal.setAttribute('aria-hidden', 'false');
     if (window.lucide) lucide.createIcons();
+}
+
+export async function saveAdminChannelMemberFeePercent(rawPercent) {
+    if (!isUserAdmin()) {
+        showToast('Acesso negado', 'Apenas administradores podem alterar a taxa da plataforma.', 'red');
+        return { success: false, reason: 'unauthorized' };
+    }
+    const rawStr = rawPercent !== undefined && rawPercent !== null
+        ? String(rawPercent).trim()
+        : String(document.getElementById('admin-cmem-fee-percent-input')?.value ?? '').trim();
+    const num = Number(rawStr);
+    if (!rawStr || !Number.isFinite(num) || num < 0 || num > CHANNEL_MEMBER_MAX_FEE_PERCENT) {
+        showToast('Taxa inválida', `Informe uma taxa entre 0% e ${CHANNEL_MEMBER_MAX_FEE_PERCENT}%.`, 'red');
+        return { success: false, reason: 'invalid_fee' };
+    }
+    const feePercent = Math.round(num);
+    currentChannelMemberFeePercent = feePercent;
+
+    if (typeof setDoc === 'function' && typeof doc === 'function' && typeof db !== 'undefined' && db) {
+        try {
+            await setDoc(doc(db, 'system', 'channel_membership_config'), {
+                feePercent,
+                updatedAt: Date.now(),
+                updatedBy: currentUser?.email || ''
+            }, { merge: true });
+        } catch (err) {
+            console.warn('Erro ao salvar taxa da plataforma:', err);
+        }
+    }
+
+    renderAdminChannelPayouts();
+    showToast('Taxa Atualizada! ⚙️', `Plataforma: ${feePercent}% • Dono do canal: ${100 - feePercent}%.`, 'green');
+    return { success: true, feePercent };
+}
+
+export async function loadAdminChannelPayouts() {
+    if (!isUserAdmin()) {
+        return { payouts: [], payments: [], feePercent: currentChannelMemberFeePercent };
+    }
+    await loadChannelMembershipPlatformConfig();
+
+    if (typeof getDocs === 'function' && typeof collection === 'function' && typeof db !== 'undefined' && db) {
+        try {
+            const [payoutSnap, paySnap] = await Promise.all([
+                getDocs(collection(db, 'channel_member_payouts')),
+                getDocs(collection(db, 'channel_member_payments'))
+            ]);
+            const payouts = [];
+            payoutSnap?.forEach?.(d => payouts.push({ id: d.id, ...d.data() }));
+            payouts.sort((a, b) => (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0));
+            adminChannelPayoutsCache = payouts;
+
+            const payments = [];
+            paySnap?.forEach?.(d => payments.push({ id: d.id, ...d.data() }));
+            payments.sort((a, b) => (Number(b.approvedAt || b.createdAt) || 0) - (Number(a.approvedAt || a.createdAt) || 0));
+            adminChannelPaymentsCache = payments;
+        } catch (err) {
+            console.warn('Erro ao carregar repasses Membros Pix:', err);
+        }
+    }
+
+    const pendingCount = adminChannelPayoutsCache.filter(p => !p.status || p.status === 'requested' || p.status === 'pending').length;
+    const badgeEl = document.getElementById('admin-channel-payouts-badge');
+    if (badgeEl) {
+        badgeEl.innerText = String(pendingCount);
+        badgeEl.style.display = pendingCount > 0 ? 'inline-flex' : 'none';
+    }
+
+    return {
+        payouts: adminChannelPayoutsCache,
+        payments: adminChannelPaymentsCache,
+        feePercent: currentChannelMemberFeePercent
+    };
+}
+
+export function renderAdminChannelPayouts(filter = adminChannelPayoutsFilter, searchQuery = '') {
+    adminChannelPayoutsFilter = filter || 'all';
+    const q = String(searchQuery || document.getElementById('admin-channel-payouts-search-input')?.value || '').trim().toLowerCase();
+
+    let platformRevenue = 0;
+    adminChannelPaymentsCache.forEach(p => {
+        if (p && (p.status === 'approved' || p.credited === true)) {
+            const fee = Number(p.platformFee);
+            if (Number.isFinite(fee) && fee > 0) {
+                platformRevenue += fee;
+            } else if (Number(p.amount) > 0) {
+                platformRevenue += calculateChannelMembershipSplit(p.amount, p.feePercent ?? currentChannelMemberFeePercent).platformFee;
+            }
+        }
+    });
+
+    let pendingTotal = 0;
+    let paidTotal = 0;
+    let pendingCount = 0;
+    adminChannelPayoutsCache.forEach(item => {
+        if (!item) return;
+        const st = item.status || 'requested';
+        const amt = Math.max(0, Number(item.amount || 0));
+        if (st === 'requested' || st === 'pending') {
+            pendingTotal += amt;
+            pendingCount++;
+        } else if (st === 'paid') {
+            paidTotal += amt;
+        }
+    });
+
+    const revEl = document.getElementById('admin-cmem-platform-revenue');
+    const pendEl = document.getElementById('admin-cmem-pending-total');
+    const paidEl = document.getElementById('admin-cmem-paid-total');
+    const feeInp = document.getElementById('admin-cmem-fee-percent-input');
+    const hintEl = document.getElementById('admin-cmem-fee-split-hint');
+    const badgeEl = document.getElementById('admin-channel-payouts-badge');
+
+    if (revEl) revEl.innerText = formatBrlCurrency(platformRevenue);
+    if (pendEl) pendEl.innerText = formatBrlCurrency(pendingTotal);
+    if (paidEl) paidEl.innerText = formatBrlCurrency(paidTotal);
+    if (feeInp) feeInp.value = String(currentChannelMemberFeePercent);
+    if (hintEl) hintEl.innerText = `Plataforma: ${currentChannelMemberFeePercent}% • Dono do canal: ${100 - currentChannelMemberFeePercent}%`;
+    if (badgeEl) {
+        badgeEl.innerText = String(pendingCount);
+        badgeEl.style.display = pendingCount > 0 ? 'inline-flex' : 'none';
+    }
+
+    const listEl = document.getElementById('admin-channel-payouts-list');
+    if (!listEl) return;
+
+    const filtered = adminChannelPayoutsCache.filter(item => {
+        if (!item) return false;
+        const st = item.status || 'requested';
+        if (adminChannelPayoutsFilter !== 'all') {
+            if (adminChannelPayoutsFilter === 'requested') {
+                if (st !== 'requested' && st !== 'pending') return false;
+            } else if (st !== adminChannelPayoutsFilter) {
+                return false;
+            }
+        }
+        if (q) {
+            const hay = `${item.creatorName || ''} ${item.channelName || ''} ${item.creatorEmail || ''} ${item.pixKey || ''} ${item.uid || ''}`.toLowerCase();
+            if (!hay.includes(q)) return false;
+        }
+        return true;
+    });
+
+    if (!filtered.length) {
+        listEl.innerHTML = `
+            <div class="admin-empty-state">
+                <i data-lucide="crown" class="empty-state-icon"></i>
+                <p>Nenhuma solicitação de repasse encontrada.</p>
+                <small>Os pedidos de saque via Pix dos canais aparecem aqui para pagamento.</small>
+            </div>
+        `;
+        if (window.lucide) lucide.createIcons();
+        return;
+    }
+
+    const statusMeta = {
+        requested: { cls: 'is-requested', label: 'Pendente' },
+        pending: { cls: 'is-requested', label: 'Pendente' },
+        paid: { cls: 'is-paid', label: 'Pago ✓' },
+        rejected: { cls: 'is-rejected', label: 'Recusado / Estornado' }
+    };
+
+    listEl.innerHTML = filtered.map(item => {
+        const st = item.status || 'requested';
+        const meta = statusMeta[st] || statusMeta.requested;
+        const isPending = st === 'requested' || st === 'pending';
+        const titleName = escapeHTML(item.channelName || item.creatorName || item.uid || 'Canal');
+        return `
+            <div class="admin-cmem-payout-card" data-payout-id="${escapeHTML(item.id)}">
+                <div class="admin-cmem-payout-top">
+                    <strong>${titleName} • ${formatBrlCurrency(item.amount)}</strong>
+                    <span class="admin-cmem-status-badge ${meta.cls}">${meta.label}</span>
+                </div>
+                <small style="color:#a1a1aa;">Chave Pix: <strong>${escapeHTML(item.pixKey || '-')}</strong>${item.creatorEmail ? ` • ${escapeHTML(item.creatorEmail)}` : ''}</small>
+                <div class="admin-cmem-payout-actions">
+                    <button type="button" class="channel-pill-btn" data-cmem-action="copy-pix" data-pix-key="${escapeHTML(item.pixKey || '')}">Copiar Chave Pix</button>
+                    ${isPending ? `
+                        <button type="button" class="danger-btn save-profile-action-btn" data-cmem-action="mark-paid" data-payout-id="${escapeHTML(item.id)}">Marcar como Pago ✓</button>
+                        <button type="button" class="channel-pill-btn channel-danger-pill" data-cmem-action="reject" data-payout-id="${escapeHTML(item.id)}">Recusar e Estornar</button>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+    if (window.lucide) lucide.createIcons();
+}
+
+export async function markAdminChannelPayoutPaid(payoutId) {
+    if (!isUserAdmin() || !payoutId) {
+        return { success: false, reason: 'unauthorized' };
+    }
+    const target = adminChannelPayoutsCache.find(p => p && p.id === payoutId) || {};
+    const now = Date.now();
+    if (typeof updateDoc === 'function' && typeof doc === 'function' && typeof db !== 'undefined' && db) {
+        try {
+            await updateDoc(doc(db, 'channel_member_payouts', String(payoutId)), {
+                status: 'paid',
+                paidAt: now,
+                paidBy: currentUser?.email || ''
+            });
+        } catch (_) {}
+    }
+    if (target.uid && typeof addDoc === 'function' && typeof collection === 'function' && typeof db !== 'undefined' && db) {
+        try {
+            await addDoc(collection(db, 'notifications'), {
+                toUid: target.uid,
+                type: 'channel_membership_payout',
+                title: 'Repasse Pix Enviado! ✅',
+                message: `Seu saque de ${formatBrlCurrency(target.amount)} do Seja Membro foi enviado para a chave Pix ${target.pixKey || ''}.`,
+                read: false,
+                createdAt: now,
+                author: 'VORTEX VIP'
+            });
+        } catch (_) {}
+    }
+    await loadAdminChannelPayouts();
+    renderAdminChannelPayouts();
+    showToast('Repasse Marcado como Pago ✅', `Pix de ${formatBrlCurrency(target.amount || 0)} confirmado.`, 'green');
+    return { success: true, status: 'paid', payoutId };
+}
+
+export async function rejectAdminChannelPayout(payoutId) {
+    if (!isUserAdmin() || !payoutId) {
+        return { success: false, reason: 'unauthorized' };
+    }
+    let payout = adminChannelPayoutsCache.find(p => p && p.id === payoutId) || null;
+    if (!payout && typeof getDoc === 'function' && typeof doc === 'function' && typeof db !== 'undefined' && db) {
+        try {
+            const snap = await getDoc(doc(db, 'channel_member_payouts', String(payoutId)));
+            if (snap.exists()) payout = { id: payoutId, ...snap.data() };
+        } catch (_) {}
+    }
+    if (!payout) return { success: false, reason: 'not_found' };
+
+    const refundedAmount = Math.round(Math.max(0, Number(payout.amount || 0)) * 100) / 100;
+    const now = Date.now();
+
+    if (typeof updateDoc === 'function' && typeof doc === 'function' && typeof db !== 'undefined' && db) {
+        try {
+            await updateDoc(doc(db, 'channel_member_payouts', String(payoutId)), {
+                status: 'rejected',
+                rejectedAt: now,
+                rejectedBy: currentUser?.email || ''
+            });
+        } catch (_) {}
+    }
+
+    if (payout.uid && refundedAmount > 0 && typeof getDoc === 'function' && typeof updateDoc === 'function' && typeof doc === 'function' && typeof db !== 'undefined' && db) {
+        try {
+            const uSnap = await getDoc(doc(db, 'users', payout.uid));
+            const uData = uSnap.exists() ? (uSnap.data() || {}) : {};
+            const nextBal = Math.round((Math.max(0, Number(uData.channelMemberEarningsBalance || 0)) + refundedAmount) * 100) / 100;
+            const nextPayoutsTotal = Math.round(Math.max(0, Number(uData.channelMemberPayoutsTotal || 0) - refundedAmount) * 100) / 100;
+            await updateDoc(doc(db, 'users', payout.uid), {
+                channelMemberEarningsBalance: nextBal,
+                channelMemberPayoutsTotal: nextPayoutsTotal
+            });
+            if (currentProfile && currentUser?.uid === payout.uid) {
+                currentProfile.channelMemberEarningsBalance = nextBal;
+                currentProfile.channelMemberPayoutsTotal = nextPayoutsTotal;
+            }
+        } catch (_) {}
+    }
+
+    if (payout.uid && typeof addDoc === 'function' && typeof collection === 'function' && typeof db !== 'undefined' && db) {
+        try {
+            await addDoc(collection(db, 'notifications'), {
+                toUid: payout.uid,
+                type: 'channel_membership_payout',
+                title: 'Repasse Estornado ao Saldo ⚠️',
+                message: `Sua solicitação de saque de ${formatBrlCurrency(refundedAmount)} foi recusada e o valor voltou ao seu saldo líquido.`,
+                read: false,
+                createdAt: now,
+                author: 'VORTEX VIP'
+            });
+        } catch (_) {}
+    }
+
+    await loadAdminChannelPayouts();
+    renderAdminChannelPayouts();
+    showToast('Repasse Recusado', `Valor de ${formatBrlCurrency(refundedAmount)} estornado ao saldo do criador.`, 'yellow');
+    return { success: true, status: 'rejected', payoutId, refundedAmount };
 }
 
 export function closeChannelMembershipScreen() {
@@ -61141,6 +61561,17 @@ if (typeof window !== 'undefined') {
     window.checkChannelMemberPaymentStatus = checkChannelMemberPaymentStatus;
     window.handleApprovedChannelMemberPayment = handleApprovedChannelMemberPayment;
     window.copyChannelMemberPixCode = copyChannelMemberPixCode;
+    window.CHANNEL_MEMBER_DEFAULT_FEE_PERCENT = CHANNEL_MEMBER_DEFAULT_FEE_PERCENT;
+    window.CHANNEL_MEMBER_MAX_FEE_PERCENT = CHANNEL_MEMBER_MAX_FEE_PERCENT;
+    window.normalizeChannelMemberFeePercent = normalizeChannelMemberFeePercent;
+    window.getChannelMemberFeePercent = getChannelMemberFeePercent;
+    window.calculateChannelMembershipSplit = calculateChannelMembershipSplit;
+    window.loadChannelMembershipPlatformConfig = loadChannelMembershipPlatformConfig;
+    window.saveAdminChannelMemberFeePercent = saveAdminChannelMemberFeePercent;
+    window.loadAdminChannelPayouts = loadAdminChannelPayouts;
+    window.renderAdminChannelPayouts = renderAdminChannelPayouts;
+    window.markAdminChannelPayoutPaid = markAdminChannelPayoutPaid;
+    window.rejectAdminChannelPayout = rejectAdminChannelPayout;
     window.VORTEX_XP_PER_LEVEL = VORTEX_XP_PER_LEVEL;
     window.VORTEX_XP_ACTIONS = VORTEX_XP_ACTIONS;
     window.VORTEX_LEVEL_UNLOCKS = VORTEX_LEVEL_UNLOCKS;

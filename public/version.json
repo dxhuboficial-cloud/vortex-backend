@@ -1,6 +1,6 @@
 {
-  "version": "1.0.336",
-  "build": 336,
+  "version": "1.0.337",
+  "build": 337,
   "releaseDate": "2026-11-28",
-  "notes": "Monetização do Seja Membro no canal via Pix com configuração de preço pelo criador, QR Code Mercado Pago e liberação automática ao pagar (v1.0.336)"
+  "notes": "Taxa de 20% da plataforma (80% líquido ao criador) nas assinaturas Pix de Seja Membro e aba Membros Pix no Painel ADM para configurar taxa e gerir repasses (v1.0.337)"
 }
