@@ -24898,7 +24898,7 @@ export function getAdminReports() {
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
 const TRANSPARENT_IMG_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E";
-export const CURRENT_APP_VERSION = '1.0.334';
+export const CURRENT_APP_VERSION = '1.0.335';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -57078,8 +57078,9 @@ export function isValidChannelComment(comment, post = null, seenNormalizedSet = 
 export function evaluateChannelMembershipEligibility(uid, userData = null, postsSource = cachedFeedPosts) {
     const targetUid = uid || activeChannelUid || currentUser?.uid || '';
     const effectiveUser = (userData && typeof userData === 'object')
-        ? userData
+        ? { ...userData, uid: userData.uid || targetUid }
         : getEffectiveChannelUserData(targetUid, activeChannelUserData);
+    const isAdminUnlocked = isLevelAdminOverride(effectiveUser);
 
     const now = Date.now();
     const source = Array.isArray(postsSource) ? postsSource : [];
@@ -57147,7 +57148,7 @@ export function evaluateChannelMembershipEligibility(uid, userData = null, posts
     });
 
     const req = CHANNEL_MEMBERSHIP_REQUIREMENTS;
-    const criteria = [
+    const rawCriteria = [
         { key: 'videos', label: 'Vídeos publicados', icon: 'film', current: videosCount, required: req.videos, met: videosCount >= req.videos },
         { key: 'banner', label: 'Banner no canal', icon: 'image', current: bannerCount, required: req.banner, met: hasBanner },
         { key: 'images', label: 'Imagens publicadas', icon: 'images', current: imagesCount, required: req.images, met: imagesCount >= req.images },
@@ -57156,15 +57157,22 @@ export function evaluateChannelMembershipEligibility(uid, userData = null, posts
         { key: 'likes', label: 'Likes recebidos', icon: 'heart', current: likesCount, required: req.likes, met: likesCount >= req.likes },
         { key: 'validComments', label: 'Comentários válidos', icon: 'message-circle', current: validCommentsCount, required: req.validComments, met: validCommentsCount >= req.validComments }
     ];
+    const criteria = rawCriteria.map(c => ({
+        ...c,
+        naturalMet: c.met,
+        met: isAdminUnlocked || c.met,
+        unlockedByAdmin: isAdminUnlocked && !c.met
+    }));
 
     const completedCount = criteria.filter(c => c.met).length;
-    const eligible = completedCount === criteria.length;
+    const eligible = isAdminUnlocked || completedCount === criteria.length;
     const membersCount = Array.isArray(effectiveUser?.channelMembers) ? effectiveUser.channelMembers.filter(Boolean).length : 0;
     const superFansCount = Array.isArray(effectiveUser?.channelSuperFans) ? effectiveUser.channelSuperFans.filter(Boolean).length : 0;
 
     return {
         uid: targetUid,
         eligible,
+        isAdminUnlocked,
         superFanUnlocked: eligible,
         memberUnlocked: eligible,
         completedCount,
@@ -58139,7 +58147,10 @@ export function openChannelMembershipModal(targetUid = activeChannelUid || curre
     const missingCount = elig.totalRequirements - elig.completedCount;
 
     const rowsHtml = elig.criteria.map(item => {
-        const pct = Math.min(100, Math.round((item.current / Math.max(1, item.required)) * 100));
+        const pct = item.met ? 100 : Math.min(100, Math.round((item.current / Math.max(1, item.required)) * 100));
+        const statusText = item.unlockedByAdmin
+            ? `${item.current}/${item.required} • Liberado (Admin) ✓`
+            : `${item.current}/${item.required} ${item.met ? '✓' : ''}`;
         return `
             <div class="channel-membership-row${item.met ? ' met' : ''}" data-criterion="${escapeHTML(item.key)}">
                 <div class="channel-membership-row-top">
@@ -58147,7 +58158,7 @@ export function openChannelMembershipModal(targetUid = activeChannelUid || curre
                         <i data-lucide="${escapeHTML(item.icon)}"></i>
                         <span>${escapeHTML(item.label)}</span>
                     </span>
-                    <span class="channel-membership-row-count">${item.current}/${item.required} ${item.met ? '✓' : ''}</span>
+                    <span class="channel-membership-row-count">${statusText}</span>
                 </div>
                 <div class="channel-membership-progress-track" aria-hidden="true">
                     <div class="channel-membership-progress-fill" style="width:${pct}%;"></div>
@@ -58163,9 +58174,11 @@ export function openChannelMembershipModal(targetUid = activeChannelUid || curre
                 <span>${elig.eligible ? 'Super Fã & Seja Membro Liberados!' : `Faltam ${missingCount} de ${elig.totalRequirements} requisitos`}</span>
             </span>
             <p style="margin:0; font-size:0.82rem; color:#d4d4d8; line-height:1.45;">
-                ${elig.eligible
-                    ? 'Seu canal cumpriu todos os critérios e os botões Super Fã e Seja Membro já estão liberados para os visitantes.'
-                    : 'Conclua todos os 7 requisitos do canal abaixo para liberar automaticamente Super Fã e Seja Membro.'}
+                ${elig.isAdminUnlocked
+                    ? '⚡ Administrador: Super Fã e Seja Membro liberados automaticamente no seu canal para todos os visitantes.'
+                    : (elig.eligible
+                        ? 'Seu canal cumpriu todos os critérios e os botões Super Fã e Seja Membro já estão liberados para os visitantes.'
+                        : 'Conclua todos os 7 requisitos do canal abaixo para liberar automaticamente Super Fã e Seja Membro.')}
             </p>
         </div>
         <div class="channel-membership-stats-row">
