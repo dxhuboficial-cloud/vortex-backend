@@ -24898,7 +24898,7 @@ export function getAdminReports() {
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
 const TRANSPARENT_IMG_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E";
-export const CURRENT_APP_VERSION = '1.0.331';
+export const CURRENT_APP_VERSION = '1.0.332';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -37953,9 +37953,11 @@ function buildFeedPostStructureSignature(post, { isAdmin = false, viewerUid = ''
         ? `${post.music.title || ''}|${post.music.artist || ''}|${getMediaFingerprint(post.music.audioUrl || '')}|${post.music.hasAudioChunks ? 1 : 0}`
         : '';
     const authorUserData = typeof getPostAuthorUserData === 'function' ? getPostAuthorUserData(post) : null;
-    const hasStarSeal = typeof getUserLevelInfo === 'function'
-        ? (Number(getUserLevelInfo(authorUserData)?.level || 1) >= VORTEX_FEATURE_LEVEL_MAP.vortex_star)
-        : false;
+    const hasStarSeal = typeof isUserFeatureUnlocked === 'function'
+        ? isUserFeatureUnlocked(authorUserData, 'vortex_star')
+        : (typeof getUserLevelInfo === 'function'
+            ? (Number(getUserLevelInfo(authorUserData)?.level || 1) >= VORTEX_FEATURE_LEVEL_MAP.vortex_star)
+            : false);
     const canDelete = isPostOwner(post, currentUser, currentProfile);
     const isFollowingAuthor = (typeof isFollowingUser === 'function' && authorUid) ? isFollowingUser(authorUid) : false;
     const visibleComments = (Array.isArray(post.comments) ? post.comments : [])
@@ -56338,6 +56340,24 @@ export function calculateLevelFromXP(xp = 0) {
     return Math.max(1, Math.floor(safeXp / VORTEX_XP_PER_LEVEL) + 1);
 }
 
+export function isLevelAdminOverride(userData = currentProfile) {
+    if (!userData || typeof userData !== 'object') {
+        return typeof isUserAdmin === 'function' ? isUserAdmin(currentUser, currentProfile) : false;
+    }
+    if (typeof checkIsAdminUser === 'function' && checkIsAdminUser(userData)) {
+        return true;
+    }
+    const targetUid = userData.uid || userData.userId || '';
+    const isSelf = Boolean(
+        (typeof currentProfile !== 'undefined' && currentProfile && userData === currentProfile) ||
+        (typeof currentUser !== 'undefined' && currentUser && targetUid && targetUid === currentUser.uid)
+    );
+    if (isSelf && typeof isUserAdmin === 'function' && isUserAdmin(currentUser, userData)) {
+        return true;
+    }
+    return false;
+}
+
 export function getUserLevelInfo(userData = currentProfile) {
     const target = (userData && typeof userData === 'object') ? userData : {};
     const explicitLevel = Math.max(0, Math.floor(Number(target.level || target.userLevel || 0)));
@@ -56348,6 +56368,7 @@ export function getUserLevelInfo(userData = currentProfile) {
     const xp = Math.max(rawXp, minXpForLevel);
     const xpInCurrentLevel = xp - minXpForLevel;
     const progressPercent = Math.min(100, Math.max(0, Math.round((xpInCurrentLevel / VORTEX_XP_PER_LEVEL) * 100)));
+    const isAdminUnlocked = isLevelAdminOverride(target);
 
     return {
         level,
@@ -56357,13 +56378,20 @@ export function getUserLevelInfo(userData = currentProfile) {
         xpNeededForNext: VORTEX_XP_PER_LEVEL,
         nextLevelXp: level * VORTEX_XP_PER_LEVEL,
         progressPercent,
-        unlocks: VORTEX_LEVEL_UNLOCKS.map(u => ({ ...u, unlocked: level >= u.level }))
+        isAdminUnlocked,
+        unlocks: VORTEX_LEVEL_UNLOCKS.map(u => ({
+            ...u,
+            unlocked: isAdminUnlocked || level >= u.level,
+            unlockedByAdmin: isAdminUnlocked && level < u.level
+        }))
     };
 }
 
 export function isUserFeatureUnlocked(userData, featureKey) {
+    const info = getUserLevelInfo(userData);
+    if (info.isAdminUnlocked) return true;
     const reqLevel = VORTEX_FEATURE_LEVEL_MAP[featureKey] || 1;
-    return getUserLevelInfo(userData).level >= reqLevel;
+    return info.level >= reqLevel;
 }
 
 export function isChannelFeatureUnlocked(userData, featureKey) {
@@ -56381,14 +56409,22 @@ export function getPostAuthorUserData(post) {
     }
     const cached = (authorUid && typeof contactUserDataMap !== 'undefined' && contactUserDataMap?.get?.(authorUid)) || null;
     if (cached) return cached;
-    return (post.authorLevel || post.authorXp) ? { level: post.authorLevel || 1, xp: post.authorXp || 0 } : null;
+    if (post.authorEmail || post.email || authorUid || post.authorLevel || post.authorXp) {
+        return {
+            uid: authorUid,
+            email: post.authorEmail || post.email || '',
+            level: post.authorLevel || 1,
+            xp: post.authorXp || 0
+        };
+    }
+    return null;
 }
 
 export function renderVortexStarSealHTML(userDataOrLevel) {
-    const info = typeof userDataOrLevel === 'number'
-        ? { level: userDataOrLevel }
-        : getUserLevelInfo(userDataOrLevel);
-    if ((Number(info?.level) || 1) < VORTEX_FEATURE_LEVEL_MAP.vortex_star) return '';
+    const isUnlocked = typeof userDataOrLevel === 'number'
+        ? userDataOrLevel >= VORTEX_FEATURE_LEVEL_MAP.vortex_star
+        : isUserFeatureUnlocked(userDataOrLevel, 'vortex_star');
+    if (!isUnlocked) return '';
     return `
         <span class="vortex-star-seal" title="Estrela do VORTEX 🌟 (Nível 110+)" aria-label="Selo Estrela do Vortex">
             <span class="vortex-star-seal-icon" aria-hidden="true">🌟</span>
@@ -56420,30 +56456,31 @@ export async function awardUserXP(actionType, targetId = '', options = {}) {
     const newLevel = calculateLevelFromXP(newXp);
     const nextKeys = dedupKey ? [...existingKeys, dedupKey].slice(-500) : existingKeys;
     const leveledUp = newLevel > oldInfo.level;
-    const newlyUnlocked = leveledUp
+    const isAdminTarget = isLevelAdminOverride(targetDoc);
+    const newlyUnlocked = (!isAdminTarget && leveledUp)
         ? VORTEX_LEVEL_UNLOCKS.filter(u => oldInfo.level < u.level && newLevel >= u.level)
         : [];
 
     targetDoc.xp = newXp;
     targetDoc.level = newLevel;
     targetDoc.levelActionKeys = nextKeys;
-    targetDoc.bestCreatorBadgeUnlocked = newLevel >= 90;
-    targetDoc.vortexStarUnlocked = newLevel >= 110;
+    targetDoc.bestCreatorBadgeUnlocked = isAdminTarget || newLevel >= 90;
+    targetDoc.vortexStarUnlocked = isAdminTarget || newLevel >= 110;
 
     if (activeChannelUid === uid && activeChannelUserData) {
         activeChannelUserData.xp = newXp;
         activeChannelUserData.level = newLevel;
         activeChannelUserData.levelActionKeys = nextKeys;
-        activeChannelUserData.bestCreatorBadgeUnlocked = newLevel >= 90;
-        activeChannelUserData.vortexStarUnlocked = newLevel >= 110;
+        activeChannelUserData.bestCreatorBadgeUnlocked = isAdminTarget || newLevel >= 90;
+        activeChannelUserData.vortexStarUnlocked = isAdminTarget || newLevel >= 110;
     }
     if (typeof contactUserDataMap !== 'undefined' && contactUserDataMap?.has(uid)) {
         contactUserDataMap.set(uid, {
             ...contactUserDataMap.get(uid),
             xp: newXp,
             level: newLevel,
-            bestCreatorBadgeUnlocked: newLevel >= 90,
-            vortexStarUnlocked: newLevel >= 110
+            bestCreatorBadgeUnlocked: isAdminTarget || newLevel >= 90,
+            vortexStarUnlocked: isAdminTarget || newLevel >= 110
         });
     }
 
@@ -56453,8 +56490,8 @@ export async function awardUserXP(actionType, targetId = '', options = {}) {
                 xp: newXp,
                 level: newLevel,
                 levelActionKeys: nextKeys,
-                bestCreatorBadgeUnlocked: newLevel >= 90,
-                vortexStarUnlocked: newLevel >= 110,
+                bestCreatorBadgeUnlocked: isAdminTarget || newLevel >= 90,
+                vortexStarUnlocked: isAdminTarget || newLevel >= 110,
                 updatedAt: Date.now()
             }, { merge: true });
         } catch (_) {}
@@ -56496,26 +56533,32 @@ export async function setUserLevel(targetLevel, uid = currentUser?.uid) {
     const safeLevel = Math.max(1, Math.floor(Number(targetLevel) || 1));
     const targetUid = uid || currentUser?.uid || '';
     const newXp = (safeLevel - 1) * VORTEX_XP_PER_LEVEL;
+    const existingDoc = (targetUid && currentUser?.uid === targetUid && currentProfile)
+        ? currentProfile
+        : ((targetUid && activeChannelUid === targetUid && activeChannelUserData)
+            ? activeChannelUserData
+            : ((targetUid && typeof contactUserDataMap !== 'undefined' && contactUserDataMap?.get?.(targetUid)) || null));
+    const isAdminTarget = isLevelAdminOverride(existingDoc ? { ...existingDoc, uid: targetUid } : { uid: targetUid });
     if (targetUid && currentUser?.uid === targetUid) {
         if (!currentProfile) currentProfile = {};
         currentProfile.level = safeLevel;
         currentProfile.xp = newXp;
-        currentProfile.bestCreatorBadgeUnlocked = safeLevel >= 90;
-        currentProfile.vortexStarUnlocked = safeLevel >= 110;
+        currentProfile.bestCreatorBadgeUnlocked = isAdminTarget || safeLevel >= 90;
+        currentProfile.vortexStarUnlocked = isAdminTarget || safeLevel >= 110;
     }
     if (targetUid && activeChannelUid === targetUid && activeChannelUserData) {
         activeChannelUserData.level = safeLevel;
         activeChannelUserData.xp = newXp;
-        activeChannelUserData.bestCreatorBadgeUnlocked = safeLevel >= 90;
-        activeChannelUserData.vortexStarUnlocked = safeLevel >= 110;
+        activeChannelUserData.bestCreatorBadgeUnlocked = isAdminTarget || safeLevel >= 90;
+        activeChannelUserData.vortexStarUnlocked = isAdminTarget || safeLevel >= 110;
     }
     if (targetUid && typeof contactUserDataMap !== 'undefined' && contactUserDataMap?.has(targetUid)) {
         contactUserDataMap.set(targetUid, {
             ...contactUserDataMap.get(targetUid),
             level: safeLevel,
             xp: newXp,
-            bestCreatorBadgeUnlocked: safeLevel >= 90,
-            vortexStarUnlocked: safeLevel >= 110
+            bestCreatorBadgeUnlocked: isAdminTarget || safeLevel >= 90,
+            vortexStarUnlocked: isAdminTarget || safeLevel >= 110
         });
     }
     if (targetUid && typeof setDoc === 'function' && typeof doc === 'function' && typeof db !== 'undefined' && db) {
@@ -56523,8 +56566,8 @@ export async function setUserLevel(targetLevel, uid = currentUser?.uid) {
             await setDoc(doc(db, 'users', targetUid), {
                 level: safeLevel,
                 xp: newXp,
-                bestCreatorBadgeUnlocked: safeLevel >= 90,
-                vortexStarUnlocked: safeLevel >= 110,
+                bestCreatorBadgeUnlocked: isAdminTarget || safeLevel >= 90,
+                vortexStarUnlocked: isAdminTarget || safeLevel >= 110,
                 updatedAt: Date.now()
             }, { merge: true });
         } catch (_) {}
@@ -56532,7 +56575,7 @@ export async function setUserLevel(targetLevel, uid = currentUser?.uid) {
     if (document.getElementById('channel-panel')?.classList?.contains('active')) {
         renderChannelScreen();
     }
-    return getUserLevelInfo({ level: safeLevel, xp: newXp });
+    return getUserLevelInfo(existingDoc ? { ...existingDoc, uid: targetUid, level: safeLevel, xp: newXp } : { uid: targetUid, level: safeLevel, xp: newXp });
 }
 
 export async function togglePinChannelShort(postId) {
@@ -56608,11 +56651,12 @@ export function openLevelProgressionModal(targetUid = activeChannelUid || curren
     ];
 
     contentEl.innerHTML = `
-        <div class="channel-membership-hero${info.level >= 10 ? ' unlocked' : ''}">
+        <div class="channel-membership-hero${(info.isAdminUnlocked || info.level >= 10) ? ' unlocked' : ''}">
             <span class="channel-membership-status-badge">
                 <i data-lucide="zap"></i>
                 <span>Nível ${info.level} • ${info.xp} XP</span>
             </span>
+            ${info.isAdminUnlocked ? `<div style="font-size:0.78rem; color:#4ade80; font-weight:700;">⚡ Administrador • Todos os desbloqueios de nível liberados</div>` : ''}
             <div style="font-size:0.78rem; color:#d4d4d8;">Progresso para o Nível ${info.level + 1}: ${info.xpInCurrentLevel}/${info.xpNeededForNext} XP</div>
             <div class="channel-membership-progress-track" aria-hidden="true">
                 <div class="channel-membership-progress-fill" style="width:${info.progressPercent}%;"></div>
@@ -56623,7 +56667,10 @@ export function openLevelProgressionModal(targetUid = activeChannelUid || curren
         </div>
         <div class="channel-membership-list">
             ${info.unlocks.map(u => {
-                const pct = Math.min(100, Math.round((info.level / u.level) * 100));
+                const pct = u.unlocked ? 100 : Math.min(100, Math.round((info.level / u.level) * 100));
+                const statusLabel = u.unlocked
+                    ? (u.unlockedByAdmin ? 'Liberado (Admin) ✓' : 'Liberado ✓')
+                    : `Faltam ${u.level - info.level} nvs`;
                 return `
                     <div class="channel-membership-row${u.unlocked ? ' met' : ''}" data-unlock-key="${escapeHTML(u.key)}">
                         <div class="channel-membership-row-top">
@@ -56631,7 +56678,7 @@ export function openLevelProgressionModal(targetUid = activeChannelUid || curren
                                 <i data-lucide="${escapeHTML(u.icon)}"></i>
                                 <span>Nível ${u.level} • ${escapeHTML(u.label)}</span>
                             </span>
-                            <span class="channel-membership-row-count">${u.unlocked ? 'Liberado ✓' : `Faltam ${u.level - info.level} nvs`}</span>
+                            <span class="channel-membership-row-count">${statusLabel}</span>
                         </div>
                         <small style="font-size:0.73rem; color:#a1a1aa;">${escapeHTML(u.desc)}</small>
                         <div class="channel-membership-progress-track" aria-hidden="true">
@@ -60319,7 +60366,9 @@ if (typeof window !== 'undefined') {
     window.VORTEX_LEVEL_UNLOCKS = VORTEX_LEVEL_UNLOCKS;
     window.MAX_PINNED_SHORTS = MAX_PINNED_SHORTS;
     window.calculateLevelFromXP = calculateLevelFromXP;
+    window.isLevelAdminOverride = isLevelAdminOverride;
     window.getUserLevelInfo = getUserLevelInfo;
+    window.getPostAuthorUserData = getPostAuthorUserData;
     window.isUserFeatureUnlocked = isUserFeatureUnlocked;
     window.isChannelFeatureUnlocked = isChannelFeatureUnlocked;
     window.awardUserXP = awardUserXP;

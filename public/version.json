@@ -1,6 +1,6 @@
 {
-  "version": "1.0.331",
-  "build": 331,
+  "version": "1.0.332",
+  "build": 332,
   "releaseDate": "2026-11-28",
-  "notes": "Correção definitiva do Service Worker para start_url /?source=pwa, rotas App Shell e fallbacks offline sem promise rejeitada no FetchEvent (sw.js v1.0.331)"
+  "notes": "Liberação automática de todos os desbloqueios de nível do canal (10/30/50/70/90/110) para administradores mantendo progressão normal para usuários comuns (v1.0.332)"
 }
