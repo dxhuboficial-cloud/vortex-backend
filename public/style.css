@@ -34125,6 +34125,166 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
     align-items: center;
     justify-content: space-between;
 }
+.channel-community-poll-mode-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    width: 100%;
+}
+.channel-community-poll-mode-btn {
+    padding: 7px 10px;
+    border-radius: 9px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.04);
+    color: #a1a1aa;
+    font-size: 0.76rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+.channel-community-poll-mode-btn.active {
+    border-color: rgba(0, 255, 136, 0.6);
+    background: rgba(0, 255, 136, 0.16);
+    color: #6ee7b7;
+}
+.channel-community-poll-option-input-row.is-image-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+.channel-community-poll-opt-img-slot {
+    position: relative;
+    width: 56px;
+    height: 56px;
+    flex-shrink: 0;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px dashed rgba(255, 255, 255, 0.22);
+    background: rgba(0, 0, 0, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.channel-community-poll-opt-img-slot.has-img {
+    border-style: solid;
+    border-color: rgba(0, 255, 136, 0.45);
+}
+.channel-community-poll-opt-pick-btn {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: transparent;
+    color: #a1a1aa;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 2px;
+}
+.channel-community-poll-opt-pick-btn i,
+.channel-community-poll-opt-pick-btn svg {
+    width: 16px;
+    height: 16px;
+}
+.channel-community-poll-opt-thumb {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+.channel-community-poll-opt-img-clear-btn {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    border-radius: 50%;
+    border: none;
+    background: rgba(0, 0, 0, 0.8);
+    color: #fff;
+    font-size: 0.8rem;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+.channel-community-poll-options.is-image-poll {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+.channel-community-poll-options.is-image-poll.count-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.channel-community-poll-image-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    border-radius: 12px;
+    padding: 6px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-sizing: border-box;
+    min-width: 0;
+}
+.channel-community-poll-image-item.voted {
+    border-color: #00ff88;
+    background: rgba(0, 255, 136, 0.07);
+}
+.channel-community-poll-image-thumb-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #0a0a0a;
+}
+.channel-community-poll-option-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+.channel-community-poll-option-img.is-loading {
+    background: rgba(255, 255, 255, 0.06);
+}
+.channel-community-poll-image-zoom-btn {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(0, 0, 0, 0.72);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+}
+.channel-community-poll-image-zoom-btn i,
+.channel-community-poll-image-zoom-btn svg {
+    width: 13px;
+    height: 13px;
+}
+.channel-community-poll-option-btn.has-image .channel-community-poll-option-content {
+    padding: 8px 9px;
+    gap: 6px;
+}
+@media (max-width: 480px) {
+    .channel-community-poll-options.is-image-poll.count-3 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
 
 /* 4. Opção do Dono: Seguidores Vindos dos Vídeos vs Inscritos por Visita no Canal */
 .channel-analytics-pill-btn i,
