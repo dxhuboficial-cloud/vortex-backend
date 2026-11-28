@@ -33330,6 +33330,87 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
     border-radius: 14px;
     padding: 12px;
 }
+.channel-community-composer-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+.channel-community-add-photo-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: rgba(255, 255, 255, 0.08);
+    color: #f4f4f5;
+    padding: 8px 14px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background 0.18s ease, border-color 0.18s ease, opacity 0.18s ease;
+}
+.channel-community-add-photo-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.14);
+    border-color: rgba(255, 255, 255, 0.28);
+}
+.channel-community-add-photo-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+.channel-community-add-photo-btn i,
+.channel-community-add-photo-btn svg {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+}
+.channel-community-photo-count {
+    font-size: 0.72rem;
+    color: #a1a1aa;
+    background: rgba(255, 255, 255, 0.08);
+    padding: 2px 7px;
+    border-radius: 999px;
+}
+.channel-community-photo-preview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+    gap: 8px;
+    width: 100%;
+    box-sizing: border-box;
+}
+.channel-community-photo-preview-item {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: #0d0d0d;
+}
+.channel-community-photo-preview-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+.channel-community-photo-remove-btn {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.78);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    font-size: 0.9rem;
+    line-height: 1;
+    cursor: pointer;
+}
 .channel-community-publish-btn {
     width: 100%;
     flex: none;
@@ -33637,7 +33718,65 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
     height: 10px;
 }
 
-/* 3. Botão Curtir nos Avisos da Comunidade */
+/* 3. Fotos e Botões nos Avisos da Comunidade */
+.channel-community-post-text {
+    font-size: 0.88rem;
+    color: #f1f1f1;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+.channel-community-post-photos {
+    display: grid;
+    gap: 6px;
+    margin-top: 8px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+.channel-community-post-photos.count-1 {
+    grid-template-columns: 1fr;
+}
+.channel-community-post-photos.count-2,
+.channel-community-post-photos.count-3,
+.channel-community-post-photos.count-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.channel-community-post-photo-btn {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    overflow: hidden;
+    background: #0a0a0a;
+    cursor: zoom-in;
+    aspect-ratio: 4 / 3;
+    max-height: 360px;
+}
+.channel-community-post-photos.count-1 .channel-community-post-photo-btn {
+    aspect-ratio: auto;
+    max-height: 420px;
+}
+.channel-community-post-photos.count-3 .channel-community-post-photo-btn:first-child {
+    grid-column: 1 / -1;
+    aspect-ratio: 16 / 10;
+}
+.channel-community-post-img {
+    width: 100%;
+    height: 100%;
+    max-height: 420px;
+    object-fit: cover;
+    display: block;
+}
+.channel-community-post-photos.count-1 .channel-community-post-img {
+    object-fit: contain;
+    height: auto;
+    max-height: 420px;
+}
+.channel-community-post-img.is-loading {
+    min-height: 150px;
+    background: rgba(255, 255, 255, 0.06);
+}
 .channel-community-post-actions {
     display: flex;
     align-items: center;
@@ -33678,6 +33817,30 @@ body.theme-hacker .daily-chest-withdraw-confirm-btn {
 }
 .channel-community-like-btn.liked svg {
     fill: currentColor;
+}
+.channel-community-delete-btn {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 11px;
+    border-radius: 999px;
+    border: 1px solid rgba(248, 113, 113, 0.35);
+    background: rgba(248, 113, 113, 0.1);
+    color: #fca5a5;
+    font-size: 0.76rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.18s ease, border-color 0.18s ease;
+}
+.channel-community-delete-btn:hover {
+    background: rgba(248, 113, 113, 0.2);
+    border-color: rgba(248, 113, 113, 0.6);
+}
+.channel-community-delete-btn i,
+.channel-community-delete-btn svg {
+    width: 14px;
+    height: 14px;
 }
 
 /* 4. Opção do Dono: Seguidores Vindos dos Vídeos vs Inscritos por Visita no Canal */

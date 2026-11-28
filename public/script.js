@@ -24770,7 +24770,7 @@ export function getAdminReports() {
 let pwaDeferredPrompt = null;
 let pwaIsInstalled = false;
 const TRANSPARENT_IMG_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E";
-export const CURRENT_APP_VERSION = '1.0.325';
+export const CURRENT_APP_VERSION = '1.0.326';
 export let pwaUpdateAvailable = false;
 export let pwaWaitingWorker = null;
 export let pwaRegistration = null;
@@ -45259,7 +45259,20 @@ let lastExitBackPressTime = 0;
 let isBackNavInitialized = false;
 
 export function closeTopmostActiveLayer() {
-    // 0. Modais de Preview e Análise do Painel ADM
+    // 0. Zoom de Foto (Documento ou Foto da Comunidade)
+    const photoZoomModal = document.getElementById('business-photo-zoom-modal');
+    if (photoZoomModal && (photoZoomModal.classList?.contains('active') || photoZoomModal.style.display === 'flex')) {
+        if (typeof closeBusinessPhotoZoom === 'function') {
+            closeBusinessPhotoZoom();
+        } else {
+            photoZoomModal.style.display = 'none';
+            photoZoomModal.classList?.remove('active');
+            photoZoomModal.setAttribute('aria-hidden', 'true');
+        }
+        return true;
+    }
+
+    // 0b. Modais de Preview e Análise do Painel ADM
     const postPreviewModal = document.getElementById('admin-post-preview-modal');
     if (postPreviewModal && (postPreviewModal.classList?.contains('active') || postPreviewModal.style.display === 'flex')) {
         postPreviewModal.style.display = 'none';
@@ -57852,6 +57865,249 @@ export function closeChannelAboutScreen() {
 
 export const openChannelAboutScreen = openChannelAboutModal;
 
+export const MAX_CHANNEL_COMMUNITY_PHOTOS = 4;
+const CHANNEL_COMMUNITY_MEDIA_COLLECTION = 'channel_community_media';
+const CHANNEL_COMMUNITY_IMG_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'/%3E";
+let pendingChannelCommunityPhotos = [];
+let channelCommunityPublishing = false;
+
+function isSafeCommunityImageSrc(src) {
+    if (!src || typeof src !== 'string') return false;
+    return (
+        src.startsWith('data:image/') ||
+        src.startsWith('https://') ||
+        src.startsWith('http://') ||
+        src.startsWith('blob:')
+    );
+}
+
+export function getPendingChannelCommunityPhotos() {
+    return pendingChannelCommunityPhotos.map(item => ({ ...item }));
+}
+
+export function renderChannelCommunityPhotoPreview() {
+    const grid = document.getElementById('channel-community-photo-preview-grid');
+    const countEl = document.getElementById('channel-community-photo-count');
+    const addBtn = document.getElementById('channel-community-add-photo-btn');
+    const count = pendingChannelCommunityPhotos.length;
+
+    if (countEl) {
+        countEl.innerText = `${count}/${MAX_CHANNEL_COMMUNITY_PHOTOS}`;
+    }
+    if (addBtn) {
+        addBtn.disabled = count >= MAX_CHANNEL_COMMUNITY_PHOTOS;
+    }
+    if (!grid) return;
+
+    if (count === 0) {
+        grid.innerHTML = '';
+        grid.style.display = 'none';
+        return;
+    }
+
+    grid.style.display = 'grid';
+    grid.innerHTML = pendingChannelCommunityPhotos.map(item => `
+        <div class="channel-community-photo-preview-item" data-comm-photo-id="${escapeHTML(item.id)}">
+            <img src="${item.dataUrl}" alt="Prévia da foto da comunidade" loading="lazy" decoding="async">
+            <button type="button" class="channel-community-photo-remove-btn" data-remove-comm-photo="${escapeHTML(item.id)}" aria-label="Remover foto" title="Remover foto">&times;</button>
+        </div>
+    `).join('');
+
+    grid.querySelectorAll('[data-remove-comm-photo]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            removePendingChannelCommunityPhoto(btn.dataset.removeCommPhoto || '');
+        });
+    });
+}
+
+export function clearPendingChannelCommunityPhotos() {
+    pendingChannelCommunityPhotos = [];
+    const input = document.getElementById('channel-community-photo-input');
+    if (input) input.value = '';
+    renderChannelCommunityPhotoPreview();
+}
+
+export function removePendingChannelCommunityPhoto(photoId) {
+    const idStr = String(photoId || '');
+    if (!idStr) return false;
+    const prevLen = pendingChannelCommunityPhotos.length;
+    pendingChannelCommunityPhotos = pendingChannelCommunityPhotos.filter(item => item.id !== idStr);
+    renderChannelCommunityPhotoPreview();
+    return pendingChannelCommunityPhotos.length !== prevLen;
+}
+
+export async function handleChannelCommunityPhotoSelection(fileList) {
+    if (!currentUser?.uid) {
+        showToast('Login necessário', 'Entre na sua conta para enviar fotos.', 'yellow');
+        return { added: 0, total: pendingChannelCommunityPhotos.length, blocked: true };
+    }
+    const uid = activeChannelUid || currentUser.uid;
+    if (uid !== currentUser.uid) {
+        showToast('Somente o dono do canal', 'Apenas o dono do canal pode enviar fotos na comunidade.', 'yellow');
+        return { added: 0, total: pendingChannelCommunityPhotos.length, blocked: true };
+    }
+    const channelGate = canCurrentUserPublishPosts(currentProfile);
+    if (!channelGate.allowed) {
+        showToast('Canal Desativado 🔒', channelGate.message, 'red');
+        return { added: 0, total: pendingChannelCommunityPhotos.length, blocked: true };
+    }
+    if (!isChannelFeatureUnlocked(currentProfile, 'community')) {
+        showToast('Aba Comunidade Bloqueada 🔒', 'Alcance o Nível 10 para publicar fotos na aba Comunidade.', 'yellow');
+        return { added: 0, total: pendingChannelCommunityPhotos.length, blocked: true };
+    }
+
+    const rawFiles = Array.from(fileList || []);
+    const imageFiles = [];
+    let ignoredNonImage = false;
+    for (const file of rawFiles) {
+        if (!file) continue;
+        if (file.type && !String(file.type).startsWith('image/')) {
+            ignoredNonImage = true;
+            continue;
+        }
+        imageFiles.push(file);
+    }
+    if (ignoredNonImage) {
+        showToast('Formato inválido', 'Apenas imagens são permitidas na comunidade.', 'yellow');
+    }
+
+    const inputEl = document.getElementById('channel-community-photo-input');
+    const remainingSlots = MAX_CHANNEL_COMMUNITY_PHOTOS - pendingChannelCommunityPhotos.length;
+    if (remainingSlots <= 0) {
+        showToast('Limite de fotos', `Máximo de ${MAX_CHANNEL_COMMUNITY_PHOTOS} fotos por publicação na comunidade.`, 'yellow');
+        if (inputEl) inputEl.value = '';
+        return { added: 0, total: pendingChannelCommunityPhotos.length };
+    }
+
+    const filesToProcess = imageFiles.slice(0, remainingSlots);
+    if (imageFiles.length > remainingSlots) {
+        showToast('Limite de fotos', `Apenas ${MAX_CHANNEL_COMMUNITY_PHOTOS} fotos podem ser anexadas por publicação.`, 'yellow');
+    }
+
+    let added = 0;
+    for (let i = 0; i < filesToProcess.length; i++) {
+        const file = filesToProcess[i];
+        let dataUrl = '';
+        let sizeFormatted = '';
+        try {
+            if (typeof compressImageFileToKB === 'function') {
+                const compressed = await compressImageFileToKB(file, { maxDimension: 1280, targetMaxKB: 260, quality: 0.82 });
+                dataUrl = compressed?.dataUrl || compressed?.data || '';
+                sizeFormatted = compressed?.sizeFormatted || '';
+            }
+            if (!dataUrl && typeof compressImage === 'function') {
+                dataUrl = await compressImage(file, 1280, 0.8);
+            }
+        } catch (err) {
+            console.warn('[Comunidade] Erro ao otimizar imagem:', err);
+        }
+
+        if (!dataUrl) continue;
+        pendingChannelCommunityPhotos.push({
+            id: `cphoto_${Date.now()}_${i}_${Math.random().toString(36).slice(2, 6)}`,
+            dataUrl,
+            sizeFormatted
+        });
+        added++;
+    }
+
+    if (inputEl) inputEl.value = '';
+    renderChannelCommunityPhotoPreview();
+    return { added, total: pendingChannelCommunityPhotos.length };
+}
+
+async function cleanupChannelCommunityPostMedia(postItem) {
+    const mediaIds = Array.isArray(postItem?.photoMediaIds) ? postItem.photoMediaIds.filter(Boolean) : [];
+    if (!mediaIds.length) return;
+    for (const mediaId of mediaIds) {
+        mediaChunkCache.delete(`${CHANNEL_COMMUNITY_MEDIA_COLLECTION}_${mediaId}`);
+        if (typeof db !== 'undefined' && typeof doc === 'function' && typeof deleteDoc === 'function') {
+            try {
+                await deleteDoc(doc(db, CHANNEL_COMMUNITY_MEDIA_COLLECTION, mediaId));
+            } catch (_) {}
+            if (typeof collection === 'function' && typeof getDocs === 'function') {
+                try {
+                    const chunksSnap = await getDocs(collection(db, CHANNEL_COMMUNITY_MEDIA_COLLECTION, mediaId, 'chunks'));
+                    if (chunksSnap && chunksSnap.docs) {
+                        for (const cDoc of chunksSnap.docs) {
+                            await deleteDoc(cDoc.ref).catch(() => {});
+                        }
+                    }
+                } catch (_) {}
+            }
+        }
+    }
+}
+
+export async function hydrateChannelCommunityMedia(container = document.getElementById('channel-community-list')) {
+    if (!container) return 0;
+    const pendingImgs = Array.from(container.querySelectorAll('[data-community-media-id]'));
+    if (!pendingImgs.length) return 0;
+
+    let hydratedCount = 0;
+    await Promise.all(pendingImgs.map(async (img) => {
+        const mediaId = img.dataset?.communityMediaId || img.getAttribute('data-community-media-id') || '';
+        if (!mediaId) return;
+        const cacheKey = `${CHANNEL_COMMUNITY_MEDIA_COLLECTION}_${mediaId}`;
+        let resolvedSrc = mediaChunkCache.get(cacheKey) || '';
+        if (!resolvedSrc && typeof loadMediaWithChunks === 'function') {
+            try {
+                resolvedSrc = await loadMediaWithChunks(CHANNEL_COMMUNITY_MEDIA_COLLECTION, mediaId);
+            } catch (_) {}
+        }
+        if (isSafeCommunityImageSrc(resolvedSrc)) {
+            img.src = resolvedSrc;
+            img.classList?.remove('is-loading');
+            img.removeAttribute('data-community-media-id');
+            hydratedCount++;
+        }
+    }));
+
+    return hydratedCount;
+}
+
+export async function deleteChannelCommunityPost(commPostId, options = {}) {
+    if (!currentUser?.uid) return false;
+    if (activeChannelUid && activeChannelUid !== currentUser.uid) {
+        showToast('Ação não permitida', 'Somente o dono do canal pode excluir publicações da comunidade.', 'yellow');
+        return false;
+    }
+    const postKey = String(commPostId || '');
+    if (!postKey) return false;
+
+    if (!options?.skipConfirm && typeof confirm === 'function' && !confirm('Deseja realmente excluir esta publicação da comunidade?')) {
+        return false;
+    }
+
+    const existing = Array.isArray(currentProfile?.channelCommunityPosts) ? [...currentProfile.channelCommunityPosts] : [];
+    const idx = existing.findIndex(item => item && String(item.id || item.createdAt || '') === postKey);
+    if (idx === -1) return false;
+
+    const removedPost = existing[idx];
+    const nextList = existing.filter((_, i) => i !== idx);
+
+    if (currentProfile) currentProfile.channelCommunityPosts = nextList;
+    if (activeChannelUid === currentUser.uid && activeChannelUserData) {
+        activeChannelUserData.channelCommunityPosts = nextList;
+    }
+    if (typeof contactUserDataMap !== 'undefined' && contactUserDataMap?.has(currentUser.uid)) {
+        contactUserDataMap.set(currentUser.uid, { ...contactUserDataMap.get(currentUser.uid), channelCommunityPosts: nextList });
+    }
+
+    if (typeof doc === 'function' && typeof setDoc === 'function' && typeof db !== 'undefined') {
+        try {
+            await setDoc(doc(db, 'users', currentUser.uid), { channelCommunityPosts: nextList, updatedAt: Date.now() }, { merge: true });
+        } catch (_) {}
+    }
+
+    await cleanupChannelCommunityPostMedia(removedPost);
+
+    openChannelCommunityModal();
+    renderChannelScreen();
+    showToast('Publicação excluída', 'O aviso da comunidade foi removido.', 'green');
+    return true;
+}
+
 export function openChannelCommunityModal(options = {}) {
     const modal = document.getElementById('channel-community-modal');
     const composer = document.getElementById('channel-community-composer');
@@ -57868,22 +58124,60 @@ export function openChannelCommunityModal(options = {}) {
         showToast('Aba Comunidade Bloqueada 🔒', 'Alcance o Nível 10 no canal para liberar a aba Comunidade.', 'yellow');
         return false;
     }
-    if (composer) composer.style.display = (isOwner && communityUnlocked) ? 'flex' : 'none';
+    if (composer) {
+        composer.style.display = (isOwner && communityUnlocked) ? 'flex' : 'none';
+        if (isOwner && communityUnlocked) {
+            renderChannelCommunityPhotoPreview();
+        }
+    }
     listEl.innerHTML = posts.length
         ? posts.map(item => {
             const commId = String(item.id || item.createdAt || '');
             const likesArr = Array.isArray(item.likes) ? item.likes.filter(Boolean) : [];
             const isLiked = Boolean(currentUser?.uid && likesArr.includes(currentUser.uid));
+            const mediaIds = Array.isArray(item.photoMediaIds) ? item.photoMediaIds.filter(Boolean) : [];
+            const inlinePhotos = Array.isArray(item.photos)
+                ? item.photos.filter(isSafeCommunityImageSrc)
+                : (isSafeCommunityImageSrc(item.imageUrl) ? [item.imageUrl] : []);
+
+            const photoEntries = mediaIds.length
+                ? mediaIds.map((mediaId, pIdx) => {
+                    const cachedSrc = mediaChunkCache.get(`${CHANNEL_COMMUNITY_MEDIA_COLLECTION}_${mediaId}`) || '';
+                    const inlineFallback = inlinePhotos[pIdx] || '';
+                    const immediateSrc = isSafeCommunityImageSrc(cachedSrc) ? cachedSrc : (isSafeCommunityImageSrc(inlineFallback) ? inlineFallback : '');
+                    return { mediaId, src: immediateSrc };
+                })
+                : inlinePhotos.map(src => ({ mediaId: '', src }));
+
+            const photosHtml = photoEntries.length
+                ? `<div class="channel-community-post-photos count-${Math.min(4, photoEntries.length)}">${photoEntries.map((entry, idx) => {
+                    const hasImmediate = Boolean(entry.src);
+                    const imgSrc = hasImmediate ? entry.src : CHANNEL_COMMUNITY_IMG_PLACEHOLDER;
+                    const chunkAttr = (!hasImmediate && entry.mediaId) ? `data-community-media-id="${escapeHTML(String(entry.mediaId))}"` : '';
+                    return `<button type="button" class="channel-community-post-photo-btn" data-action="zoom-community-photo" aria-label="Ampliar foto da comunidade"><img src="${imgSrc}" ${chunkAttr} alt="Foto ${idx + 1} da comunidade" loading="lazy" decoding="async" class="channel-community-post-img${hasImmediate ? '' : ' is-loading'}"></button>`;
+                }).join('')}</div>`
+                : '';
+
+            const textHtml = item.text
+                ? `<div class="channel-community-post-text">${escapeHTML(item.text)}</div>`
+                : (!photoEntries.length ? '<div class="channel-community-post-text"></div>' : '');
+
+            const deleteBtnHtml = isOwner
+                ? `<button type="button" class="channel-community-delete-btn" data-action="delete-community-post" data-comm-id="${escapeHTML(commId)}" aria-label="Excluir publicação da comunidade"><i data-lucide="trash-2"></i><span>Excluir</span></button>`
+                : '';
+
             return `
                 <div class="channel-community-post-card" data-comm-id="${escapeHTML(commId)}">
                     <div style="font-size:0.74rem; color:#9a9a9a; margin-bottom:4px;">${new Date(item.createdAt || Date.now()).toLocaleString([], { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</div>
-                    <div style="font-size:0.88rem; color:#f1f1f1; white-space:pre-wrap;">${escapeHTML(item.text || '')}</div>
+                    ${textHtml}
+                    ${photosHtml}
                     <div class="channel-community-post-actions">
                         <button type="button" class="channel-community-like-btn ${isLiked ? 'liked' : ''}" data-action="like-community-post" data-comm-id="${escapeHTML(commId)}" data-channel-uid="${escapeHTML(uid)}" aria-pressed="${isLiked ? 'true' : 'false'}">
                             <i data-lucide="heart"></i>
                             <span>${isLiked ? 'Curtido' : 'Curtir'}</span>
                             <span class="channel-community-like-count">${likesArr.length}</span>
                         </button>
+                        ${deleteBtnHtml}
                     </div>
                 </div>
             `;
@@ -57896,6 +58190,25 @@ export function openChannelCommunityModal(options = {}) {
             await toggleChannelCommunityPostLike(btn.dataset.channelUid || uid, btn.dataset.commId || '');
         });
     });
+
+    listEl.querySelectorAll('[data-action="delete-community-post"]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            playSound(clickSound);
+            await deleteChannelCommunityPost(btn.dataset.commId || '');
+        });
+    });
+
+    listEl.querySelectorAll('[data-action="zoom-community-photo"]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const img = btn.querySelector('img');
+            const src = img?.getAttribute('src') || img?.src || '';
+            if (!isSafeCommunityImageSrc(src) || typeof openBusinessPhotoZoom !== 'function') return;
+            playSound(clickSound);
+            openBusinessPhotoZoom(src, 'Foto da Comunidade');
+        });
+    });
+
+    hydrateChannelCommunityMedia(listEl).catch(() => {});
 
     if (!wasOpen) {
         const scrollBody = document.getElementById('channel-community-scroll-body');
@@ -57989,7 +58302,13 @@ export async function toggleChannelCommunityPostLike(channelUid = activeChannelU
 }
 
 export async function publishChannelCommunityPost() {
+    if (channelCommunityPublishing) return false;
     if (!currentUser?.uid) return false;
+    const uid = activeChannelUid || currentUser.uid;
+    if (uid !== currentUser.uid) {
+        showToast('Somente o dono do canal', 'Apenas o dono do canal pode publicar na comunidade.', 'yellow');
+        return false;
+    }
     const channelGate = canCurrentUserPublishPosts(currentProfile);
     if (!channelGate.allowed) {
         showToast('Canal Desativado 🔒', channelGate.message, 'red');
@@ -58001,31 +58320,97 @@ export async function publishChannelCommunityPost() {
     }
     const input = document.getElementById('channel-community-input');
     const text = (input?.value || '').trim();
-    if (!text) return;
+    const photosToPublish = getPendingChannelCommunityPhotos();
+    if (!text && photosToPublish.length === 0) return false;
 
-    if (typeof analyzeConversationByAI === 'function') {
+    if (text && typeof analyzeConversationByAI === 'function') {
         const check = analyzeConversationByAI({ uid: currentUser.uid, text, account: currentProfile });
         if (check?.shouldBlock) {
             showToast('Bloqueado pela IA 🛡️', check.alertMessage || 'Conteúdo bloqueado por segurança.', 'red');
-            return;
+            return false;
         }
     }
 
-    const existing = Array.isArray(currentProfile.channelCommunityPosts) ? [...currentProfile.channelCommunityPosts] : [];
-    const nextList = [{ id: `comm_${Date.now()}`, text, createdAt: Date.now(), likes: [] }, ...existing].slice(0, 40);
-    currentProfile.channelCommunityPosts = nextList;
-    if (activeChannelUid === currentUser.uid && activeChannelUserData) {
-        activeChannelUserData.channelCommunityPosts = nextList;
-    }
-    if (input) input.value = '';
+    channelCommunityPublishing = true;
+    const publishBtn = document.getElementById('channel-community-publish-btn');
+    if (publishBtn) publishBtn.disabled = true;
 
     try {
-        await setDoc(doc(db, 'users', currentUser.uid), { channelCommunityPosts: nextList, updatedAt: Date.now() }, { merge: true });
-    } catch (_) {}
+        const now = Date.now();
+        const existing = Array.isArray(currentProfile.channelCommunityPosts) ? [...currentProfile.channelCommunityPosts] : [];
+        const baseCommId = `comm_${now}`;
+        const commId = existing.some(p => p && String(p.id) === baseCommId)
+            ? `${baseCommId}_${Math.random().toString(36).slice(2, 5)}`
+            : baseCommId;
+        const savedMediaIds = [];
 
-    openChannelCommunityModal();
-    renderChannelScreen();
-    showToast('Publicado na Comunidade! 📣', 'Seu recado já está visível no canal.', 'green');
+        for (let idx = 0; idx < photosToPublish.length; idx++) {
+            const photoItem = photosToPublish[idx];
+            if (!photoItem?.dataUrl) continue;
+            const mediaDocId = `${currentUser.uid}_${commId}_${idx}`;
+            await saveMediaWithChunks(
+                CHANNEL_COMMUNITY_MEDIA_COLLECTION,
+                {
+                    uid: currentUser.uid,
+                    postId: commId,
+                    photoIndex: idx,
+                    createdAt: now
+                },
+                'mediaData',
+                photoItem.dataUrl,
+                mediaDocId
+            );
+            savedMediaIds.push(mediaDocId);
+        }
+
+        const newPost = {
+            id: commId,
+            text,
+            createdAt: now,
+            likes: []
+        };
+        if (savedMediaIds.length > 0) {
+            newPost.photoMediaIds = savedMediaIds;
+            newPost.photosCount = savedMediaIds.length;
+        }
+
+        const combined = [newPost, ...existing];
+        const nextList = combined.slice(0, 40);
+        const evictedPosts = combined.slice(40);
+        for (const oldPost of evictedPosts) {
+            cleanupChannelCommunityPostMedia(oldPost).catch(() => {});
+        }
+
+        currentProfile.channelCommunityPosts = nextList;
+        if (activeChannelUid === currentUser.uid && activeChannelUserData) {
+            activeChannelUserData.channelCommunityPosts = nextList;
+        }
+        if (typeof contactUserDataMap !== 'undefined' && contactUserDataMap?.has(currentUser.uid)) {
+            contactUserDataMap.set(currentUser.uid, { ...contactUserDataMap.get(currentUser.uid), channelCommunityPosts: nextList });
+        }
+        if (input) input.value = '';
+        clearPendingChannelCommunityPhotos();
+
+        try {
+            await setDoc(doc(db, 'users', currentUser.uid), { channelCommunityPosts: nextList, updatedAt: Date.now() }, { merge: true });
+        } catch (_) {}
+
+        openChannelCommunityModal();
+        renderChannelScreen();
+        showToast(
+            'Publicado na Comunidade! 📣',
+            savedMediaIds.length > 0 ? 'Sua publicação com fotos já está visível no canal.' : 'Seu recado já está visível no canal.',
+            'green'
+        );
+        return true;
+    } catch (err) {
+        console.error('[Comunidade] Erro ao publicar na comunidade:', err);
+        showToast('Erro ao publicar', 'Não foi possível enviar sua publicação da comunidade.', 'red');
+        return false;
+    } finally {
+        channelCommunityPublishing = false;
+        if (publishBtn) publishBtn.disabled = false;
+    }
 }
 
 export function openChannelAnalyticsModal() {
@@ -58686,6 +59071,8 @@ function closeChannelSubModal(modalId) {
     } else if (modalId === 'channel-manage-modal') {
         activeChannelManageEditPostId = null;
         activeChannelManageFilter = 'videos';
+    } else if (modalId === 'channel-community-modal') {
+        clearPendingChannelCommunityPhotos();
     }
 }
 
@@ -58869,6 +59256,13 @@ function bindChannelScreenListeners() {
         openChannelAnalyticsModal();
     });
     document.getElementById('channel-community-btn')?.addEventListener('click', () => openChannelCommunityModal({ fromClick: true }));
+    document.getElementById('channel-community-add-photo-btn')?.addEventListener('click', () => {
+        playSound(clickSound);
+        document.getElementById('channel-community-photo-input')?.click();
+    });
+    document.getElementById('channel-community-photo-input')?.addEventListener('change', async (e) => {
+        await handleChannelCommunityPhotoSelection(e?.target?.files);
+    });
     document.getElementById('channel-community-publish-btn')?.addEventListener('click', publishChannelCommunityPost);
     document.getElementById('channel-level-pill')?.addEventListener('click', () => {
         playSound(clickSound);
@@ -59004,6 +59398,13 @@ if (typeof window !== 'undefined') {
     window.closeChannelCommunityScreen = closeChannelCommunityScreen;
     window.toggleChannelCommunityPostLike = toggleChannelCommunityPostLike;
     window.publishChannelCommunityPost = publishChannelCommunityPost;
+    window.MAX_CHANNEL_COMMUNITY_PHOTOS = MAX_CHANNEL_COMMUNITY_PHOTOS;
+    window.getPendingChannelCommunityPhotos = getPendingChannelCommunityPhotos;
+    window.clearPendingChannelCommunityPhotos = clearPendingChannelCommunityPhotos;
+    window.removePendingChannelCommunityPhoto = removePendingChannelCommunityPhoto;
+    window.handleChannelCommunityPhotoSelection = handleChannelCommunityPhotoSelection;
+    window.hydrateChannelCommunityMedia = hydrateChannelCommunityMedia;
+    window.deleteChannelCommunityPost = deleteChannelCommunityPost;
     window.openChannelManageModal = openChannelManageModal;
     window.openChannelManageScreen = openChannelManageModal;
     window.closeChannelManageScreen = closeChannelManageScreen;

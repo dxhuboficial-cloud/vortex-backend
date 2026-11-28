@@ -1,6 +1,6 @@
 {
-  "version": "1.0.325",
-  "build": 325,
+  "version": "1.0.326",
+  "build": 326,
   "releaseDate": "2026-11-27",
-  "notes": "Telas próprias em tela cheia para Saque Pix Baú Diário, Sobre o canal, Novo produto, Cupons da Loja, Configuração de Frete e Detalhes do produto com topbar (Voltar), rolagem unificada e suporte ao botão voltar v1.0.325"
+  "notes": "Envio de fotos na Comunidade do Canal pelo dono (preview até 4 fotos, armazenamento em channel_community_media, hidratação automática, zoom e exclusão) v1.0.326"
 }
