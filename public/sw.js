@@ -2,7 +2,7 @@
    VORTEX VIP ⚡ - Service Worker Oficial PWA
    ========================================================================== */
 
-const CACHE_NAME = 'vortex-vip-v1.0.330';
+const CACHE_NAME = 'vortex-vip-v1.0.331';
 
 // App Shell enxuto para instalação/atualização rápida em redes móveis (~2MB mais leve);
 // ícones extras e sons são armazenados sob demanda pelo cache-first local.
@@ -10,8 +10,8 @@ const PRECACHE_ASSETS = [
   '/',
   '/index.html',
   '/privacy.html',
-  '/style.css?v=1.0.330',
-  '/script.js?v=1.0.330',
+  '/style.css?v=1.0.331',
+  '/script.js?v=1.0.331',
   '/manifest.json',
   '/icons/vortex-vip-192.png',
   '/favicon.ico'
@@ -48,13 +48,80 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// Helpers resilientes para nunca rejeitar event.respondWith(...) mesmo offline
+function createOfflineFallbackResponse(body = '', status = 503, contentType = 'text/plain; charset=utf-8') {
+  if (typeof Response === 'function') {
+    return new Response(body, {
+      status,
+      statusText: 'Service Unavailable',
+      headers: { 'Content-Type': contentType }
+    });
+  }
+  const fallbackObj = {
+    ok: false,
+    status,
+    statusText: 'Service Unavailable',
+    body
+  };
+  fallbackObj.clone = () => ({ ...fallbackObj });
+  return fallbackObj;
+}
+
+function safeCachePut(cache, request, response) {
+  try {
+    return Promise.resolve(cache.put(request, response)).catch(() => {});
+  } catch (_) {
+    return Promise.resolve();
+  }
+}
+
+function isAppShellHtmlPath(pathname) {
+  return pathname === '/' || pathname === '/index.html' || pathname === '/privacy.html';
+}
+
+function getAppShellFallbackKey(url) {
+  return url && url.pathname === '/privacy.html' ? '/privacy.html' : '/index.html';
+}
+
+function matchAppShellCache(cache, request, url) {
+  return cache.match(request).then((cachedResponse) => {
+    if (cachedResponse) return cachedResponse;
+    const fallbackKey = getAppShellFallbackKey(url);
+    return cache.match(fallbackKey).then((fallbackCached) => {
+      if (fallbackCached) return fallbackCached;
+      if (fallbackKey !== '/') return cache.match('/');
+      return null;
+    });
+  });
+}
+
+function matchAnyAppShellFallback(url) {
+  const fallbackKey = getAppShellFallbackKey(url);
+  return caches.match(fallbackKey).then((cached) => {
+    if (cached) return cached;
+    if (fallbackKey !== '/') {
+      return caches.match('/').then((rootCached) => rootCached || createOfflineFallbackResponse('Offline', 503));
+    }
+    return createOfflineFallbackResponse('Offline', 503);
+  }).catch(() => createOfflineFallbackResponse('Offline', 503));
+}
+
 // Requisições (Fetch): Estratégia híbrida resiliente e suporte offline
 self.addEventListener('fetch', (event) => {
   const request = event.request;
   if (!request || request.method !== 'GET') return;
   if (request.headers && request.headers.get('range')) return;
 
-  const url = new URL(request.url);
+  let url;
+  try {
+    url = new URL(request.url);
+  } catch (_) {
+    return;
+  }
+
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    return;
+  }
 
   // Ignora APIs de tempo real do Firebase, WebRTC e pagamentos (devem ir direto à rede)
   if (
@@ -70,37 +137,32 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Navegação de páginas (HTML): Cache-first na versão ativa para não atualizar sozinho ao recarregar/reabrir;
-  // só busca da rede quando o cache foi limpo (clique em Atualizar) ou ainda não existe em cache.
-  if (request.mode === 'navigate') {
+  const isSameOrigin = url.origin === self.location.origin;
+  const isHtmlShellRequest = request.mode === 'navigate' || (isSameOrigin && isAppShellHtmlPath(url.pathname));
+
+  // Navegação e rotas App Shell (ex: /?source=pwa, /?tab=chats, /privacy.html):
+  // Cache-first na versão ativa com fallback garantido mesmo quando mode !== 'navigate'.
+  if (isHtmlShellRequest) {
     event.respondWith(
       caches.open(CACHE_NAME).then((cache) => {
-        return cache.match(request).then((cachedResponse) => {
+        return matchAppShellCache(cache, request, url).then((cachedResponse) => {
           if (cachedResponse) {
             return cachedResponse;
           }
-          const fallbackKey = url.pathname === '/privacy.html' ? '/privacy.html' : '/index.html';
-          return cache.match(fallbackKey).then((fallbackCached) => {
-            if (fallbackCached) {
-              return fallbackCached;
+          return fetch(request).then((networkResponse) => {
+            if (networkResponse && networkResponse.status === 200) {
+              safeCachePut(cache, request, networkResponse.clone());
             }
-            return fetch(request).then((networkResponse) => {
-              if (networkResponse && networkResponse.status === 200) {
-                cache.put(request, networkResponse.clone());
-              }
-              return networkResponse;
-            });
+            return networkResponse;
           });
         });
-      }).catch(() => {
-        return caches.match('/index.html').then((cached) => cached || caches.match('/'));
-      })
+      }).catch(() => matchAnyAppShellFallback(url))
     );
     return;
   }
 
   // Recursos estáticos locais (CSS, JS, Imagens, Fontes): Cache-first estrito na versão ativa (sem sobrescrever em segundo plano)
-  if (url.origin === self.location.origin) {
+  if (isSameOrigin) {
     event.respondWith(
       caches.open(CACHE_NAME).then((cache) => {
         return cache.match(request).then((cachedResponse) => {
@@ -109,29 +171,38 @@ self.addEventListener('fetch', (event) => {
           }
           return fetch(request).then((networkResponse) => {
             if (networkResponse && networkResponse.status === 200) {
-              cache.put(request, networkResponse.clone());
+              safeCachePut(cache, request, networkResponse.clone());
             }
             return networkResponse;
           });
         });
+      }).catch(() => {
+        return caches.match(request).then((cached) => {
+          if (cached) return cached;
+          if (url.pathname === '/manifest.json') return caches.match('/manifest.json');
+          return null;
+        }).then((cached) => cached || createOfflineFallbackResponse('', 503))
+          .catch(() => createOfflineFallbackResponse('', 503));
       })
     );
     return;
   }
 
-  // Requisições externas CDN (Lucide, Google Fonts, MercadoPago SDK): Stale-While-Revalidate
+  // Requisições externas CDN (Lucide, Google Fonts, MercadoPago SDK): Stale-While-Revalidate resiliente
   event.respondWith(
     caches.match(request).then((cached) => {
       const fetchPromise = fetch(request).then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200) {
           const responseClone = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
+          caches.open(CACHE_NAME)
+            .then((cache) => safeCachePut(cache, request, responseClone))
+            .catch(() => {});
         }
         return networkResponse;
-      }).catch(() => cached);
+      }).catch(() => cached || createOfflineFallbackResponse('', 503));
 
       return cached || fetchPromise;
-    })
+    }).catch(() => createOfflineFallbackResponse('', 503))
   );
 });
 

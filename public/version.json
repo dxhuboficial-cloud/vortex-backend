@@ -1,6 +1,6 @@
 {
-  "version": "1.0.330",
-  "build": 330,
+  "version": "1.0.331",
+  "build": 331,
   "releaseDate": "2026-11-28",
-  "notes": "Estabilidade Firestore WebChannel (experimentalAutoDetectLongPolling + useFetchStreams: false), fim de listeners duplicados/vazados em contatos e posts, otimização do heartbeat de presença e eliminação de violações setTimeout v1.0.330"
+  "notes": "Correção definitiva do Service Worker para start_url /?source=pwa, rotas App Shell e fallbacks offline sem promise rejeitada no FetchEvent (sw.js v1.0.331)"
 }
